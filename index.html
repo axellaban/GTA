@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="es-AR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>GTA Conurbano</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Bowlby+One&family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@500;600&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <canvas id="game" aria-label="Temperley en 3D"></canvas>
+
+    <div id="hud" hidden>
+      <div id="card" class="sube">
+        <div id="portrait" role="img" aria-label="Gaspi"></div>
+        <div class="card-body">
+          <div class="card-top"><span class="sube-tag">SUBE</span><span id="name">GASPI</span></div>
+          <div class="bar" title="Salud"><div id="health"></div></div>
+          <div class="card-row"><span class="lbl">Respeto</span><span id="respeto">0</span></div>
+        </div>
+      </div>
+
+      <div id="status">
+        <div id="clock">17:30</div>
+        <div id="money">$ 20.000</div>
+        <div id="phone" class="ok">Con celu</div>
+      </div>
+
+      <div id="objective"><span class="obj-tag">Objetivo</span><span id="obj-text"></span><span id="obj-dist"></span></div>
+
+      <canvas id="minimap" width="200" height="200"></canvas>
+      <div id="street"></div>
+
+      <div id="prompt" hidden></div>
+      <div id="toast" hidden></div>
+      <div id="flash" hidden><div id="flash-title"></div><div id="flash-sub"></div></div>
+      <div id="bubbles"></div>
+
+      <div id="dialog" hidden>
+        <div id="dialog-q"></div>
+        <div id="dialog-opts"></div>
+        <div id="dialog-timer"><div></div></div>
+      </div>
+
+      <div id="ticker"><span class="tk-tag">ÚLTIMO MOMENTO</span><div class="tk-track"><div id="tk-text"></div></div></div>
+
+      <button id="mute" type="button" aria-label="Silenciar">Sonido</button>
+
+      <div id="touch">
+        <div id="stick" hidden><div id="knob"></div></div>
+        <button type="button" data-btn="e" class="tbtn" id="btn-e">Acción</button>
+        <button type="button" data-btn="f" class="tbtn" id="btn-f">Auto</button>
+        <button type="button" data-btn="run" class="tbtn" id="btn-run">Correr</button>
+        <button type="button" data-btn="h" class="tbtn" id="btn-h">Bocina</button>
+      </div>
+    </div>
+
+    <div id="wasted" hidden>
+      <div class="w-title" id="wasted-title">TE BAJARON</div>
+      <div class="w-sub" id="wasted-sub"></div>
+    </div>
+
+    <section id="start">
+      <div class="start-inner">
+        <p class="kicker">Estación Temperley · Línea Roca · Lomas de Zamora</p>
+        <h1><span class="t-gta">GTA</span><span class="t-conurbano">Conurbano</span></h1>
+        <div class="start-grid">
+          <div class="sube big">
+            <div class="big-photo" role="img" aria-label="Foto de Gaspi"></div>
+            <div class="big-info">
+              <span class="sube-tag">SUBE</span>
+              <strong>Gaspi</strong>
+              <span>Saldo: $ 20.000</span>
+              <span>Celu: sí (por ahora)</span>
+            </div>
+          </div>
+          <ul class="brief">
+            <li><b>Trapitos</b> que te "cuidan" el auto. Si no pagás, fijate cómo lo encontrás.</li>
+            <li><b>Motochorros</b> que te piden el celu. Dáselo, resistite o corré. Con un auto los podés voltear.</li>
+            <li><b>Cortes y marchas</b> en Av. Meeks y Almirante Brown. Con el auto no se pasa.</li>
+            <li>Trenes del Roca, barreras que bajan, rejas en cada casa y perros que corren motos.</li>
+          </ul>
+        </div>
+        <button id="play" type="button">Jugar</button>
+        <dl class="keys">
+          <div><dt>WASD</dt><dd>Moverse / manejar</dd></div>
+          <div><dt>Mouse</dt><dd>Mirar (clic para capturar)</dd></div>
+          <div><dt>Shift</dt><dd>Correr</dd></div>
+          <div><dt>E</dt><dd>Acción: pagar, dar, empujar</dd></div>
+          <div><dt>F</dt><dd>Subir o bajar del auto</dd></div>
+          <div><dt>H · Espacio</dt><dd>Bocina · freno de mano</dd></div>
+          <div><dt>1 2 3</dt><dd>Elegir en los diálogos</dd></div>
+          <div><dt>M</dt><dd>Silenciar</dd></div>
+        </dl>
+        <p class="fine">El mapa respeta la estación (Av. Meeks 1400, 10 andenes, puente a Fray Justo Sta. María de Oro); la grilla de calles es aproximada.</p>
+      </div>
+    </section>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
