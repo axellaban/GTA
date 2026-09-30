@@ -124,8 +124,9 @@ export class Post {
     this.bloom.radius = 0.45 + k * 0.25;
     const u = this.grade.uniforms;
     // día: luces cálidas y sombras apenas azules; atardecer: más naranja; noche: todo más frío
-    u.gain.value.set(1.04 + dusk * 0.06 - k * 0.06, 1.0 - k * 0.02, 0.95 - dusk * 0.05 + k * 0.1);
-    u.lift.value.set(-0.012 - k * 0.01, 0.0 + k * 0.004, 0.022 + k * 0.03 + rain * 0.01);
+    // al atardecer, un toque magenta (luces rosas y sombras violetas) como Vice City
+    u.gain.value.set(1.04 + dusk * 0.07 - k * 0.06, 1.0 - dusk * 0.045 - k * 0.02, 0.95 + dusk * 0.03 + k * 0.1);
+    u.lift.value.set(-0.012 - k * 0.01 + dusk * 0.012, 0.0 + k * 0.004, 0.022 + k * 0.03 + rain * 0.01 + dusk * 0.018);
     // al morir (o caer preso) la imagen se va a blanco y negro, como en GTA
     const w = this.wasted || 0;
     u.saturation.value = 1.12 + dusk * 0.1 - k * 0.12 - rain * 0.15;

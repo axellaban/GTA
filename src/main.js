@@ -526,8 +526,9 @@ const nightTop = new THREE.Color(0x040817);
 const nightBottom = new THREE.Color(0x17213a);
 const dayTop = new THREE.Color(0x2c6bd3);
 const dayBottom = new THREE.Color(0xb3d0ea);
-const duskBottom = new THREE.Color(0xff8a3d);
-const duskTop = new THREE.Color(0x35427f);
+// atardecer a lo Vice City: horizonte rosa coral y cielo violeta
+const duskBottom = new THREE.Color(0xff6f7d);
+const duskTop = new THREE.Color(0x5a2f8a);
 const greyTmp = new THREE.Color();
 const cityGlow = new THREE.Color(0x4a3240);
 function updateTime(dt) {
@@ -543,7 +544,7 @@ function updateTime(dt) {
   const rain = weather.rain;
   time.night = day < 0.15;
   const U = sky.uniforms;
-  U.zenith.value.copy(nightTop).lerp(dayTop, day).lerp(duskTop, dusk * 0.6 * (1 - rain));
+  U.zenith.value.copy(nightTop).lerp(dayTop, day).lerp(duskTop, dusk * 0.75 * (1 - rain));
   U.horizon.value.copy(nightBottom).lerp(dayBottom, day).lerp(duskBottom, dusk * 0.85 * (1 - rain));
   // nublado: el cielo se pone gris
   U.zenith.value.lerp(greyTmp.copy(grey).multiplyScalar(0.25 + day * 0.75), rain * 0.8);
@@ -556,7 +557,7 @@ function updateTime(dt) {
   }
   U.night.value = (1 - THREE.MathUtils.clamp(day * 3, 0, 1)) * (1 - rain * 0.9);
   U.time.value += dt;
-  U.sunColor.value.setHSL(0.1 - dusk * 0.05, 0.9, 0.62 - dusk * 0.05);
+  U.sunColor.value.setHSL(0.1 - dusk * 0.1, 0.9, 0.62 - dusk * 0.05);
   scene.fog.color.copy(U.horizon.value).lerp(U.zenith.value, 0.15);
   scene.fog.far = (280 + day * 230) * (1 - rain * 0.45);
   scene.fog.near = scene.fog.far * 0.55;
@@ -604,6 +605,11 @@ function updateTime(dt) {
   LAMPS.lampWet.value = weather.wet * NIGHT.reflejo;
   city.windowMat.emissiveIntensity = THREE.MathUtils.clamp((0.45 - lit) * 2.2, 0, 0.85);
   if (city.signMat) city.signMat.emissiveIntensity = THREE.MathUtils.clamp((0.5 - lit) * 2.4, 0, 1);
+  if (city.neonMesh) {
+    const on = THREE.MathUtils.clamp((0.45 - lit) * 3, 0, 1);
+    city.neonMesh.visible = on > 0.01;
+    city.neonMesh.material.opacity = on;
+  }
   city.lampPools.material.opacity = THREE.MathUtils.clamp((0.35 - lit) * 0.8, 0, 0.2);
   renderer.toneMappingExposure = 0.95 + (1 - day) * 0.5;
 }

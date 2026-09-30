@@ -34,7 +34,7 @@ export function buildCity(scene) {
   const rng = new Rng(1400);
   const colliders = new Colliders();
   const atlas = buildAtlas();
-  const city = { colliders, lamps: [], lampMats: [], parking: [], spots: {}, balconyRails: [], shopSigns: [] };
+  const city = { colliders, lamps: [], lampMats: [], parking: [], spots: {}, balconyRails: [], shopSigns: [], neon: [] };
   addGround(scene, city);
   addRoadMarkings(scene);
   addBuildings(scene, atlas, colliders, rng, city);
@@ -528,6 +528,7 @@ function addBuildings(scene, atlas, colliders, rng, city) {
         signQ.vert(cx - (ux * sw) / 2, cz - (uz * sw) / 2, cx + (ux * sw) / 2, cz + (uz * sw) / 2, 3.05, 3.85, uv);
         det.rbox(sw + 0.1, 0.9, 0.16, 0x2a2d30, cx - e.nx * 0.09, 3.45, cz - e.nz * 0.09, angOf(ux, uz));
         city.shopSigns.push({ x: cx, z: cz, name: nm });
+        if (v % 2 === 0) city.neon.push({ cx, cz, ux, uz, nx: e.nx, nz: e.nz, sw, v });
       }
     }
     // techo plano (triangulado), con el material que le toca
@@ -690,6 +691,33 @@ function addBuildings(scene, atlas, colliders, rng, city) {
     const sm = new THREE.MeshLambertMaterial({ map: signs.tex, emissiveMap: signs.tex, emissive: 0xffffff, emissiveIntensity: 0, side: THREE.DoubleSide });
     city.signMat = sm;
     scene.add(new THREE.Mesh(signQ.geometry(), sm));
+  }
+  // tubos de neón alrededor de la mitad de los carteles: de noche, rosa, celeste y violeta a lo Vice City
+  if (city.neon.length) {
+    const NEON = [0xff3fa4, 0x2ee6ff, 0xb45cff, 0x39ff88, 0xff3fa4];
+    const geos = [];
+    const col = new THREE.Color();
+    for (const s of city.neon) {
+      col.setHex(NEON[s.v % NEON.length]).multiplyScalar(2.2);
+      const px = s.cx + s.nx * 0.12;
+      const pz = s.cz + s.nz * 0.12;
+      const add = (w, h, x, y, z) => {
+        const g = new THREE.BoxGeometry(w, h, 0.05).rotateY(angOf(s.ux, s.uz)).translate(x, y, z);
+        const n = g.attributes.position.count;
+        const c = new Float32Array(n * 3);
+        for (let i = 0; i < n; i++) col.toArray(c, i * 3);
+        g.setAttribute('color', new THREE.BufferAttribute(c, 3));
+        geos.push(g);
+      };
+      add(s.sw + 0.2, 0.05, px, 3.93, pz);
+      add(s.sw + 0.2, 0.05, px, 2.97, pz);
+      for (const k of [-1, 1]) add(0.05, 0.96, px + s.ux * k * (s.sw / 2 + 0.1), 3.45, pz + s.uz * k * (s.sw / 2 + 0.1));
+    }
+    const nm = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false, transparent: true, opacity: 0 });
+    const neon = new THREE.Mesh(mergeGeometries(geos), nm);
+    neon.visible = false;
+    city.neonMesh = neon;
+    scene.add(neon);
   }
   // tanques de agua
   const ti = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.7, 0.7, 1.4, 12), new THREE.MeshLambertMaterial({ color: 0x1f2426 }), tanks.length);

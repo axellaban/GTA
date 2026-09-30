@@ -148,6 +148,11 @@ La gente dice en voz alta lo que aparece en los globitos: vecinos, la cana, los 
 
 En la puerta de la comisaría hay un patrullero estacionado (o robale uno a la cana). Al subirte te avisan dónde andan unos motochorros: chocalos para bajarlos antes de que pasen 100 segundos. Cada nivel paga más ($3.500, $5.000, $6.500...) y suma respeto. Se corta si te bajás o se escapan.
 
+## Look Vice City (0.15)
+
+- **Atardecer**: el cielo se pone rosa coral en el horizonte y violeta arriba, el sol rojizo, y la imagen toma un toque magenta.
+- **Neón**: la mitad de los carteles de negocios tienen un marco de tubo de neón (rosa, celeste, violeta o verde) que se prende de noche.
+
 ## Gym El Kaiser (0.13)
 
 Box de CrossFit a unos 70 m de la estación (cuadrado amarillo en el mapa): galpón negro con el portón levantado, el cartel del lobo arriba y el mismo logo en la pared del fondo, racks rojos, discos, cajones y kettlebells. Adentro entrenan los musculosos (dominadas, sentadilla y press) y El Kaiser te recibe en la puerta. Si les pegás, se defienden, y aguantan más que un vecino.
