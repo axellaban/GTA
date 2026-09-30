@@ -100,6 +100,13 @@ Datos del mapa: © colaboradores de OpenStreetMap (ODbL) y Overture Maps Foundat
 - Haces de luz de los faros de los autos y conos bajo los faroles cuando hay bruma o lluvia.
 - Las intensidades se prueban en vivo desde la consola del navegador, por ejemplo `__gta.night.faroles = 3` (también `reflejo`, `haces` y `conos`). Los valores por defecto están en `NIGHT`, en `src/atmosphere.js`.
 
+## Gente, animales y autos (0.6)
+
+- **Personas** con cuerpo continuo que se dobla sin cortes en codos, rodillas y hombros, cabeza esculpida con la cara pintada, manos, zapatos y peinados. La mitad son mujeres. Hay remeras, buzos, camperas, trajes, polleras, jeans, shorts y camisetas de Argentina, Boca, River, Banfield, Temperley e Independiente. La Bonaerense tiene camisa celeste, chaleco con POLICÍA atrás y gorra. Lejos de la cámara se usa un cuerpo más liviano.
+- **Movimiento**: al caminar, la rodilla se dobla en el vuelo de la pierna, se apoya el talón y la cadera sube, baja y gira. Al correr, el cuerpo se inclina y los codos van a 90°. Quietos, respiran y pasan el peso de una pierna a la otra.
+- **Perros callejeros y el caballo del cartonero** con forma real y patas que se doblan en la rodilla.
+- **Autos** con pintura con laca, cantos redondeados, vidrios polarizados y llantas con rayos.
+
 ## Estructura
 
 | Archivo | Qué hace |
@@ -108,7 +115,9 @@ Datos del mapa: © colaboradores de OpenStreetMap (ODbL) y Overture Maps Foundat
 | `src/city.js` | Construye la ciudad 3D a partir del mapa |
 | `src/props.js` | Semáforos, carteles de calle, paradas, canastos, contenedores, antenas |
 | `src/textures.js` | Fachadas, rejas, carteles, pasacalles (canvas) |
-| `src/human.js`, `src/vehicles.js`, `src/cars.js` | Personas, autos, colectivos, motos, camiones y trenes |
+| `src/body.js`, `src/human.js` | Cuerpos por perfiles con pesos suaves; personas, caras, ropa y animaciones |
+| `src/animals.js` | Perros y el caballo del carro |
+| `src/vehicles.js`, `src/cars.js` | Autos, colectivos, motos, camiones y trenes |
 | `src/player.js` | Gaspi: caminar, saltar, robar vehículos, manejar con derrape, cámara |
 | `src/combat.js`, `src/weapons.js` | Piñas, armas, tiros, explosiones |
 | `src/police.js` | Estrellas, patrulleros, canas y helicóptero |
