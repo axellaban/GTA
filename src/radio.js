@@ -3,9 +3,21 @@
 const N = (m) => 440 * Math.pow(2, (m - 69) / 12); // nota MIDI -> Hz
 
 export const STATIONS = [
-  { name: 'FM La Bailanta 98.3', sub: 'Cumbia de la buena', genre: 'cumbia', bpm: 96 },
-  { name: 'Rock Nacional 105.7', sub: 'El aguante', genre: 'rock', bpm: 128 },
-  { name: 'Radio 2x4', sub: 'Tango las 24 horas', genre: 'tango', bpm: 112 },
+  {
+    name: 'FM La Bailanta 98.3', sub: 'Cumbia de la buena', genre: 'cumbia', bpm: 96, voice: { key: 21 },
+    intro: 'Estás escuchando FM La Bailanta, noventa y ocho punto tres. ¡Cumbia de la buena!',
+    dj: ['¡Qué tal, gente linda de Temperley! Seguimos con la mejor cumbia', 'Saludos a los muchachos de la estación y a las chicas del kiosco. ¡Arriba esas manos!', 'FM La Bailanta. ¡Que no pare la joda!', 'Se viene otro temazo, para bailar hasta que salga el sol'],
+  },
+  {
+    name: 'Rock Nacional 105.7', sub: 'El aguante', genre: 'rock', bpm: 128, voice: { key: 5 },
+    intro: 'Rock Nacional, ciento cinco punto siete. El aguante del sur.',
+    dj: ['Esto va para los que están en el corte de Meeks. ¡Aguante!', 'Subile el volumen, que se viene un clásico', 'Rock Nacional. Acá no pasamos reguetón, amigo', 'Si estás manejando, abrochate el cinturón y subí el volumen'],
+  },
+  {
+    name: 'Radio 2x4', sub: 'Tango las 24 horas', genre: 'tango', bpm: 112, voice: { key: 9, female: true },
+    intro: 'Radio dos por cuatro. Tango las veinticuatro horas.',
+    dj: ['Una noche de Temperley, una milonga y un buen vino', 'Porque veinte años no es nada... seguimos con más tango', 'Radio dos por cuatro. Para los que saben', 'Buenas noches, arrabal. Seguimos'],
+  },
   { name: 'Radio apagada', sub: '', genre: null },
 ];
 
@@ -60,6 +72,18 @@ const PROG = {
 };
 const CHORD = { m: [0, 3, 7], '': [0, 4, 7], 7: [0, 4, 7, 10], 5: [0, 7, 12] };
 
+// publicidades truchas del barrio entre tema y tema
+const ADS = [
+  'Pizzería Los Dos Caños: la muzza más grande de Temperley. Pedí por teléfono y te la llevan en moto.',
+  '¿Te robaron el celu? Celulares El Turco: usados, con garantía de una semana.',
+  'Gym El Kaiser, al lado de la estación. Vení a entrenar con los más grandes. La primera clase es gratis.',
+  'Chapa y pintura: te dejamos el auto como nuevo y nadie te reconoce. Consultá sin compromiso.',
+  'Remises Temperley: te llevamos a donde quieras, más o menos rápido.',
+  'Armería El Tano: para la seguridad de tu familia. Preguntá por la metra en cuotas.',
+  'Milanesas Doña Marta: el sánguche que te devuelve la vida.',
+];
+const pick = (a) => a[Math.floor(Math.random() * a.length)];
+
 export class Radio {
   constructor(audio) {
     this.audio = audio;
@@ -102,11 +126,30 @@ export class Radio {
       this.step = 0;
       this.newSong();
     }
+    if (!want && this.on) window.speechSynthesis?.cancel();
+    const turnedOn = want && !this.on;
     this.on = want;
+    this.gain.gain.cancelScheduledValues(this.audio.ctx.currentTime);
     this.gain.gain.setTargetAtTime(want ? 0.32 : 0, this.audio.ctx.currentTime, 0.25);
+    // al prender, el locutor presenta la radio
+    if (turnedOn) setTimeout(() => this.on && this.talk(this.station.intro), 900);
+  }
+
+  // locutor o publicidad (con la voz del navegador): la música baja mientras hablan
+  talk(text) {
+    const st = this.station;
+    if (!st.genre || !this.on) return;
+    text ??= Math.random() < 0.45 ? pick(ADS) : pick(st.dj);
+    if (!this.audio.speak(text, { ...st.voice, force: true })) return;
+    const t = this.audio.ctx.currentTime;
+    const g = this.gain.gain;
+    g.cancelScheduledValues(t);
+    g.setTargetAtTime(0.06, t, 0.15);
+    g.setTargetAtTime(0.32, t + 1.2 + text.length * 0.07, 0.4);
   }
 
   cycle() {
+    window.speechSynthesis?.cancel();
     this.index = (this.index + 1) % STATIONS.length;
     this.on = false;
     this.sweep();
@@ -148,7 +191,10 @@ export class Radio {
       this.step++;
       if (this.step % 16 === 0) {
         this.song.bars++;
-        if (this.song.bars >= 24) this.newSong();
+        if (this.song.bars >= 24) {
+          this.newSong();
+          this.talk();
+        }
       }
     }
   }

@@ -153,6 +153,10 @@ En la puerta de la comisaría hay un patrullero estacionado (o robale uno a la c
 - **Atardecer**: el cielo se pone rosa coral en el horizonte y violeta arriba, el sol rojizo, y la imagen toma un toque magenta.
 - **Neón**: la mitad de los carteles de negocios tienen un marco de tubo de neón (rosa, celeste, violeta o verde) que se prende de noche.
 
+## Radio con locutor (0.16)
+
+Al prender la radio el locutor presenta la emisora, y entre tema y tema habla o pasa una publicidad trucha del barrio (la pizzería, El Turco, el gym El Kaiser, chapa y pintura, la armería...). La música baja mientras habla. Usa la misma voz del navegador que la gente.
+
 ## Gym El Kaiser (0.13)
 
 Box de CrossFit a unos 70 m de la estación (cuadrado amarillo en el mapa): galpón negro con el portón levantado, el cartel del lobo arriba y el mismo logo en la pared del fondo, racks rojos, discos, cajones y kettlebells. Adentro entrenan los musculosos (dominadas, sentadilla y press) y El Kaiser te recibe en la puerta. Si les pegás, se defienden, y aguantan más que un vecino.
