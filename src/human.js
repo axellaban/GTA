@@ -633,7 +633,7 @@ export function makeHuman(o = {}) {
   const bottom = o.bottom ?? 'pants';
   const topColor = top === 'suit' || top === 'jacket' ? (o.jacket ?? shirt) : top === 'hoodie' ? (o.hood ?? shirt) : top === 'jersey' ? 0xffffff : shirt;
   const sleeveColor = top === 'jersey' ? JERSEY_SLEEVE[o.jersey] ?? 0xffffff : topColor;
-  const sx = female ? 0.178 : 0.195; // hombros
+  const sx = female ? 0.178 : o.muscle ? 0.214 : 0.195; // hombros
   const lx = female ? 0.09 : 0.095; // piernas
   const build = (D) => {
     const seg = (n) => Math.max(5, Math.round(n * D));
@@ -644,6 +644,16 @@ export function makeHuman(o = {}) {
     const torsoW = chain(['head', 'neck', 'chest', 'spine', 'hips'], [1.7, 1.6, 1.32, 1.1], [0.02, 0.03, 0.06, 0.06]);
     const TK = (female ? TORSO_F : TORSO_M).map((k) => k.slice());
     if (o.belly) for (const k of TK) if (k[0] > 1.02 && k[0] < 1.34) k[2] += 0.045 * Math.sin(((k[0] - 1.02) / 0.32) * Math.PI);
+    // musculoso: pecho y espalda anchos, cintura fina (en V)
+    if (o.muscle) {
+      for (const k of TK) {
+        const c = smooth(1.12, 1.32, k[0]) * (1 - smooth(1.57, 1.62, k[0]));
+        k[1] *= 1 + 0.17 * c;
+        k[2] *= 1 + 0.26 * c;
+        k[3] *= 1 + 0.14 * c;
+        if (k[0] > 0.95 && k[0] < 1.12) k[1] *= 0.95;
+      }
+    }
     const jacketed = top === 'suit' || top === 'jacket' || top === 'police' || top === 'hoodie';
     const seam = -Math.PI / 2; // costura al costado: adelante u = 0,25 y atrás u = 0,75
 
@@ -684,7 +694,7 @@ export function makeHuman(o = {}) {
       for (const inside of [false, true]) loft(m, { keys: JACKET_SKIRT, seg: seg(20), p: 2.4, grow: inside ? -0.004 : 0, inside, color: inside ? tone(topColor, 0.6) : topColor, cell: fab, weights: skirtW, seam });
     }
     // cuello
-    const NK = female ? NECK_F : NECK;
+    const NK = (female ? NECK_F : NECK).map((k) => (o.muscle ? [k[0], k[1] * 1.3, k[2] * 1.3, k[3] * 1.3, k[4]] : k));
     loft(m, { keys: NK, seg: seg(12), color: skin, cell: skinCell, weights: (x, y) => torsoW(y) });
 
     // ---- cabeza ----
@@ -694,7 +704,11 @@ export function makeHuman(o = {}) {
     addHair(m, H, o, hair, female);
 
     // ---- brazos y manos (el derecho en -x: el personaje mira hacia +z) ----
-    const AK = female ? ARM_F : ARM_M;
+    // brazos: con músculos, hombros y bíceps bien marcados
+    const AK = (female ? ARM_F : ARM_M).map(([t, a, b, c]) => {
+      const k = o.muscle ? (t > 1.28 ? 1.5 : t > 1.02 ? 1.3 : 1.1) : 1;
+      return [t, a * k, b * k, c * k];
+    });
     const sleeveTo = top === 'tank' ? 1.62 : top === 'tshirt' || top === 'jersey' ? (female ? 1.46 : 1.38) : 1.0;
     for (const [s, ua, fa, hand] of [
       [-1, 'uaR', 'faR', 'handR'],
@@ -1003,6 +1017,7 @@ function reset(h) {
   const r = h.bones.root;
   r.position.set(0, 0, 0);
   h.bones.hips.position.set(0, 0.95, 0);
+  if (h.bar) h.bar.visible = false;
 }
 
 // Anima caminata y poses. `speed` en m/s. `t` (0..1) es el avance de un golpe.
@@ -1043,6 +1058,42 @@ export function animateHuman(h, dt, speed, pose = 'walk', t = 0) {
     b.thL.rotation.x = -0.4;
     b.shL.rotation.x = 0.6;
     b.head.rotation.y = 0.4;
+    return;
+  }
+  if (pose === 'press' || pose === 'squat' || pose === 'pullup') {
+    // entrenando en el gym: t es el avance de la repetición (0..1)
+    const k = 0.5 - 0.5 * Math.cos(t * Math.PI * 2);
+    if (pose === 'press') {
+      b.uaR.rotation.set(-1.3 - 1.55 * k, 0, 0.55 - 0.3 * k);
+      b.uaL.rotation.set(-1.3 - 1.55 * k, 0, -0.55 + 0.3 * k);
+      b.faR.rotation.x = b.faL.rotation.x = -1.9 * (1 - k) - 0.1;
+      if (h.bar) {
+        h.bar.visible = true;
+        h.bar.position.set(0, 1.62 + 0.52 * k, 0.1);
+      }
+    } else if (pose === 'squat') {
+      b.hips.position.y -= 0.4 * k;
+      b.thR.rotation.x = b.thL.rotation.x = -1.4 * k;
+      b.shR.rotation.x = b.shL.rotation.x = 1.75 * k;
+      b.ftR.rotation.x = b.ftL.rotation.x = -0.35 * k;
+      b.spine.rotation.x = 0.3 * k;
+      b.uaR.rotation.set(-1.5, 0, 0.25);
+      b.uaL.rotation.set(-1.5, 0, -0.25);
+      b.faR.rotation.x = b.faL.rotation.x = -2.1;
+      if (h.bar) {
+        h.bar.visible = true;
+        h.bar.position.set(0, 1.55 - 0.4 * k, 0.2);
+      }
+    } else {
+      // dominadas colgado del rack
+      b.hips.position.y += 0.5 * k;
+      b.uaR.rotation.set(-2.95 + 1.2 * k, 0, 0.35 + 0.3 * k);
+      b.uaL.rotation.set(-2.95 + 1.2 * k, 0, -0.35 - 0.3 * k);
+      b.faR.rotation.x = b.faL.rotation.x = -0.2 - 1.7 * k;
+      b.shR.rotation.x = b.shL.rotation.x = 0.5;
+      b.thR.rotation.x = b.thL.rotation.x = -0.2;
+    }
+    b.head.rotation.x = -0.1;
     return;
   }
   if (pose === 'sit') {

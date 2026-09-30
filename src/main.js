@@ -23,6 +23,7 @@ import { buildProps, TrafficLights, BlobShadows } from './props.js';
 import { Fx } from './fx.js';
 import { Pickups, FIGUS } from './pickups.js';
 import { WEAPONS } from './weapons.js';
+import { Gym } from './gym.js';
 import { Combat } from './combat.js';
 import { Police } from './police.js';
 import { Nav } from './nav.js';
@@ -339,6 +340,11 @@ const garages = [];
   }
 }
 world.garages = garages;
+
+// ---------- Gym El Kaiser, a pasos de la estación ----------
+const gym = new Gym(scene, city.colliders, npcs, heightAt);
+for (const s of gym.slots) gym.spawn(s);
+world.gym = gym;
 
 // ---------- Armería "El Tano": entrás a pie y elegís qué comprar ----------
 const armeria = (() => {
@@ -999,6 +1005,7 @@ function frame(now) {
   updateJob(dt);
   updateGarages();
   updateArmeria();
+  gym.update(dt, world);
   updateFare(dt);
   missions.update(dt, step >= steps.length - 1 && !job.active && !fare.active);
   updateObjective();

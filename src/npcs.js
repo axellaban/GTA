@@ -546,6 +546,11 @@ export class Npcs {
       }
       // golpe o reacción en curso: pisa la pose
       let t = 0;
+      // los del gym entrenan mientras nadie los moleste
+      if (n.exercise && n.state === 'walk') {
+        pose = n.exercise;
+        t = (n.t * 0.42) % 1;
+      }
       if (n.act) {
         n.act.t += dt;
         if (n.act.t >= n.act.dur) n.act = null;

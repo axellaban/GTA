@@ -144,6 +144,10 @@ La gente dice en voz alta lo que aparece en los globitos: vecinos, la cana, los 
 - **Molotov**: la botella vuela en arco y deja fuego en el piso unos segundos (quema gente y autos, y a vos si te quedás adentro).
 - **Armería "El Tano"** (cuadrado rojo en el mapa): entrás a pie y comprás metra, molotovs, balas para todas tus armas o el bastón.
 
+## Gym El Kaiser (0.13)
+
+Box de CrossFit a unos 70 m de la estación (cuadrado amarillo en el mapa): galpón negro con el portón levantado, el cartel del lobo arriba y el mismo logo en la pared del fondo, racks rojos, discos, cajones y kettlebells. Adentro entrenan los musculosos (dominadas, sentadilla y press) y El Kaiser te recibe en la puerta. Si les pegás, se defienden, y aguantan más que un vecino.
+
 ## Estructura
 
 | Archivo | Qué hace |
@@ -163,6 +167,7 @@ La gente dice en voz alta lo que aparece en los globitos: vecinos, la cana, los 
 | `src/npcs.js` | Vecinos, trapitos, gente pidiendo, perdidos, vendedor de medias, perros |
 | `src/crime.js` | Motochorros |
 | `src/events.js` | Cortes, marchas y noticias |
+| `src/gym.js` | Gym El Kaiser: galpón, cartel, racks y los musculosos entrenando |
 | `src/missions.js` | Misiones: llamadas, marcador, etapas, premio |
 | `src/trains.js` | Trenes, barreras y pasos a nivel |
 | `src/radio.js`, `src/audio.js` | Radio y sonidos sintetizados |
