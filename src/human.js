@@ -858,7 +858,7 @@ function reset(h) {
 
 // Anima caminata y poses. `speed` en m/s. `t` (0..1) es el avance de un golpe.
 export function animateHuman(h, dt, speed, pose = 'walk', t = 0) {
-  h.phase += dt * (2 + speed * 2.4);
+  h.phase += dt * (speed < 0.1 ? 1 : 2 + speed * 2.4);
   const s = Math.sin(h.phase);
   const c = Math.cos(h.phase);
   const amp = Math.min(0.85, speed * 0.26);
@@ -931,25 +931,52 @@ export function animateHuman(h, dt, speed, pose = 'walk', t = 0) {
     b.faL.rotation.x = -0.5;
     return;
   }
-  // caminata base: piernas, rodillas, brazos opuestos, codos y balanceo
-  b.thR.rotation.x = s * amp;
-  b.thL.rotation.x = -s * amp;
-  b.shR.rotation.x = Math.max(0, s) * amp * 1.4 + 0.05;
-  b.shL.rotation.x = Math.max(0, -s) * amp * 1.4 + 0.05;
-  b.ftR.rotation.x = -Math.max(0, s) * amp * 0.5;
-  b.ftL.rotation.x = -Math.max(0, -s) * amp * 0.5;
-  b.uaR.rotation.x = -s * amp * 0.75;
-  b.uaL.rotation.x = s * amp * 0.75;
-  b.uaR.rotation.z = -0.08;
-  b.uaL.rotation.z = 0.08;
-  b.faR.rotation.x = -0.25 - Math.max(0, -s) * amp * 0.5;
-  b.faL.rotation.x = -0.25 - Math.max(0, s) * amp * 0.5;
-  b.hips.position.y = 0.95 + Math.abs(c) * amp * 0.05;
-  b.hips.rotation.y = s * amp * 0.12;
-  b.chest.rotation.y = -s * amp * 0.18;
-  b.spine.rotation.x = speed > 4 ? 0.15 : 0.03;
-  // respiración en reposo
-  if (speed < 0.1) b.chest.rotation.x = Math.sin(h.phase * 0.5) * 0.02;
+  // Caminata y carrera: la rodilla se dobla en el vuelo de la pierna (no cuando apoya), el pie
+  // apoya el talón y despega con la punta, la cadera sube y baja dos veces por paso y gira con la
+  // pierna que avanza, el pecho gira al revés, los brazos acompañan con el codo más doblado al
+  // correr y la cabeza se queda mirando al frente.
+  const run = smooth(2.6, 5, speed);
+  const kneeA = Math.min(1.9, 0.3 + speed * 0.3);
+  for (const [side, th, sh, ft, ua, fa] of [
+    [1, b.thR, b.shR, b.ftR, b.uaR, b.faR],
+    [-1, b.thL, b.shL, b.ftL, b.uaL, b.faL],
+  ]) {
+    const u = s * side; // > 0: la pierna va atrás
+    const swing = Math.max(0, -c * side); // vuelo: la pierna viene para adelante
+    th.rotation.x = u * amp - swing * run * 0.25;
+    sh.rotation.x = 0.04 + swing * kneeA + Math.max(0, u) * amp * 0.35;
+    // talón al apoyar (punta arriba) y punta al despegar
+    ft.rotation.x = -Math.max(0, -u) * amp * 0.45 * (1 - swing) + Math.max(0, u) * amp * 0.5 - swing * kneeA * 0.3;
+    ua.rotation.x = -u * amp * (0.75 - run * 0.32);
+    ua.rotation.z = -side * (0.07 + amp * 0.05);
+    fa.rotation.x = -0.18 - run * 1.15 - Math.max(0, -u) * amp * (0.45 + run * 0.3);
+  }
+  const bob = amp * (0.028 + run * 0.03);
+  b.hips.position.y = 0.95 - bob * 0.5 + bob * c * c + run * 0.02 * Math.abs(c);
+  b.hips.position.x = -s * amp * 0.018 * (1 - run);
+  b.hips.rotation.y = -s * amp * (0.16 - run * 0.04);
+  b.hips.rotation.z = c * amp * 0.035;
+  b.chest.rotation.y = s * amp * (0.22 + run * 0.08);
+  b.spine.rotation.x = 0.03 + run * 0.16 + amp * 0.04;
+  b.head.rotation.y = -(b.hips.rotation.y + b.chest.rotation.y) * 0.85;
+  b.head.rotation.x = -b.spine.rotation.x * 0.6 + Math.abs(c) * amp * 0.03;
+  // quieto: respira, pasa el peso de una pierna a la otra y mira alrededor
+  if (speed < 0.1) {
+    const t = h.phase;
+    const sway = Math.sin(t * 0.35);
+    b.chest.rotation.x = Math.sin(t * 1.6) * 0.018;
+    b.hips.position.x = sway * 0.018;
+    b.hips.rotation.z = -sway * 0.035;
+    b.spine.rotation.z = sway * 0.025;
+    b.shR.rotation.x = 0.05 + Math.max(0, -sway) * 0.12;
+    b.shL.rotation.x = 0.05 + Math.max(0, sway) * 0.12;
+    b.thR.rotation.x = -Math.max(0, -sway) * 0.06;
+    b.thL.rotation.x = -Math.max(0, sway) * 0.06;
+    b.faR.rotation.x = -0.14 + Math.sin(t * 0.5) * 0.03;
+    b.faL.rotation.x = -0.14 + Math.sin(t * 0.5 + 1) * 0.03;
+    b.head.rotation.y = Math.sin(t * 0.13) * 0.35 * smooth(0.3, 0.9, Math.abs(Math.sin(t * 0.07)));
+    b.head.rotation.x = Math.sin(t * 0.17) * 0.05;
+  }
 
   if (pose === 'zombie') {
     b.uaR.rotation.x = -1.2 + Math.sin(h.phase * 0.5) * 0.2;

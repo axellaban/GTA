@@ -1174,9 +1174,10 @@ body {
     right: calc(128px + env(safe-area-inset-right, 0px));
     bottom: calc(28px + env(safe-area-inset-bottom, 0px));
   }
+  /* a la izquierda de la bocina: arriba queda el botón de bajarse */
   #btn-willy {
-    right: calc(122px + env(safe-area-inset-right, 0px));
-    bottom: calc(104px + env(safe-area-inset-bottom, 0px));
+    right: calc(222px + env(safe-area-inset-right, 0px));
+    bottom: calc(28px + env(safe-area-inset-bottom, 0px));
   }
   /* la acción del momento (subir, robar, comprar, bajarse): dice qué hace */
   #btn-ctx {
@@ -1316,6 +1317,9 @@ body {
   }
   #radio {
     top: calc(48px + env(safe-area-inset-top, 0px));
+  }
+  #flash {
+    top: 36%;
   }
   #ticker,
   #prompt,
