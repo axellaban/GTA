@@ -919,34 +919,28 @@ export function trainSideTexture(kind) {
 }
 
 export function busTexture(line) {
-  const c = canvas(512, 128);
+  // faldón del colectivo (10,5 m x 0,55 m): color de la línea, fileteado y el número
+  const c = canvas(1024, 54);
   const ctx = c.getContext('2d');
-  const colors = [
-    ['#f4d03f', '#c0392b'],
-    ['#2e86c1', '#f7f9f9'],
-    ['#27ae60', '#f4d03f'],
-  ];
-  const [a, b] = colors[line % colors.length];
-  ctx.fillStyle = a;
-  ctx.fillRect(0, 0, 512, 128);
-  ctx.fillStyle = b;
-  ctx.fillRect(0, 80, 512, 14);
-  // filete porteño simple
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 3;
+  const colors = { 160: '#c0392b', 266: '#f7f9f9', 318: '#f4d03f', 518: '#1a1a1a' };
+  const bg = colors[line] ?? '#c0392b';
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, 1024, 54);
+  const ink = bg === '#f7f9f9' || bg === '#f4d03f' ? '#1b4f9c' : '#ffffff';
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = 2.5;
   ctx.beginPath();
-  for (let x = 0; x < 512; x += 40) {
-    ctx.moveTo(x, 104);
-    ctx.quadraticCurveTo(x + 10, 96, x + 20, 104);
-    ctx.quadraticCurveTo(x + 30, 112, x + 40, 104);
+  for (let x = 0; x < 1024; x += 36) {
+    ctx.moveTo(x, 40);
+    ctx.quadraticCurveTo(x + 9, 30, x + 18, 40);
+    ctx.quadraticCurveTo(x + 27, 50, x + 36, 40);
   }
   ctx.stroke();
-  for (let x = 30; x < 470; x += 58) {
-    ctx.fillStyle = '#1b2631';
-    ctx.fillRect(x, 18, 46, 46);
-  }
-  ctx.fillStyle = '#111';
-  ctx.font = `30px ${FONT}`;
-  ctx.fillText(String(line), 440, 120);
+  ctx.fillRect(0, 8, 1024, 3);
+  ctx.fillStyle = ink;
+  ctx.font = `bold 30px ${FONT}`;
+  ctx.textBaseline = 'middle';
+  ctx.fillText(`LÍNEA ${line}`, 40, 26);
+  ctx.fillText(`LÍNEA ${line}`, 800, 26);
   return tex(c);
 }

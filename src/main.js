@@ -564,6 +564,68 @@ function speakers() {
   return out.sort((a, b) => a.d - b.d);
 }
 
+// ---------- Partida guardada (en este navegador) ----------
+const SAVE = 'gta-conurbano-partida';
+function saveGame() {
+  try {
+    localStorage.setItem(SAVE, JSON.stringify({ money: player.money, respeto: player.respeto, phone: player.phone, step, hour: time.hour, inv: player.inv, ammo: player.ammo, weapon: player.weapon, armor: player.armor, flags }));
+  } catch {
+    /* sin almacenamiento */
+  }
+}
+function loadGame() {
+  try {
+    const d = JSON.parse(localStorage.getItem(SAVE) || 'null');
+    if (!d || typeof d.money !== 'number') return false;
+    player.money = d.money;
+    player.respeto = d.respeto ?? 0;
+    player.phone = d.phone ?? true;
+    step = Math.min(steps.length - 1, d.step ?? 0);
+    time.hour = d.hour ?? time.hour;
+    player.inv = { punos: true, ...(d.inv || {}) };
+    player.ammo = d.ammo || {};
+    player.weapon = player.inv[d.weapon] ? d.weapon : 'punos';
+    player.armor = d.armor ?? 0;
+    Object.assign(flags, d.flags || {});
+    combat.syncHand(player);
+    return true;
+  } catch {
+    return false;
+  }
+}
+let saveT = 0;
+const loaded = loadGame();
+if (loaded) document.getElementById('reset').hidden = false;
+document.getElementById('reset').addEventListener('click', () => {
+  try {
+    localStorage.removeItem(SAVE);
+  } catch {
+    /* sin almacenamiento */
+  }
+  location.reload();
+});
+
+// ---------- Pausa con el mapa grande ----------
+let paused = false;
+function setPaused(p) {
+  paused = p;
+  document.getElementById('pausemap').hidden = !p;
+  if (p) {
+    hud.drawBig(world);
+    try {
+      document.exitPointerLock?.();
+    } catch {
+      /* nada */
+    }
+    audio.master && (audio.master.gain.value = audio.muted ? 0 : 0.15);
+  } else {
+    audio.master && (audio.master.gain.value = audio.muted ? 0 : 0.55);
+    last = performance.now();
+  }
+}
+document.getElementById('minimap').addEventListener('click', () => started && setPaused(!paused));
+document.getElementById('bigmap').addEventListener('click', () => setPaused(false));
+
 // ---------- Loop ----------
 let started = false;
 let last = performance.now();
@@ -592,6 +654,17 @@ function frame(now) {
   if (input.hit('m')) {
     const muted = audio.toggleMute();
     document.getElementById('mute').textContent = muted ? 'Sin sonido' : 'Sonido';
+  }
+  if (input.hit('p')) setPaused(!paused);
+  if (paused) {
+    input.endFrame();
+    requestAnimationFrame(frame);
+    return;
+  }
+  saveT += dt;
+  if (saveT > 8) {
+    saveT = 0;
+    saveGame();
   }
   // radio: R cambia de estación arriba de un auto
   if (player.vehicle && player.vehicle.kind !== 'moto' && input.hit('r')) {
@@ -670,7 +743,7 @@ document.getElementById('play').addEventListener('click', () => {
   }
   started = true;
   last = performance.now();
-  hud.flash('TEMPERLEY', 'Av. Meeks · Estación del Roca', 'warn', 3);
+  hud.flash('TEMPERLEY', loaded ? 'Partida recuperada. P abre el mapa.' : 'Av. Meeks · Estación del Roca. P abre el mapa.', 'warn', 3);
 });
 document.getElementById('mute').addEventListener('click', () => {
   const muted = audio.toggleMute();

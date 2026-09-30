@@ -309,6 +309,88 @@ export class Hud {
     return c;
   }
 
+  // Mapa completo para la pausa: el plano, los nombres de las calles y los marcadores
+  drawBig(world) {
+    const cv = $('bigmap');
+    const g = cv.getContext('2d');
+    const S = cv.width;
+    const { player } = world;
+    const k = S / (HALF * 2);
+    const X = (x) => (x + HALF) * k;
+    g.drawImage(this.baseMap, 0, 0, S, S);
+    // nombres de calles: uno por calle, en su tramo más largo
+    if (!this.labels) {
+      const best = new Map();
+      for (const r of D.roads) {
+        if (!r.n) continue;
+        for (let i = 0; i < r.p.length - 1; i++) {
+          const [ax, az] = r.p[i];
+          const [bx, bz] = r.p[i + 1];
+          const l = Math.hypot(bx - ax, bz - az);
+          if (!best.has(r.n) || l > best.get(r.n).l) best.set(r.n, { l, ax, az, bx, bz, av: r.c === 'primary' || r.c === 'secondary' || r.c === 'tertiary' });
+        }
+      }
+      this.labels = [...best.entries()].filter(([, v]) => v.l > 60);
+    }
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    for (const [name, v] of this.labels) {
+      let a = Math.atan2(v.bz - v.az, v.bx - v.ax);
+      if (a > Math.PI / 2) a -= Math.PI;
+      if (a < -Math.PI / 2) a += Math.PI;
+      g.save();
+      g.translate(X((v.ax + v.bx) / 2), X((v.az + v.bz) / 2));
+      g.rotate(a);
+      g.font = `${v.av ? 700 : 600} ${v.av ? 15 : 12}px 'Barlow Condensed', 'Arial Narrow', sans-serif`;
+      g.lineWidth = 3;
+      g.strokeStyle = 'rgba(20,22,24,0.85)';
+      g.strokeText(name, 0, 0);
+      g.fillStyle = v.av ? '#ffe7a3' : '#f4efe4';
+      g.fillText(name, 0, 0);
+      g.restore();
+    }
+    const dot = (x, z, color, r, shape) => {
+      g.fillStyle = color;
+      g.strokeStyle = '#111';
+      g.lineWidth = 2;
+      g.beginPath();
+      if (shape === 'square') g.rect(X(x) - r, X(z) - r, r * 2, r * 2);
+      else g.arc(X(x), X(z), r, 0, Math.PI * 2);
+      g.fill();
+      g.stroke();
+    };
+    if (this.route && this.route.length > 1) {
+      g.strokeStyle = '#c86bff';
+      g.lineWidth = 5;
+      g.lineJoin = 'round';
+      g.beginPath();
+      this.route.forEach(([x, z], i) => (i ? g.lineTo(X(x), X(z)) : g.moveTo(X(x), X(z))));
+      g.stroke();
+    }
+    for (const m of world.pickups.markers({ x: player.x, z: player.z }, true)) dot(m.x, m.z, m.kind === 'weapon' ? '#ffa726' : m.kind === 'health' ? '#ff5a5a' : '#5aa9ff', 6);
+    for (const m of world.events.markers()) dot(m.x, m.z, '#ff7a1a', 7, 'square');
+    for (const m of world.police.markers()) dot(m.x, m.z, '#3060ff', 5, 'square');
+    const o = this.objective;
+    if (o?.target) dot(o.target.x, o.target.z, '#ffe14a', 9);
+    // Gaspi
+    g.save();
+    g.translate(X(player.x), X(player.z));
+    g.rotate(-player.heading + Math.PI);
+    g.fillStyle = '#ffffff';
+    g.strokeStyle = '#0f5fa8';
+    g.lineWidth = 3;
+    g.beginPath();
+    g.moveTo(0, -13);
+    g.lineTo(9, 10);
+    g.lineTo(0, 5);
+    g.lineTo(-9, 10);
+    g.closePath();
+    g.fill();
+    g.stroke();
+    g.restore();
+    $('pm-obj').textContent = o?.text ?? '';
+  }
+
   drawMinimap(world) {
     const { player, events, crime } = world;
     const g = this.mctx;

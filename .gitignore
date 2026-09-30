@@ -2,3 +2,5 @@ node_modules/
 dist/
 *.log
 .DS_Store
+scripts/map/*.json
+scripts/map/__pycache__/

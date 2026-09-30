@@ -20,32 +20,95 @@ function mesh(g, m, x, y, z, parent) {
 
 export const CAR_COLORS = [0xd8d4c8, 0x8c1c13, 0x1f3a60, 0x2c2c2c, 0x9aa3a8, 0x3b5e2b, 0xc9a227, 0xf2f2f2, 0x6b3e26, 0x2d6e8a, 0xa84a1c];
 export { makeCar, lightMat } from './cars.js';
+import { lightMat } from './cars.js';
 
+// Colectivo: carrocería perfilada, ventanillas con parantes, parabrisas, puertas del lado derecho,
+// cartel de línea y fileteado en el faldón.
+const BUS_COLORS = { 160: [0xf2c230, 0xc0392b], 266: [0x2e86c1, 0xf2f2f2], 318: [0x27ae60, 0xf4d03f], 518: [0xe67e22, 0x1a1a1a] };
 export function makeBus(line = 518) {
   const g = new THREE.Group();
-  const L = 11;
+  const L = 11.5;
   const W = 2.5;
-  const side = new THREE.MeshLambertMaterial({ map: busTexture(line) });
-  const plain = M([0xf4d03f, 0x2e86c1, 0x27ae60][line % 3]);
-  const mats = [side, side, plain, plain, plain, plain];
-  mesh(new THREE.BoxGeometry(W, 2.6, L), mats, 0, 1.75, 0, g);
-  mesh(new THREE.BoxGeometry(W * 0.95, 1.2, 0.06), glass, 0, 2.1, L / 2 + 0.01, g);
-  const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 0.35), new THREE.MeshBasicMaterial({ map: textTexture(`${line} TEMPERLEY`, { w: 256, h: 48, bg: '#111', fg: '#ffb300', font: 30 }) }));
-  sign.position.set(0, 2.85, L / 2 + 0.04);
+  const H = 3.05;
+  const [top, band] = BUS_COLORS[line] ?? [0xf2c230, 0xc0392b];
+  // perfil lateral (x = largo, frente en +x)
+  const s = new THREE.Shape();
+  const f = L / 2;
+  const r = -L / 2;
+  s.moveTo(r + 0.2, 0.38);
+  s.lineTo(f - 0.25, 0.38);
+  s.quadraticCurveTo(f, 0.38, f, 0.7);
+  s.lineTo(f, 1.25);
+  s.lineTo(f - 0.12, H - 0.45);
+  s.quadraticCurveTo(f - 0.2, H, f - 0.7, H);
+  s.lineTo(r + 0.45, H);
+  s.quadraticCurveTo(r, H, r, H - 0.4);
+  s.lineTo(r, 0.6);
+  s.quadraticCurveTo(r, 0.38, r + 0.2, 0.38);
+  const body = new THREE.ExtrudeGeometry(s, { depth: W - 0.1, bevelEnabled: true, bevelThickness: 0.05, bevelSize: 0.05, bevelSegments: 2, curveSegments: 8 });
+  body.rotateY(-Math.PI / 2);
+  body.translate(W / 2 - 0.05, 0, 0);
+  const paint = new THREE.Mesh(body, new THREE.MeshStandardMaterial({ color: top, roughness: 0.4, metalness: 0.25 }));
+  paint.castShadow = true;
+  paint.receiveShadow = true;
+  g.add(paint);
+  const D = new BoxBuilder();
+  const glass = 0x101820;
+  // faldón de color y paragolpes
+  D.box(W + 0.03, 0.55, L - 0.3, band, 0, 0.72, 0);
+  D.box(W + 0.06, 0.28, 0.14, 0x1a1a1a, 0, 0.5, f + 0.03);
+  D.box(W + 0.06, 0.28, 0.14, 0x1a1a1a, 0, 0.5, r - 0.03);
+  // ventanillas con parantes
+  const z0 = r + 0.5;
+  const z1 = f - 1.9;
+  for (const sx of [-1, 1]) {
+    D.box(0.04, 0.95, z1 - z0, glass, sx * (W / 2 + 0.01), 2.05, (z0 + z1) / 2);
+    for (let z = z0; z <= z1 + 0.01; z += (z1 - z0) / 6) D.box(0.06, 0.95, 0.09, top, sx * (W / 2 + 0.02), 2.05, z);
+  }
+  // ventanilla del chofer y puertas (a la derecha, lado -x)
+  D.box(0.04, 1.0, 1.1, glass, W / 2 + 0.01, 2.0, f - 1.0);
+  D.box(0.04, 2.1, 1.0, glass, -W / 2 - 0.01, 1.5, f - 1.05);
+  D.box(0.04, 2.1, 1.0, glass, -W / 2 - 0.01, 1.5, -0.6);
+  D.box(0.05, 2.1, 0.04, 0x9a9a9a, -W / 2 - 0.02, 1.5, f - 1.05);
+  D.box(0.05, 2.1, 0.04, 0x9a9a9a, -W / 2 - 0.02, 1.5, -0.6);
+  // parabrisas y luneta
+  D.box(W * 0.9, 1.35, 0.05, glass, 0, 2.02, f + 0.005);
+  D.box(0.06, 1.35, 0.06, top, 0, 2.02, f + 0.02);
+  D.box(W * 0.8, 0.8, 0.05, glass, 0, 2.2, r - 0.005);
+  // ruedas: pasaruedas negros
+  for (const z of [f - 2.2, r + 2.6]) for (const sx of [-1, 1]) D.box(0.06, 0.95, 1.2, 0x0c0c0c, sx * (W / 2 + 0.02), 0.62, z);
+  // espejos
+  for (const sx of [-1, 1]) D.box(0.08, 0.35, 0.12, 0x1a1a1a, sx * (W / 2 + 0.25), 2.3, f + 0.1);
+  const det = D.mesh(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.25, metalness: 0.5 }));
+  g.add(det);
+  // fileteado con el número de línea en el faldón
+  const side = new THREE.MeshLambertMaterial({ map: busTexture(line), transparent: true });
+  for (const sx of [-1, 1]) {
+    const pl = new THREE.Mesh(new THREE.PlaneGeometry(L - 1, 0.55), side);
+    pl.position.set(sx * (W / 2 + 0.035), 0.72, 0);
+    pl.rotation.y = (sx * Math.PI) / 2;
+    g.add(pl);
+  }
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 0.32), new THREE.MeshBasicMaterial({ map: textTexture(`${line}  TEMPERLEY`, { w: 256, h: 44, bg: '#111', fg: '#ffb300', font: 28 }) }));
+  sign.position.set(0, H - 0.3, f - 0.02);
   g.add(sign);
   const wheels = [];
   for (const [x, z] of [
-    [-W / 2, L / 2 - 2],
-    [W / 2, L / 2 - 2],
-    [-W / 2, -L / 2 + 2.4],
-    [W / 2, -L / 2 + 2.4],
-  ]) {
-    const w = mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.3, 12).rotateZ(Math.PI / 2), tire, x, 0.5, z, g);
-    wheels.push(w);
+    [-W / 2 + 0.15, f - 2.2],
+    [W / 2 - 0.15, f - 2.2],
+    [-W / 2 + 0.15, r + 2.6],
+    [W / 2 - 0.15, r + 2.6],
+  ]) wheels.push(mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.32, 16).rotateZ(Math.PI / 2), tire, x, 0.5, z, g));
+  // luces (se encienden de noche con el mismo material que los autos)
+  const Lb = new BoxBuilder();
+  for (const sx of [-1, 1]) {
+    Lb.box(0.34, 0.2, 0.05, 0xfff3cf, sx * 0.85, 0.95, f + 0.03);
+    Lb.box(0.12, 0.1, 0.05, 0xffa000, sx * 1.1, 0.95, f + 0.03);
+    Lb.box(0.25, 0.3, 0.05, 0xb01010, sx * 1.0, 1.2, r - 0.03);
   }
+  g.add(Lb.mesh(lightMat));
   const head = new THREE.MeshBasicMaterial({ color: 0xfff2c0 });
-  for (const s of [-1, 1]) mesh(new THREE.BoxGeometry(0.3, 0.2, 0.05), head, s * 0.9, 0.9, L / 2 + 0.02, g);
-  g.userData = { L, W, wheels, headMat: head, kind: 'bus' };
+  g.userData = { L, W, wheels, headMat: head, kind: 'bus', model: 'colectivo', tall: H };
   return g;
 }
 

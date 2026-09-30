@@ -561,6 +561,55 @@ body {
     display: none;
   }
 }
+@media (pointer: coarse) and (max-height: 520px) {
+  .tbtn {
+    width: 54px;
+    height: 54px;
+    font-size: 0.8rem;
+  }
+  .tbtn.big {
+    width: 64px;
+    height: 64px;
+  }
+  #btn-attack {
+    right: 12px;
+    bottom: calc(40px + env(safe-area-inset-bottom, 0px));
+  }
+  #btn-e {
+    right: 84px;
+    bottom: calc(40px + env(safe-area-inset-bottom, 0px));
+  }
+  #btn-jump {
+    right: 146px;
+    bottom: calc(40px + env(safe-area-inset-bottom, 0px));
+  }
+  #btn-aim {
+    right: 208px;
+    bottom: calc(40px + env(safe-area-inset-bottom, 0px));
+  }
+  #btn-f {
+    right: 17px;
+    bottom: calc(108px + env(safe-area-inset-bottom, 0px));
+  }
+  #btn-run {
+    right: 84px;
+    bottom: calc(102px + env(safe-area-inset-bottom, 0px));
+  }
+  #btn-weapon {
+    right: 146px;
+    bottom: calc(102px + env(safe-area-inset-bottom, 0px));
+  }
+  #btn-h {
+    right: 208px;
+    bottom: calc(102px + env(safe-area-inset-bottom, 0px));
+  }
+  #phone {
+    display: none;
+  }
+  #feed {
+    top: calc(96px + env(safe-area-inset-top, 0px));
+  }
+}
 @media (max-height: 520px) {
   #minimap {
     width: 118px;
@@ -776,6 +825,105 @@ body {
   }
   .post {
     font-size: 0.72rem;
+  }
+}
+
+/* ---- Mapa de pausa ---- */
+#minimap {
+  pointer-events: auto;
+  cursor: pointer;
+}
+#pausemap {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  padding: 16px;
+  background: rgba(12, 14, 16, 0.88);
+  font-family: var(--font-ui);
+  z-index: 5;
+}
+#bigmap {
+  width: min(86vh, 62vw);
+  height: min(86vh, 62vw);
+  max-width: 100%;
+  border-radius: 12px;
+  box-shadow: 0 0 0 2px var(--celeste), 0 12px 40px rgba(0, 0, 0, 0.6);
+  cursor: pointer;
+}
+.pm-side {
+  max-width: 260px;
+  display: grid;
+  gap: 8px;
+}
+.pm-side h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 2.2rem;
+  color: var(--sodio);
+}
+.pm-side .kicker {
+  margin: 0;
+}
+#pm-obj {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+.pm-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+  font-weight: 600;
+}
+.pm-legend i {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  margin-right: 8px;
+  vertical-align: -1px;
+}
+.pm-hint {
+  margin: 0;
+  color: var(--cal-2);
+  font-size: 0.9rem;
+}
+#reset {
+  font: inherit;
+  font-weight: 700;
+  color: var(--cal-2);
+  background: none;
+  border: 1px solid rgba(244, 239, 228, 0.3);
+  border-radius: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+@media (max-width: 720px), (max-height: 520px) {
+  #pausemap {
+    gap: 12px;
+  }
+  .pm-side {
+    max-width: 180px;
+  }
+  .pm-side h2 {
+    font-size: 1.4rem;
+  }
+  .pm-legend {
+    font-size: 0.8rem;
+  }
+}
+@media (max-width: 520px) {
+  #pausemap {
+    flex-direction: column;
+  }
+  #bigmap {
+    width: min(92vw, 60vh);
+    height: min(92vw, 60vh);
   }
 }
 

@@ -225,11 +225,11 @@ export class Pickups {
     });
   }
 
-  markers(player) {
+  markers(player, all = false) {
     const out = [];
     for (const p of this.list) {
       if (p.taken || p.kind === 'money') continue;
-      if (Math.abs(p.x - player.x) > 160 || Math.abs(p.z - player.z) > 160) continue;
+      if (!all && (Math.abs(p.x - player.x) > 160 || Math.abs(p.z - player.z) > 160)) continue;
       out.push({ x: p.x, z: p.z, kind: p.kind });
     }
     return out;

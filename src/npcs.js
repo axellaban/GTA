@@ -322,6 +322,7 @@ export class Npcs {
     const w = o.world;
     n.cool = 0;
     if (n.hp <= 0) {
+      if (!n.down) n.fallT = 0.3;
       n.state = 'ko';
       n.koT = 0;
       n.act = null;
@@ -336,6 +337,7 @@ export class Npcs {
       return 'ko';
     }
     if (o.knock || dmg >= 34) {
+      if (!n.down) n.fallT = 0.3;
       n.state = 'down';
       n.knockT = o.knockT ?? 2.4;
       n.x += fx * 0.8;
@@ -415,6 +417,13 @@ export class Npcs {
       const dp = Math.hypot(player.x - n.x, player.z - n.z);
       const far = dp > 190;
       n.mesh.visible = !far;
+      if (n.fallT > 0) {
+        // cayéndose: de parado al piso
+        n.fallT -= dt;
+        if (!far) animateHuman(n.h, dt, 0, 'getup', Math.max(0, n.fallT / 0.3));
+        this.place(n);
+        continue;
+      }
       if (n.state === 'ko') {
         n.koT += dt;
         if (!far) animateHuman(n.h, dt, 0, 'knocked');

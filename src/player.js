@@ -94,6 +94,7 @@ export class Player {
   }
   knockDown(dur, fx = 0, fz = 0) {
     if (this.vehicle) return;
+    if (this.downT <= 0) this.fallT = 0.3;
     this.downT = dur;
     this.getupT = 0;
     this.attack = null;
@@ -339,7 +340,10 @@ export class Player {
       this.z += (this.pushZ || 0) * dt;
       this.pushX = (this.pushX || 0) * Math.exp(-dt * 4);
       this.pushZ = (this.pushZ || 0) * Math.exp(-dt * 4);
-      animateHuman(this.h, dt, 0, 'knocked');
+      if (this.fallT > 0) {
+        this.fallT -= dt;
+        animateHuman(this.h, dt, 0, 'getup', Math.max(0, this.fallT / 0.3));
+      } else animateHuman(this.h, dt, 0, 'knocked');
       if (this.downT <= 0) this.getupT = 0.6;
       this.speed = 0;
       this.collide(world);

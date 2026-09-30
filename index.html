@@ -37,7 +37,7 @@
 
       <div id="objective"><span class="obj-tag">Objetivo</span><span id="obj-text"></span><span id="obj-dist"></span></div>
 
-      <canvas id="minimap" width="200" height="200"></canvas>
+      <canvas id="minimap" width="200" height="200" title="Abrir el mapa (P)"></canvas>
       <div id="street"></div>
 
       <div id="prompt" hidden></div>
@@ -65,6 +65,24 @@
         <button type="button" data-btn="aim" class="tbtn" id="btn-aim">Apuntar</button>
         <button type="button" data-btn="weapon" class="tbtn" id="btn-weapon">Arma</button>
         <button type="button" data-btn="h" class="tbtn" id="btn-h">Bocina</button>
+      </div>
+    </div>
+
+    <div id="pausemap" hidden>
+      <canvas id="bigmap" width="1024" height="1024" aria-label="Mapa de Temperley"></canvas>
+      <div class="pm-side">
+        <p class="kicker">Pausa</p>
+        <h2>Temperley</h2>
+        <p id="pm-obj"></p>
+        <ul class="pm-legend">
+          <li><i style="background:#ffe14a"></i>Objetivo</li>
+          <li><i style="background:#c86bff"></i>Ruta del GPS</li>
+          <li><i style="background:#ffa726"></i>Armas</li>
+          <li><i style="background:#ff5a5a"></i>Milanesas (vida)</li>
+          <li><i style="background:#5aa9ff"></i>Chalecos</li>
+          <li><i style="background:#ff7a1a"></i>Cortes y marchas</li>
+        </ul>
+        <p class="pm-hint">P o tocá el mapa para volver</p>
       </div>
     </div>
 
@@ -97,6 +115,7 @@
         </div>
         <div class="play-row">
           <button id="play" type="button">Jugar</button>
+          <button id="reset" type="button" hidden>Empezar de cero</button>
           <div class="quality" role="group" aria-label="Calidad gráfica">
             <span>Gráficos</span>
             <button type="button" data-quality="alto" aria-pressed="false">Alto</button>
@@ -116,6 +135,7 @@
           <div><dt>E</dt><dd>Acción: pagar, comprar, dar</dd></div>
           <div><dt>F</dt><dd>Subir, robar o bajar</dd></div>
           <div><dt>H · M</dt><dd>Bocina · silenciar</dd></div>
+          <div><dt>P</dt><dd>Pausa y mapa</dd></div>
         </dl>
         <p class="fine">Calles, vías, andenes, edificios, plazas y árboles reales de Temperley. Mapa: © colaboradores de OpenStreetMap y Overture Maps Foundation.</p>
       </div>

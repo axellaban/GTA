@@ -1,6 +1,6 @@
 // Temperley real: calles, vías, andenes, edificios, plazas y árboles salidos de
 // Overture Maps (datos de OpenStreetMap + huellas de edificios), procesados por
-// scripts/preprocess.py. Coordenadas en metros: x al este, z al sur, origen en la estación.
+// scripts/map/preprocess.py. Coordenadas en metros: x al este, z al sur, origen en la estación.
 import D from './data/temperley.json';
 
 export const DATA = D;
