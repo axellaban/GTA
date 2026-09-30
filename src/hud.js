@@ -73,6 +73,14 @@ export class Hud {
     $('w-name').textContent = w.name;
     const a = player.ammo?.[w.id];
     $('w-ammo').textContent = w.gun ? (player.reloadT > 0 ? 'recargando' : `${a?.mag ?? 0} / ${a?.res ?? 0}`) : '';
+    // controles táctiles: a pie, en auto o en moto; el botón de ataque dice qué hace
+    const v = player.vehicle;
+    const mode = v ? (v.kind === 'moto' ? 'car moto' : 'car') : 'foot';
+    const touch = $('touch');
+    if (touch.className !== mode) touch.className = mode;
+    const verb = w.gun ? 'Tirar' : w.id === 'palo' ? 'Palo' : 'Pegar';
+    const atk = $('btn-attack');
+    if (atk.textContent !== verb) atk.textContent = verb;
     // mira: círculo al apuntar, punto si tiene un arma de fuego en la mano
     const ch = $('crosshair');
     ch.hidden = !(w.gun && !player.vehicle && !player.dead);
@@ -161,6 +169,13 @@ export class Hud {
   }
   prompt(key, text) {
     const p = $('prompt');
+    // en el celu la acción es un botón que dice qué hace (solo aparece cuando se puede)
+    const b = $('btn-ctx');
+    if (b && (b.hidden !== !text || b.textContent !== (text || ''))) {
+      b.hidden = !text;
+      b.textContent = text || '';
+      if (key) b.dataset.btn = key.toLowerCase();
+    }
     if (!text) {
       p.hidden = true;
       return;

@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { WEAPONS, ORDER, handWeapon } from './weapons.js';
 import { R } from './rng.js';
+import { TOUCH } from './input.js';
 
 const COMBO = [
   { pose: 'jab', dur: 0.3, dmg: 9, reach: 1.5 },
@@ -117,7 +118,7 @@ export class Combat {
       }
     }
     const w = WEAPONS[P.weapon];
-    P.aiming = !!w.gun && (input.down('mouse2') || input.touchAim);
+    P.aiming = !!w.gun && input.down('mouse2');
     if (P.reloadT > 0) {
       P.reloadT -= dt;
       if (P.reloadT <= 0) {
@@ -432,7 +433,7 @@ export class Combat {
         }
         if (v === P.vehicle && v.burning < 3 && !v.warned) {
           v.warned = true;
-          world.hud.flash('¡SE PRENDE FUEGO!', 'Bajate ya (F)', 'bad', 2);
+          world.hud.flash('¡SE PRENDE FUEGO!', TOUCH ? '¡Bajate ya!' : 'Bajate ya (F)', 'bad', 2);
         }
         if (v.burning <= 0) this.explodeVehicle(world, v);
       }

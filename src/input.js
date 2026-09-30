@@ -1,4 +1,7 @@
 // Teclado, mouse (con pointer lock si el navegador lo permite) y controles táctiles.
+
+// celular o tablet: los textos hablan de botones en vez de teclas
+export const TOUCH = typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches;
 export class Input {
   constructor(canvas) {
     this.keys = new Set();
@@ -51,6 +54,8 @@ export class Input {
     this.setupTouch();
   }
 
+  // Controles táctiles como en GTA mobile y Fortnite: joystick flotante en la mitad izquierda
+  // (a fondo corre solo), arrastrar en la derecha para mirar y botones que cambian según el caso.
   setupTouch() {
     const stick = document.getElementById('stick');
     const knob = document.getElementById('knob');
@@ -61,20 +66,28 @@ export class Input {
     let lookId = null;
     let lx = 0;
     let ly = 0;
-    const R = 50;
+    const R = 52;
+    this.sprint = false;
+    // el joystick queda dibujado en su lugar de siempre para que se sepa dónde está
+    const rest = () => {
+      stick.classList.add('rest');
+      stick.style.left = '';
+      stick.style.top = '';
+      knob.style.transform = '';
+    };
+    rest();
+    const ui = (el) => el.closest && el.closest('button, [data-btn], #dialog, #minimap, #weapon, #pausemap, #start, #install, #wasted');
     const onStart = (e) => {
       for (const t of e.changedTouches) {
-        const target = t.target;
-        if (target.closest && target.closest('[data-btn]')) continue;
-        if (target.closest && target.closest('#dialog')) continue;
+        if (ui(t.target)) continue;
         if (t.clientX < innerWidth * 0.45 && stickId === null) {
           stickId = t.identifier;
           cx = t.clientX;
           cy = t.clientY;
-          stick.style.left = `${cx - 60}px`;
-          stick.style.top = `${cy - 60}px`;
-          stick.hidden = false;
-        } else if (lookId === null) {
+          stick.classList.remove('rest');
+          stick.style.left = `${cx - 64}px`;
+          stick.style.top = `${cy - 64}px`;
+        } else if (lookId === null && t.clientX >= innerWidth * 0.45) {
           lookId = t.identifier;
           lx = t.clientX;
           ly = t.clientY;
@@ -93,7 +106,9 @@ export class Input {
           }
           this.move.x = dx / R;
           this.move.y = dy / R;
+          this.sprint = d >= R * 0.92;
           knob.style.transform = `translate(${dx}px, ${dy}px)`;
+          stick.classList.toggle('sprint', this.sprint);
         } else if (t.identifier === lookId) {
           this.look.dx += (t.clientX - lx) * 1.6;
           this.look.dy += (t.clientY - ly) * 1.6;
@@ -101,15 +116,16 @@ export class Input {
           ly = t.clientY;
         }
       }
-      e.preventDefault();
+      if (stickId !== null || lookId !== null) e.preventDefault();
     };
     const onEnd = (e) => {
       for (const t of e.changedTouches) {
         if (t.identifier === stickId) {
           stickId = null;
           this.move.x = this.move.y = 0;
-          knob.style.transform = '';
-          stick.hidden = true;
+          this.sprint = false;
+          stick.classList.remove('sprint');
+          rest();
         }
         if (t.identifier === lookId) lookId = null;
       }
@@ -118,22 +134,36 @@ export class Input {
     addEventListener('touchmove', onMove, { passive: false });
     addEventListener('touchend', onEnd);
     addEventListener('touchcancel', onEnd);
+    // botones: la tecla se lee al tocar (el botón contextual cambia entre E y F)
     for (const b of document.querySelectorAll('[data-btn]')) {
-      const key = b.dataset.btn;
+      let held = null;
       b.addEventListener('touchstart', (e) => {
         e.preventDefault();
-        if (key === 'aim') {
-          // apuntar se prende y se apaga
-          this.touchAim = !this.touchAim;
-          b.classList.toggle('on', this.touchAim);
-          return;
-        }
-        this.pressed.add(key);
-        this.touchButtons.add(key);
+        held = b.dataset.btn;
+        this.pressed.add(held);
+        this.touchButtons.add(held);
+        b.classList.add('down');
       });
-      b.addEventListener('touchend', () => this.touchButtons.delete(key));
-      b.addEventListener('mousedown', () => this.pressed.add(key));
+      const up = () => {
+        if (held) this.touchButtons.delete(held);
+        held = null;
+        b.classList.remove('down');
+      };
+      b.addEventListener('touchend', up);
+      b.addEventListener('touchcancel', up);
+      b.addEventListener('mousedown', () => this.pressed.add(b.dataset.btn));
     }
+    // tocar el arma la cambia; tocar las balas recarga; el menú pausa (como en GTA mobile)
+    const tap = (id, key) =>
+      document.getElementById(id)?.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.pressed.add(key);
+      });
+    tap('w-name', 'weapon');
+    tap('w-ammo', 'r');
+    tap('btn-menu', 'p');
+    document.getElementById('btn-menu')?.addEventListener('click', () => this.pressed.add('p'));
   }
 
   down(...ks) {

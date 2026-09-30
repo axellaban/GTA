@@ -1,23 +1,48 @@
 {
-  "name": "GTA XI: Conurbano · Temperley",
-  "short_name": "GTA XI",
+  "name": "GTA VI Conurba · Temperley",
+  "short_name": "GTA VI",
   "description": "Mundo abierto en la estación Temperley: piñas, fierros, la Bonaerense, motochorros, cortes y el vendedor de medias.",
   "lang": "es-AR",
   "start_url": "./",
   "scope": "./",
   "display": "fullscreen",
-  "display_override": ["fullscreen", "standalone"],
+  "display_override": [
+    "fullscreen",
+    "standalone"
+  ],
   "orientation": "landscape",
   "background_color": "#15171a",
   "theme_color": "#15171a",
-  "categories": ["games"],
+  "categories": [
+    "games"
+  ],
   "screenshots": [
-    { "src": "https://d8j0ntlcm91z4.cloudfront.net/user_3J4CZ127VDdC2FFBIIzV4GJ3hQG/hf_20260930_153443_80cdf166-e44e-4914-9a5b-339fa8197c9c.png", "sizes": "2688x1520", "type": "image/png", "form_factor": "wide", "label": "Gaspi en la estación Temperley" }
+    {
+      "src": "https://d8j0ntlcm91z4.cloudfront.net/user_3J4CZ127VDdC2FFBIIzV4GJ3hQG/hf_20260930_153443_80cdf166-e44e-4914-9a5b-339fa8197c9c.png",
+      "sizes": "2688x1520",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Gaspi en la estación Temperley"
+    }
   ],
   "icons": [
-    { "src": "https://d8j0ntlcm91z4.cloudfront.net/user_3J4CZ127VDdC2FFBIIzV4GJ3hQG/hf_20260930_153600_318a0b87-498c-418b-8815-5df2759b550b.png", "sizes": "1024x1024", "type": "image/png", "purpose": "any" },
-    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
-    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ]
 }

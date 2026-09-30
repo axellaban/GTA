@@ -6,6 +6,7 @@ import { WEAPONS, pickupWeapon } from './weapons.js';
 import { BoxBuilder } from './builder.js';
 import { R } from './rng.js';
 import { outward } from './city.js';
+import { TOUCH } from './input.js';
 
 const COLORS = { money: 0x6fdc6f, weapon: 0xffa726, health: 0xff5a5a, armor: 0x5aa9ff, loot: 0x6ec3ea };
 
@@ -195,7 +196,7 @@ export class Pickups {
       } else if (p.kind === 'weapon') {
         combat.give(player, p.data.id);
         const w = WEAPONS[p.data.id];
-        hud.flash(w.name.toUpperCase(), w.gun ? 'Clic para tirar · clic derecho para apuntar · Q cambia de arma' : 'Clic para pegar · Q cambia de arma', 'ok', 2.6);
+        hud.flash(w.name.toUpperCase(), TOUCH ? (w.gun ? 'Apunta solo. Tocá el arma arriba para cambiarla' : 'Tocá el arma arriba para cambiarla') : w.gun ? 'Clic para tirar · clic derecho para apuntar · Q cambia de arma' : 'Clic para pegar · Q cambia de arma', 'ok', 2.6);
         audio.recarga?.();
       } else if (p.kind === 'health') {
         if (player.health >= 100) ok = false;

@@ -115,9 +115,10 @@ export class Glows {
       p.material.opacity = Math.min(1, k * 1.2);
     }
     const rain = world.weather?.rain ?? 0;
-    this.cones.visible = on;
+    // en calidad baja no hay conos ni haces (son transparentes y pesan en el celu)
+    this.cones.visible = on && !this.lite;
     this.cones.material.uniforms.uStrength.value = k * (0.045 + rain * 0.09) * NIGHT.conos;
-    this.beams.visible = on;
+    this.beams.visible = on && !this.lite;
     this.beams.material.uniforms.uStrength.value = k * (0.1 + rain * 0.12) * NIGHT.haces;
     if (!on) {
       this.spot.intensity = 0;

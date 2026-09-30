@@ -357,7 +357,7 @@ export class Player {
     }
     const w = WEAPONS[this.weapon || 'punos'];
     const buff = this.buffs.medias ? 1.12 : 1;
-    const run = (input.down('shift') || input.touchButtons.has('run')) && !this.aiming;
+    const run = (input.down('shift') || input.sprint) && !this.aiming;
     let vx = 0;
     let vz = 0;
     if (ax.x || ax.y) {

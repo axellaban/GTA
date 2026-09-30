@@ -32,8 +32,20 @@ export function setupInstall() {
     }
   };
   $('install-skip').addEventListener('click', close);
+  // la pantalla con los pasos para instalar (en iPhone es la única forma)
+  const show = () => {
+    $('install').hidden = false;
+    if (ios) {
+      $('install-ios').hidden = !safari;
+      $('install-ios-safari').hidden = safari;
+    } else {
+      $('install-android').hidden = false;
+      $('install-btn').hidden = !deferred; // aparece cuando el navegador lo permite
+      $('install-android-manual').hidden = !!deferred;
+    }
+  };
   const prompt = async () => {
-    if (!deferred) return;
+    if (!deferred) return show();
     deferred.prompt();
     const r = await deferred.userChoice.catch(() => null);
     deferred = null;
@@ -47,18 +59,16 @@ export function setupInstall() {
     deferred = e;
     $('install-btn').hidden = false;
     $('install-android-manual').hidden = true;
-    // en la compu, un botón chico en la pantalla de inicio
-    if (!mobile) $('install-desk').hidden = false;
+    // botón en la pantalla de inicio
+    $('install-desk').hidden = false;
   });
-  addEventListener('appinstalled', close);
+  addEventListener('appinstalled', () => {
+    close();
+    $('install-desk').hidden = true;
+  });
+  // en iPhone no hay aviso del navegador: el botón de inicio abre los pasos
+  if (ios) $('install-desk').hidden = false;
   // la pantalla de instalar va primero, solo en celulares y la primera vez
   if (!mobile || seen) return;
-  $('install').hidden = false;
-  if (ios) {
-    $('install-ios').hidden = !safari;
-    $('install-ios-safari').hidden = safari;
-  } else {
-    $('install-android').hidden = false;
-    $('install-btn').hidden = true; // aparece cuando el navegador lo permite
-  }
+  show();
 }

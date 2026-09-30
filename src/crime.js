@@ -5,6 +5,7 @@ import { makeHuman, animateHuman } from './human.js';
 import { Vehicle } from './traffic.js';
 import { cornerName } from './map.js';
 import { R } from './rng.js';
+import { TOUCH } from './input.js';
 
 export class Crime {
   constructor(scene, traffic, colliders, audio) {
@@ -275,7 +276,7 @@ export class Crime {
     traffic.parked.push(m.v);
     this.motos = this.motos.filter((o) => o !== m);
     if (!pushed) {
-      hud.flash('¡MOTOCHORROS AL PISO!', 'Agarrá lo que se les cayó. La moto es tuya (F).', 'ok');
+      hud.flash('¡MOTOCHORROS AL PISO!', TOUCH ? 'Agarrá lo que se les cayó. La moto es tuya.' : 'Agarrá lo que se les cayó. La moto es tuya (F).', 'ok');
       player.addRespeto(2);
     }
   }

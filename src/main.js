@@ -16,7 +16,7 @@ import { Hud } from './hud.js';
 import { lightMat } from './cars.js';
 import { loadGaspiPhoto } from './human.js';
 import { Sky } from './sky.js';
-import { Post, QUALITY } from './post.js';
+import { Post, QUALITY, LEVELS } from './post.js';
 import { Glows } from './glow.js';
 import { buildProps, TrafficLights, BlobShadows } from './props.js';
 import { Fx } from './fx.js';
@@ -38,15 +38,17 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 
-// Calidad gráfica: se recuerda por navegador; en celulares arranca en "bajo".
+// Calidad gráfica: "auto" (por defecto) la ajusta sola según los cuadros por segundo;
+// también se puede fijar a mano desde la pausa. Se recuerda por navegador.
 const coarse = matchMedia('(pointer: coarse)').matches;
-let qualityName = coarse ? 'bajo' : 'alto';
+let qualityMode = 'auto';
 try {
-  const saved = localStorage.getItem('gta-conurbano-calidad');
-  if (saved && QUALITY[saved]) qualityName = saved;
+  const saved = localStorage.getItem('gta-conurba-calidad');
+  if (saved === 'auto' || QUALITY[saved]) qualityMode = saved;
 } catch {
   /* sin almacenamiento */
 }
+let qualityName = qualityMode === 'auto' ? (coarse ? 'medio' : 'alto') : qualityMode;
 let Q = QUALITY[qualityName];
 
 const scene = new THREE.Scene();
@@ -67,6 +69,7 @@ sun.shadow.bias = -0.0006;
 sun.shadow.normalBias = 0.04;
 scene.add(sun, sun.target);
 let post = null;
+let glows = null;
 
 function applyQuality(name) {
   qualityName = name;
@@ -89,15 +92,59 @@ function applyQuality(name) {
   }
   post?.dispose();
   post = new Post(renderer, scene, camera, Q);
-  for (const b of document.querySelectorAll('[data-quality]')) b.setAttribute('aria-pressed', String(b.dataset.quality === name));
+  if (glows) glows.lite = !!Q.lite;
+  showQuality();
+}
+function showQuality() {
+  for (const b of document.querySelectorAll('[data-quality]')) {
+    b.setAttribute('aria-pressed', String(b.dataset.quality === qualityMode));
+    if (b.dataset.quality === 'auto') b.textContent = qualityMode === 'auto' ? `Auto (${qualityName === 'minimo' ? 'mínimo' : qualityName})` : 'Auto';
+  }
+}
+function setQualityMode(mode) {
+  qualityMode = mode;
+  auto.ceiling = LEVELS.length - 1;
+  auto.slow = auto.fast = 0;
+  auto.wait = 3;
   try {
-    localStorage.setItem('gta-conurbano-calidad', name);
+    localStorage.setItem('gta-conurba-calidad', mode);
   } catch {
     /* sin almacenamiento */
   }
+  applyQuality(mode === 'auto' ? qualityName : mode);
+}
+// Calidad automática: cada 2,5 s mira los cuadros por segundo. Si anda lento, baja un escalón
+// y no vuelve a subir a ese; si sobra, prueba el de arriba.
+const auto = { frames: 0, time: 0, slow: 0, fast: 0, wait: 6, ceiling: LEVELS.length - 1 };
+function autoQuality(dt) {
+  if (qualityMode !== 'auto' || document.hidden || paused) return;
+  if (auto.wait > 0) {
+    // después de un cambio (o al arrancar) se compilan shaders: no cuenta
+    auto.wait -= dt;
+    auto.frames = auto.time = 0;
+    return;
+  }
+  auto.frames++;
+  auto.time += dt;
+  if (auto.time < 2.5) return;
+  const fps = auto.frames / auto.time;
+  auto.frames = auto.time = 0;
+  const i = LEVELS.indexOf(qualityName);
+  auto.slow = fps < 34 ? auto.slow + 1 : 0;
+  auto.fast = fps > 55 ? auto.fast + 1 : 0;
+  if (auto.slow >= 2 && i > 0) {
+    auto.ceiling = i - 1;
+    auto.slow = 0;
+    auto.wait = 3;
+    applyQuality(LEVELS[i - 1]);
+  } else if (auto.fast >= 3 && i < auto.ceiling) {
+    auto.fast = 0;
+    auto.wait = 3;
+    applyQuality(LEVELS[i + 1]);
+  }
 }
 applyQuality(qualityName);
-for (const b of document.querySelectorAll('[data-quality]')) b.addEventListener('click', () => applyQuality(b.dataset.quality));
+for (const b of document.querySelectorAll('[data-quality]')) b.addEventListener('click', () => setQualityMode(b.dataset.quality));
 
 // ---------- Mundo ----------
 const city = buildCity(scene);
@@ -143,7 +190,8 @@ npcs.populate(player);
 const crime = new Crime(scene, traffic, city.colliders, audio);
 const events = new Events(scene, traffic, audio);
 const trains = new Trains(scene, audio);
-const glows = new Glows(scene, city);
+glows = new Glows(scene, city);
+glows.lite = !!Q.lite;
 buildProps(scene, city);
 const lights = new TrafficLights(scene);
 const blobs = new BlobShadows(scene);
@@ -399,10 +447,10 @@ function nearestOf(list) {
 }
 const steps = [
   { text: 'Andá a la estación Temperley', target: () => city.spots.stationDoor, done: () => dist(city.spots.stationDoor) < 6 },
-  { text: 'Comprale medias al vendedor (E)', target: () => nearestOf(npcs.vendors.filter((n) => !n.down)), done: () => flags.medias },
+  { text: coarse ? 'Comprale medias al vendedor' : 'Comprale medias al vendedor (E)', target: () => nearestOf(npcs.vendors.filter((n) => !n.down)), done: () => flags.medias },
   { text: 'Comprate un pancho en el carrito ($1.500)', target: () => city.spots.pancho, done: () => flags.pancho },
   { text: 'Agarrá el palo que quedó en la plaza', target: () => pickups.spots.palo, done: () => !!player.inv.palo },
-  { text: 'Robate una moto: acercate y apretá F', target: () => nearestOf(traffic.all().filter((v) => v.kind === 'moto' && !v.wreck)), done: () => player.vehicle?.kind === 'moto' },
+  { text: coarse ? 'Robate una moto: acercate y tocá el botón' : 'Robate una moto: acercate y apretá F', target: () => nearestOf(traffic.all().filter((v) => v.kind === 'moto' && !v.wreck)), done: () => player.vehicle?.kind === 'moto' },
   { text: 'Andá a ver qué pasa en el corte', target: () => nearestCorte(), done: () => { const c = nearestCorte(); return c && dist(c) < 32; } },
   { text: 'Conseguí un fierro: hay un 38 escondido en una plaza', target: () => pickups.spots.revolver, done: () => !!player.inv.revolver },
   { text: 'Temperley es tuyo. Cuidá el celu (y no te hagas buscar).', target: () => null, done: () => false },
@@ -643,8 +691,9 @@ function loadGame() {
 }
 let saveT = 0;
 const loaded = loadGame();
-if (loaded) document.getElementById('reset').hidden = false;
+document.getElementById('start-saldo').textContent = `$ ${player.money.toLocaleString('es-AR')}`;
 document.getElementById('reset').addEventListener('click', () => {
+  if (!confirm('¿Empezar de cero? Se borra la plata, las armas y el avance.')) return;
   try {
     localStorage.removeItem(SAVE);
   } catch {
@@ -673,6 +722,7 @@ function setPaused(p) {
 }
 document.getElementById('minimap').addEventListener('click', () => started && setPaused(!paused));
 document.getElementById('bigmap').addEventListener('click', () => setPaused(false));
+document.getElementById('resume').addEventListener('click', () => setPaused(false));
 
 // ---------- Loop ----------
 let started = false;
@@ -681,6 +731,8 @@ let intro = 0;
 function frame(now) {
   const dt = Math.max(0, Math.min(0.05, (now - last) / 1000));
   last = now;
+  autoQuality((now - (frame.prev ?? now)) / 1000);
+  frame.prev = now;
   updateWeather(started ? dt : dt * 0.2);
   updateTime(started ? dt : dt * 0.2);
   ATMO.windT.value += dt * (1 + weather.rain * 1.5);
@@ -797,7 +849,8 @@ document.getElementById('play').addEventListener('click', () => {
   }
   started = true;
   last = performance.now();
-  hud.flash('TEMPERLEY', loaded ? 'Partida recuperada. P abre el mapa.' : 'Av. Meeks · Estación del Roca. P abre el mapa.', 'warn', 3);
+  const mapHint = coarse ? 'El mapa está en ☰.' : 'P abre el mapa.';
+  hud.flash('TEMPERLEY', loaded ? `Partida recuperada. ${mapHint}` : `Av. Meeks · Estación del Roca. ${mapHint}`, 'warn', 3);
 });
 document.getElementById('mute').addEventListener('click', () => {
   const muted = audio.toggleMute();

@@ -3,14 +3,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>GTA XI · Conurbano</title>
+    <title>GTA VI Conurba · Temperley</title>
     <meta name="theme-color" content="#15171a" />
     <meta name="description" content="Mundo abierto en la estación Temperley: piñas, fierros, la Bonaerense, motochorros, cortes y el vendedor de medias." />
     <link rel="manifest" href="manifest.webmanifest" />
-    <link rel="icon" href="icons/icon-192.png" />
-    <link rel="apple-touch-icon" href="https://d8j0ntlcm91z4.cloudfront.net/user_3J4CZ127VDdC2FFBIIzV4GJ3hQG/hf_20260930_153600_318a0b87-498c-418b-8815-5df2759b550b.png" />
+    <link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="GTA XI: Conurbano Bonaerense · Temperley" />
+    <meta property="og:title" content="GTA VI Conurba · Temperley" />
     <meta property="og:description" content="Gaspi en la estación Temperley: piñas, fierros, la Bonaerense, motochorros, cortes y el vendedor de medias. Se juega en el navegador." />
     <meta property="og:image" content="https://d8j0ntlcm91z4.cloudfront.net/user_3J4CZ127VDdC2FFBIIzV4GJ3hQG/hf_20260930_153605_0ddd2a1d-1487-4d57-946b-34a9f854a619.png" />
     <meta property="og:image:width" content="2688" />
@@ -20,7 +20,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="GTA XI" />
+    <meta name="apple-mobile-web-app-title" content="GTA VI" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Bowlby+One&family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@500;600&display=swap" rel="stylesheet" />
@@ -72,16 +72,17 @@
 
       <button id="mute" type="button" aria-label="Silenciar">Sonido</button>
 
-      <div id="touch">
-        <div id="stick" hidden><div id="knob"></div></div>
-        <button type="button" data-btn="attack" class="tbtn big" id="btn-attack">Pegar</button>
-        <button type="button" data-btn="e" class="tbtn" id="btn-e">Acción</button>
-        <button type="button" data-btn="f" class="tbtn" id="btn-f">Subir</button>
-        <button type="button" data-btn="run" class="tbtn" id="btn-run">Correr</button>
-        <button type="button" data-btn=" " class="tbtn" id="btn-jump">Saltar</button>
-        <button type="button" data-btn="aim" class="tbtn" id="btn-aim">Apuntar</button>
-        <button type="button" data-btn="weapon" class="tbtn" id="btn-weapon">Arma</button>
-        <button type="button" data-btn="h" class="tbtn" id="btn-h">Bocina</button>
+      <!-- Controles táctiles (como GTA mobile y Fortnite): joystick flotante a la izquierda,
+           arrastrar a la derecha para mirar, y pocos botones según dónde estés -->
+      <div id="touch" class="foot">
+        <div id="stick"><div id="knob"></div></div>
+        <button type="button" id="btn-menu" class="tbtn-menu" aria-label="Pausa y mapa"><span></span><span></span><span></span></button>
+        <button type="button" data-btn="attack" class="tbtn big on-foot" id="btn-attack">Pegar</button>
+        <button type="button" data-btn="jump" class="tbtn on-foot" id="btn-jump">Saltar</button>
+        <button type="button" data-btn=" " class="tbtn big on-car" id="btn-brake">Freno</button>
+        <button type="button" data-btn="h" class="tbtn on-car" id="btn-h">Bocina</button>
+        <button type="button" data-btn="shift" class="tbtn on-moto" id="btn-willy">Willy</button>
+        <button type="button" data-btn="f" class="tbtn ctx" id="btn-ctx" hidden></button>
       </div>
     </div>
 
@@ -99,7 +100,30 @@
           <li><i style="background:#5aa9ff"></i>Chalecos</li>
           <li><i style="background:#ff7a1a"></i>Cortes y marchas</li>
         </ul>
-        <p class="pm-hint">P o tocá el mapa para volver</p>
+        <button id="resume" type="button">Seguir jugando</button>
+        <div class="quality" role="group" aria-label="Calidad gráfica">
+          <span>Gráficos</span>
+          <button type="button" data-quality="auto" aria-pressed="false">Auto</button>
+          <button type="button" data-quality="alto" aria-pressed="false">Alto</button>
+          <button type="button" data-quality="medio" aria-pressed="false">Medio</button>
+          <button type="button" data-quality="bajo" aria-pressed="false">Bajo</button>
+        </div>
+        <dl class="keys">
+          <div><dt>WASD</dt><dd>Moverse · manejar</dd></div>
+          <div><dt>Mouse</dt><dd>Mirar</dd></div>
+          <div><dt>Clic</dt><dd>Pegar · tirar</dd></div>
+          <div><dt>Clic der.</dt><dd>Apuntar</dd></div>
+          <div><dt>Q · 1–5</dt><dd>Arma</dd></div>
+          <div><dt>R</dt><dd>Recargar · radio</dd></div>
+          <div><dt>Espacio</dt><dd>Saltar · freno de mano</dd></div>
+          <div><dt>Shift</dt><dd>Correr · willy</dd></div>
+          <div><dt>E</dt><dd>Acción</dd></div>
+          <div><dt>F</dt><dd>Subir · bajar</dd></div>
+          <div><dt>H · M</dt><dd>Bocina · sonido</dd></div>
+          <div><dt>P</dt><dd>Pausa y mapa</dd></div>
+        </dl>
+        <button id="reset" type="button">Empezar de cero</button>
+        <p class="fine">Mapa: © colaboradores de OpenStreetMap y Overture Maps Foundation.</p>
       </div>
     </div>
 
@@ -110,8 +134,8 @@
 
     <section id="install" hidden aria-labelledby="install-title">
       <div class="install-inner">
-        <img class="install-icon" src="https://d8j0ntlcm91z4.cloudfront.net/user_3J4CZ127VDdC2FFBIIzV4GJ3hQG/hf_20260930_153600_318a0b87-498c-418b-8815-5df2759b550b.png" onerror="this.onerror=null;this.src='icons/icon-192.png'" alt="" width="112" height="112" />
-        <h2 id="install-title">Tené GTA XI Conurbano como app</h2>
+        <img class="install-icon" src="icons/icon-192.png" alt="" width="112" height="112" />
+        <h2 id="install-title">Tené GTA VI Conurba como app</h2>
         <p class="install-lead">Pantalla completa, sin barra del navegador y con su ícono en el celu.</p>
         <div id="install-android" hidden>
           <button id="install-btn" type="button">Instalar la app</button>
@@ -120,7 +144,7 @@
         <ol id="install-ios" hidden>
           <li>Tocá <b>Compartir</b> <span class="ios-share" aria-hidden="true"></span> abajo en Safari.</li>
           <li>Elegí <b>Agregar a inicio</b>.</li>
-          <li>Abrí <b>GTA XI</b> desde el ícono nuevo.</li>
+          <li>Abrí <b>GTA VI</b> desde el ícono nuevo.</li>
         </ol>
         <p class="install-note" id="install-ios-safari" hidden>En iPhone se instala desde <b>Safari</b>: abrí este link ahí.</p>
         <button id="install-skip" type="button">Jugar en el navegador</button>
@@ -130,53 +154,20 @@
     <div id="rotate" aria-hidden="true"><div>Girá el celular<br /><small>se juega acostado</small></div></div>
 
     <section id="start">
-      <div class="start-inner">
-        <p class="kicker">Estación Temperley · Línea Roca · Lomas de Zamora</p>
-        <h1><span class="t-gta">GTA XI</span><span class="t-conurbano">Conurbano</span></h1>
-        <div class="start-grid">
-          <div class="sube big">
-            <div class="big-photo" role="img" aria-label="Foto de Gaspi"></div>
-            <div class="big-info">
-              <span class="sube-tag">SUBE</span>
-              <strong>Gaspi</strong>
-              <span>Saldo: $ 20.000</span>
-              <span>Celu: sí (por ahora)</span>
-            </div>
+      <img class="start-logo" src="img/logo.png" alt="GTA VI Conurba" width="640" height="420" />
+      <div class="start-bottom">
+        <div class="sube big">
+          <div class="big-photo" role="img" aria-label="Foto de Gaspi"></div>
+          <div class="big-info">
+            <span class="sube-tag">SUBE</span>
+            <strong>Gaspi</strong>
+            <span>Saldo: <span id="start-saldo">$ 20.000</span></span>
           </div>
-          <ul class="brief">
-            <li><b>Trapitos</b> que te "cuidan" el auto. Si no pagás, fijate cómo lo encontrás.</li>
-            <li><b>Motochorros</b> que te piden el celu. Dáselo, resistite o corré. Con un auto los podés voltear.</li>
-            <li><b>Cortes y marchas</b> en Av. Meeks y Almirante Brown. Con el auto no se pasa.</li>
-            <li><b>Piñas, palos y fierros.</b> Robá autos y motos. Si te zarpás, te busca la Bonaerense.</li>
-            <li>Vendedor de medias, trenes del Roca, barreras, rejas y perros que corren motos.</li>
-          </ul>
         </div>
-        <div class="play-row">
+        <div class="start-actions">
           <button id="play" type="button">Jugar</button>
-          <button id="reset" type="button" hidden>Empezar de cero</button>
           <button id="install-desk" type="button" hidden>Instalar la app</button>
-          <div class="quality" role="group" aria-label="Calidad gráfica">
-            <span>Gráficos</span>
-            <button type="button" data-quality="alto" aria-pressed="false">Alto</button>
-            <button type="button" data-quality="medio" aria-pressed="false">Medio</button>
-            <button type="button" data-quality="bajo" aria-pressed="false">Bajo</button>
-          </div>
         </div>
-        <dl class="keys">
-          <div><dt>WASD</dt><dd>Moverse / manejar</dd></div>
-          <div><dt>Mouse</dt><dd>Mirar (clic para capturar)</dd></div>
-          <div><dt>Clic</dt><dd>Pegar (combo) / tirar</dd></div>
-          <div><dt>Clic der.</dt><dd>Apuntar</dd></div>
-          <div><dt>Q · 1–5</dt><dd>Cambiar de arma</dd></div>
-          <div><dt>R</dt><dd>Recargar · radio en el auto</dd></div>
-          <div><dt>Espacio</dt><dd>Saltar · freno de mano</dd></div>
-          <div><dt>Shift</dt><dd>Correr · willy · quemar gomas</dd></div>
-          <div><dt>E</dt><dd>Acción: pagar, comprar, dar</dd></div>
-          <div><dt>F</dt><dd>Subir, robar o bajar</dd></div>
-          <div><dt>H · M</dt><dd>Bocina · silenciar</dd></div>
-          <div><dt>P</dt><dd>Pausa y mapa</dd></div>
-        </dl>
-        <p class="fine">Calles, vías, andenes, edificios, plazas y árboles reales de Temperley. Mapa: © colaboradores de OpenStreetMap y Overture Maps Foundation.</p>
       </div>
     </section>
 

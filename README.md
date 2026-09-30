@@ -1,4 +1,4 @@
-# GTA XI: Conurbano · Temperley
+# GTA VI Conurba · Temperley
 
 Juego de mundo abierto en el navegador, ambientado alrededor de la estación Temperley (Línea Roca, Lomas de Zamora). Hecho con Three.js, sin motor ni assets externos: todo (casas, rejas, trenes, gente) se genera por código.
 
@@ -24,7 +24,7 @@ Jugás con **Gaspi** (saco, camisa blanca, corbata a rayas rojas y blancas).
 - **Autos** con carrocería perfilada (Falcon, Duna, Gol, pickup, patrullero, remís), vidrios y cromados que reflejan el cielo, llantas, parrilla y patentes Mercosur.
 - **Ciudad**: árboles con follaje de hojas, balcones con rejas, toldos a rayas en los locales, parapetos y cornisas, sendas peatonales, cordones y tapas de cloaca, estación de ladrillo.
 - **Noche**: ventanas y vidrieras que se prenden, halos en faroles, faros y luces traseras, foco del auto de Gaspi y el fuego de los cortes brillando.
-- Selector de calidad **Alto / Medio / Bajo** en la pantalla de inicio (en celulares arranca en Bajo). La rueda del mouse acerca o aleja la cámara.
+- Calidad **automática**: mide los cuadros por segundo y sube o baja sola. En la pausa se puede fijar a mano en Alto, Medio o Bajo. La rueda del mouse acerca o aleja la cámara.
 
 ## Temperley real (0.3)
 
@@ -68,7 +68,7 @@ Jugás con **Gaspi** (saco, camisa blanca, corbata a rayas rojas y blancas).
 | Rueda del mouse | Acercar o alejar la cámara |
 | M | Silenciar |
 
-En celular aparecen un joystick y botones táctiles (Pegar, Apuntar, Arma, Saltar, Subir, Correr).
+En el celular los controles son como en GTA mobile y Fortnite: joystick a la izquierda (aparece donde apoyás el dedo; a fondo, Gaspi corre solo) y arrastrar a la derecha para mirar. A pie hay dos botones, Pegar o Tirar (apunta solo) y Saltar; en el auto, Freno de mano y Bocina, y Willy en la moto. Un botón celeste aparece solo cuando hay algo para hacer y dice qué hace (Subir al auto, Comprar medias, Bajarse). El arma se cambia tocándola arriba a la derecha, y ☰ abre la pausa con el mapa.
 
 ## Correrlo
 

@@ -470,146 +470,12 @@ body {
   outline-offset: 3px;
 }
 
-/* ---- Controles táctiles ---- */
-#touch {
+/* ---- Controles táctiles (el diseño del celu está al final del archivo) ---- */
+#touch,
+.tbtn-menu {
   display: none;
 }
-@media (pointer: coarse) {
-  #touch {
-    display: block;
-  }
-  #stick {
-    position: absolute;
-    width: 120px;
-    height: 120px;
-    border-radius: 50%;
-    border: 2px solid rgba(244, 239, 228, 0.5);
-    background: rgba(21, 23, 26, 0.25);
-  }
-  #knob {
-    position: absolute;
-    left: 35px;
-    top: 35px;
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    background: rgba(244, 239, 228, 0.7);
-  }
-  .tbtn {
-    position: absolute;
-    pointer-events: auto;
-    width: 64px;
-    height: 64px;
-    border-radius: 50%;
-    border: 2px solid rgba(244, 239, 228, 0.6);
-    background: rgba(21, 23, 26, 0.55);
-    color: var(--cal);
-    font-family: var(--font-ui);
-    font-weight: 800;
-    font-size: 0.95rem;
-  }
-  .tbtn.big {
-    width: 80px;
-    height: 80px;
-    background: rgba(229, 72, 77, 0.45);
-  }
-  #btn-attack {
-    right: 16px;
-    bottom: calc(40px + env(safe-area-inset-bottom, 0px));
-  }
-  #btn-e {
-    right: 108px;
-    bottom: calc(40px + env(safe-area-inset-bottom, 0px));
-    background: rgba(110, 195, 234, 0.4);
-  }
-  #btn-jump {
-    right: 184px;
-    bottom: calc(40px + env(safe-area-inset-bottom, 0px));
-  }
-  #btn-f {
-    right: 22px;
-    bottom: calc(132px + env(safe-area-inset-bottom, 0px));
-  }
-  #btn-run {
-    right: 98px;
-    bottom: calc(118px + env(safe-area-inset-bottom, 0px));
-  }
-  #btn-aim {
-    right: 174px;
-    bottom: calc(118px + env(safe-area-inset-bottom, 0px));
-  }
-  #btn-aim.on {
-    background: rgba(255, 178, 62, 0.5);
-  }
-  #btn-weapon {
-    right: 22px;
-    bottom: calc(210px + env(safe-area-inset-bottom, 0px));
-  }
-  #btn-h {
-    right: 98px;
-    bottom: calc(196px + env(safe-area-inset-bottom, 0px));
-  }
-  #minimap {
-    width: 120px;
-    height: 120px;
-  }
-  #street {
-    left: 144px;
-    font-size: 0.9rem;
-  }
-  #mute {
-    display: none;
-  }
-}
-@media (pointer: coarse) and (max-height: 520px) {
-  .tbtn {
-    width: 54px;
-    height: 54px;
-    font-size: 0.8rem;
-  }
-  .tbtn.big {
-    width: 64px;
-    height: 64px;
-  }
-  #btn-attack {
-    right: 12px;
-    bottom: calc(40px + env(safe-area-inset-bottom, 0px));
-  }
-  #btn-e {
-    right: 84px;
-    bottom: calc(40px + env(safe-area-inset-bottom, 0px));
-  }
-  #btn-jump {
-    right: 146px;
-    bottom: calc(40px + env(safe-area-inset-bottom, 0px));
-  }
-  #btn-aim {
-    right: 208px;
-    bottom: calc(40px + env(safe-area-inset-bottom, 0px));
-  }
-  #btn-f {
-    right: 17px;
-    bottom: calc(108px + env(safe-area-inset-bottom, 0px));
-  }
-  #btn-run {
-    right: 84px;
-    bottom: calc(102px + env(safe-area-inset-bottom, 0px));
-  }
-  #btn-weapon {
-    right: 146px;
-    bottom: calc(102px + env(safe-area-inset-bottom, 0px));
-  }
-  #btn-h {
-    right: 208px;
-    bottom: calc(102px + env(safe-area-inset-bottom, 0px));
-  }
-  #phone {
-    display: none;
-  }
-  #feed {
-    top: calc(96px + env(safe-area-inset-top, 0px));
-  }
-}
+
 @media (max-height: 520px) {
   #minimap {
     width: 118px;
@@ -1071,142 +937,141 @@ body {
   font-weight: 700;
 }
 
-/* ---- Pantalla de inicio ---- */
+/* ---- Pantalla de inicio: solo el arte, el logo, la SUBE de Gaspi y los botones ---- */
 #start {
   position: fixed;
   inset: 0;
-  overflow-y: auto;
-  /* la pantalla principal: arte de Gaspi en Temperley (si no carga, queda la vuelta en 3D de fondo) */
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 16px;
+  /* arte de Gaspi en Temperley a pantalla completa (si no carga, queda la vuelta en 3D de fondo) */
   background:
-    linear-gradient(90deg, rgba(12, 10, 20, 0.92) 0%, rgba(12, 10, 20, 0.7) 38%, rgba(12, 10, 20, 0.15) 70%, rgba(12, 10, 20, 0.05) 100%),
-    linear-gradient(180deg, rgba(12, 10, 20, 0) 55%, rgba(12, 10, 20, 0.85) 100%),
-    url('https://d8j0ntlcm91z4.cloudfront.net/user_3J4CZ127VDdC2FFBIIzV4GJ3hQG/hf_20260930_153443_80cdf166-e44e-4914-9a5b-339fa8197c9c_min.webp') 70% center / cover no-repeat,
-    linear-gradient(180deg, rgba(21, 23, 26, 0.55) 0%, rgba(21, 23, 26, 0.9) 60%, var(--asfalto) 100%);
-  padding-inline: 16px;
-  padding-block: calc(24px + env(safe-area-inset-top, 0px)) calc(24px + env(safe-area-inset-bottom, 0px));
-  touch-action: pan-y;
-  -webkit-user-select: text;
-  user-select: text;
+    linear-gradient(180deg, rgba(10, 8, 16, 0.35) 0%, rgba(10, 8, 16, 0) 26%, rgba(10, 8, 16, 0) 62%, rgba(10, 8, 16, 0.7) 100%),
+    url('https://d8j0ntlcm91z4.cloudfront.net/user_3J4CZ127VDdC2FFBIIzV4GJ3hQG/hf_20260930_153443_80cdf166-e44e-4914-9a5b-339fa8197c9c_min.webp') 64% center / cover no-repeat,
+    linear-gradient(180deg, rgba(21, 23, 26, 0.3) 0%, rgba(21, 23, 26, 0.75) 100%);
+  padding: calc(16px + env(safe-area-inset-top, 0px)) calc(16px + env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) calc(16px + env(safe-area-inset-left, 0px));
+  overflow: hidden;
 }
-.start-inner {
-  max-width: 860px;
-  margin: 0 auto;
-  display: grid;
-  gap: 18px;
+.start-logo {
+  align-self: flex-start;
+  width: clamp(150px, 24vw, 330px);
+  height: auto;
+  filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.5));
 }
-/* en pantallas anchas el texto va a la izquierda y Gaspi queda a la vista */
-@media (min-width: 1100px) {
-  .start-inner {
-    max-width: 660px;
-    margin: 0 0 0 5vw;
-  }
+.start-bottom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
 }
-.kicker {
-  margin: 0;
-  font-family: var(--font-ui);
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  font-weight: 700;
-  color: var(--celeste);
-  font-size: 0.95rem;
-}
-h1 {
-  margin: 0;
-  line-height: 0.86;
-  display: grid;
-}
-.t-gta {
-  font-family: var(--font-display);
-  font-size: clamp(2.2rem, 7vw, 4rem);
-  color: var(--sodio);
-  letter-spacing: 0.02em;
-}
-.t-conurbano {
-  font-family: var(--font-display);
-  font-size: clamp(3.2rem, 13vw, 8.4rem);
-  color: var(--cal);
-  -webkit-text-stroke: 3px var(--asfalto);
-  paint-order: stroke fill;
-  text-shadow: 6px 6px 0 var(--sube);
-  letter-spacing: -0.01em;
-}
-.start-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 300px) minmax(0, 1fr);
-  gap: 22px;
-  align-items: start;
-}
-@media (max-width: 680px) {
-  .start-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
+.start-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
 }
 .sube.big {
   display: flex;
-  gap: 14px;
-  padding: 14px;
+  gap: 12px;
+  padding: 10px 16px 10px 10px;
   align-items: center;
 }
 .big-photo {
-  width: 104px;
-  height: 124px;
+  width: 76px;
+  height: 92px;
 }
 .big-info {
   display: grid;
-  gap: 4px;
+  gap: 3px;
   font-family: var(--font-ui);
-  font-size: 1.05rem;
+  font-size: 1rem;
   font-weight: 600;
   justify-items: start;
 }
 .big-info strong {
   font-family: var(--font-display);
-  font-size: 1.7rem;
+  font-size: 1.5rem;
   font-weight: 400;
   line-height: 1;
 }
-.brief {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: 10px;
-  font-size: 1.02rem;
-  line-height: 1.45;
-  max-width: 62ch;
-  color: var(--cal-2);
+#play {
+  font-family: var(--font-display);
+  font-size: 1.7rem;
+  letter-spacing: 0.04em;
+  color: var(--asfalto);
+  background: var(--sodio);
+  border: 0;
+  border-radius: 12px;
+  padding: 14px 52px;
+  cursor: pointer;
+  box-shadow: 0 5px 0 #b3721a, 0 10px 26px rgba(0, 0, 0, 0.45);
 }
-.brief b {
-  color: var(--cal);
+#play:hover {
+  background: #ffc466;
 }
-.play-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px 24px;
-  align-items: center;
+#play:active {
+  transform: translateY(3px);
+  box-shadow: 0 2px 0 #b3721a;
+}
+#play:focus-visible,
+#install-desk:focus-visible {
+  outline: 3px solid var(--cal);
+  outline-offset: 3px;
+}
+@media (max-height: 520px) {
+  .big-photo {
+    width: 56px;
+    height: 68px;
+  }
+  .big-info strong {
+    font-size: 1.2rem;
+  }
+  #play {
+    font-size: 1.4rem;
+    padding: 10px 40px;
+  }
+}
+
+/* ---- Opciones en la pausa ---- */
+#resume {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  color: var(--asfalto);
+  background: var(--sodio);
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 18px;
+  cursor: pointer;
+}
+.pm-side {
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
 }
 .quality {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   align-items: center;
   font-family: var(--font-ui);
   font-weight: 700;
 }
 .quality span {
+  flex-basis: 100%;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: var(--cal-2);
-  margin-right: 4px;
 }
 .quality button {
   font: inherit;
-  font-size: 1rem;
+  font-size: 0.95rem;
   color: var(--cal);
   background: transparent;
   border: 1px solid rgba(244, 239, 228, 0.35);
   border-radius: 6px;
-  padding: 5px 12px;
+  padding: 5px 10px;
   cursor: pointer;
 }
 .quality button[aria-pressed='true'] {
@@ -1218,53 +1083,35 @@ h1 {
   outline: 3px solid var(--celeste);
   outline-offset: 2px;
 }
-#play {
-  justify-self: start;
-  font-family: var(--font-display);
-  font-size: 1.6rem;
-  letter-spacing: 0.04em;
-  color: var(--asfalto);
-  background: var(--sodio);
-  border: 0;
-  border-radius: 10px;
-  padding: 12px 42px;
-  cursor: pointer;
-  box-shadow: 0 5px 0 #b3721a;
-}
-#play:hover {
-  background: #ffc466;
-}
-#play:active {
-  transform: translateY(3px);
-  box-shadow: 0 2px 0 #b3721a;
-}
 .keys {
   margin: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-  gap: 8px 16px;
+  grid-template-columns: auto 1fr;
+  gap: 2px 10px;
+  font-size: 0.85rem;
 }
 .keys div {
-  display: flex;
-  gap: 10px;
-  align-items: baseline;
+  display: contents;
 }
 .keys dt {
   font-family: var(--font-display);
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   color: var(--celeste);
-  min-width: 72px;
 }
 .keys dd {
   margin: 0;
-  font-family: var(--font-ui);
   font-weight: 600;
-  font-size: 1rem;
+}
+/* en el celu no hay teclado */
+@media (pointer: coarse) {
+  .keys {
+    display: none;
+  }
 }
 .fine {
   margin: 0;
   color: var(--cal-2);
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   opacity: 0.8;
 }
 
@@ -1274,5 +1121,243 @@ h1 {
   }
   #flash {
     animation: none;
+  }
+}
+
+/* ---- Celular: como GTA mobile y Fortnite ----
+   radar arriba a la izquierda con la vida abajo, estado arriba a la derecha, joystick flotante
+   a la izquierda y pocos botones grandes a la derecha que cambian a pie, en auto y en moto. */
+@media (pointer: coarse) {
+  #touch {
+    display: block;
+  }
+  #stick {
+    position: absolute;
+    width: 128px;
+    height: 128px;
+    border-radius: 50%;
+    border: 2px solid rgba(244, 239, 228, 0.55);
+    background: radial-gradient(circle, rgba(21, 23, 26, 0.08), rgba(21, 23, 26, 0.35));
+    pointer-events: none;
+  }
+  /* en reposo queda dibujado abajo a la izquierda, tenue */
+  #stick.rest {
+    left: calc(30px + env(safe-area-inset-left, 0px));
+    top: auto;
+    bottom: calc(26px + env(safe-area-inset-bottom, 0px));
+    opacity: 0.4;
+  }
+  #stick.sprint {
+    border-color: var(--sodio);
+    box-shadow: 0 0 0 3px rgba(255, 178, 62, 0.35);
+  }
+  #knob {
+    position: absolute;
+    left: 37px;
+    top: 37px;
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    background: rgba(244, 239, 228, 0.78);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  }
+  .tbtn {
+    position: absolute;
+    pointer-events: auto;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    border: 2px solid rgba(244, 239, 228, 0.7);
+    background: rgba(21, 23, 26, 0.5);
+    color: var(--cal);
+    font-family: var(--font-ui);
+    font-weight: 800;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.08s, background-color 0.08s;
+  }
+  .tbtn.big {
+    width: 90px;
+    height: 90px;
+    font-size: 1.05rem;
+    background: rgba(229, 72, 77, 0.6);
+    border-color: rgba(255, 255, 255, 0.85);
+  }
+  .tbtn.down {
+    transform: scale(0.9);
+    background: rgba(244, 239, 228, 0.4);
+  }
+  #touch.foot .on-car,
+  #touch.foot .on-moto,
+  #touch.car .on-foot,
+  #touch.car:not(.moto) .on-moto {
+    display: none;
+  }
+  #btn-attack,
+  #btn-brake {
+    right: calc(24px + env(safe-area-inset-right, 0px));
+    bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  }
+  #btn-brake {
+    background: rgba(21, 23, 26, 0.6);
+  }
+  #btn-jump,
+  #btn-h {
+    right: calc(128px + env(safe-area-inset-right, 0px));
+    bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+  }
+  #btn-willy {
+    right: calc(122px + env(safe-area-inset-right, 0px));
+    bottom: calc(104px + env(safe-area-inset-bottom, 0px));
+  }
+  /* la acción del momento (subir, robar, comprar, bajarse): dice qué hace */
+  #btn-ctx {
+    right: calc(24px + env(safe-area-inset-right, 0px));
+    bottom: calc(128px + env(safe-area-inset-bottom, 0px));
+    width: auto;
+    height: 48px;
+    max-width: 44vw;
+    padding: 0 18px;
+    border-radius: 24px;
+    border-color: #fff;
+    background: rgba(110, 195, 234, 0.92);
+    color: var(--asfalto);
+    font-size: 0.95rem;
+    text-transform: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+    animation: ctx-in 0.18s ease-out;
+  }
+  @keyframes ctx-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px) scale(0.9);
+    }
+  }
+  .tbtn-menu {
+    display: grid;
+    align-content: center;
+    justify-items: center;
+    gap: 4px;
+    position: absolute;
+    top: calc(10px + env(safe-area-inset-top, 0px));
+    right: calc(10px + env(safe-area-inset-right, 0px));
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    border: 1px solid rgba(244, 239, 228, 0.4);
+    background: rgba(21, 23, 26, 0.55);
+    pointer-events: auto;
+  }
+  .tbtn-menu span {
+    width: 18px;
+    height: 2px;
+    border-radius: 1px;
+    background: var(--cal);
+  }
+
+  /* HUD */
+  #minimap {
+    top: calc(10px + env(safe-area-inset-top, 0px));
+    left: calc(10px + env(safe-area-inset-left, 0px));
+    bottom: auto;
+    width: 108px;
+    height: 108px;
+  }
+  #card {
+    top: calc(126px + env(safe-area-inset-top, 0px));
+    left: calc(10px + env(safe-area-inset-left, 0px));
+    width: 108px;
+    max-width: none;
+    display: block;
+    padding: 0;
+    background: none;
+    box-shadow: none;
+  }
+  #portrait,
+  .card-top,
+  .card-row {
+    display: none;
+  }
+  #card .bar {
+    height: 7px;
+    box-shadow: 0 0 0 1.5px rgba(0, 0, 0, 0.55);
+  }
+  #street {
+    display: block;
+    left: calc(10px + env(safe-area-inset-left, 0px));
+    top: calc(142px + env(safe-area-inset-top, 0px));
+    bottom: auto;
+    max-width: 180px;
+    font-size: 0.8rem;
+  }
+  #status {
+    top: calc(8px + env(safe-area-inset-top, 0px));
+    right: calc(62px + env(safe-area-inset-right, 0px));
+    justify-items: end;
+  }
+  #clock {
+    font-size: 1rem;
+  }
+  #money {
+    font-size: 1.25rem;
+  }
+  #stars {
+    font-size: 1.05rem;
+  }
+  #phone {
+    display: none;
+  }
+  /* el arma se toca para cambiarla; las balas, para recargar */
+  #weapon {
+    pointer-events: auto;
+    margin-top: 4px;
+    padding: 5px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(244, 239, 228, 0.4);
+    background: rgba(21, 23, 26, 0.55);
+    font-size: 0.85rem;
+  }
+  #w-name::after {
+    content: ' ›';
+    color: var(--sodio);
+  }
+  #objective {
+    top: calc(10px + env(safe-area-inset-top, 0px));
+    bottom: auto;
+    max-width: calc(100vw - 380px);
+    padding: 4px 12px;
+    font-size: 0.85rem;
+  }
+  .obj-tag {
+    display: none;
+  }
+  #feed {
+    top: calc(50px + env(safe-area-inset-top, 0px));
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(280px, 40vw);
+  }
+  .post {
+    font-size: 0.72rem;
+  }
+  .post:nth-child(n + 2) {
+    display: none;
+  }
+  #radio {
+    top: calc(48px + env(safe-area-inset-top, 0px));
+  }
+  #ticker,
+  #prompt,
+  #mute {
+    display: none;
+  }
+  #toast {
+    top: calc(126px + env(safe-area-inset-top, 0px));
+    right: calc(10px + env(safe-area-inset-right, 0px));
   }
 }
