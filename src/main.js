@@ -27,6 +27,7 @@ import { Nav } from './nav.js';
 import { Radio } from './radio.js';
 import { R } from './rng.js';
 import { setupInstall } from './install.js';
+import { Missions } from './missions.js';
 
 setupInstall();
 
@@ -195,8 +196,10 @@ const comisaria = stationHouse();
 
 const time = { hour: 17.5, night: false, label: '17:30' };
 const weather = { rain: 0, target: 0, wet: 0, slick: false, next: R.range(200, 320), t: 0, boltT: R.range(10, 25), flash: 0 };
-const world = { scene, camera, city, input, audio, hud, player, traffic, npcs, crime, events, trains, time, lights, colliders: city.colliders, fx, pickups, combat, police, nav, radio, weather, night: NIGHT };
+const world = { scene, camera, city, input, audio, hud, player, traffic, npcs, crime, events, trains, time, lights, colliders: city.colliders, fx, pickups, combat, police, nav, radio, weather, night: NIGHT, heightAt };
 police.world = world;
+const missions = new Missions(scene, world);
+world.missions = missions;
 
 // ---------- Lo que postean los vecinos ----------
 const HANDLES = ['vecinosdetemperley', 'temperleyalerta', 'lomasnoticias', 'lachusma_tmp', 'rocaaldia', 'lavecinadelabarrera', 'turco_del_kiosco'];
@@ -461,6 +464,13 @@ function updateObjective() {
     hud.updateObjective(player);
     return;
   }
+  // misiones (después del tutorial)
+  const mo = step >= steps.length - 1 ? missions.objective() : null;
+  if (mo) {
+    hud.setObjective(mo.text, mo.target);
+    hud.updateObjective(player);
+    return;
+  }
   const s = steps[step];
   if (s.done()) {
     if (step < steps.length - 1) {
@@ -630,6 +640,7 @@ player.hooks.enter = (v) => {
 player.hooks.exit = () => radio.setOn(false);
 police.hooks = {
   busted: () => {
+    missions.busted();
     screen('busted', 'TE AGARRÓ LA BONAERENSE', 'Te llevan a la comisaría');
     radio.setOn(false);
     if (player.vehicle) player.exitVehicle(world, true);
@@ -666,7 +677,7 @@ function speakers() {
 const SAVE = 'gta-conurbano-partida';
 function saveGame() {
   try {
-    localStorage.setItem(SAVE, JSON.stringify({ money: player.money, respeto: player.respeto, phone: player.phone, step, hour: time.hour, inv: player.inv, ammo: player.ammo, weapon: player.weapon, armor: player.armor, flags }));
+    localStorage.setItem(SAVE, JSON.stringify({ money: player.money, respeto: player.respeto, phone: player.phone, step, hour: time.hour, inv: player.inv, ammo: player.ammo, weapon: player.weapon, armor: player.armor, flags, missions: missions.save() }));
   } catch {
     /* sin almacenamiento */
   }
@@ -685,6 +696,8 @@ function loadGame() {
     player.weapon = player.inv[d.weapon] ? d.weapon : 'punos';
     player.armor = d.armor ?? 0;
     Object.assign(flags, d.flags || {});
+    missions.next = d.missions?.next ?? 0;
+    missions.done = d.missions?.done ?? 0;
     combat.syncHand(player);
     return true;
   } catch {
@@ -808,6 +821,7 @@ function frame(now) {
   pickups.update(dt, world);
   for (const s of pickups.shops || []) if (s.cool > 0) s.cool -= dt;
   updateJob(dt);
+  missions.update(dt, step >= steps.length - 1 && !job.active);
   updateObjective();
   updateGps(dt);
   player.updateCamera(camera, dt, city.colliders, fx);

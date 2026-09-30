@@ -149,6 +149,22 @@ export class Audio {
   alerta() {
     this.tone([220, 233], 0.5, 'sawtooth', 0.22);
   }
+  // el celu sonando
+  ring() {
+    for (let i = 0; i < 3; i++) {
+      this.tone([1318, 1568], 0.12, 'square', 0.1, i * 0.45);
+      this.tone([1568, 1976], 0.12, 'square', 0.1, i * 0.45 + 0.14);
+    }
+  }
+  // misión cumplida: arpegio que sube
+  cumplida() {
+    [523, 659, 784, 1047].forEach((f, i) => this.tone([f, f * 1.5], i === 3 ? 0.6 : 0.16, 'square', 0.14, i * 0.14));
+  }
+  // misión fallida: dos notas que bajan
+  fallida() {
+    this.tone([392, 466], 0.3, 'sawtooth', 0.16);
+    this.tone([311, 370], 0.6, 'sawtooth', 0.16, 0.3);
+  }
 
   // ruido filtrado con envolvente: base de tiros, golpes y explosiones
   burst(dur, freq, type, peak, t0 = 0, q = 0.7) {

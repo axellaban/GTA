@@ -107,6 +107,16 @@ Datos del mapa: © colaboradores de OpenStreetMap (ODbL) y Overture Maps Foundat
 - **Perros callejeros y el caballo del cartonero** con forma real y patas que se doblan en la rodilla.
 - **Autos** con pintura con laca, cantos redondeados, vidrios polarizados y llantas con rayos.
 
+## Misiones (0.7)
+
+Después del tutorial te llaman al celu (si los motochorros te lo robaron, no te pueden llamar). Si atendés, aparece un marcador amarillo en el mapa y la misión empieza al entrar en él. Se falla si te bajan, te agarra la cana o se acaba el tiempo, y se puede volver a intentar.
+
+- **La encomienda del Turco**: conseguí un auto y llevá la encomienda a tiempo sin romperla.
+- **El celu de Doña Marta**: encontrá a los chorros, bajalos a piñas y devolvele el celu a la señora.
+- **El bolso del Negro**: buscá el bolso en la estación, perdé a la Bonaerense (te caen tres estrellas) y llevalo al taller.
+
+Al cumplirlas: plata, respeto y la próxima llamada. Cuando se terminan, vuelven a empezar con otros destinos. El avance se guarda.
+
 ## Estructura
 
 | Archivo | Qué hace |
@@ -126,6 +136,7 @@ Datos del mapa: © colaboradores de OpenStreetMap (ODbL) y Overture Maps Foundat
 | `src/npcs.js` | Vecinos, trapitos, gente pidiendo, perdidos, vendedor de medias, perros |
 | `src/crime.js` | Motochorros |
 | `src/events.js` | Cortes, marchas y noticias |
+| `src/missions.js` | Misiones: llamadas, marcador, etapas, premio |
 | `src/trains.js` | Trenes, barreras y pasos a nivel |
 | `src/radio.js`, `src/audio.js` | Radio y sonidos sintetizados |
 | `src/fx.js` | Partículas, trazas, marcas de frenada, lluvia |
@@ -134,6 +145,5 @@ Datos del mapa: © colaboradores de OpenStreetMap (ODbL) y Overture Maps Foundat
 
 ## Pendiente
 
-- Misiones con historia para Gaspi.
 - Subirse al tren y al colectivo como pasajero.
 - Interiores (el kiosco, la estación por dentro).

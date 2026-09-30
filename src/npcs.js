@@ -663,7 +663,7 @@ export class Npcs {
     for (const n of this.list) {
       const d = Math.hypot(n.x - player.x, n.z - player.z);
       if (n.type === 'vecino' && !n.down) {
-        if (d > 175 && n.state === 'walk') {
+        if (d > 175 && n.state === 'walk' && !n.mission) {
           n.dead = true;
           continue;
         }
