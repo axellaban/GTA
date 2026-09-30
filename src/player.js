@@ -42,6 +42,7 @@ export class Player {
     this.health = 100;
     this.armor = 0;
     this.figus = new Set(); // figuritas encontradas (ids)
+    this.saltos = new Set(); // saltos insólitos hechos (ids de rampa)
     this.respeto = 0;
     this.phone = true;
     this.grabbed = 0;

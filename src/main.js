@@ -24,6 +24,7 @@ import { Fx } from './fx.js';
 import { Pickups, FIGUS } from './pickups.js';
 import { WEAPONS } from './weapons.js';
 import { Gym } from './gym.js';
+import { Stunts, RAMPS } from './stunts.js';
 import { Combat } from './combat.js';
 import { Police } from './police.js';
 import { Nav } from './nav.js';
@@ -394,6 +395,8 @@ world.garages = garages;
 const gym = new Gym(scene, city.colliders, npcs, heightAt);
 for (const s of gym.slots) gym.spawn(s);
 world.gym = gym;
+const stunts = new Stunts(scene);
+world.stunts = stunts;
 
 // ---------- Armería "El Tano": entrás a pie y elegís qué comprar ----------
 const armeria = (() => {
@@ -908,7 +911,7 @@ function speakers() {
 const SAVE = 'gta-conurbano-partida';
 function saveGame() {
   try {
-    localStorage.setItem(SAVE, JSON.stringify({ money: player.money, respeto: player.respeto, phone: player.phone, step, hour: time.hour, inv: player.inv, ammo: player.ammo, weapon: player.weapon, armor: player.armor, flags, missions: missions.save(), figus: [...player.figus] }));
+    localStorage.setItem(SAVE, JSON.stringify({ money: player.money, respeto: player.respeto, phone: player.phone, step, hour: time.hour, inv: player.inv, ammo: player.ammo, weapon: player.weapon, armor: player.armor, flags, missions: missions.save(), figus: [...player.figus], saltos: [...player.saltos] }));
   } catch {
     /* sin almacenamiento */
   }
@@ -927,6 +930,7 @@ function loadGame() {
     player.weapon = player.inv[d.weapon] ? d.weapon : 'punos';
     player.armor = d.armor ?? 0;
     player.figus = new Set(d.figus || []);
+    player.saltos = new Set(d.saltos || []);
     Object.assign(flags, d.flags || {});
     missions.next = d.missions?.next ?? 0;
     missions.done = d.missions?.done ?? 0;
@@ -959,8 +963,9 @@ function setPaused(p) {
     // cuánto del juego hiciste, como el porcentaje de los GTA
     const mis = Math.min(missions.done, 3);
     const figus = player.figus.size;
-    const pct = Math.round((mis / 3) * 40 + (figus / FIGUS) * 40 + (Math.min(step, steps.length - 1) / (steps.length - 1)) * 20);
-    document.getElementById('stats').textContent = `Completado ${pct}% · Misiones ${mis}/3 · Figuritas ${figus}/${FIGUS}`;
+    const saltos = player.saltos.size;
+    const pct = Math.round((mis / 3) * 35 + (figus / FIGUS) * 30 + (saltos / RAMPS) * 15 + (Math.min(step, steps.length - 1) / (steps.length - 1)) * 20);
+    document.getElementById('stats').textContent = `Completado ${pct}% · Misiones ${mis}/3 · Figuritas ${figus}/${FIGUS} · Saltos ${saltos}/${RAMPS}`;
     try {
       document.exitPointerLock?.();
     } catch {
@@ -995,6 +1000,8 @@ function frame(now) {
   world.wasted = out ? Math.min(out, (world.wasted || 0) + Math.min(real, 0.1) * 0.9) : 0;
   if (post) post.wasted = world.wasted;
   if (player.dead) dt *= 0.35;
+  // en el aire de un salto: cámara lenta
+  if (player.vehicle?.air) dt *= 0.5;
   dynamicResolution(real);
   showFps(real);
   updateWeather(started ? dt : dt * 0.2);
@@ -1066,6 +1073,7 @@ function frame(now) {
   updateGarages();
   updateArmeria();
   gym.update(dt, world);
+  stunts.update(dt, world);
   updateFare(dt);
   updateCop(dt);
   missions.update(dt, step >= steps.length - 1 && !job.active && !fare.active && !cop.active);

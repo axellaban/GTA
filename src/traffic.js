@@ -45,7 +45,7 @@ export class Vehicle {
   }
   sync(dt) {
     const moto = this.kind === 'moto';
-    this.mesh.position.set(this.x, this.flat ? -0.08 : 0, this.z);
+    this.mesh.position.set(this.x, (this.flat ? -0.08 : 0) + (this.lift || 0), this.z);
     this.mesh.rotation.y = this.heading;
     if (moto) {
       // inclinación en curvas, willy o tirada en el piso

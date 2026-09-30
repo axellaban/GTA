@@ -157,6 +157,10 @@ En la puerta de la comisaría hay un patrullero estacionado (o robale uno a la c
 
 Al prender la radio el locutor presenta la emisora, y entre tema y tema habla o pasa una publicidad trucha del barrio (la pizzería, El Turco, el gym El Kaiser, chapa y pintura, la armería...). La música baja mientras habla. Usa la misma voz del navegador que la gente.
 
+## Saltos insólitos (0.17)
+
+Ocho rampas amarillas con franjas negras en calles largas. Si entrás rápido (más de 40 km/h) por el lado bajo, el auto vuela en cámara lenta y al caer te pagan por largo y alto. El primer salto de cada rampa suma respeto y cuenta para el porcentaje de la pausa.
+
 ## Gym El Kaiser (0.13)
 
 Box de CrossFit a unos 70 m de la estación (cuadrado amarillo en el mapa): galpón negro con el portón levantado, el cartel del lobo arriba y el mismo logo en la pared del fondo, racks rojos, discos, cajones y kettlebells. Adentro entrenan los musculosos (dominadas, sentadilla y press) y El Kaiser te recibe en la puerta. Si les pegás, se defienden, y aguantan más que un vecino.
@@ -180,6 +184,7 @@ Box de CrossFit a unos 70 m de la estación (cuadrado amarillo en el mapa): galp
 | `src/npcs.js` | Vecinos, trapitos, gente pidiendo, perdidos, vendedor de medias, perros |
 | `src/crime.js` | Motochorros |
 | `src/events.js` | Cortes, marchas y noticias |
+| `src/stunts.js` | Rampas y saltos insólitos con cámara lenta |
 | `src/gym.js` | Gym El Kaiser: galpón, cartel, racks y los musculosos entrenando |
 | `src/missions.js` | Misiones: llamadas, marcador, etapas, premio |
 | `src/trains.js` | Trenes, barreras y pasos a nivel |
