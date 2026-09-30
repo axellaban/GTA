@@ -82,7 +82,15 @@
             <li>Trenes del Roca, barreras que bajan, rejas en cada casa y perros que corren motos.</li>
           </ul>
         </div>
-        <button id="play" type="button">Jugar</button>
+        <div class="play-row">
+          <button id="play" type="button">Jugar</button>
+          <div class="quality" role="group" aria-label="Calidad gráfica">
+            <span>Gráficos</span>
+            <button type="button" data-quality="alto" aria-pressed="false">Alto</button>
+            <button type="button" data-quality="medio" aria-pressed="false">Medio</button>
+            <button type="button" data-quality="bajo" aria-pressed="false">Bajo</button>
+          </div>
+        </div>
         <dl class="keys">
           <div><dt>WASD</dt><dd>Moverse / manejar</dd></div>
           <div><dt>Mouse</dt><dd>Mirar (clic para capturar)</dd></div>

@@ -39,6 +39,11 @@ export class Input {
         this.look.dy += e.movementY || 0;
       }
     });
+    this.wheel = 0;
+    canvas.addEventListener('wheel', (e) => {
+      this.wheel += e.deltaY;
+      e.preventDefault();
+    }, { passive: false });
     document.addEventListener('pointerlockchange', () => (this.locked = document.pointerLockElement === canvas));
     this.setupTouch();
   }
@@ -141,5 +146,6 @@ export class Input {
     this.pressed.clear();
     this.look.dx = 0;
     this.look.dy = 0;
+    this.wheel = 0;
   }
 }

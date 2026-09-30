@@ -16,6 +16,16 @@ Jugás con **Gaspi** (saco, camisa blanca, corbata a rayas rojas y blancas).
 - **Cortes de calle y marchas** (lo central): cortes con gomas quemándose, pasacalles, bombos y gente que no te deja pasar con el auto. Las marchas avanzan por las avenidas. El tránsito se traba, toca bocina y pega la vuelta. Todo sale en el zócalo de noticias.
 - Tránsito con IA, colectivos, perros que persiguen motos, ciclo de día y noche con faroles de sodio, minimapa, plata, salud y respeto.
 
+## Gráficos (0.2)
+
+- **Cielo** con nubes que se mueven, sol con halo, atardecer naranja, luna y estrellas.
+- **Postprocesado**: resplandor (bloom), viñeta y un gradeo de color cálido, al estilo Vice City.
+- **Personajes** con esqueleto (rodillas, codos, cuello), cuerpo con volumen y cara dibujada; Gaspi tiene su foto como cara.
+- **Autos** con carrocería perfilada (Falcon, Duna, Gol, pickup, patrullero, remís), vidrios y cromados que reflejan el cielo, llantas, parrilla y patentes Mercosur.
+- **Ciudad**: árboles con follaje de hojas, balcones con rejas, toldos a rayas en los locales, parapetos y cornisas, sendas peatonales, cordones y tapas de cloaca, estación de ladrillo.
+- **Noche**: ventanas y vidrieras que se prenden, halos en faroles, faros y luces traseras, foco del auto de Gaspi y el fuego de los cortes brillando.
+- Selector de calidad **Alto / Medio / Bajo** en la pantalla de inicio (en celulares arranca en Bajo). La rueda del mouse acerca o aleja la cámara.
+
 ## Controles
 
 | Tecla | Acción |
@@ -26,6 +36,7 @@ Jugás con **Gaspi** (saco, camisa blanca, corbata a rayas rojas y blancas).
 | E o clic | Acción: pagar, dar, empujar, voltear la moto |
 | F | Subir o bajar del auto (también le sacás el auto a otro) |
 | H / Espacio | Bocina / freno de mano |
+| Rueda del mouse | Acercar o alejar la cámara |
 | 1 2 3 | Elegir en los diálogos |
 | M | Silenciar |
 
@@ -56,6 +67,8 @@ npm run build    # genera dist/index.html (un solo archivo) y dist/artifact.html
 | `src/events.js` | Cortes, marchas y noticias |
 | `src/trains.js` | Trenes, barreras y pasos a nivel |
 | `src/hud.js`, `src/style.css` | Tarjeta SUBE, minimapa, zócalo, diálogos |
+| `src/sky.js`, `src/post.js`, `src/glow.js` | Cielo, postprocesado y luces de noche |
+| `src/cars.js` | Carrocerías de los autos |
 
 ## Pendiente
 

@@ -144,6 +144,7 @@ export class Player {
     else this.lastLook += dt;
     this.camYaw -= input.look.dx * sens;
     this.camPitch = Math.max(-0.1, Math.min(1.1, this.camPitch + input.look.dy * sens));
+    if (input.wheel) this.zoom = Math.max(0.45, Math.min(1.8, (this.zoom ?? 1) * (1 + input.wheel * 0.001)));
 
     if (input.hit('f')) {
       if (this.vehicle) {
@@ -371,7 +372,7 @@ export class Player {
       while (diff < -Math.PI) diff += Math.PI * 2;
       this.camYaw += diff * Math.min(1, dt * 2.5);
     }
-    const dist = inCar ? (this.vehicle.kind === 'bus' ? 14 : 8.5) : 5;
+    const dist = (inCar ? (this.vehicle.kind === 'bus' ? 14 : 8.5) : 5) * (this.zoom ?? 1);
     const hgt = inCar ? 2.2 : 1.7;
     const cx = this.x + Math.sin(this.camYaw) * Math.cos(this.camPitch) * dist;
     const cz = this.z + Math.cos(this.camYaw) * Math.cos(this.camPitch) * dist;

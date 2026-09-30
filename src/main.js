@@ -12,42 +12,41 @@ import { Crime } from './crime.js';
 import { Events } from './events.js';
 import { Trains } from './trains.js';
 import { Hud } from './hud.js';
-import { tailMat } from './vehicles.js';
+import { lightMat } from './cars.js';
+import { loadGaspiPhoto } from './human.js';
+import { Sky } from './sky.js';
+import { Post, QUALITY } from './post.js';
+import { Glows } from './glow.js';
 import { R } from './rng.js';
 
 const canvas = document.getElementById('game');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
 renderer.setSize(innerWidth, innerHeight);
-renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+// Calidad gráfica: se recuerda por navegador; en celulares arranca en "bajo".
+const coarse = matchMedia('(pointer: coarse)').matches;
+let qualityName = coarse ? 'bajo' : 'alto';
+try {
+  const saved = localStorage.getItem('gta-conurbano-calidad');
+  if (saved && QUALITY[saved]) qualityName = saved;
+} catch {
+  /* sin almacenamiento */
+}
+let Q = QUALITY[qualityName];
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.3, 1400);
 scene.fog = new THREE.Fog(0xc9d6dc, 90, 420);
 
 // ---------- Cielo y luces ----------
-const skyUniforms = { top: { value: new THREE.Color(0x6aa6d8) }, bottom: { value: new THREE.Color(0xdfe7ea) } };
-const sky = new THREE.Mesh(
-  new THREE.SphereGeometry(1000, 24, 12),
-  new THREE.ShaderMaterial({
-    uniforms: skyUniforms,
-    side: THREE.BackSide,
-    depthWrite: false,
-    fog: false,
-    vertexShader: 'varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
-    fragmentShader: 'uniform vec3 top; uniform vec3 bottom; varying vec3 vP; void main(){ float h = clamp(vP.y*1.6+0.08,0.0,1.0); gl_FragColor = vec4(mix(bottom, top, h), 1.0); }',
-  }),
-);
-scene.add(sky);
+const sky = new Sky(scene, renderer);
 const hemi = new THREE.HemisphereLight(0xdfeaf5, 0x5b5646, 1.2);
 scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xfff0d6, 2.4);
-sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
 const sc = sun.shadow.camera;
 sc.left = sc.bottom = -70;
 sc.right = sc.top = 70;
@@ -56,6 +55,37 @@ sc.far = 400;
 sun.shadow.bias = -0.0006;
 sun.shadow.normalBias = 0.04;
 scene.add(sun, sun.target);
+let post = null;
+
+function applyQuality(name) {
+  qualityName = name;
+  Q = QUALITY[name];
+  renderer.setPixelRatio(Math.min(devicePixelRatio, Q.pixelRatio));
+  renderer.setSize(innerWidth, innerHeight);
+  const shadows = Q.shadows > 0;
+  if (renderer.shadowMap.enabled !== shadows) {
+    renderer.shadowMap.enabled = shadows;
+    scene.traverse((o) => {
+      if (!o.material) return;
+      for (const m of Array.isArray(o.material) ? o.material : [o.material]) m.needsUpdate = true;
+    });
+  }
+  sun.castShadow = shadows;
+  if (shadows && sun.shadow.mapSize.x !== Q.shadows) {
+    sun.shadow.mapSize.set(Q.shadows, Q.shadows);
+    sun.shadow.map?.dispose();
+    sun.shadow.map = null;
+  }
+  post = new Post(renderer, scene, camera, Q);
+  for (const b of document.querySelectorAll('[data-quality]')) b.setAttribute('aria-pressed', String(b.dataset.quality === name));
+  try {
+    localStorage.setItem('gta-conurbano-calidad', name);
+  } catch {
+    /* sin almacenamiento */
+  }
+}
+applyQuality(qualityName);
+for (const b of document.querySelectorAll('[data-quality]')) b.addEventListener('click', () => applyQuality(b.dataset.quality));
 
 // ---------- Mundo ----------
 const city = buildCity(scene);
@@ -64,6 +94,7 @@ const audio = new Audio();
 const input = new Input(canvas);
 const hud = new Hud();
 const player = new Player(scene, city, heightAt);
+loadGaspiPhoto();
 const traffic = new Traffic(scene, audio);
 traffic.populate(city, player);
 const npcs = new Npcs(scene, city, city.colliders, heightAt, audio);
@@ -71,6 +102,7 @@ npcs.populate();
 const crime = new Crime(scene, traffic, city.colliders, audio);
 const events = new Events(scene, traffic, audio);
 const trains = new Trains(scene, audio);
+const glows = new Glows(scene, city);
 
 const time = { hour: 17.5, night: false, label: '17:30' };
 const world = { scene, camera, city, input, audio, hud, player, traffic, npcs, crime, events, trains, time, colliders: city.colliders };
@@ -85,39 +117,50 @@ function updateTime(dt) {
   const mm = Math.floor((h - hh) * 60);
   time.label = `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
   const elev = Math.sin(((h - 6.5) / 13) * Math.PI); // >0 de día
-  const day = THREE.MathUtils.clamp(elev * 2.2, 0, 1);
+  const day = THREE.MathUtils.clamp(elev * 3 + 0.12, 0, 1);
   const dusk = THREE.MathUtils.clamp(1 - Math.abs(elev) * 3.2, 0, 1) * (h > 12 ? 1 : 0.6);
   time.night = day < 0.15;
-  const nightTop = new THREE.Color(0x0a1022);
-  const nightBottom = new THREE.Color(0x1d2230);
-  const dayTop = new THREE.Color(0x5f9fd6);
-  const dayBottom = new THREE.Color(0xdde6e8);
-  const duskBottom = new THREE.Color(0xf2a15e);
-  const duskTop = new THREE.Color(0x5b6ea8);
-  skyUniforms.top.value.copy(nightTop).lerp(dayTop, day).lerp(duskTop, dusk * 0.6);
-  skyUniforms.bottom.value.copy(nightBottom).lerp(dayBottom, day).lerp(duskBottom, dusk * 0.8);
-  scene.fog.color.copy(skyUniforms.bottom.value).lerp(new THREE.Color(0x777777), 0.15);
-  scene.fog.near = 60 + day * 40;
-  scene.fog.far = 260 + day * 180;
-  sun.intensity = 0.25 + day * 2.3;
+  const nightTop = new THREE.Color(0x050a1a);
+  const nightBottom = new THREE.Color(0x1a2233);
+  const dayTop = new THREE.Color(0x3d7fcf);
+  const dayBottom = new THREE.Color(0xcfdde4);
+  const duskBottom = new THREE.Color(0xf59a52);
+  const duskTop = new THREE.Color(0x4a5d9e);
+  const U = sky.uniforms;
+  U.zenith.value.copy(nightTop).lerp(dayTop, day).lerp(duskTop, dusk * 0.6);
+  U.horizon.value.copy(nightBottom).lerp(dayBottom, day).lerp(duskBottom, dusk * 0.85);
+  U.night.value = 1 - THREE.MathUtils.clamp(day * 3, 0, 1);
+  U.time.value += dt;
+  U.sunColor.value.setHSL(0.1 - dusk * 0.05, 0.9, 0.62 - dusk * 0.05);
+  scene.fog.color.copy(U.horizon.value).lerp(U.zenith.value, 0.15);
+  scene.fog.near = 50 + day * 50;
+  scene.fog.far = 240 + day * 200;
+  sun.intensity = 0.45 + day * 2.2;
   sun.color.setHSL(0.09 - dusk * 0.04, 0.5 + dusk * 0.4, 0.75 - dusk * 0.1);
-  if (time.night) sun.color.set(0x9bb4ff);
-  hemi.intensity = 0.35 + day * 0.9;
-  hemi.color.copy(skyUniforms.top.value).lerp(new THREE.Color(0xffffff), 0.5);
+  if (time.night) sun.color.set(0x8fa8ff);
+  hemi.intensity = 0.75 + day * 0.55;
+  hemi.color.copy(U.zenith.value).lerp(new THREE.Color(time.night ? 0x7d8fd0 : 0xffffff), 0.55);
+  hemi.groundColor.set(time.night ? 0x2e2a3a : 0x5b5646);
   const az = ((h - 6) / 24) * Math.PI * 2;
   const sx = Math.cos(az) * 120;
   const sy = Math.max(35, Math.abs(elev) * 170);
   const sz = Math.sin(az) * 60 - 40;
   sun.position.set(player.x + sx, sy, player.z + sz);
   sun.target.position.set(player.x, 0, player.z);
+  // el disco del sol en el cielo sigue la luz (baja hasta el horizonte al atardecer)
+  U.sunDir.value.set(Math.cos(az), Math.max(-0.2, elev * 0.9), Math.sin(az) * 0.5 - 0.33).normalize();
+  sky.updateEnv(h, scene);
+  post?.setMood(1 - day, dusk);
   // faroles de sodio
   const lampsOn = day < 0.35;
   lampColor.set(lampsOn ? 0xffc46b : 0x3a3226);
   for (const m of city.lampMats) m.color.copy(lampColor);
-  tailMat.color.set(lampsOn ? 0xff2a1a : 0x7a0e0e);
+  lightMat.color.setScalar(lampsOn ? 2.2 : 0.9);
   city.lampPools.visible = lampsOn;
-  city.lampPools.material.opacity = THREE.MathUtils.clamp((0.35 - day) * 1.1, 0, 0.3);
-  renderer.toneMappingExposure = 1.0 + (1 - day) * 0.35;
+  time.glow = THREE.MathUtils.clamp((0.42 - day) * 2.6, 0, 1);
+  city.windowMat.emissiveIntensity = THREE.MathUtils.clamp((0.45 - day) * 2.2, 0, 0.85);
+  city.lampPools.material.opacity = THREE.MathUtils.clamp((0.35 - day) * 0.8, 0, 0.2);
+  renderer.toneMappingExposure = 1.0 + (1 - day) * 0.45;
 }
 
 // ---------- Objetivos ----------
@@ -299,7 +342,9 @@ function frame(now) {
     trains.update(dt, null);
     events.update(dt, world);
     traffic.update(dt, world);
-    renderer.render(scene, camera);
+    glows.update(world, time.glow);
+    sky.follow(camera);
+    post.render();
     requestAnimationFrame(frame);
     return;
   }
@@ -325,7 +370,9 @@ function frame(now) {
   audio.update(player.vehicle?.speed ?? 0, !!player.vehicle, moto ? Math.hypot(moto.x - player.x, moto.z - player.z) : 999);
   hud.update(dt, world);
   hud.bubbles(camera, speakers());
-  renderer.render(scene, camera);
+  glows.update(world, time.glow);
+  sky.follow(camera);
+  post.render();
   input.endFrame();
   requestAnimationFrame(frame);
 }
@@ -366,6 +413,7 @@ document.getElementById('mute').addEventListener('click', () => {
 
 addEventListener('resize', () => {
   renderer.setSize(innerWidth, innerHeight);
+  post?.setSize(innerWidth, innerHeight);
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
 });

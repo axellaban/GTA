@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { makeHuman, animateHuman, randomCivilian } from './human.js';
 import { bannerTexture } from './textures.js';
 import { STREETS } from './map.js';
+import { radialTexture } from './city.js';
 import { R, Rng } from './rng.js';
 
 const RECLAMOS = [
@@ -45,9 +46,14 @@ export class Events {
     this.nextMarcha = 150;
     this.beat = 0;
     this.beatN = 0;
-    this.smokeGeo = new THREE.PlaneGeometry(1.6, 1.6);
+    this.smokeGeo = new THREE.PlaneGeometry(2.2, 2.2);
+    this.smokeTex = radialTexture('rgba(255,255,255,0.9)');
+    this.glowMat = new THREE.SpriteMaterial({ map: radialTexture(), color: 0xff8a2a, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true });
     this.fireMat = new THREE.MeshBasicMaterial({ color: 0xff7a1a, transparent: true, opacity: 0.9 });
     this.fireMat2 = new THREE.MeshBasicMaterial({ color: 0xffd23f, transparent: true, opacity: 0.85 });
+    // fuego sobreexpuesto para que el bloom lo haga brillar
+    this.fireMat.color.setRGB(2.4, 0.85, 0.18);
+    this.fireMat2.color.setRGB(2.6, 1.9, 0.45);
     this.tireGeo = new THREE.TorusGeometry(0.42, 0.18, 6, 12).rotateX(Math.PI / 2);
     this.tireMat = new THREE.MeshLambertMaterial({ color: 0x141414 });
     this.rng = new Rng(Date.now() % 100000);
@@ -96,12 +102,15 @@ export class Events {
       f1.position.y = 1.6;
       const f2 = new THREE.Mesh(new THREE.ConeGeometry(0.4, 1.2, 6), this.fireMat2);
       f2.position.y = 1.4;
-      pile.add(f1, f2);
+      const glow = new THREE.Sprite(this.glowMat);
+      glow.scale.set(5, 5, 1);
+      glow.position.y = 1.6;
+      pile.add(f1, f2, glow);
       pile.position.set(lx, 0, 0);
       g.add(pile);
       ev.fires.push(f1, f2);
       for (let i = 0; i < 6; i++) {
-        const sm = new THREE.Mesh(this.smokeGeo, new THREE.MeshBasicMaterial({ color: 0x2a2a2a, transparent: true, opacity: 0.5, depthWrite: false }));
+        const sm = new THREE.Mesh(this.smokeGeo, new THREE.MeshBasicMaterial({ map: this.smokeTex, color: 0x262626, transparent: true, opacity: 0.5, depthWrite: false }));
         sm.userData = { base: [lx, 0], t: R.range(0, 4) };
         g.add(sm);
         ev.smoke.push(sm);

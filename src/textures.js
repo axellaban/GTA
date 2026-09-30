@@ -60,6 +60,10 @@ export const ATLAS = {
   ladrillo: [],
 };
 
+// Segundo lienzo del mismo tamaño: qué se ilumina de noche (ventanas, vidrieras, carteles)
+let EM = null;
+const LIT = ['#e0b070', '#e8c890', '#d8c8a8', '#d89a50', '#8aa6d8'];
+
 function uvRect(i) {
   const col = i % COLS;
   const row = Math.floor(i / COLS);
@@ -121,10 +125,11 @@ function drawWindow(ctx, x, y, w, h, rng, reja = true) {
   g.addColorStop(1, '#1d2830');
   ctx.fillStyle = g;
   ctx.fillRect(x, y, w, h);
+  let ph = 0;
   if (rng.chance(0.5)) {
     // persiana de madera baja
     ctx.fillStyle = rng.pick(['#7b5b3a', '#5d6b4a', '#8a8a8a', '#6b4a2e']);
-    const ph = h * rng.range(0.3, 1);
+    ph = h * rng.range(0.3, 1);
     ctx.fillRect(x, y, w, ph);
     ctx.strokeStyle = 'rgba(0,0,0,0.25)';
     for (let yy = y + 4; yy < y + ph; yy += 5) {
@@ -134,7 +139,13 @@ function drawWindow(ctx, x, y, w, h, rng, reja = true) {
       ctx.stroke();
     }
   }
-  if (reja) drawReja(ctx, x - 2, y - 2, w + 4, h + 4, rng.int(0, 2));
+  const style = rng.int(0, 2);
+  if (reja) drawReja(ctx, x - 2, y - 2, w + 4, h + 4, style);
+  if (EM && ph < h - 4 && rng.chance(0.42)) {
+    EM.fillStyle = rng.pick(LIT);
+    EM.fillRect(x, y + ph, w, h - ph);
+    if (reja) drawReja(EM, x - 2, y - 2, w + 4, h + 4, style);
+  }
 }
 
 function stains(ctx, x, y, w, h, rng) {
@@ -296,6 +307,12 @@ function drawLocal(ctx, x, y, rng, name) {
     ctx.fillRect(vx + rng.range(4, vw - 14), y + rng.range(60, H - 20), rng.range(5, 12), rng.range(6, 12));
   }
   const up = rng.range(0.25, 0.75);
+  if (EM) {
+    EM.fillStyle = sc;
+    EM.fillRect(x + 8, y + 4, W - 16, 30);
+    EM.fillStyle = '#a8864f';
+    EM.fillRect(vx, y + 42 + (H - 52) * up, vw, (H - 52) * (1 - up));
+  }
   ctx.fillStyle = '#8f969b';
   ctx.fillRect(vx, y + 42, vw, (H - 52) * up);
   ctx.strokeStyle = 'rgba(0,0,0,0.25)';
@@ -350,6 +367,11 @@ function drawEntrada(ctx, x, y, rng) {
   ctx.fillStyle = '#20262b';
   ctx.fillRect(x + 190, y + 20, 130, CELL_H - 30);
   drawReja(ctx, x + 190, y + 20, 130, CELL_H - 30, 1);
+  if (EM) {
+    EM.fillStyle = '#c8a870';
+    EM.fillRect(x + 190, y + 20, 130, CELL_H - 30);
+    drawReja(EM, x + 190, y + 20, 130, CELL_H - 30, 1);
+  }
   ctx.fillStyle = '#d4af37';
   ctx.font = `14px ${FONT}`;
   ctx.fillText(String(rng.int(1000, 2900)), x + 235, y + 16);
@@ -360,13 +382,14 @@ function drawMedianera(ctx, x, y, rng, pintada) {
   const H = CELL_H;
   ctx.fillStyle = rng.pick(['#cfc6b6', '#bdb4a5', '#d8d0c2', '#b9ae9b', '#c8c0b4']);
   ctx.fillRect(x, y, W, H);
-  // revoque saltado
-  for (let i = 0; i < 5; i++) {
+  // revoque saltado (poco, para que no parezca empapelado)
+  const holes = rng.int(0, 2);
+  for (let i = 0; i < holes; i++) {
     const px = x + rng.range(0, W - 60);
     const py = y + rng.range(0, H - 30);
     const pw = rng.range(20, 60);
     const ph = rng.range(10, 30);
-    ctx.fillStyle = '#b5553c';
+    ctx.fillStyle = 'rgba(160,82,58,0.75)';
     ctx.fillRect(px, py, pw, ph);
     ctx.strokeStyle = 'rgba(255,255,255,0.4)';
     for (let yy = py + 5; yy < py + ph; yy += 6) {
@@ -410,6 +433,10 @@ function drawLadrillo(ctx, x, y, rng) {
 export function buildAtlas(shopNames) {
   const c = canvas(CELL_W * COLS, CELL_H * ROWS);
   const ctx = c.getContext('2d');
+  const ec = canvas(CELL_W * COLS, CELL_H * ROWS);
+  EM = ec.getContext('2d');
+  EM.fillStyle = '#000000';
+  EM.fillRect(0, 0, ec.width, ec.height);
   const rng = new Rng(77);
   let i = 0;
   const at = (fn) => {
@@ -429,7 +456,81 @@ export function buildAtlas(shopNames) {
   if (i > COLS * ROWS) console.warn('Atlas lleno', i);
   const t = tex(c);
   t.generateMipmaps = true;
+  const e = tex(ec);
+  EM = null;
+  return { map: t, emissive: e };
+}
+
+// Toldos a rayas de los locales: 4 combinaciones en filas
+export function awningTexture() {
+  const c = canvas(256, 256);
+  const g = c.getContext('2d');
+  const combos = [
+    ['#c62828', '#f5f5f5'],
+    ['#2e7d32', '#f5f5f5'],
+    ['#1565c0', '#f5f5f5'],
+    ['#ef6c00', '#fff3e0'],
+  ];
+  combos.forEach(([a, b], row) => {
+    for (let x = 0; x < 256; x += 32) {
+      g.fillStyle = a;
+      g.fillRect(x, row * 64, 16, 64);
+      g.fillStyle = b;
+      g.fillRect(x + 16, row * 64, 16, 64);
+    }
+    // borde festoneado
+    g.fillStyle = a;
+    for (let x = 0; x < 256; x += 16) {
+      g.beginPath();
+      g.arc(x + 8, row * 64 + 58, 8, 0, Math.PI);
+      g.fill();
+    }
+  });
+  return tex(c);
+}
+
+// Follaje: hojas sobre fondo transparente (para planos cruzados con alphaTest)
+export function leafTexture() {
+  const c = canvas(256, 256);
+  const g = c.getContext('2d');
+  const rng = new Rng(404);
+  for (let i = 0; i < 900; i++) {
+    const a = rng.range(0, Math.PI * 2);
+    const r = Math.pow(rng.next(), 0.6) * 118;
+    const x = 128 + Math.cos(a) * r;
+    const y = 128 + Math.sin(a) * r * 0.9;
+    const light = 1 - (x + y) / 512; // más claro arriba a la izquierda
+    const gch = Math.round(90 + light * 80 + rng.range(-15, 15));
+    g.fillStyle = `rgb(${Math.round(gch * 0.55)},${gch},${Math.round(gch * 0.35)})`;
+    g.save();
+    g.translate(x, y);
+    g.rotate(rng.range(0, Math.PI));
+    g.beginPath();
+    g.ellipse(0, 0, rng.range(4, 8), rng.range(2, 4), 0, 0, Math.PI * 2);
+    g.fill();
+    g.restore();
+  }
+  const t = tex(c);
   return t;
+}
+
+export function brickTexture() {
+  const c = canvas(256, 256);
+  const g = c.getContext('2d');
+  const rng = new Rng(88);
+  g.fillStyle = '#c9b8a0';
+  g.fillRect(0, 0, 256, 256);
+  const bw = 32;
+  const bh = 12;
+  for (let r = 0; r * bh < 256; r++) {
+    for (let k = -1; k * bw < 256; k++) {
+      const off = r % 2 ? bw / 2 : 0;
+      g.fillStyle = rng.pick(['#a3563b', '#9b4d34', '#ad5e40', '#94472f', '#b0644a']);
+      g.fillRect(k * bw + off + 1, r * bh + 1, bw - 2, bh - 2);
+    }
+  }
+  noise(g, 256, 256, rng, 2500, 0.07);
+  return tex(c, true);
 }
 
 // ---------- Texturas repetibles ----------

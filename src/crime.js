@@ -168,12 +168,16 @@ export class Crime {
       // el auto de Gaspi los voltea
       const pv = player.vehicle;
       if (pv && m.state !== 'down' && Math.abs(pv.speed) > 3.5) {
+        // la moto ocupa ~1,9 m: se chequean dos círculos a lo largo
+        let hit = false;
         for (const c of pv.circles()) {
-          if (Math.hypot(c.x - v.x, c.z - v.z) < c.r + 0.7) {
-            this.knockDown(m, world);
-            pv.speed *= 0.6;
-            break;
+          for (const k of [-0.55, 0.55]) {
+            if (Math.hypot(c.x - (v.x + v.fx * k), c.z - (v.z + v.fz * k)) < c.r + 0.55) hit = true;
           }
+        }
+        if (hit) {
+          this.knockDown(m, world);
+          pv.speed *= 0.6;
         }
       }
     }

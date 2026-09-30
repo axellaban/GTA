@@ -22,7 +22,11 @@ import {
   groundTexture,
   ballastTexture,
   textTexture,
+  awningTexture,
+  leafTexture,
+  brickTexture,
 } from './textures.js';
+import { BoxBuilder } from './builder.js';
 import { Colliders } from './physics.js';
 import { Rng } from './rng.js';
 
@@ -39,9 +43,11 @@ export function buildCity(scene) {
 
   addGround(scene);
   addStreets(scene, city);
+  addCrosswalks(scene);
   addSidewalks(scene, blocks);
-  addBuildings(scene, lots, atlas, colliders, rng);
-  addFences(scene, lots, colliders);
+  addBuildings(scene, lots, atlas, colliders, rng, city);
+  addBuildingDetails(scene, lots, city, rng);
+  addFences(scene, lots, colliders, city.balconyRails);
   addRoofProps(scene, lots, rng);
   addTracks(scene);
   addStation(scene, colliders, city);
@@ -134,12 +140,60 @@ function nearCross(s, a) {
   return others.some((o) => Math.abs(o.c - a) < o.w / 2 + 4 && s.c >= o.a && s.c <= o.b);
 }
 
+// ---------- Sendas peatonales y tapas ----------
+function addCrosswalks(scene) {
+  const stripes = [];
+  for (const s of STREETS) {
+    for (const o of STREETS) {
+      if (o.axis === s.axis || s.axis !== 'ns') continue;
+      if (!(o.c >= s.a - 0.5 && o.c <= s.b + 0.5 && s.c >= o.a - 0.5 && s.c <= o.b + 0.5)) continue;
+      // cruce entre la calle NS `s` y la EO `o` en (s.c, o.c)
+      for (const dir of [-1, 1]) {
+        // senda sobre la calle NS, al norte y al sur de la esquina
+        const along = o.c + dir * (o.w / 2 + 2.2);
+        if (along > s.a && along < s.b) for (let k = -s.w / 2 + 0.8; k < s.w / 2 - 0.5; k += 1.1) stripes.push([s.c + k, along, 0]);
+        // senda sobre la calle EO, al oeste y al este
+        const al2 = s.c + dir * (s.w / 2 + 2.2);
+        if (al2 > o.a && al2 < o.b) for (let k = -o.w / 2 + 0.8; k < o.w / 2 - 0.5; k += 1.1) stripes.push([al2, o.c + k, 1]);
+      }
+    }
+  }
+  const g = new THREE.PlaneGeometry(0.55, 3.2);
+  g.rotateX(-Math.PI / 2);
+  const inst = new THREE.InstancedMesh(g, new THREE.MeshLambertMaterial({ color: 0xe4e0d4 }), stripes.length);
+  const m4 = new THREE.Matrix4();
+  const q = new THREE.Quaternion();
+  const up = new THREE.Vector3(0, 1, 0);
+  const one = new THREE.Vector3(1, 1, 1);
+  stripes.forEach(([x, z, rot], i) => {
+    q.setFromAxisAngle(up, rot ? Math.PI / 2 : 0);
+    m4.compose(new THREE.Vector3(x, 0.034, z), q, one);
+    inst.setMatrixAt(i, m4);
+  });
+  inst.receiveShadow = true;
+  scene.add(inst);
+  // tapas de cloaca
+  const rng = new Rng(71);
+  const cover = new THREE.CircleGeometry(0.4, 12);
+  cover.rotateX(-Math.PI / 2);
+  const ci = new THREE.InstancedMesh(cover, new THREE.MeshLambertMaterial({ color: 0x3b3a38 }), 120);
+  for (let i = 0; i < 120; i++) {
+    const s = rng.pick(STREETS);
+    const along = rng.range(s.a + 8, s.b - 8);
+    const across = s.c + rng.range(-1, 1);
+    m4.makeTranslation(s.axis === 'ns' ? across : along, 0.036, s.axis === 'ns' ? along : across);
+    ci.setMatrixAt(i, m4);
+  }
+  scene.add(ci);
+}
+
 // ---------- Veredas ----------
 function addSidewalks(scene, blocks) {
   const tex = sidewalkTexture();
   const geos = [];
   const curbGeos = [];
   const grassGeos = [];
+  const curbStone = [];
   for (const b of blocks) {
     const w = b.x1 - b.x0;
     const d = b.z1 - b.z0;
@@ -156,13 +210,24 @@ function addSidewalks(scene, blocks) {
       [b.x0, b.z1],
       [b.x1, b.z1],
     ]) {
-      const c = new THREE.BoxGeometry(0.25, 0.17, 0.25);
-      c.scale(1, 1, 1);
-      const cg1 = new THREE.BoxGeometry(6, 0.16, 0.22);
-      cg1.translate(cx + (cx === b.x0 ? 3 : -3), 0.08, cz + (cz === b.z0 ? 0.11 : -0.11));
-      const cg2 = new THREE.BoxGeometry(0.22, 0.16, 6);
-      cg2.translate(cx + (cx === b.x0 ? 0.11 : -0.11), 0.08, cz + (cz === b.z0 ? 3 : -3));
+      const cg1 = new THREE.BoxGeometry(6, 0.215, 0.3);
+      cg1.translate(cx + (cx === b.x0 ? 3 : -3), 0.105, cz + (cz === b.z0 ? 0.14 : -0.14));
+      const cg2 = new THREE.BoxGeometry(0.3, 0.215, 6);
+      cg2.translate(cx + (cx === b.x0 ? 0.14 : -0.14), 0.105, cz + (cz === b.z0 ? 3 : -3));
       curbGeos.push(cg1, cg2);
+    }
+    // cordón de hormigón
+    const ct = 0.28;
+    for (const [cx, cz, cw, cd] of [
+      [b.x0 + w / 2, b.z0 + ct / 2, w, ct],
+      [b.x0 + w / 2, b.z1 - ct / 2, w, ct],
+      [b.x0 + ct / 2, b.z0 + d / 2, ct, d],
+      [b.x1 - ct / 2, b.z0 + d / 2, ct, d],
+    ]) {
+      const cg = new THREE.BoxGeometry(cw, 0.2, cd);
+      cg.deleteAttribute('uv');
+      cg.translate(cx, 0.1, cz);
+      curbStone.push(cg);
     }
     // pasto en el centro de manzana (fondos)
     const gw = w - SIDEWALK * 2 - 20;
@@ -177,6 +242,7 @@ function addSidewalks(scene, blocks) {
   const walk = new THREE.Mesh(mergeGeometries(geos), new THREE.MeshLambertMaterial({ map: tex }));
   walk.receiveShadow = true;
   scene.add(walk);
+  scene.add(new THREE.Mesh(mergeGeometries(curbStone), new THREE.MeshLambertMaterial({ color: 0xc9c4b8 })));
   scene.add(new THREE.Mesh(mergeGeometries(curbGeos), new THREE.MeshLambertMaterial({ color: 0xe0b82e })));
   const gt = groundTexture('#5f7040');
   gt.repeat.set(1, 1);
@@ -187,13 +253,14 @@ function addSidewalks(scene, blocks) {
 
 // ---------- Edificios ----------
 // Cada pared se arma con quads por piso y por tramo de ~11 m, mapeados a una celda del atlas.
-function pushQuad(arr, p0, p1, p2, p3, uv, shade) {
+function pushQuad(arr, p0, p1, p2, p3, uv, shade, shadeBottom = shade) {
   // p0 abajo-izq, p1 abajo-der, p2 arriba-der, p3 arriba-izq
   const { pos, uvs, col, idx } = arr;
   const base = pos.length / 3;
   pos.push(...p0, ...p1, ...p2, ...p3);
   uvs.push(uv.u0, uv.v0, uv.u1, uv.v0, uv.u1, uv.v1, uv.u0, uv.v1);
-  for (let i = 0; i < 4; i++) col.push(shade, shade, shade);
+  // oclusión horneada: la base de la pared más oscura
+  for (const k of [shadeBottom, shadeBottom, shade, shade]) col.push(k, k, k);
   idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
 }
 
@@ -210,12 +277,12 @@ function wall(arr, ax, az, bx, bz, y0, y1, pickUv, shade) {
     for (let y = y0; y < y1 - 0.01; y += FLOOR_H) {
       const yy = Math.min(y + FLOOR_H, y1);
       const floor = Math.round((y - y0) / FLOOR_H);
-      pushQuad(arr, [x0, y, z0], [x1, y, z1], [x1, yy, z1], [x0, yy, z0], pickUv(floor, s), shade);
+      pushQuad(arr, [x0, y, z0], [x1, y, z1], [x1, yy, z1], [x0, yy, z0], pickUv(floor, s), shade, floor === 0 ? shade * 0.6 : shade * 0.97);
     }
   }
 }
 
-function addBuildings(scene, lots, atlas, colliders, rng) {
+function addBuildings(scene, lots, atlas, colliders, rng, city) {
   const arr = { pos: [], uvs: [], col: [], idx: [] };
   const roofArr = { pos: [], col: [], idx: [] };
   const tejas = [];
@@ -282,7 +349,8 @@ function addBuildings(scene, lots, atlas, colliders, rng) {
   g.setAttribute('color', new THREE.Float32BufferAttribute(arr.col, 3));
   g.setIndex(arr.idx);
   g.computeVertexNormals();
-  const mat = new THREE.MeshLambertMaterial({ map: atlas, vertexColors: true, side: THREE.FrontSide });
+  const mat = new THREE.MeshLambertMaterial({ map: atlas.map, emissiveMap: atlas.emissive, emissive: 0xffffff, emissiveIntensity: 0, vertexColors: true, side: THREE.FrontSide });
+  city.windowMat = mat;
   const mesh = new THREE.Mesh(g, mat);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
@@ -327,6 +395,107 @@ function addBuildings(scene, lots, atlas, colliders, rng) {
   void CELL_W;
 }
 
+// ---------- Parapetos, cornisas, balcones y toldos ----------
+function frontEdge(b, face) {
+  // extremos de la fachada y normal hacia la calle
+  if (face === 'N') return { ax: b.x0, az: b.z0, bx: b.x1, bz: b.z0, nx: 0, nz: -1 };
+  if (face === 'S') return { ax: b.x0, az: b.z1, bx: b.x1, bz: b.z1, nx: 0, nz: 1 };
+  if (face === 'W') return { ax: b.x0, az: b.z0, bx: b.x0, bz: b.z1, nx: -1, nz: 0 };
+  return { ax: b.x1, az: b.z0, bx: b.x1, bz: b.z1, nx: 1, nz: 0 };
+}
+function slab(D, e, t0, t1, y, h, depth, color, out = 0) {
+  // caja pegada a la fachada entre t0 y t1 (0..1), sobresaliendo `depth`
+  const x0 = e.ax + (e.bx - e.ax) * t0;
+  const z0 = e.az + (e.bz - e.az) * t0;
+  const x1 = e.ax + (e.bx - e.ax) * t1;
+  const z1 = e.az + (e.bz - e.az) * t1;
+  const len = Math.hypot(x1 - x0, z1 - z0);
+  const alongX = Math.abs(e.nz) > 0;
+  const w = alongX ? len : depth;
+  const d = alongX ? depth : len;
+  D.box(w, h, d, color, (x0 + x1) / 2 + e.nx * (depth / 2 + out), y + h / 2, (z0 + z1) / 2 + e.nz * (depth / 2 + out));
+}
+
+function addBuildingDetails(scene, lots, city, rng) {
+  const D = new BoxBuilder();
+  const awnings = { pos: [], uv: [], idx: [] };
+  city.balconyRails = [];
+  for (const lot of lots) {
+    const b = lot.building;
+    if (!b) continue;
+    const e = frontEdge(b, lot.face);
+    const plaster = new THREE.Color().setHSL(0.09, 0.15, 0.72 + ((lot.variant % 7) - 3) * 0.02);
+    // parapeto de terraza
+    if (!lot.pitched) {
+      const t = 0.18;
+      const ph = 0.55;
+      const c = plaster.clone().multiplyScalar(0.92);
+      D.box(b.x1 - b.x0, ph, t, c, (b.x0 + b.x1) / 2, b.h + ph / 2, b.z0 + t / 2);
+      D.box(b.x1 - b.x0, ph, t, c, (b.x0 + b.x1) / 2, b.h + ph / 2, b.z1 - t / 2);
+      D.box(t, ph, b.z1 - b.z0 - 2 * t, c, b.x0 + t / 2, b.h + ph / 2, (b.z0 + b.z1) / 2);
+      D.box(t, ph, b.z1 - b.z0 - 2 * t, c, b.x1 - t / 2, b.h + ph / 2, (b.z0 + b.z1) / 2);
+      // cornisa arriba de la fachada
+      slab(D, e, 0, 1, b.h - 0.25, 0.22, 0.14, plaster.clone().multiplyScalar(1.08));
+    }
+    if (lot.type === 'edificio') {
+      for (let f = 1; f < lot.floors; f++) {
+        const y = f * FLOOR_H;
+        slab(D, e, 0, 1, y - 0.08, 0.16, 0.1, plaster.clone().multiplyScalar(0.85));
+        // balcones
+        if ((lot.variant + f) % 3 !== 0) {
+          const t0 = 0.12 + (lot.variant % 3) * 0.05;
+          const t1 = 0.88 - (lot.variant % 2) * 0.1;
+          slab(D, e, t0, t1, y - 0.02, 0.14, 1.0, 0xbdb6aa);
+          city.balconyRails.push({ e, t0, t1, y: y + 0.12, depth: 1.0 });
+        }
+      }
+    }
+    if (lot.type === 'local') {
+      // toldo inclinado sobre la vereda
+      const x0 = e.ax;
+      const z0 = e.az;
+      const x1 = e.bx;
+      const z1 = e.bz;
+      const inset = 0.6;
+      const len = Math.hypot(x1 - x0, z1 - z0);
+      const ux = (x1 - x0) / len;
+      const uz = (z1 - z0) / len;
+      const ax = x0 + ux * inset;
+      const az = z0 + uz * inset;
+      const bx = x1 - ux * inset;
+      const bz = z1 - uz * inset;
+      const yTop = 3.05;
+      const yLow = 2.45;
+      const dep = 1.6;
+      const row = lot.variant % 4;
+      const base = awnings.pos.length / 3;
+      awnings.pos.push(ax, yTop, az, bx, yTop, bz, bx + e.nx * dep, yLow, bz + e.nz * dep, ax + e.nx * dep, yLow, az + e.nz * dep);
+      const u = (len - inset * 2) / 1.2;
+      const v0 = 1 - (row + 1) / 4;
+      const v1 = 1 - row / 4;
+      awnings.uv.push(0, v1, u, v1, u, v0 + 0.02, 0, v0 + 0.02);
+      awnings.idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
+    }
+    // aire acondicionado en algunas medianeras y fachadas
+    if (rng.chance(0.25)) slab(D, e, 0.7, 0.78, 3.6 + (lot.floors > 1 ? FLOOR_H : 0), 0.45, 0.28, 0xe6e6e6);
+  }
+  const det = D.mesh(new THREE.MeshLambertMaterial({ vertexColors: true }));
+  det.receiveShadow = true;
+  scene.add(det);
+  if (awnings.pos.length) {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(awnings.pos, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(awnings.uv, 2));
+    g.setIndex(awnings.idx);
+    g.computeVertexNormals();
+    const t = awningTexture();
+    t.wrapS = THREE.RepeatWrapping;
+    const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ map: t, side: THREE.DoubleSide }));
+    m.castShadow = true;
+    scene.add(m);
+  }
+}
+
 // ---------- Rejas delanteras ----------
 // Cada reja es un quad con textura calada (alphaTest): se ve como barrotes y cuesta 2 triángulos.
 function rejaTexture() {
@@ -363,7 +532,7 @@ function rejaTexture() {
   return t;
 }
 
-function addFences(scene, lots, colliders) {
+function addFences(scene, lots, colliders, balconyRails = []) {
   const pos = [];
   const uv = [];
   const idx = [];
@@ -402,6 +571,17 @@ function addFences(scene, lots, colliders) {
       quad(sx, sz, ex, ez, 0.62, 0.15 + h);
       colliders.add({ x0: Math.min(sx, ex) - 0.08, x1: Math.max(sx, ex) + 0.08, z0: Math.min(sz, ez) - 0.08, z1: Math.max(sz, ez) + 0.08, kind: 'fence', h });
     }
+  }
+  for (const r of balconyRails) {
+    const { e, t0, t1, y, depth } = r;
+    const x0 = e.ax + (e.bx - e.ax) * t0 + e.nx * depth;
+    const z0 = e.az + (e.bz - e.az) * t0 + e.nz * depth;
+    const x1 = e.ax + (e.bx - e.ax) * t1 + e.nx * depth;
+    const z1 = e.az + (e.bz - e.az) * t1 + e.nz * depth;
+    quad(x0, z0, x1, z1, y, y + 1.0);
+    // costados del balcón
+    quad(x0 - e.nx * depth, z0 - e.nz * depth, x0, z0, y, y + 1.0);
+    quad(x1, z1, x1 - e.nx * depth, z1 - e.nz * depth, y, y + 1.0);
   }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
@@ -508,7 +688,9 @@ function addStation(scene, colliders, city) {
   const edge = new THREE.MeshLambertMaterial({ color: 0xe8c43a });
   const steel = new THREE.MeshLambertMaterial({ color: 0x3f5563 });
   const roofMat = new THREE.MeshLambertMaterial({ color: 0x8a9399, side: THREE.DoubleSide });
-  const brick = new THREE.MeshLambertMaterial({ color: 0xa3563b });
+  const bt = brickTexture();
+  bt.repeat.set(10, 2.2);
+  const brick = new THREE.MeshLambertMaterial({ map: bt });
   const cream = new THREE.MeshLambertMaterial({ color: 0xe7dcc3 });
 
   // Andenes (10 bordes: 5 islas con vía a cada lado)
@@ -705,7 +887,7 @@ function addPolesAndCables(scene, city, rng) {
   // charcos de luz de sodio en el piso (se ven de noche)
   const poolGeo = new THREE.CircleGeometry(6.5, 20);
   poolGeo.rotateX(-Math.PI / 2);
-  const poolMat = new THREE.MeshBasicMaterial({ color: 0xffa640, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+  const poolMat = new THREE.MeshBasicMaterial({ map: radialTexture(), color: 0xffa640, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
   const pools = new THREE.InstancedMesh(poolGeo, poolMat, city.lamps.length);
   city.lamps.forEach((l, i) => {
     m4.makeTranslation(l.x, 0.21, l.z);
@@ -772,7 +954,68 @@ function addPolesAndCables(scene, city, rng) {
   scene.add(sm);
 }
 
+export function radialTexture(inner = 'rgba(255,255,255,1)', size = 128) {
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const g = c.getContext('2d');
+  const gr = g.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  gr.addColorStop(0, inner);
+  gr.addColorStop(0.4, 'rgba(255,255,255,0.45)');
+  gr.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = gr;
+  g.fillRect(0, 0, size, size);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
 // ---------- Árboles de vereda ----------
+// Tronco con ramas + follaje de planos cruzados con textura de hojas (como los árboles del Vice City)
+function treeTemplates() {
+  const trunkParts = [];
+  const t = new THREE.CylinderGeometry(0.13, 0.24, 3.4, 7);
+  t.translate(0, 1.7, 0);
+  trunkParts.push(t);
+  for (const [ax, az, len] of [
+    [0.6, 0.2, 1.8],
+    [-0.5, 0.5, 1.6],
+    [0.1, -0.7, 1.7],
+  ]) {
+    const b = new THREE.CylinderGeometry(0.06, 0.11, len, 5);
+    b.translate(0, len / 2, 0);
+    b.rotateZ(-ax);
+    b.rotateX(az);
+    b.translate(0, 2.8, 0);
+    trunkParts.push(b);
+  }
+  const trunk = mergeGeometries(trunkParts.map((g) => g.toNonIndexed()));
+  trunk.computeVertexNormals();
+  // follaje: grupos de 3 planos cruzados
+  const cards = [];
+  const blobs = [
+    [0, 5.3, 0, 2.3],
+    [1.1, 4.7, 0.4, 1.8],
+    [-1.0, 4.8, 0.6, 1.8],
+    [0.2, 4.6, -1.1, 1.8],
+    [-0.4, 6.0, -0.3, 1.6],
+    [0.7, 5.8, 0.8, 1.5],
+  ];
+  for (const [x, y, z, r] of blobs) {
+    for (let k = 0; k < 3; k++) {
+      const p = new THREE.PlaneGeometry(r * 2, r * 1.8);
+      p.rotateY((k / 3) * Math.PI);
+      if (k === 2) p.rotateX(Math.PI / 2);
+      p.translate(x, y, z);
+      cards.push(p);
+    }
+  }
+  const leaves = mergeGeometries(cards);
+  const core = new THREE.IcosahedronGeometry(1.5, 1);
+  core.scale(1.25, 0.95, 1.25);
+  core.translate(0, 5.1, 0);
+  return { trunk, leaves, core };
+}
+
 function addTrees(scene, blocks, lots, rng, colliders) {
   const trees = [];
   for (const b of blocks) {
@@ -786,30 +1029,36 @@ function addTrees(scene, blocks, lots, rng, colliders) {
       const len = Math.hypot(bx - ax, bz - az);
       for (let d = 9; d < len - 9; d += rng.range(9, 22)) {
         if (rng.chance(0.35)) continue;
-        trees.push([ax + ((bx - ax) * d) / len, az + ((bz - az) * d) / len, rng.range(0.8, 1.3)]);
+        trees.push([ax + ((bx - ax) * d) / len, az + ((bz - az) * d) / len, rng.range(0.8, 1.25), rng.range(0, Math.PI * 2)]);
       }
     }
   }
-  const trunk = new THREE.CylinderGeometry(0.15, 0.22, 3, 6);
-  const crown = new THREE.IcosahedronGeometry(2.2, 0);
-  const ti = new THREE.InstancedMesh(trunk, new THREE.MeshLambertMaterial({ color: 0x5a4a3a }), trees.length);
-  const ci = new THREE.InstancedMesh(crown, new THREE.MeshLambertMaterial({ color: 0x4f7a34, flatShading: true }), trees.length);
+  const T = treeTemplates();
+  const leafTex = leafTexture();
+  const leafMat = new THREE.MeshLambertMaterial({ map: leafTex, alphaTest: 0.45, side: THREE.DoubleSide });
+  const ti = new THREE.InstancedMesh(T.trunk, new THREE.MeshLambertMaterial({ color: 0x5a4a3a }), trees.length);
+  const li = new THREE.InstancedMesh(T.leaves, leafMat, trees.length);
+  const ci = new THREE.InstancedMesh(T.core, new THREE.MeshLambertMaterial({ color: 0x2f4a22 }), trees.length);
+  li.customDepthMaterial = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: leafTex, alphaTest: 0.45 });
   const m4 = new THREE.Matrix4();
+  const q = new THREE.Quaternion();
+  const up = new THREE.Vector3(0, 1, 0);
   const col = new THREE.Color();
-  trees.forEach(([x, z, s], i) => {
-    m4.makeScale(s, s, s);
-    m4.setPosition(x, 0.15 + 1.5 * s, z);
+  trees.forEach(([x, z, sc, rot], i) => {
+    q.setFromAxisAngle(up, rot);
+    m4.compose(new THREE.Vector3(x, 0.15, z), q, new THREE.Vector3(sc, sc * rng.range(0.9, 1.15), sc));
     ti.setMatrixAt(i, m4);
-    m4.makeScale(s, s * 0.9, s);
-    m4.setPosition(x, 0.15 + 4 * s, z);
+    li.setMatrixAt(i, m4);
     ci.setMatrixAt(i, m4);
-    col.setHSL(0.24 + rng.range(-0.04, 0.04), 0.45, 0.3 + rng.range(-0.05, 0.08));
-    ci.setColorAt(i, col);
+    col.setHSL(0.22 + rng.range(-0.05, 0.04), 0.35 + rng.range(0, 0.2), 0.62 + rng.range(-0.08, 0.1));
+    li.setColorAt(i, col);
     colliders.add({ x0: x - 0.25, x1: x + 0.25, z0: z - 0.25, z1: z + 0.25, kind: 'tree', h: 3 });
   });
   ti.castShadow = true;
+  li.castShadow = true;
   ci.castShadow = true;
-  scene.add(ti, ci);
+  li.receiveShadow = true;
+  scene.add(ti, ci, li);
 }
 
 // ---------- Bolsas de basura, contenedores, perros de cemento... ----------

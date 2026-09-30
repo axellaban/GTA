@@ -697,6 +697,45 @@ h1 {
 .brief b {
   color: var(--cal);
 }
+.play-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 24px;
+  align-items: center;
+}
+.quality {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-family: var(--font-ui);
+  font-weight: 700;
+}
+.quality span {
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 0.8rem;
+  color: var(--cal-2);
+  margin-right: 4px;
+}
+.quality button {
+  font: inherit;
+  font-size: 1rem;
+  color: var(--cal);
+  background: transparent;
+  border: 1px solid rgba(244, 239, 228, 0.35);
+  border-radius: 6px;
+  padding: 5px 12px;
+  cursor: pointer;
+}
+.quality button[aria-pressed='true'] {
+  background: var(--celeste);
+  border-color: var(--celeste);
+  color: var(--asfalto);
+}
+.quality button:focus-visible {
+  outline: 3px solid var(--celeste);
+  outline-offset: 2px;
+}
 #play {
   justify-self: start;
   font-family: var(--font-display);
