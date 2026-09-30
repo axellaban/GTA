@@ -24,7 +24,7 @@ Jugás con **Gaspi** (saco, camisa blanca, corbata a rayas rojas y blancas).
 - **Autos** con carrocería perfilada (Falcon, Duna, Gol, pickup, patrullero, remís), vidrios y cromados que reflejan el cielo, llantas, parrilla y patentes Mercosur.
 - **Ciudad**: árboles con follaje de hojas, balcones con rejas, toldos a rayas en los locales, parapetos y cornisas, sendas peatonales, cordones y tapas de cloaca, estación de ladrillo.
 - **Noche**: ventanas y vidrieras que se prenden, halos en faroles, faros y luces traseras, foco del auto de Gaspi y el fuego de los cortes brillando.
-- Calidad **automática**: mide los cuadros por segundo y sube o baja sola. En la pausa se puede fijar a mano en Alto, Medio o Bajo. La rueda del mouse acerca o aleja la cámara.
+- Gráficos siempre en calidad alta. La rueda del mouse acerca o aleja la cámara.
 
 ## Temperley real (0.3)
 

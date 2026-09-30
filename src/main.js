@@ -16,7 +16,7 @@ import { Hud } from './hud.js';
 import { lightMat } from './cars.js';
 import { loadGaspiPhoto, updateHumanLod } from './human.js';
 import { Sky } from './sky.js';
-import { Post, QUALITY, LEVELS } from './post.js';
+import { Post, QUALITY } from './post.js';
 import { Glows } from './glow.js';
 import { buildProps, TrafficLights, BlobShadows } from './props.js';
 import { Fx } from './fx.js';
@@ -38,18 +38,9 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 
-// Calidad gráfica: "auto" (por defecto) la ajusta sola según los cuadros por segundo;
-// también se puede fijar a mano desde la pausa. Se recuerda por navegador.
+// Gráficos siempre en calidad alta (en todos los dispositivos)
 const coarse = matchMedia('(pointer: coarse)').matches;
-let qualityMode = 'auto';
-try {
-  const saved = localStorage.getItem('gta-conurba-calidad');
-  if (saved === 'auto' || QUALITY[saved]) qualityMode = saved;
-} catch {
-  /* sin almacenamiento */
-}
-let qualityName = qualityMode === 'auto' ? (coarse ? 'medio' : 'alto') : qualityMode;
-let Q = QUALITY[qualityName];
+const Q = QUALITY.alto;
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.3, 1400);
@@ -71,80 +62,15 @@ scene.add(sun, sun.target);
 let post = null;
 let glows = null;
 
-function applyQuality(name) {
-  qualityName = name;
-  Q = QUALITY[name];
+function applyQuality() {
   renderer.setPixelRatio(Math.min(devicePixelRatio, Q.pixelRatio));
   renderer.setSize(innerWidth, innerHeight);
-  const shadows = Q.shadows > 0;
-  if (renderer.shadowMap.enabled !== shadows) {
-    renderer.shadowMap.enabled = shadows;
-    scene.traverse((o) => {
-      if (!o.material) return;
-      for (const m of Array.isArray(o.material) ? o.material : [o.material]) m.needsUpdate = true;
-    });
-  }
-  sun.castShadow = shadows;
-  if (shadows && sun.shadow.mapSize.x !== Q.shadows) {
-    sun.shadow.mapSize.set(Q.shadows, Q.shadows);
-    sun.shadow.map?.dispose();
-    sun.shadow.map = null;
-  }
-  post?.dispose();
+  renderer.shadowMap.enabled = true;
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(Q.shadows, Q.shadows);
   post = new Post(renderer, scene, camera, Q);
-  if (glows) glows.lite = !!Q.lite;
-  showQuality();
 }
-function showQuality() {
-  for (const b of document.querySelectorAll('[data-quality]')) {
-    b.setAttribute('aria-pressed', String(b.dataset.quality === qualityMode));
-    if (b.dataset.quality === 'auto') b.textContent = qualityMode === 'auto' ? `Auto (${qualityName === 'minimo' ? 'mínimo' : qualityName})` : 'Auto';
-  }
-}
-function setQualityMode(mode) {
-  qualityMode = mode;
-  auto.ceiling = LEVELS.length - 1;
-  auto.slow = auto.fast = 0;
-  auto.wait = 3;
-  try {
-    localStorage.setItem('gta-conurba-calidad', mode);
-  } catch {
-    /* sin almacenamiento */
-  }
-  applyQuality(mode === 'auto' ? qualityName : mode);
-}
-// Calidad automática: cada 2,5 s mira los cuadros por segundo. Si anda lento, baja un escalón
-// y no vuelve a subir a ese; si sobra, prueba el de arriba.
-const auto = { frames: 0, time: 0, slow: 0, fast: 0, wait: 6, ceiling: LEVELS.length - 1 };
-function autoQuality(dt) {
-  if (qualityMode !== 'auto' || document.hidden || paused) return;
-  if (auto.wait > 0) {
-    // después de un cambio (o al arrancar) se compilan shaders: no cuenta
-    auto.wait -= dt;
-    auto.frames = auto.time = 0;
-    return;
-  }
-  auto.frames++;
-  auto.time += dt;
-  if (auto.time < 2.5) return;
-  const fps = auto.frames / auto.time;
-  auto.frames = auto.time = 0;
-  const i = LEVELS.indexOf(qualityName);
-  auto.slow = fps < 34 ? auto.slow + 1 : 0;
-  auto.fast = fps > 55 ? auto.fast + 1 : 0;
-  if (auto.slow >= 2 && i > 0) {
-    auto.ceiling = i - 1;
-    auto.slow = 0;
-    auto.wait = 3;
-    applyQuality(LEVELS[i - 1]);
-  } else if (auto.fast >= 3 && i < auto.ceiling) {
-    auto.fast = 0;
-    auto.wait = 3;
-    applyQuality(LEVELS[i + 1]);
-  }
-}
-applyQuality(qualityName);
-for (const b of document.querySelectorAll('[data-quality]')) b.addEventListener('click', () => setQualityMode(b.dataset.quality));
+applyQuality();
 
 // ---------- Mundo ----------
 const city = buildCity(scene);
@@ -191,7 +117,6 @@ const crime = new Crime(scene, traffic, city.colliders, audio);
 const events = new Events(scene, traffic, audio);
 const trains = new Trains(scene, audio);
 glows = new Glows(scene, city);
-glows.lite = !!Q.lite;
 buildProps(scene, city);
 const lights = new TrafficLights(scene);
 const blobs = new BlobShadows(scene);
@@ -731,8 +656,6 @@ let intro = 0;
 function frame(now) {
   const dt = Math.max(0, Math.min(0.05, (now - last) / 1000));
   last = now;
-  autoQuality((now - (frame.prev ?? now)) / 1000);
-  frame.prev = now;
   updateWeather(started ? dt : dt * 0.2);
   updateTime(started ? dt : dt * 0.2);
   ATMO.windT.value += dt * (1 + weather.rain * 1.5);

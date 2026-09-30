@@ -1049,40 +1049,6 @@ body {
   max-height: calc(100vh - 32px);
   overflow-y: auto;
 }
-.quality {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
-  font-family: var(--font-ui);
-  font-weight: 700;
-}
-.quality span {
-  flex-basis: 100%;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  font-size: 0.75rem;
-  color: var(--cal-2);
-}
-.quality button {
-  font: inherit;
-  font-size: 0.95rem;
-  color: var(--cal);
-  background: transparent;
-  border: 1px solid rgba(244, 239, 228, 0.35);
-  border-radius: 6px;
-  padding: 5px 10px;
-  cursor: pointer;
-}
-.quality button[aria-pressed='true'] {
-  background: var(--celeste);
-  border-color: var(--celeste);
-  color: var(--asfalto);
-}
-.quality button:focus-visible {
-  outline: 3px solid var(--celeste);
-  outline-offset: 2px;
-}
 .keys {
   margin: 0;
   display: grid;
