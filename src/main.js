@@ -676,6 +676,7 @@ function frame(now) {
   last = now;
   updateWeather(started ? dt : dt * 0.2);
   updateTime(started ? dt : dt * 0.2);
+  ATMO.windT.value += dt * (1 + weather.rain * 1.5);
   if (!started) {
     // cámara dando vueltas sobre la estación
     intro += dt * 0.06;

@@ -2,7 +2,7 @@
 // suelo, calles, pintura vial, edificios con sus frentes, rejas, estación, andenes, faroles y árboles.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { DATA as D, HALF, ROADS, TRACKS, CORNERS, pointAt, STATION } from './map.js';
+import { DATA as D, HALF, ROADS, TRACKS, CORNERS, pointAt, STATION, project } from './map.js';
 import {
   ATLAS,
   buildAtlas,
@@ -17,8 +17,11 @@ import {
   signAtlas,
   roofTexture,
   ROOF_M,
+  cazuelaTexture,
+  grassTexture,
 } from './textures.js';
 import { addWorldDetail } from './detail.js';
+import { addWind } from './atmosphere.js';
 import { Colliders } from './physics.js';
 import { FastBoxes } from './builder.js';
 import { Rng } from './rng.js';
@@ -164,18 +167,23 @@ function addGround(scene, city) {
   scene.add(yard);
 
   // manzanas elevadas 15 cm con cordón
-  const top = new THREE.Mesh(flat(D.blocks, 0.15, 6), new THREE.MeshLambertMaterial({ map: groundTexture('#77755a') }));
+  // el pulmón de manzana: pasto medio seco, con manchones grandes para que no se note la repetición
+  const dry = grassTexture('seco');
+  const topMat = addWorldDetail(new THREE.MeshLambertMaterial({ map: dry.map, normalMap: dry.normal, normalScale: new THREE.Vector2(0.6, 0.6) }), { strength: 0.4, scale: 0.05, damp: 0 });
+  const top = new THREE.Mesh(flat(D.blocks, 0.15, 4), topMat);
   top.receiveShadow = true;
   scene.add(top);
   scene.add(new THREE.Mesh(sides(D.blocks, 0, 0.15), new THREE.MeshLambertMaterial({ color: 0xc4bfb3, side: THREE.DoubleSide })));
 
   const st = sidewalkTexture();
-  const walk = new THREE.Mesh(flat(D.sidewalks, 0.153, 1.3), new THREE.MeshStandardMaterial({ map: st, normalMap: normalMapFrom(st.image, 4, true), normalScale: new THREE.Vector2(0.8, 0.8), roughness: 0.95, metalness: 0, envMapIntensity: 0.5 }));
+  const walkMat = new THREE.MeshStandardMaterial({ map: st, normalMap: normalMapFrom(st.image, 3, true), normalScale: new THREE.Vector2(0.8, 0.8), roughness: 0.95, metalness: 0, envMapIntensity: 0.5 });
+  const walk = new THREE.Mesh(flat(D.sidewalks, 0.153, 3.2), addWorldDetail(walkMat, { strength: 0.3, scale: 0.12, damp: 0 }));
   walk.receiveShadow = true;
   scene.add(walk);
 
   const at = asphaltTexture();
-  const road = new THREE.Mesh(flat(D.roadPoly, 0.02, 9), new THREE.MeshStandardMaterial({ map: at, normalMap: normalMapFrom(at.image, 3, true), normalScale: new THREE.Vector2(0.7, 0.7), roughness: 0.92, metalness: 0, envMapIntensity: 0.5 }));
+  const roadMat = new THREE.MeshStandardMaterial({ map: at, normalMap: normalMapFrom(at.image, 3, true), normalScale: new THREE.Vector2(0.7, 0.7), roughness: 0.92, metalness: 0, envMapIntensity: 0.5 });
+  const road = new THREE.Mesh(flat(D.roadPoly, 0.02, 9), addWorldDetail(roadMat, { strength: 0.28, scale: 0.035, damp: 0 }));
   road.receiveShadow = true;
   scene.add(road);
   // con lluvia se mojan: menos rugosos y más oscuros
@@ -204,7 +212,9 @@ function addGround(scene, city) {
     if (pk.c === 'pitch' || pk.c === 'stadium') pitch.push(...pk.r);
   }
   if (green.length) {
-    const gm = new THREE.Mesh(flat(green, 0.158, 5), new THREE.MeshLambertMaterial({ map: groundTexture('#4f7f36'), color: 0xb8d8a0 }));
+    const grass = grassTexture('verde');
+    const gmMat = addWorldDetail(new THREE.MeshLambertMaterial({ map: grass.map, normalMap: grass.normal, normalScale: new THREE.Vector2(0.6, 0.6) }), { strength: 0.4, scale: 0.05, damp: 0 });
+    const gm = new THREE.Mesh(flat(green, 0.158, 4), gmMat);
     gm.receiveShadow = true;
     scene.add(gm);
   }
@@ -1038,11 +1048,53 @@ export function radialTexture(inner = 'rgba(255,255,255,1)', size = 128) {
 }
 
 // ---------- Árboles ----------
-function treeTemplates() {
-  const trunkParts = [];
-  const t = new THREE.CylinderGeometry(0.13, 0.24, 3.4, 7);
-  t.translate(0, 1.7, 0);
-  trunkParts.push(t);
+// Especies de la zona: fresno (el verde de siempre), tipa (grande y de copa ancha),
+// jacarandá (copa plana y lila) y palo borracho (tronco panzón y flores rosas).
+const SPECIES = {
+  fresno: {
+    h: 3.4, r0: 0.13, r1: 0.24, bark: 0x5a4a3a, coreColor: 0x2f4a22, core: [1.5, 1.25, 0.95, 5.1],
+    blobs: [[0, 5.3, 0, 2.3], [1.1, 4.7, 0.4, 1.8], [-1.0, 4.8, 0.6, 1.8], [0.2, 4.6, -1.1, 1.8], [-0.4, 6.0, -0.3, 1.6], [0.7, 5.8, 0.8, 1.5]],
+  },
+  tipa: {
+    h: 4.4, r0: 0.17, r1: 0.32, bark: 0x62503c, coreColor: 0x3f5a26, core: [2.3, 1.45, 0.62, 6.9],
+    blobs: [[0, 7.2, 0, 2.6], [1.9, 6.6, 0.5, 2.2], [-1.8, 6.7, 0.7, 2.2], [0.3, 6.5, -1.9, 2.2], [-0.6, 6.4, 1.8, 2.0], [1.2, 7.6, -1.0, 1.9], [-1.2, 7.7, -0.9, 1.8]],
+  },
+  jacaranda: {
+    h: 3.2, r0: 0.1, r1: 0.19, bark: 0x4f4540, coreColor: 0x5a4a82, core: [1.8, 1.45, 0.5, 5.4],
+    blobs: [[0, 5.6, 0, 2.2], [1.7, 5.2, 0.4, 1.8], [-1.6, 5.3, 0.6, 1.8], [0.3, 5.1, -1.6, 1.7], [-0.5, 5.2, 1.6, 1.7]],
+  },
+  palo: {
+    h: 3.3, bottle: true, bark: 0x6f7a55, coreColor: 0x3a5225, core: [1.3, 1.2, 0.9, 5.2],
+    blobs: [[0, 5.4, 0, 2.0], [1.0, 5.0, 0.4, 1.6], [-0.9, 5.1, 0.5, 1.6], [0.2, 4.9, -1.0, 1.6]],
+  },
+};
+const WHITEWASH = 0xe2e2da;
+
+function paint(g, hex) {
+  const n = g.attributes.position.count;
+  const c = new THREE.Color(hex);
+  const col = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) col.set([c.r, c.g, c.b], i * 3);
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  return g;
+}
+
+// Tronco con ramas; los de la vereda llevan el metro de abajo pintado a la cal
+function treeTrunk(sp, painted) {
+  const parts = [];
+  if (sp.bottle) {
+    const prof = [];
+    for (let i = 0; i <= 10; i++) {
+      const t = i / 10;
+      prof.push(new THREE.Vector2(0.15 + Math.sin(t * Math.PI * 0.85) * 0.3 * (1 - t * 0.5), t * sp.h));
+    }
+    parts.push(paint(ni(new THREE.LatheGeometry(prof, 9)), sp.bark));
+  } else {
+    const cut = 1.05;
+    const rc = sp.r1 + (sp.r0 - sp.r1) * (cut / sp.h);
+    parts.push(paint(ni(new THREE.CylinderGeometry(rc, sp.r1, cut, 7).translate(0, cut / 2, 0)), painted ? WHITEWASH : sp.bark));
+    parts.push(paint(ni(new THREE.CylinderGeometry(sp.r0, rc, sp.h - cut, 7).translate(0, cut + (sp.h - cut) / 2, 0)), sp.bark));
+  }
   for (const [ax, az, len] of [
     [0.6, 0.2, 1.8],
     [-0.5, 0.5, 1.6],
@@ -1052,21 +1104,17 @@ function treeTemplates() {
     b.translate(0, len / 2, 0);
     b.rotateZ(-ax);
     b.rotateX(az);
-    b.translate(0, 2.8, 0);
-    trunkParts.push(b);
+    b.translate(0, sp.h - 0.6, 0);
+    parts.push(paint(ni(b), sp.bark));
   }
-  const trunk = mergeGeometries(trunkParts.map(ni));
-  trunk.computeVertexNormals();
+  const g = mergeGeometries(parts);
+  g.computeVertexNormals();
+  return g;
+}
+
+function treeCanopy(sp) {
   const cards = [];
-  const blobs = [
-    [0, 5.3, 0, 2.3],
-    [1.1, 4.7, 0.4, 1.8],
-    [-1.0, 4.8, 0.6, 1.8],
-    [0.2, 4.6, -1.1, 1.8],
-    [-0.4, 6.0, -0.3, 1.6],
-    [0.7, 5.8, 0.8, 1.5],
-  ];
-  for (const [x, y, z, r] of blobs) {
+  for (const [x, y, z, r] of sp.blobs) {
     for (let k = 0; k < 3; k++) {
       const p = new THREE.PlaneGeometry(r * 2, r * 1.8);
       p.rotateY((k / 3) * Math.PI);
@@ -1075,37 +1123,100 @@ function treeTemplates() {
       cards.push(p);
     }
   }
-  const core = new THREE.IcosahedronGeometry(1.5, 1);
-  core.scale(1.25, 0.95, 1.25);
-  core.translate(0, 5.1, 0);
-  return { trunk, leaves: mergeGeometries(cards), core };
+  const [cr, sxz, sy, cy] = sp.core;
+  const core = new THREE.IcosahedronGeometry(cr, 1);
+  core.scale(sxz, sy, sxz);
+  core.translate(0, cy, 0);
+  return { leaves: mergeGeometries(cards), core };
+}
+
+// ¿El árbol está en una vereda? Devuelve la dirección de la calle (para alinear la cazuela)
+function streetOf(x, z, boxes) {
+  let best = null;
+  for (const b of boxes) {
+    if (x < b.x0 || x > b.x1 || z < b.z0 || z > b.z1) continue;
+    const p = project(b.r.pts, b.r.cum, x, z);
+    const edge = b.r.w / 2;
+    if (p.dist > edge - 0.3 && p.dist < edge + 3.4 && (!best || p.dist - edge < best.d)) best = { d: p.dist - edge, dx: p.dx, dz: p.dz };
+  }
+  return best;
 }
 
 function addTrees(scene, colliders, rng) {
   const trees = D.trees;
-  const T = treeTemplates();
-  const leafTex = leafTexture();
-  const ti = new THREE.InstancedMesh(T.trunk, new THREE.MeshLambertMaterial({ color: 0x5a4a3a }), trees.length);
-  const li = new THREE.InstancedMesh(T.leaves, new THREE.MeshLambertMaterial({ map: leafTex, alphaTest: 0.45, alphaToCoverage: true, side: THREE.DoubleSide }), trees.length);
-  const ci = new THREE.InstancedMesh(T.core, new THREE.MeshLambertMaterial({ color: 0x2f4a22 }), trees.length);
-  li.customDepthMaterial = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: leafTex, alphaTest: 0.45 });
+  const boxes = ROADS.map((r) => {
+    let x0 = Infinity;
+    let x1 = -Infinity;
+    let z0 = Infinity;
+    let z1 = -Infinity;
+    for (const [x, z] of r.pts) {
+      x0 = Math.min(x0, x);
+      x1 = Math.max(x1, x);
+      z0 = Math.min(z0, z);
+      z1 = Math.max(z1, z);
+    }
+    const m = r.w / 2 + 4;
+    return { r, x0: x0 - m, x1: x1 + m, z0: z0 - m, z1: z1 + m };
+  });
+  // a cada árbol su especie; los de vereda pueden tener el tronco pintado y su cazuela
+  const plan = trees.map(([x, z, sc]) => {
+    const street = streetOf(x, z, boxes);
+    const u = rng.next();
+    const species = street ? (u < 0.42 ? 'fresno' : u < 0.68 ? 'tipa' : u < 0.9 ? 'jacaranda' : 'palo') : u < 0.35 ? 'fresno' : u < 0.7 ? 'tipa' : u < 0.9 ? 'jacaranda' : 'palo';
+    const painted = !!street && species !== 'palo' && rng.chance(0.6);
+    return { x, z, sc, species, painted, street, rot: rng.range(0, Math.PI * 2), sy: rng.range(0.9, 1.15) };
+  });
   const m4 = new THREE.Matrix4();
   const q = new THREE.Quaternion();
   const up = new THREE.Vector3(0, 1, 0);
   const col = new THREE.Color();
-  trees.forEach(([x, z, sc], i) => {
-    q.setFromAxisAngle(up, rng.range(0, Math.PI * 2));
-    m4.compose(new THREE.Vector3(x, 0.15, z), q, new THREE.Vector3(sc, sc * rng.range(0.9, 1.15), sc));
-    ti.setMatrixAt(i, m4);
-    li.setMatrixAt(i, m4);
-    ci.setMatrixAt(i, m4);
-    col.setHSL(0.22 + rng.range(-0.05, 0.04), 0.35 + rng.range(0, 0.2), 0.62 + rng.range(-0.08, 0.1));
-    li.setColorAt(i, col);
-    colliders.addCircle(x, z, 0.25 * sc, 3, 'tree');
-  });
-  ti.castShadow = li.castShadow = ci.castShadow = true;
-  li.receiveShadow = true;
-  scene.add(ti, ci, li);
+  const pos = new THREE.Vector3();
+  const scl = new THREE.Vector3();
+  for (const [name, sp] of Object.entries(SPECIES)) {
+    const list = plan.filter((t) => t.species === name);
+    if (!list.length) continue;
+    const { leaves, core } = treeCanopy(sp);
+    const leafTex = leafTexture(name);
+    const lm = addWind(new THREE.MeshLambertMaterial({ map: leafTex, alphaTest: 0.45, alphaToCoverage: true, side: THREE.DoubleSide }));
+    const li = new THREE.InstancedMesh(leaves, lm, list.length);
+    li.customDepthMaterial = addWind(new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: leafTex, alphaTest: 0.45 }));
+    const ci = new THREE.InstancedMesh(core, new THREE.MeshLambertMaterial({ color: sp.coreColor }), list.length);
+    const trunkMat = new THREE.MeshLambertMaterial({ vertexColors: true });
+    const groups = [false, true].map((p) => ({ list: list.filter((t) => t.painted === p), geo: treeTrunk(sp, p) }));
+    const trunks = groups.filter((g) => g.list.length).map((g) => ({ ...g, mesh: new THREE.InstancedMesh(g.geo, trunkMat, g.list.length), n: 0 }));
+    list.forEach((t, i) => {
+      q.setFromAxisAngle(up, t.rot);
+      m4.compose(pos.set(t.x, 0.15, t.z), q, scl.set(t.sc, t.sc * t.sy, t.sc));
+      li.setMatrixAt(i, m4);
+      ci.setMatrixAt(i, m4);
+      const tg = trunks.find((g) => g.list === (t.painted ? groups[1].list : groups[0].list));
+      tg.mesh.setMatrixAt(tg.n++, m4);
+      col.setRGB(1 - rng.range(0, 0.12), 1 - rng.range(0, 0.06), 1 - rng.range(0, 0.15));
+      li.setColorAt(i, col);
+      colliders.addCircle(t.x, t.z, (name === 'tipa' || name === 'palo' ? 0.32 : 0.25) * t.sc, 3, 'tree');
+    });
+    li.castShadow = ci.castShadow = true;
+    li.receiveShadow = true;
+    scene.add(ci, li);
+    for (const g of trunks) {
+      g.mesh.castShadow = true;
+      g.mesh.receiveShadow = true;
+      scene.add(g.mesh);
+    }
+  }
+  // cazuelas de tierra en la vereda, alineadas con la calle
+  const street = plan.filter((t) => t.street);
+  if (street.length) {
+    const cg = new THREE.PlaneGeometry(1.1, 1.1).rotateX(-Math.PI / 2);
+    const cm = new THREE.InstancedMesh(cg, new THREE.MeshLambertMaterial({ map: cazuelaTexture(), polygonOffset: true, polygonOffsetFactor: -2 }), street.length);
+    street.forEach((t, i) => {
+      q.setFromAxisAngle(up, Math.atan2(t.street.dx, t.street.dz));
+      m4.compose(pos.set(t.x, 0.158, t.z), q, scl.set(1, 1, 1));
+      cm.setMatrixAt(i, m4);
+    });
+    cm.receiveShadow = true;
+    scene.add(cm);
+  }
 }
 
 // ---------- Bolsas de basura en la vereda ----------

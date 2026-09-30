@@ -969,28 +969,109 @@ export function awningTexture() {
 }
 
 // Follaje: hojas sobre fondo transparente (para planos cruzados con alphaTest)
-export function leafTexture() {
+// Follaje por especie: hojas (y flores) en racimos, más claras arriba a la izquierda.
+// kind: 'fresno' (verde), 'tipa' (verde amarillento, hoja chica), 'jacaranda' (flores lilas), 'palo' (flores rosas)
+export function leafTexture(kind = 'fresno') {
   const c = canvas(256, 256);
   const g = c.getContext('2d');
-  const rng = new Rng(404);
-  for (let i = 0; i < 900; i++) {
+  const rng = new Rng(404 + kind.length * 17);
+  const leaf = { fresno: [0.55, 1, 0.35], tipa: [0.72, 1, 0.34], jacaranda: [0.5, 0.92, 0.4], palo: [0.52, 1, 0.36] }[kind];
+  const flower = kind === 'jacaranda' ? [150, 110, 205] : kind === 'palo' ? [232, 120, 170] : null;
+  const count = kind === 'tipa' ? 1400 : 950;
+  const size = kind === 'tipa' ? 0.7 : 1;
+  for (let i = 0; i < count; i++) {
     const a = rng.range(0, Math.PI * 2);
     const r = Math.pow(rng.next(), 0.6) * 118;
     const x = 128 + Math.cos(a) * r;
     const y = 128 + Math.sin(a) * r * 0.9;
-    const light = 1 - (x + y) / 512; // más claro arriba a la izquierda
-    const gch = Math.round(90 + light * 80 + rng.range(-15, 15));
-    g.fillStyle = `rgb(${Math.round(gch * 0.55)},${gch},${Math.round(gch * 0.35)})`;
+    const light = 1 - (x + y) / 512;
+    const isFlower = flower && rng.chance(kind === 'jacaranda' ? 0.72 : 0.35);
+    if (isFlower) {
+      const k = 0.7 + light * 0.45 + rng.range(-0.1, 0.1);
+      g.fillStyle = `rgb(${Math.round(flower[0] * k)},${Math.round(flower[1] * k)},${Math.round(flower[2] * k)})`;
+    } else {
+      const gch = Math.round(90 + light * 80 + rng.range(-15, 15));
+      g.fillStyle = `rgb(${Math.round(gch * leaf[0])},${Math.round(gch * leaf[1])},${Math.round(gch * leaf[2])})`;
+    }
     g.save();
     g.translate(x, y);
     g.rotate(rng.range(0, Math.PI));
     g.beginPath();
-    g.ellipse(0, 0, rng.range(4, 8), rng.range(2, 4), 0, 0, Math.PI * 2);
+    g.ellipse(0, 0, rng.range(4, 8) * size, rng.range(2, 4) * size, 0, 0, Math.PI * 2);
     g.fill();
     g.restore();
   }
   const t = tex(c);
   return t;
+}
+
+// Tierra de la cazuela del árbol, con su borde de cemento
+export function cazuelaTexture() {
+  const c = canvas(64, 64);
+  const g = c.getContext('2d');
+  const rng = new Rng(55);
+  g.fillStyle = '#8e877a';
+  g.fillRect(0, 0, 64, 64);
+  g.fillStyle = '#4a3a2c';
+  g.fillRect(5, 5, 54, 54);
+  for (let i = 0; i < 260; i++) {
+    g.fillStyle = rng.pick(['#3b2e22', '#5a4632', '#6b5a3e', '#556b35', '#2f2519']);
+    g.fillRect(rng.range(5, 57), rng.range(5, 57), rng.range(1, 3), rng.range(1, 3));
+  }
+  return tex(c);
+}
+
+// Pasto con matas, partes secas y tierra pisada
+export function grassTexture(tone = 'verde') {
+  const S = 512;
+  const c = canvas(S, S);
+  const g = c.getContext('2d');
+  const rng = new Rng(tone === 'verde' ? 21 : 22);
+  const dry = tone !== 'verde';
+  g.fillStyle = dry ? '#6f7443' : '#4f7a34';
+  g.fillRect(0, 0, S, S);
+  // manchones grandes (secos o más verdes), repetidos en los bordes para que no se note la costura
+  for (let i = 0; i < 14; i++) {
+    const x = rng.range(0, S);
+    const y = rng.range(0, S);
+    const r = rng.range(40, 140);
+    const col = rng.chance(dry ? 0.6 : 0.35) ? 'rgba(150,140,80,0.35)' : 'rgba(40,90,30,0.35)';
+    for (const ox of [-S, 0, S])
+      for (const oy of [-S, 0, S]) {
+        const gr = g.createRadialGradient(x + ox, y + oy, 0, x + ox, y + oy, r);
+        gr.addColorStop(0, col);
+        gr.addColorStop(1, 'rgba(0,0,0,0)');
+        g.fillStyle = gr;
+        g.fillRect(x + ox - r, y + oy - r, r * 2, r * 2);
+      }
+  }
+  // hojitas de pasto
+  for (let i = 0; i < 16000; i++) {
+    const x = rng.range(0, S);
+    const y = rng.range(0, S);
+    const v = rng.range(-1, 1);
+    const yellow = rng.chance(dry ? 0.3 : 0.1);
+    g.strokeStyle = yellow ? `rgba(${170 + v * 20},${160 + v * 20},${90 + v * 10},0.7)` : `rgba(${60 + v * 20},${110 + v * 30},${40 + v * 12},0.75)`;
+    g.lineWidth = rng.range(0.8, 1.6);
+    g.beginPath();
+    g.moveTo(x, y);
+    g.lineTo(x + rng.range(-2, 2), y - rng.range(3, 7));
+    g.stroke();
+  }
+  // tierra pelada
+  for (let i = 0; i < (dry ? 9 : 4); i++) {
+    const x = rng.range(20, S - 20);
+    const y = rng.range(20, S - 20);
+    const r = rng.range(10, 34);
+    const gr = g.createRadialGradient(x, y, 0, x, y, r);
+    gr.addColorStop(0, 'rgba(110,90,62,0.8)');
+    gr.addColorStop(1, 'rgba(110,90,62,0)');
+    g.fillStyle = gr;
+    g.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  const map = tex(c, true);
+  map.anisotropy = 8;
+  return { map, normal: normalMapFrom(c, 1.6, true) };
 }
 
 export function brickTexture() {
@@ -1242,23 +1323,73 @@ export function asphaltTexture() {
   return t;
 }
 
+// Vereda de baldosas "vainilla": algunas rotas, otras cambiadas por cemento, manchas y mugre en las juntas.
+// 8 x 8 baldosas por textura.
 export function sidewalkTexture() {
-  const c = canvas(128, 128);
+  const S = 512;
+  const c = canvas(S, S);
   const ctx = c.getContext('2d');
   const rng = new Rng(9);
-  ctx.fillStyle = '#b9b3a6';
-  ctx.fillRect(0, 0, 128, 128);
-  for (let x = 0; x < 128; x += 32) {
-    for (let y = 0; y < 128; y += 32) {
-      ctx.fillStyle = rng.chance(0.15) ? '#9f978a' : rng.chance(0.5) ? '#c3bdb0' : '#b3ad9f';
-      ctx.fillRect(x + 1, y + 1, 30, 30);
-      // vainillas
-      ctx.fillStyle = 'rgba(0,0,0,0.08)';
-      for (let k = 0; k < 4; k++) ctx.fillRect(x + 4 + k * 7, y + 4, 4, 24);
+  ctx.fillStyle = '#8f897d';
+  ctx.fillRect(0, 0, S, S);
+  const n = 8;
+  const t = S / n;
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < n; j++) {
+      const x = i * t;
+      const y = j * t;
+      const v = rng.range(-10, 10);
+      const patched = rng.chance(0.05);
+      if (patched) {
+        // baldosa que se rompió y taparon con cemento
+        ctx.fillStyle = `rgb(${150 + v},${150 + v},${146 + v})`;
+        ctx.fillRect(x, y, t, t);
+        continue;
+      }
+      ctx.fillStyle = `rgb(${190 + v},${183 + v},${168 + v})`;
+      ctx.fillRect(x + 1.5, y + 1.5, t - 3, t - 3);
+      // vainillas (barritas en relieve)
+      const vert = (i + j) % 2 === 0;
+      for (let k = 0; k < 6; k++) {
+        const o = 6 + k * ((t - 12) / 6);
+        ctx.fillStyle = 'rgba(255,255,255,0.14)';
+        if (vert) ctx.fillRect(x + o, y + 6, 4, t - 12);
+        else ctx.fillRect(x + 6, y + o, t - 12, 4);
+        ctx.fillStyle = 'rgba(0,0,0,0.16)';
+        if (vert) ctx.fillRect(x + o + 4, y + 6, 1.5, t - 12);
+        else ctx.fillRect(x + 6, y + o + 4, t - 12, 1.5);
+      }
+      if (rng.chance(0.08)) {
+        // rajadura
+        ctx.strokeStyle = 'rgba(50,45,40,0.7)';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(x + rng.range(0, t), y);
+        ctx.lineTo(x + rng.range(0, t), y + t * 0.5);
+        ctx.lineTo(x + rng.range(0, t), y + t);
+        ctx.stroke();
+      }
     }
   }
-  noise(ctx, 128, 128, rng, 600, 0.08);
-  return tex(c, true);
+  // manchas (aceite, chicles, humedad) repetidas en los bordes
+  for (let i = 0; i < 26; i++) {
+    const x = rng.range(0, S);
+    const y = rng.range(0, S);
+    const r = rng.range(4, 40);
+    const a = rng.range(0.08, 0.22);
+    for (const ox of [-S, 0, S])
+      for (const oy of [-S, 0, S]) {
+        const gr = ctx.createRadialGradient(x + ox, y + oy, 0, x + ox, y + oy, r);
+        gr.addColorStop(0, `rgba(40,36,30,${a})`);
+        gr.addColorStop(1, 'rgba(40,36,30,0)');
+        ctx.fillStyle = gr;
+        ctx.fillRect(x + ox - r, y + oy - r, r * 2, r * 2);
+      }
+  }
+  noise(ctx, S, S, rng, 9000, 0.06);
+  const map = tex(c, true);
+  map.anisotropy = 8;
+  return map;
 }
 
 export function groundTexture(base = '#6f7a4c') {
