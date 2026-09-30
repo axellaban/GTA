@@ -189,6 +189,8 @@ export class Combat {
       }
     };
     for (const n of world.npcs.list) if (n.state !== 'ko') consider(n.x, n.z, n, 'npc');
+    // si no hay nadie parado, se puede rematar al que está tirado
+    if (!best) for (const n of world.npcs.list) if (n.state === 'ko' && !n.killed) consider(n.x, n.z, n, 'npc');
     for (const m of world.crime.motos) if (m.state !== 'down' && m.v.speed < 4) consider(m.v.x, m.v.z, m, 'moto');
     for (const v of world.traffic.motos()) if (v.rider && Math.abs(v.speed) < 4) consider(v.x, v.z, v, 'rider');
     return best;
@@ -198,19 +200,27 @@ export class Combat {
     if (!t || t.cos < 0.35) return;
     const fx = Math.sin(P.heading);
     const fz = Math.cos(P.heading);
-    this.fx.hit(t.x - fx * 0.3, 1.3, t.z - fz * 0.3);
-    this.fx.shake += a.pose === 'kick' || a.pose === 'swing' ? 0.18 : 0.08;
+    const heavy = a.pose === 'kick' || a.pose === 'swing' || a.pose === 'hook';
+    this.fx.shake += heavy ? 0.24 : 0.12;
     this.audio.golpe(a.pose === 'swing' ? 0.9 : 0.6);
     P.hitMarker = 0.15;
+    // el golpe "pega": el tiempo se congela un instante
+    world.hitStop = heavy ? 0.1 : 0.07;
     if (t.kind === 'npc') {
       const n = t.obj;
       const down = n.down;
+      const lying = n.state === 'ko';
+      // sangre de la boca o la nariz (y más con el palo)
+      const bh = lying ? 0.25 : 1.55;
+      if (a.pose === 'swing' || R.chance(0.65)) this.fx.blood(t.x - fx * 0.15, bh, t.z - fz * 0.15, fx, fz, a.pose === 'swing' ? 12 : 6, a.pose === 'swing' ? 3 : 2);
+      else this.fx.hit(t.x - fx * 0.3, 1.3, t.z - fz * 0.3);
       const res = world.npcs.hurt(n, down ? a.dmg * 0.7 : a.dmg, fx, fz, { byPlayer: true, knock: a.knock, world });
-      world.police.crime(n.type === 'cana' ? 'cana' : res === 'ko' ? 'ko' : 'pina', n.x, n.z);
+      world.police.crime(n.type === 'cana' ? 'cana' : res === 'muerte' ? 'muerte' : res === 'ko' ? 'ko' : 'pina', n.x, n.z);
       if (res === 'ko' && !down) {
         world.hud.toast(R.pick(['¡Nocaut!', '¡A dormir!', '¡Fuera!']), 1.2);
         world.social?.('ko', n.x, n.z);
       }
+      if (res === 'muerte') world.social?.('muerte', n.x, n.z);
     } else if (t.kind === 'moto') {
       world.crime.knockDown(t.obj, world);
     } else if (t.kind === 'rider') {
@@ -347,10 +357,12 @@ export class Combat {
     if (hit.type === 'npc') {
       const n = hit.obj;
       const res = world.npcs.hurt(n, dmg, fx, fz, { byPlayer, gun: true, knock: w.knock || dmg >= 45, knockT: 3, world });
-      this.fx.hit(hit.x, hit.y, hit.z);
+      // la bala sale por atrás con sangre
+      this.fx.blood(hit.x, hit.y, hit.z, fx, fz, w.id === 'escopeta' ? 7 : 10, 4);
       if (byPlayer) {
         world.player.hitMarker = 0.2;
-        world.police.crime(n.type === 'cana' ? 'cana' : res === 'ko' ? 'muerte' : 'herido', n.x, n.z);
+        world.police.crime(n.type === 'cana' ? 'cana' : res === 'muerte' || res === 'ko' ? 'muerte' : 'herido', n.x, n.z);
+        if (res === 'muerte') world.social?.('muerte', n.x, n.z);
       }
     } else if (hit.type === 'moto') {
       this.fx.sparks(hit.x, hit.y, hit.z, 5, 4);
@@ -365,7 +377,7 @@ export class Combat {
     } else if (hit.type === 'player') {
       world.player.hurt(dmg, 'Te dieron un tiro');
       world.player.hitReact?.(o.x, o.z);
-      this.fx.hit(hit.x, hit.y, hit.z);
+      this.fx.blood(hit.x, hit.y, hit.z, fx, fz, 8, 3);
     } else if (hit.type === 'wall') {
       this.fx.sparks(hit.x, hit.y, hit.z, 4, 3);
       this.fx.dust(hit.x, hit.y, hit.z, 3, [0.7, 0.66, 0.6], 0.5);

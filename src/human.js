@@ -1014,6 +1014,26 @@ export function animateHuman(h, dt, speed, pose = 'walk', t = 0) {
   const b = h.bones;
   reset(h);
 
+  if (pose === 'dead') {
+    // tirado sin vida: boca arriba o boca abajo, brazos y piernas como cayeron (t es la semilla)
+    const v = t;
+    const face = v > 0.55;
+    b.root.rotation.x = face ? Math.PI / 2 : -Math.PI / 2;
+    b.root.rotation.z = (v - 0.5) * 0.5;
+    b.root.position.set(0, 0.11, 0);
+    b.uaR.rotation.set(-0.4 - v * 1.7, 0, -0.9 - v * 0.7);
+    b.uaL.rotation.set(-2.0 + v * 1.5, 0, 1.1 - v * 0.5);
+    b.faR.rotation.x = -0.25 - v * 0.9;
+    b.faL.rotation.x = -1.0 + v * 0.7;
+    b.thR.rotation.set(-0.15 - v * 0.55, 0, -0.3);
+    b.thL.rotation.set(0.05 + v * 0.25, 0, 0.22 + v * 0.3);
+    b.shR.rotation.x = 0.35 + v * 0.9;
+    b.shL.rotation.x = 0.08;
+    b.ftR.rotation.x = 0.6;
+    b.ftL.rotation.x = 0.5;
+    b.head.rotation.set(face ? 0 : 0.15, 1.0 - v * 2.0, 0);
+    return;
+  }
   if (pose === 'knocked') {
     b.root.rotation.x = -Math.PI / 2;
     b.root.position.set(0, 0.12, 0);

@@ -1,5 +1,5 @@
-// Efectos: partículas (humo, fuego, chispas, polvo, humo de gomas), trazas de bala,
-// marcas de frenada, fogonazos, lluvia y temblor de cámara.
+// Efectos: partículas (humo, fuego, chispas, polvo, humo de gomas, sangre), trazas de bala,
+// marcas de frenada, manchas y charcos de sangre, fogonazos, lluvia y temblor de cámara.
 import * as THREE from 'three';
 
 const VERT = `
@@ -117,6 +117,38 @@ function lerpColor(a, b, k) {
 }
 const rnd = (a, b) => a + Math.random() * (b - a);
 
+function splatTexture() {
+  const N = 128;
+  const c = document.createElement('canvas');
+  c.width = c.height = N;
+  const g = c.getContext('2d');
+  const blob = (x, y, r, a) => {
+    const gr = g.createRadialGradient(x, y, 0, x, y, r);
+    gr.addColorStop(0, `rgba(255,255,255,${a})`);
+    gr.addColorStop(0.7, `rgba(235,235,235,${a * 0.9})`);
+    gr.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = gr;
+    g.beginPath();
+    g.arc(x, y, r, 0, Math.PI * 2);
+    g.fill();
+  };
+  // cuerpo de la mancha con bordes irregulares
+  for (let i = 0; i < 14; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const d = Math.random() * N * 0.16;
+    blob(N / 2 + Math.cos(a) * d, N / 2 + Math.sin(a) * d, N * (0.14 + Math.random() * 0.12), 0.9);
+  }
+  // gotitas salpicadas
+  for (let i = 0; i < 18; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const d = N * (0.3 + Math.random() * 0.17);
+    blob(N / 2 + Math.cos(a) * d, N / 2 + Math.sin(a) * d, N * (0.012 + Math.random() * 0.025), 0.95);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
 export class Fx {
   constructor(scene) {
     this.scene = scene;
@@ -142,6 +174,17 @@ export class Fx {
     this.skid.frustumCulled = false;
     this.skidI = 0;
     scene.add(this.skid);
+    // manchas y charcos de sangre (siguen la altura del piso: calle o vereda)
+    const BL = 180;
+    const blMat = new THREE.MeshLambertMaterial({ map: splatTexture(), color: 0x6e0707, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
+    this.bloodM = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), blMat, BL);
+    this.bloodM.count = 0;
+    this.bloodM.frustumCulled = false;
+    this.bloodM.receiveShadow = true;
+    this.bloodI = 0;
+    this.pools = [];
+    this.ground = () => 0;
+    scene.add(this.bloodM);
     // luces para fogonazos y explosiones (fijas en la escena: agregarlas después recompila todo)
     this.flashLight = new THREE.PointLight(0xffc070, 0, 14, 2);
     this.boomLight = new THREE.PointLight(0xff8a3a, 0, 40, 1.6);
@@ -208,8 +251,39 @@ export class Fx {
     this.boomLight.intensity = 260 * power;
   }
   hit(x, y, z) {
-    // golpe o bala en una persona: polvo de ropa, sin sangre
+    // golpe o bala en algo que no sangra: polvo
     this.dust(x, y, z, 4, [0.75, 0.72, 0.66], 0.6);
+  }
+  // sangre: gotas que salen en la dirección del golpe, caen y manchan el piso
+  blood(x, y, z, dx = 0, dz = 0, n = 10, speed = 3) {
+    for (let i = 0; i < n; i++) {
+      const s = rnd(0.3, 1);
+      this.alpha.add({ x, y, z, vx: dx * speed * s + rnd(-0.9, 0.9), vy: rnd(0.4, 2.4), vz: dz * speed * s + rnd(-0.9, 0.9), grav: -9.8, drag: 0.5, life: 0, max: rnd(0.35, 0.75), s0: rnd(0.07, 0.15), s1: 0.05, c0: [0.42, 0.02, 0.02], a: 0.95 });
+    }
+    // una nubecita roja en el punto del impacto
+    this.alpha.add({ x, y, z, vx: dx * 0.8, vy: 0.2, vz: dz * 0.8, grav: 0, drag: 3, life: 0, max: 0.3, s0: 0.25, s1: 0.6, c0: [0.5, 0.03, 0.03], a: 0.55 });
+    const d = Math.min(1.8, 0.4 + speed * 0.25);
+    for (let i = 0; i < Math.ceil(n / 3); i++) this.splat(x + dx * rnd(0.2, d) + rnd(-0.35, 0.35), z + dz * rnd(0.2, d) + rnd(-0.35, 0.35), rnd(0.1, 0.32));
+  }
+  splat(x, z, r) {
+    const i = this.bloodI;
+    this.bloodI = (this.bloodI + 1) % this.bloodM.instanceMatrix.count;
+    this.bloodM.count = Math.max(this.bloodM.count, this.bloodI);
+    // si esta mancha era un charco que crecía, se deja de actualizar
+    this.pools = this.pools.filter((p) => p.i !== i);
+    this.setSplat(i, x, z, r, Math.random() * Math.PI * 2);
+    return i;
+  }
+  setSplat(i, x, z, r, rot) {
+    this.q.setFromAxisAngle(this.v.set(0, 1, 0), rot);
+    this.m4.compose(this.v.set(x, this.ground(x, z) + 0.025, z), this.q, this.s.set(r * 2, 1, r * 2));
+    this.bloodM.setMatrixAt(i, this.m4);
+    this.bloodM.instanceMatrix.needsUpdate = true;
+  }
+  // charco que se agranda de a poco debajo de un cuerpo
+  pool(x, z, max = 0.9) {
+    const i = this.splat(x, z, 0.15);
+    this.pools.push({ i, x, z, r: 0.15, max, rot: Math.random() * Math.PI * 2 });
   }
 
   // ---------- Trazas ----------
@@ -292,6 +366,11 @@ export class Fx {
   update(dt) {
     this.alpha.update(dt);
     this.add.update(dt);
+    for (const p of this.pools) {
+      if (p.r >= p.max) continue;
+      p.r = Math.min(p.max, p.r + dt * 0.06);
+      this.setSplat(p.i, p.x, p.z, p.r, p.rot);
+    }
     const t = this.tr;
     let i = 0;
     const keep = [];

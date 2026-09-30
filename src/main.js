@@ -183,6 +183,7 @@ glows = new Glows(scene, city);
 buildProps(scene, city);
 const lights = new TrafficLights(scene);
 const blobs = new BlobShadows(scene);
+fx.ground = heightAt;
 const pickups = new Pickups(scene, audio);
 pickups.placeWorld(city, heightAt);
 buildLampMap(city.lamps, pickups.shops);
@@ -204,6 +205,7 @@ const POSTS = {
   perdio: () => ['Se les escapó otra vez. ¿Para qué pagamos impuestos?', 'La cana dando vueltas y el de traje ni rastro', 'Se les perdió. Clásico.'],
   boom: (c) => [`¡Explotó un auto en ${c}! Humo negro por todo el barrio`, `¿Escucharon la explosión? Fue en ${c}`, `Se prendió fuego un auto en ${c}, ¡llamen a los bomberos!`],
   ko: (c) => [`Piñas en ${c}. Uno quedó durmiendo en la vereda`, `Terrible trompada en ${c}, lo dejaron nocaut`, `Otra vez bardo en ${c}`],
+  muerte: (c) => [`Mataron a un vecino en ${c}. Hay sangre por todos lados`, `Un muerto en ${c}. ¿Dónde está la policía?`, `Terrible lo de ${c}, quedó tirado en la vereda`],
   robo_auto: (c) => [`Otro auto robado en ${c}. Cuiden los autos, vecinos`, `Le sacaron el auto a un señor en ${c}, a plena luz del día`],
   willy: (c) => [`Un loco haciendo willy por ${c}. Así estamos`, `Pasó uno en una sola rueda por ${c}, casi se mata`],
   robo: (c) => [`Asaltaron un negocio en ${c}. Estamos a la deriva`, `Robo en ${c}: se llevó toda la caja`],
@@ -579,9 +581,21 @@ function interactions() {
 
 // ---------- Ganchos ----------
 player.say = (text, dur = 2.5) => (player.bubble = { text, t: dur });
+const hurtEl = document.getElementById('hurt');
+let hurtFx = 0;
 player.hooks.hurt = (n, msg) => {
   if (msg && n >= 15) hud.toast(msg, 2);
+  hurtFx = Math.min(1, hurtFx + 0.25 + n / 40);
 };
+function updateHurt(dt) {
+  hurtFx = Math.max(0, hurtFx - dt * 1.4);
+  const low = player.dead ? 0 : Math.max(0, (35 - player.health) / 35) * (0.55 + Math.sin(performance.now() / 260) * 0.15);
+  const k = Math.max(hurtFx, low);
+  if (Math.abs(k - (updateHurt.k ?? -1)) > 0.01) {
+    updateHurt.k = k;
+    hurtEl.style.opacity = k.toFixed(2);
+  }
+}
 function screen(kind, title, sub) {
   const el = document.getElementById('wasted');
   el.hidden = false;
@@ -717,8 +731,13 @@ let started = false;
 let last = performance.now();
 let intro = 0;
 function frame(now) {
-  const dt = Math.max(0, Math.min(0.05, (now - last) / 1000));
+  let dt = Math.max(0, Math.min(0.05, (now - last) / 1000));
   last = now;
+  // golpe que "pega": el tiempo casi se frena un instante
+  if (world.hitStop > 0) {
+    world.hitStop -= dt;
+    dt *= 0.08;
+  }
   const real = (now - (frame.prev ?? now)) / 1000;
   frame.prev = now;
   dynamicResolution(real);
@@ -797,6 +816,7 @@ function frame(now) {
   const moto = crime.nearestMoto(player.x, player.z, 80);
   audio.update(player.vehicle?.speed ?? 0, !!player.vehicle, moto ? Math.hypot(moto.x - player.x, moto.z - player.z) : 999, player.vehicle?.kind === 'moto');
   hud.update(dt, world);
+  updateHurt(dt);
   hud.bubbles(camera, speakers());
   glows.update(world, time.glow);
   lights.update(dt);

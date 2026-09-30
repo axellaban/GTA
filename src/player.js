@@ -665,12 +665,15 @@ export class Player {
         if (n.down || Math.abs(n.x - v.x) > 4 || Math.abs(n.z - v.z) > 4) continue;
         for (const c of v.circles()) {
           if (Math.hypot(n.x - c.x, n.z - c.z) < c.r + 0.4) {
-            const res = npcs.hurt(n, Math.abs(v.speed) * (moto ? 2.5 : 4), v.fx, v.fz, { knock: true, knockT: 2.5, world, byPlayer: true });
-            effects.hit(n.x, 1, n.z);
+            const hitSpeed = Math.abs(v.speed);
+            const res = npcs.hurt(n, hitSpeed * (moto ? 2.5 : 4), v.fx, v.fz, { knock: true, knockT: 2.5, world, byPlayer: true });
+            if (hitSpeed > 8) effects.blood(n.x, 0.9, n.z, v.fx, v.fz, Math.min(16, 4 + hitSpeed * 0.6), Math.min(5, hitSpeed * 0.3));
+            else effects.hit(n.x, 1, n.z);
             v.vx *= 0.8;
             v.vz *= 0.8;
             this.addRespeto(-1);
-            police.crime(n.type === 'cana' ? 'cana' : res === 'ko' ? 'muerte' : 'atropello', n.x, n.z);
+            police.crime(n.type === 'cana' ? 'cana' : res === 'ko' || res === 'muerte' ? 'muerte' : 'atropello', n.x, n.z);
+            if (res === 'muerte') world.social?.('muerte', n.x, n.z);
             break;
           }
         }

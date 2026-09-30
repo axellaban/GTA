@@ -290,11 +290,20 @@ export class Npcs {
   }
 
   // ---------- Golpes ----------
-  // fx, fz: dirección del golpe. Devuelve 'ko' si lo dejó fuera de combate.
+  // fx, fz: dirección del golpe. Devuelve 'ko' si lo dejó fuera de combate y 'muerte' si lo mató.
   hurt(n, dmg, fx, fz, o = {}) {
-    if (n.state === 'ko') return null;
-    n.hp -= dmg;
     const w = o.world;
+    if (n.killed) return null;
+    if (n.state === 'ko') {
+      // pegarle o tirarle a alguien que está tirado lo termina de matar
+      n.hp -= dmg;
+      if (o.gun || n.hp < -45) {
+        this.kill(n, fx, fz, w);
+        return 'muerte';
+      }
+      return null;
+    }
+    n.hp -= dmg;
     n.cool = 0;
     if (n.hp <= 0) {
       if (!n.down) n.fallT = 0.3;
@@ -309,6 +318,11 @@ export class Npcs {
       n.money = 0;
       if (w && n.type === 'cana' && R.chance(0.6)) w.pickups.weapon(n.x - fz, n.z + fx, R.chance(0.7) ? 'pistola' : 'escopeta', true);
       this.audio.golpe(0.7);
+      // un tiro, un golpe muy fuerte o seguir pegándole: muere
+      if (o.gun || dmg >= 45 || n.hp < -20) {
+        this.kill(n, fx, fz, w);
+        return 'muerte';
+      }
       return 'ko';
     }
     if (o.knock || dmg >= 34) {
@@ -327,6 +341,26 @@ export class Npcs {
     if (!n.bubble || R.chance(0.5)) n.say(R.pick(LINES.duele), 1.6);
     if (o.byPlayer) this.react(n, w, o.gun);
     return 'hit';
+  }
+
+  // Muere: queda tirado, despatarrado, sin moverse, con un charco de sangre que crece.
+  // La gente cerca se asusta y se va.
+  kill(n, fx, fz, w) {
+    n.killed = true;
+    if (n.state !== 'ko') {
+      if (!n.down) n.fallT = 0.3;
+      n.state = 'ko';
+      n.koT = 0;
+    }
+    n.deadPose = R.range(0, 1);
+    n.act = null;
+    n.bubble = null;
+    if (w?.fx) {
+      w.fx.blood(n.x, n.y + 0.9, n.z, fx, fz, 18, 3.5);
+      // el charco sale del torso, que queda para el lado del golpe
+      setTimeout(() => w.fx.pool(n.x + fx * 0.55, n.z + fz * 0.55, R.range(0.7, 1.1)), 900);
+    }
+    this.panic(n.x, n.z, 18, w?.player);
   }
 
   // qué hace cuando lo lastima Gaspi
@@ -401,8 +435,8 @@ export class Npcs {
       }
       if (n.state === 'ko') {
         n.koT += dt;
-        if (!far) animateHuman(n.h, dt, 0, 'knocked');
-        if (n.koT > 45 && dp > 60) n.dead = true;
+        if (!far) animateHuman(n.h, dt, 0, n.killed ? 'dead' : 'knocked', n.deadPose);
+        if (n.koT > (n.killed ? 90 : 45) && dp > 60) n.dead = true;
         this.place(n);
         continue;
       }
