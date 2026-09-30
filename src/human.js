@@ -35,7 +35,7 @@ function hex(c) {
 function cellRect(i) {
   const col = i % COLS;
   const row = Math.floor(i / COLS);
-  return { x: col * CW, y: row * CH, u0: (col * CW + 1) / AW, u1: ((col + 1) * CW - 1) / AW, v0: 1 - ((row + 1) * CH - 1) / AH, v1: 1 - (row * CH + 1) / AH };
+  return { x: col * CW, y: row * CH, w: CW, h: CH, u0: (col * CW + 1) / AW, u1: ((col + 1) * CW - 1) / AW, v0: 1 - ((row + 1) * CH - 1) / AH, v1: 1 - (row * CH + 1) / AH };
 }
 const rnd = Math.random;
 
@@ -228,11 +228,22 @@ function drawJersey(r, team) {
 // ---------- Caras ----------
 // La cara ocupa la mitad de adelante de la cabeza: nx va de -1 (derecha del personaje) a 1,
 // ny de 1 (arriba) a -1 (mentón). Ver headPoint en body.js.
-function drawHead(i, o) {
-  const r = cellRect(i);
+// Gaspi tiene su cara en un bloque de 2×2 celdas (el doble de resolución), al final del atlas.
+const GASPI_CELLS = [54, 55, 62, 63];
+const GASPI_RECT = (() => {
+  const r = cellRect(54);
+  const r2 = cellRect(63);
+  return { x: r.x, y: r.y, w: CW * 2, h: CH * 2, u0: r.u0, u1: r2.u1, v0: r2.v0, v1: r.v1 };
+})();
+const clamp1 = (v) => Math.max(-1, Math.min(1, v));
+
+function drawHead(r, o) {
   const g = actx;
-  const FX = (nx) => r.x + (0.5 + Math.asin(Math.max(-1, Math.min(1, nx))) / Math.PI) * CW;
-  const FY = (ny) => r.y + (Math.acos(Math.max(-1, Math.min(1, ny))) / Math.PI) * CH;
+  const W = r.w ?? CW;
+  const HH = r.h ?? CH;
+  const k = W / 256; // escala de trazos
+  const FX = (nx) => r.x + (0.5 + Math.asin(clamp1(nx)) / Math.PI) * W;
+  const FY = (ny) => r.y + (Math.acos(clamp1(ny)) / Math.PI) * HH;
   const blob = (nx, ny, rx, ry, color) => {
     const cx = FX(nx);
     const cy = FY(ny);
@@ -248,138 +259,191 @@ function drawHead(i, o) {
     g.fillRect(cx - R, cy - R, R * 2, R * 2);
     g.restore();
   };
-  clipCell(g, r);
+  g.save();
+  g.beginPath();
+  g.rect(r.x, r.y, W, HH);
+  g.clip();
   const skin = new THREE.Color(o.skin);
   const skinHex = hex(skin);
   g.fillStyle = skinHex;
-  g.fillRect(r.x, r.y, CW, CH);
+  g.fillRect(r.x, r.y, W, HH);
   // poros y manchitas
-  for (let k = 0; k < 900; k++) {
-    g.fillStyle = rnd() < 0.5 ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)';
-    g.fillRect(r.x + rnd() * CW, r.y + rnd() * CH, 1.5, 1.5);
+  for (let n = 0; n < 900 * k * k; n++) {
+    g.fillStyle = rnd() < 0.5 ? 'rgba(0,0,0,0.045)' : 'rgba(255,255,255,0.045)';
+    g.fillRect(r.x + rnd() * W, r.y + rnd() * HH, 1.5 * k, 1.5 * k);
   }
   const hairC = new THREE.Color(o.hair);
+  const rgb = (c, a) => `rgba(${Math.round(c.r * 255)},${Math.round(c.g * 255)},${Math.round(c.b * 255)},${a})`;
   const bald = o.hairStyle === 'bald';
-  {
-    // volumen: sombra en las cuencas, costados de la nariz, bajo el labio y bajo el mentón
-    for (const s of [-1, 1]) {
-      blob(0.33 * s, 0.12, 0.17, 0.1, 'rgba(70,35,25,0.2)');
-      blob(0.09 * s, -0.2, 0.05, 0.1, 'rgba(90,45,35,0.1)');
-      blob(0.48 * s, -0.22, 0.2, 0.16, o.female ? 'rgba(210,90,90,0.16)' : 'rgba(190,90,80,0.08)');
+  // volumen: luz en la frente, el puente de la nariz y los pómulos; sombra en las cuencas,
+  // a los costados de la nariz, bajo la nariz, bajo el labio y bajo el mentón
+  blob(0, 0.45, 0.5, 0.22, 'rgba(255,244,232,0.12)');
+  blob(0, -0.05, 0.035, 0.16, 'rgba(255,244,232,0.12)');
+  blob(0, -0.24, 0.05, 0.04, 'rgba(255,244,232,0.14)');
+  for (const s of [-1, 1]) {
+    blob(0.33 * s, 0.13, 0.17, 0.09, 'rgba(70,35,25,0.24)');
+    blob(0.43 * s, -0.12, 0.18, 0.1, 'rgba(255,238,224,0.1)');
+    blob(0.1 * s, -0.16, 0.05, 0.1, 'rgba(90,45,35,0.1)');
+    blob(0.6 * s, -0.4, 0.18, 0.28, 'rgba(90,45,35,0.1)');
+    blob(0.22 * s, -0.43, 0.05, 0.12, o.female ? 'rgba(90,45,35,0.04)' : 'rgba(90,45,35,0.09)');
+    blob(0.47 * s, -0.22, 0.2, 0.15, o.female ? 'rgba(215,95,95,0.17)' : 'rgba(200,95,85,0.08)');
+  }
+  blob(0, -0.31, 0.09, 0.035, 'rgba(70,30,25,0.2)');
+  blob(0, -0.63, 0.13, 0.045, 'rgba(70,35,25,0.17)');
+  blob(0, -0.98, 0.7, 0.14, 'rgba(60,30,20,0.35)');
+  // barba de dos días (sombra pareja con puntitos finos) o barba
+  if (!o.female && (o.stubble || o.beard)) {
+    // la barba afeitada deja una sombra gris azulada, no marrón
+    const bc = o.beard ? hairC.clone().lerp(skin, 0.1) : hairC.clone().lerp(new THREE.Color(0x3c4048), 0.55).lerp(skin, 0.3);
+    const soft = o.gaspi ? 0.75 : 1;
+    blob(0, -0.66, 0.66, 0.34, rgb(bc, (o.beard ? 0.95 : 0.3) * soft));
+    blob(0, -0.42, 0.2, 0.06, rgb(bc, (o.beard ? 0.9 : 0.26) * soft));
+    for (const s of [-1, 1]) blob(0.6 * s, -0.4, 0.14, 0.3, rgb(bc, (o.beard ? 0.8 : 0.18) * soft));
+    for (let n = 0; n < (o.beard ? 1800 : 900) * k * k; n++) {
+      const nx = (rnd() * 2 - 1) * 0.7;
+      const ny = -0.35 - rnd() * 0.62;
+      if (Math.abs(nx) > 0.72 - (-0.35 - ny) * 0.35) continue;
+      g.fillStyle = rgb(bc, (o.beard ? 0.5 : 0.2) * soft);
+      g.fillRect(FX(nx), FY(ny), k, k);
     }
-    blob(0, -0.62, 0.14, 0.05, 'rgba(70,35,25,0.14)');
-    blob(0, -0.97, 0.6, 0.12, 'rgba(60,30,20,0.3)');
-    // barba de dos días (sombra pareja) o barba
-    if (!o.female && (o.stubble || o.beard)) {
-      const bc = hairC.clone().lerp(skin, o.beard ? 0.1 : 0.35);
-      const rgb = `${Math.round(bc.r * 255)},${Math.round(bc.g * 255)},${Math.round(bc.b * 255)}`;
-      blob(0, -0.66, 0.66, 0.34, `rgba(${rgb},${o.beard ? 0.95 : 0.32})`);
-      blob(0, -0.42, 0.2, 0.06, `rgba(${rgb},${o.beard ? 0.9 : 0.28})`);
-      for (const s of [-1, 1]) blob(0.6 * s, -0.4, 0.14, 0.3, `rgba(${rgb},${o.beard ? 0.8 : 0.2})`);
-      for (let k = 0; k < (o.beard ? 1800 : 900); k++) {
-        const nx = (rnd() * 2 - 1) * 0.7;
-        const ny = -0.35 - rnd() * 0.62;
-        if (Math.abs(nx) > 0.72 - (-0.35 - ny) * 0.35) continue;
-        g.fillStyle = `rgba(${rgb},${o.beard ? 0.5 : 0.22})`;
-        g.fillRect(FX(nx), FY(ny), 1, 1);
-      }
-    }
-    if (o.mustache && !o.female) {
-      g.fillStyle = hex(hairC);
-      g.beginPath();
-      g.ellipse(FX(0), FY(-0.43), FX(0.16) - FX(0), (FY(-0.47) - FY(-0.41)) / 2, 0, 0, Math.PI * 2);
-      g.fill();
-    }
-    // ojos
-    const iris = o.eyes ?? '#4a3222';
-    for (const s of [-1, 1]) {
-      const cx = FX(0.33 * s);
-      const cy = FY(0.1);
-      const w = (FX(0.43) - FX(0.23)) / 2;
-      const h = (FY(0.07) - FY(0.13)) / 2 + 1.5;
-      g.fillStyle = '#efe9e0';
-      g.beginPath();
-      g.ellipse(cx, cy, w, h, 0, 0, Math.PI * 2);
-      g.fill();
-      g.fillStyle = iris;
-      g.beginPath();
-      g.arc(cx, cy, h * 0.95, 0, Math.PI * 2);
-      g.fill();
-      g.fillStyle = '#0d0907';
-      g.beginPath();
-      g.arc(cx, cy, h * 0.42, 0, Math.PI * 2);
-      g.fill();
-      g.fillStyle = 'rgba(255,255,255,0.85)';
-      g.fillRect(cx + h * 0.2, cy - h * 0.5, 1.5, 1.5);
-      // párpado de arriba (más marcado y con pestañas en mujeres)
-      g.strokeStyle = o.female ? '#1a1210' : 'rgba(40,22,15,0.9)';
-      g.lineWidth = o.female ? 2.6 : 1.8;
-      g.beginPath();
-      g.ellipse(cx, cy + 1, w * 1.05, h * 1.25, 0, Math.PI * 1.08, Math.PI * 1.92);
-      g.stroke();
-      if (o.female) {
-        g.beginPath();
-        g.moveTo(cx + s * w, cy - 1);
-        g.lineTo(cx + s * (w + 4), cy - 4);
-        g.stroke();
-      }
-      g.strokeStyle = 'rgba(80,45,35,0.35)';
-      g.lineWidth = 1;
-      g.beginPath();
-      g.ellipse(cx, cy, w, h * 1.1, 0, Math.PI * 0.15, Math.PI * 0.85);
-      g.stroke();
-      if (o.tired) blob(0.33 * s, 0.0, 0.12, 0.04, 'rgba(80,45,70,0.35)');
-      // cejas
-      g.strokeStyle = hex(hairC.clone().multiplyScalar(0.75));
-      g.lineWidth = o.female ? 2.2 : 3.6;
-      g.lineCap = 'round';
-      g.beginPath();
-      g.moveTo(FX(0.15 * s), FY(0.2));
-      g.quadraticCurveTo(FX(0.33 * s), FY(o.female ? 0.29 : 0.27), FX(0.5 * s), FY(0.2));
-      g.stroke();
-    }
-    // nariz: fosas
-    g.fillStyle = 'rgba(60,25,20,0.55)';
-    for (const s of [-1, 1]) {
-      g.beginPath();
-      g.ellipse(FX(0.045 * s), FY(-0.3), 2.2, 1.4, 0, 0, Math.PI * 2);
-      g.fill();
-    }
-    // boca
-    const lip = o.lipstick ? new THREE.Color(o.lipstick) : skin.clone().lerp(new THREE.Color(0xa0463e), 0.38);
-    const my = -0.5;
-    g.fillStyle = hex(lip.clone().multiplyScalar(0.82));
+  }
+  if (o.mustache && !o.female) {
+    g.fillStyle = hex(hairC);
     g.beginPath();
-    g.moveTo(FX(-0.17), FY(my));
-    g.quadraticCurveTo(FX(-0.08), FY(my + 0.05), FX(0), FY(my + 0.03));
-    g.quadraticCurveTo(FX(0.08), FY(my + 0.05), FX(0.17), FY(my));
-    g.closePath();
+    g.ellipse(FX(0), FY(-0.43), FX(0.16) - FX(0), (FY(-0.47) - FY(-0.41)) / 2, 0, 0, Math.PI * 2);
     g.fill();
-    g.fillStyle = hex(lip);
+  }
+  // ojos: almendra con sombra del párpado, iris con degradé, pupila y brillo
+  const iris = new THREE.Color(o.eyes ?? '#4a3222');
+  for (const s of [-1, 1]) {
+    const cx = FX(0.33 * s);
+    const cy = FY(0.1);
+    const w = (FX(0.45) - FX(0.21)) / 2;
+    const h = w * (o.female ? 0.46 : 0.4);
+    const almond = () => {
+      g.beginPath();
+      g.moveTo(cx - s * w, cy + h * 0.05);
+      g.bezierCurveTo(cx - s * w * 0.5, cy - h * 1.35, cx + s * w * 0.45, cy - h * 1.25, cx + s * w, cy - h * 0.05);
+      g.bezierCurveTo(cx + s * w * 0.4, cy + h * 1.05, cx - s * w * 0.45, cy + h * 1.05, cx - s * w, cy + h * 0.05);
+      g.closePath();
+    };
+    // pliegue del párpado
+    g.strokeStyle = 'rgba(90,50,40,0.35)';
+    g.lineWidth = 1.4 * k;
     g.beginPath();
-    g.moveTo(FX(-0.16), FY(my));
-    g.quadraticCurveTo(FX(0), FY(my - (o.female ? 0.085 : 0.065)), FX(0.16), FY(my));
-    g.closePath();
-    g.fill();
-    g.strokeStyle = 'rgba(50,15,15,0.7)';
-    g.lineWidth = 1.2;
-    g.beginPath();
-    g.moveTo(FX(-0.17), FY(my));
-    g.quadraticCurveTo(FX(0), FY(my - 0.012), FX(0.17), FY(my));
+    g.moveTo(cx - s * w * 0.9, cy - h * 0.7);
+    g.quadraticCurveTo(cx, cy - h * 2.1, cx + s * w * 0.95, cy - h * 0.8);
     g.stroke();
-    if (o.glasses) {
-      g.strokeStyle = '#141414';
-      g.lineWidth = 2.5;
-      for (const s of [-1, 1]) {
-        g.beginPath();
-        g.rect(FX(0.33 * s) - 11, FY(0.19), 22, FY(-0.02) - FY(0.19));
-        g.stroke();
-      }
+    g.save();
+    almond();
+    g.clip();
+    g.fillStyle = '#ece6dc';
+    g.fillRect(cx - w * 1.2, cy - h * 1.5, w * 2.4, h * 3);
+    const ir = h * 1.0;
+    const ig = g.createRadialGradient(cx, cy - h * 0.1, ir * 0.1, cx, cy - h * 0.1, ir);
+    ig.addColorStop(0, rgb(iris.clone().lerp(new THREE.Color(0xffffff), 0.25), 1));
+    ig.addColorStop(0.7, rgb(iris, 1));
+    ig.addColorStop(1, rgb(iris.clone().multiplyScalar(0.45), 1));
+    g.fillStyle = ig;
+    g.beginPath();
+    g.arc(cx, cy - h * 0.1, ir, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = '#0b0806';
+    g.beginPath();
+    g.arc(cx, cy - h * 0.1, ir * 0.42, 0, Math.PI * 2);
+    g.fill();
+    // sombra del párpado de arriba sobre el ojo
+    const sh = g.createLinearGradient(0, cy - h * 1.2, 0, cy);
+    sh.addColorStop(0, 'rgba(40,20,15,0.55)');
+    sh.addColorStop(1, 'rgba(40,20,15,0)');
+    g.fillStyle = sh;
+    g.fillRect(cx - w * 1.2, cy - h * 1.3, w * 2.4, h * 1.3);
+    g.fillStyle = 'rgba(255,255,255,0.9)';
+    g.beginPath();
+    g.arc(cx + s * ir * 0.3, cy - h * 0.45, Math.max(1, ir * 0.18), 0, Math.PI * 2);
+    g.fill();
+    g.restore();
+    // línea del párpado (pestañas) y del de abajo
+    g.strokeStyle = o.female ? '#140d0a' : 'rgba(35,20,14,0.9)';
+    g.lineWidth = (o.female ? 2.4 : 1.6) * k;
+    g.beginPath();
+    g.moveTo(cx - s * w, cy + h * 0.05);
+    g.bezierCurveTo(cx - s * w * 0.5, cy - h * 1.35, cx + s * w * 0.45, cy - h * 1.25, cx + s * w * (o.female ? 1.15 : 1), cy - h * (o.female ? 0.35 : 0.05));
+    g.stroke();
+    g.strokeStyle = 'rgba(80,45,35,0.35)';
+    g.lineWidth = 0.9 * k;
+    g.beginPath();
+    g.moveTo(cx - s * w * 0.9, cy + h * 0.2);
+    g.bezierCurveTo(cx - s * w * 0.4, cy + h * 1.05, cx + s * w * 0.4, cy + h * 1.05, cx + s * w, cy);
+    g.stroke();
+    if (o.tired) blob(0.33 * s, -0.01, 0.12, 0.04, 'rgba(80,45,70,0.35)');
+    // cejas: trazos cortos de pelo, más gruesas del lado de adentro
+    const bc = hairC.clone().multiplyScalar(0.92);
+    const thick = o.female ? 0.6 : o.gaspi ? 1.15 : 1;
+    const N = Math.round(70 * k * thick);
+    for (let n = 0; n < N; n++) {
+      const t = rnd();
+      const bx = 0.14 + t * 0.37;
+      const by = 0.205 + Math.sin(Math.min(1, t * 1.3) * Math.PI) * (o.female ? 0.07 : 0.045) - t * 0.02;
+      const x0 = FX(bx * s);
+      const y0 = FY(by + (rnd() - 0.5) * 0.03 * (1.4 - t) * thick);
+      const len = (2.5 + rnd() * 2.5) * k;
+      const ang = t < 0.3 ? -1.1 : -0.3;
+      g.strokeStyle = rgb(bc, 0.35 + rnd() * 0.3);
+      g.lineWidth = 0.75 * k;
       g.beginPath();
-      g.moveTo(FX(-0.2), FY(0.12));
-      g.lineTo(FX(0.2), FY(0.12));
+      g.moveTo(x0, y0);
+      g.lineTo(x0 + s * Math.cos(ang) * len, y0 + Math.sin(ang) * len);
       g.stroke();
     }
+  }
+  // nariz: fosas suaves
+  for (const s of [-1, 1]) {
+    g.fillStyle = 'rgba(60,25,20,0.45)';
+    g.beginPath();
+    g.ellipse(FX(0.045 * s), FY(-0.3), 2 * k, 1.2 * k, s * 0.3, 0, Math.PI * 2);
+    g.fill();
+  }
+  // boca: labio de arriba más oscuro, de abajo más claro con brillo, comisuras
+  const lip = o.lipstick ? new THREE.Color(o.lipstick) : skin.clone().lerp(new THREE.Color(0xa84a44), 0.5);
+  const my = -0.5;
+  const smirk = o.gaspi ? 0.018 : 0;
+  g.fillStyle = hex(lip.clone().multiplyScalar(0.8));
+  g.beginPath();
+  g.moveTo(FX(-0.2), FY(my - smirk * 0.3));
+  g.quadraticCurveTo(FX(-0.09), FY(my + 0.07), FX(0), FY(my + 0.042));
+  g.quadraticCurveTo(FX(0.09), FY(my + 0.07), FX(0.2), FY(my + smirk));
+  g.closePath();
+  g.fill();
+  const lg = g.createLinearGradient(0, FY(my), 0, FY(my - 0.09));
+  lg.addColorStop(0, hex(lip));
+  lg.addColorStop(1, hex(lip.clone().multiplyScalar(0.85)));
+  g.fillStyle = lg;
+  g.beginPath();
+  g.moveTo(FX(-0.19), FY(my - smirk * 0.3));
+  g.quadraticCurveTo(FX(0), FY(my - (o.female ? 0.12 : 0.1)), FX(0.19), FY(my + smirk));
+  g.closePath();
+  g.fill();
+  blob(0.02, my - 0.035, 0.05, 0.012, 'rgba(255,255,255,0.18)');
+  g.strokeStyle = 'rgba(50,15,15,0.7)';
+  g.lineWidth = 1.2 * k;
+  g.beginPath();
+  g.moveTo(FX(-0.21), FY(my - smirk * 0.3 - 0.005));
+  g.quadraticCurveTo(FX(0), FY(my - 0.014), FX(0.21), FY(my + smirk + 0.004));
+  g.stroke();
+  for (const s of [-1, 1]) blob(0.21 * s, my, 0.025, 0.02, 'rgba(60,20,20,0.25)');
+  if (o.glasses) {
+    g.strokeStyle = '#141414';
+    g.lineWidth = 2.5 * k;
+    for (const s of [-1, 1]) {
+      g.beginPath();
+      g.rect(FX(0.33 * s) - 11 * k, FY(0.2), 22 * k, FY(-0.02) - FY(0.2));
+      g.stroke();
+    }
+    g.beginPath();
+    g.moveTo(FX(-0.2), FY(0.12));
+    g.lineTo(FX(0.2), FY(0.12));
+    g.stroke();
   }
   // cuero cabelludo bajo el borde del pelo (para que no se vea piel en el borde del casquete)
   if (!bald) {
@@ -387,28 +451,35 @@ function drawHead(i, o) {
     gr.addColorStop(0, hex(hairC));
     gr.addColorStop(1, 'rgba(0,0,0,0)');
     g.fillStyle = gr;
-    g.fillRect(r.x, r.y, CW, FY(0.52) - r.y);
+    g.fillRect(r.x, r.y, W, FY(0.52) - r.y);
     // los bordes de la celda son la parte de atrás de la cabeza (pelo arriba, nuca abajo)
     g.fillStyle = hex(hairC);
-    g.fillRect(r.x, r.y, 4, FY(-0.3) - r.y);
-    g.fillRect(r.x + CW - 4, r.y, 4, FY(-0.3) - r.y);
+    g.fillRect(r.x, r.y, 4 * k, FY(-0.3) - r.y);
+    g.fillRect(r.x + W - 4 * k, r.y, 4 * k, FY(-0.3) - r.y);
   }
   g.restore();
   atlasTex.needsUpdate = true;
 }
 
 function headCell(o) {
-  const key = o.gaspi ? 'gaspi' : [o.skin, o.hair, o.hairStyle, o.beard, o.stubble, o.mustache, o.glasses, o.tired, o.female, o.lipstick, o.eyes].join('|');
+  if (o.gaspi) {
+    if (!cellCache.has('gaspi')) {
+      cellCache.set('gaspi', GASPI_RECT);
+      drawHead(GASPI_RECT, o);
+    }
+    return GASPI_RECT;
+  }
+  const key = [o.skin, o.hair, o.hairStyle, o.beard, o.stubble, o.mustache, o.glasses, o.tired, o.female, o.lipstick, o.eyes].join('|');
   if (cellCache.has(key)) return cellCache.get(key);
-  if (nextCell >= COLS * (AH / CH)) {
+  if (nextCell >= GASPI_CELLS[0]) {
     // atlas lleno: reusar una cabeza cualquiera
     const any = [...cellCache.values()][Math.floor(Math.random() * cellCache.size)];
     return any;
   }
-  const i = nextCell++;
-  cellCache.set(key, i);
-  drawHead(i, o);
-  return i;
+  const r = cellRect(nextCell++);
+  cellCache.set(key, r);
+  drawHead(r, o);
+  return r;
 }
 
 // ---------- Cuerpo ----------
@@ -486,6 +557,22 @@ const LEG_F = LEG_M.map(([t, a, b, c]) => {
   const k = t < 0.45 ? 0.88 : 1.02;
   return [t, a * k, b * k, c * k];
 });
+// pantalón de vestir: cae recto desde la cadera, sin marcar rodilla ni pantorrilla
+const TROUSER = [
+  [0.05, 0.061, 0.066, 0.068],
+  [0.2, 0.061, 0.065, 0.068],
+  [0.4, 0.063, 0.067, 0.07],
+  [0.55, 0.067, 0.071, 0.073],
+  [0.7, 0.076, 0.08, 0.083],
+  [0.85, 0.087, 0.09, 0.096],
+  [1.0, 0.092, 0.088, 0.1],
+];
+// faldón del saco: cae derecho sobre la cadera y la cola
+const JACKET_SKIRT = [
+  [0.83, 0.186, 0.114, 0.126, -0.004],
+  [0.93, 0.184, 0.11, 0.124, -0.004],
+  [1.03, 0.18, 0.11, 0.118, 0.004],
+];
 // mano colgando (palma hacia el cuerpo): [altura, grosor, ancho adelante, ancho atrás, corrimiento]
 const HAND = [
   [0.845, 0.01, 0.012, 0.012, 0.002],
@@ -494,6 +581,20 @@ const HAND = [
   [0.93, 0.021, 0.04, 0.035, 0.002],
   [0.97, 0.022, 0.036, 0.031, 0],
   [1.005, 0.024, 0.027, 0.026, 0],
+];
+const PALM = [
+  [0.868, 0.016, 0.034, 0.03, 0.003],
+  [0.89, 0.02, 0.038, 0.034, 0.004],
+  [0.93, 0.021, 0.04, 0.035, 0.002],
+  [0.97, 0.022, 0.036, 0.031, 0],
+  [1.005, 0.024, 0.027, 0.026, 0],
+];
+// dedos: [corrimiento a lo ancho de la mano, largo]
+const FINGERS = [
+  [0.024, 0.068],
+  [0.008, 0.076],
+  [-0.008, 0.07],
+  [-0.023, 0.056],
 ];
 const THUMB = [
   [0.9, 0.009, 0.009, 0.009, 0.047],
@@ -532,7 +633,7 @@ export function makeHuman(o = {}) {
   const bottom = o.bottom ?? 'pants';
   const topColor = top === 'suit' || top === 'jacket' ? (o.jacket ?? shirt) : top === 'hoodie' ? (o.hood ?? shirt) : top === 'jersey' ? 0xffffff : shirt;
   const sleeveColor = top === 'jersey' ? JERSEY_SLEEVE[o.jersey] ?? 0xffffff : topColor;
-  const sx = female ? 0.185 : 0.205; // hombros
+  const sx = female ? 0.178 : 0.195; // hombros
   const lx = female ? 0.09 : 0.095; // piernas
   const build = (D) => {
     const seg = (n) => Math.max(5, Math.round(n * D));
@@ -550,10 +651,12 @@ export function makeHuman(o = {}) {
     const pelvisColor = bottom === 'skirt' || bottom === 'dress' ? (o.skirt ?? pants) : pants;
     loft(m, { keys: TK, to: 1.06, seg: seg(20), p: 2.4, capStart: true, color: pelvisColor, cell: bottom === 'jeans' ? rect(CELL.denim) : fab, weights: (x, y) => torsoW(y), seam });
     const topCell = top === 'jersey' ? rect(7 + JERSEYS.indexOf(o.jersey)) : fab;
+    // saco: hombros rectos con hombrera, que cubren el hombro redondo del brazo
+    const TKtop = top === 'suit' ? TK.map((k) => [k[0], k[1] + 0.045 * smooth(1.4, 1.53, k[0]) * (1 - smooth(1.575, 1.61, k[0])), ...k.slice(2)]) : TK;
     const topGrow = (t) => (jacketed ? 0.012 : 0.003) * smooth(1.61, 1.55, t) + (t < 1.1 ? 0.004 : 0);
     loft(m, {
-      keys: TK,
-      from: top === 'suit' ? 0.87 : top === 'jacket' ? 0.97 : 1.03,
+      keys: TKtop,
+      from: top === 'suit' ? 1.0 : top === 'jacket' ? 0.97 : 1.03,
       seg: seg(20),
       p: 2.4,
       color: (t, a, x, y, z) => {
@@ -568,14 +671,25 @@ export function makeHuman(o = {}) {
       weights: (x, y) => torsoW(y),
       seam,
     });
+    if (top === 'suit') {
+      const skirtW = (x, y) => {
+        const k = 0.45 * smooth(1.0, 0.84, y);
+        const left = smooth(-0.05, 0.05, x);
+        return [
+          [B.hips, 1 - k],
+          [B.thL, k * left],
+          [B.thR, k * (1 - left)],
+        ];
+      };
+      for (const inside of [false, true]) loft(m, { keys: JACKET_SKIRT, seg: seg(20), p: 2.4, grow: inside ? -0.004 : 0, inside, color: inside ? tone(topColor, 0.6) : topColor, cell: fab, weights: skirtW, seam });
+    }
     // cuello
     const NK = female ? NECK_F : NECK;
     loft(m, { keys: NK, seg: seg(12), color: skin, cell: skinCell, weights: (x, y) => torsoW(y) });
 
     // ---- cabeza ----
     const H = { cx: 0, cy: 1.79, cz: 0.014, rx: female ? 0.073 : 0.078, ry: female ? 0.11 : 0.116, rz: female ? 0.097 : 0.103, female };
-    const cell = headCell({ ...o, skin, hair, female });
-    head(m, H, rect(cell), 0xffffff, D);
+    head(m, H, headCell({ ...o, skin, hair, female }), 0xffffff, D);
     for (const s of [-1, 1]) ellipsoid(m, s * (H.rx - 0.004), H.cy - 0.005, H.cz - 0.014, 0.012, 0.03, 0.019, { seg: 8, color: tone(skin, 0.95), cell: skinCell, weights: () => [[B.head, 1]] });
     addHair(m, H, o, hair, female);
 
@@ -597,7 +711,26 @@ export function makeHuman(o = {}) {
         cell: fab,
         weights: (x, y) => armW(y),
       });
-      loft(m, { keys: HAND, x0: s * sx, seg: seg(10), p: 2.3, capStart: true, color: skin, cell: skinCell, weights: (x, y) => armW(y) });
+      if (D >= 0.9) {
+        // de cerca: palma y cuatro dedos un poco doblados hacia la palma
+        loft(m, { keys: PALM, x0: s * sx, seg: seg(10), p: 2.3, capStart: true, color: skin, cell: skinCell, weights: (x, y) => armW(y) });
+        for (const [dz, len] of FINGERS) {
+          const top = 0.885;
+          loft(m, {
+            keys: [
+              [top - len, 0.0062, 0.0062, 0.0062, dz, -s * 0.016],
+              [top - len * 0.55, 0.0085, 0.0085, 0.0085, dz, -s * 0.007],
+              [top, 0.0098, 0.0098, 0.0098, dz, 0],
+            ],
+            x0: s * sx,
+            seg: 6,
+            capStart: true,
+            color: skin,
+            cell: skinCell,
+            weights: () => [[B[hand], 1]],
+          });
+        }
+      } else loft(m, { keys: HAND, x0: s * sx, seg: seg(10), p: 2.3, capStart: true, color: skin, cell: skinCell, weights: (x, y) => armW(y) });
       loft(m, { keys: THUMB, x0: s * (sx - 0.012), seg: seg(7), capStart: true, color: skin, cell: skinCell, weights: () => [[B[hand], 1]] });
       if (o.cup && s > 0) prim(m, new THREE.CylinderGeometry(0.04, 0.035, 0.1, 10).translate(s * sx, 0.88, 0.07), hand, 0xe8e8e8, fab);
       if (o.franela && s < 0) prim(m, new THREE.BoxGeometry(0.02, 0.26, 0.3).translate(s * (sx + 0.025), 0.8, 0.06), hand, 0xf5d90a, fab);
@@ -623,7 +756,8 @@ export function makeHuman(o = {}) {
       [1, 'thL', 'shL', 'ftL'],
     ]) {
       const legW = chain(['hips', th, sh, ft], [0.95, 0.5, 0.085], [0.05, 0.05, 0.02]);
-      loft(m, { keys: LK, x0: s * lx, seg: seg(12), color: legColor, grow: legGrow, cell: bottom === 'jeans' ? rect(CELL.denim) : bareLegs || bottom === 'shorts' ? skinCell : fab, weights: (x, y) => legW(y) });
+      const trousers = bottom === 'pants';
+      loft(m, { keys: trousers ? (female ? TROUSER.map(([t, a, b, c]) => [t, a * 0.94, b * 0.94, c * 0.94]) : TROUSER) : LK, x0: s * lx, seg: seg(12), color: legColor, grow: trousers ? 0 : legGrow, cell: bottom === 'jeans' ? rect(CELL.denim) : bareLegs || bottom === 'shorts' ? skinCell : fab, weights: (x, y) => legW(y) });
       const sole = o.sole ?? (shoes === 0xf2f2f2 || o.sneakers ? 0xf2f2f2 : 0x1a1a1a);
       loft(m, { keys: SHOE, axis: 'z', x0: s * lx, seg: seg(12), p: 2.6, capStart: true, capEnd: true, color: (t, a, x, y) => (y < 0.016 ? sole : shoes), cell: fab, weights: () => [[B[ft], 1]] });
     }
@@ -774,7 +908,7 @@ function addSuit(m, TK, o, seg, torsoW, g) {
   }
   // cuello de la camisa (blanco, alrededor del cuello) y del saco (atrás)
   const NK = o.female ? NECK_F : NECK;
-  loft(m, { keys: NK, from: 1.595, to: 1.645, seg: seg(14), grow: 0.006, color: o.shirt ?? 0xf4f4f4, cell: fab, weights: W });
+  loft(m, { keys: NK, from: 1.595, to: 1.668, seg: seg(14), grow: 0.006, color: o.shirt ?? 0xf4f4f4, cell: fab, weights: W });
   loft(m, { keys: NK, from: 1.575, to: 1.625, seg: seg(12), grow: 0.016, arc: [1.1, Math.PI * 2 - 1.1], color: tone(o.jacket, 0.85), cell: fab, weights: W });
   // botón
   loft(m, { keys: TK, from: 1.14, to: 1.165, seg: 3, p: 2.4, grow: (t) => g(t) + 0.003, arc: [-0.05, 0.05], color: 0x111111, cell: fab, weights: W });
@@ -795,8 +929,23 @@ function addHair(m, H, o, hair, female) {
   const taper = (s) => 1 - 0.88 * smooth(0.45, 1, s);
   let thick = style === 'buzz' || cap ? () => 0.003 : (s) => (tight ? 0.006 : 0.008 + 0.012 * (1 - s * s)) * taper(s);
   // raya al costado: más volumen del lado derecho de la frente, peinado hacia el otro lado
-  if (style === 'side' && !cap) thick = (s, a) => (0.009 + 0.013 * (1 - s * s) + 0.007 * (1 - s * s) * Math.max(0, Math.cos(a + 0.7))) * taper(s);
-  shell(m, H, { front: female ? 0.35 : 0.33, side: female ? 0.52 : 0.45, back: female ? 0.66 : 0.62, burns: female ? 0 : 0.06, color: hair, cell: hc, thick });
+  // mechones: surcos finos en la dirección del peinado (para que no parezca un casco)
+  const strands = (s, a, th) => 0.0022 * Math.sin(a * 23 + th * 7) * (1 - s * 0.6) + 0.0012 * Math.sin(a * 41 - th * 13);
+  if (style === 'short' && !cap) {
+    const base = thick;
+    thick = (s, a, th) => base(s, a, th) + strands(s, a, th) * taper(s);
+  }
+  // raya al costado (Gaspi): volumen arriba peinado hacia un lado, jopo adelante y nuca rebajada
+  if (style === 'side' && !cap)
+    thick = (s, a, th) => {
+      const sweep = Math.max(0, Math.cos(a + 0.7));
+      const front = Math.max(0, Math.cos(a)) ** 2;
+      const quiff = 0.011 * front * smooth(0.25, 0.7, s) * (1 - smooth(0.82, 1, s));
+      const nape = 1 - 0.55 * smooth(0.55, 1, s) * Math.max(0, -Math.cos(a));
+      return (0.009 + 0.013 * (1 - s * s) + 0.008 * (1 - s * s) * sweep + quiff + strands(s, a + 0.5, th)) * taper(s) * nape;
+    };
+  const fine = o.gaspi ? { rows: 16, cols: 44 } : {};
+  shell(m, H, { ...fine, front: female ? 0.35 : 0.33, side: female ? 0.52 : 0.45, back: female ? 0.66 : 0.62, burns: female ? 0 : 0.06, color: hair, cell: hc, thick });
   if (cap) return;
   if (style === 'long' || style === 'bob') {
     const yb = style === 'bob' ? 1.66 : o.hairLen ?? 1.46;
