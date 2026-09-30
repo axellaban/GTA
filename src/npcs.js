@@ -3,6 +3,7 @@
 // Cada uno tiene vida: se asusta con los tiros, se defiende de las piñas o sale corriendo.
 import * as THREE from 'three';
 import { makeHuman, animateHuman, randomCivilian, SKINS, HAIRS } from './human.js';
+import { makeDog } from './animals.js';
 import { DATA as D } from './map.js';
 import { R } from './rng.js';
 
@@ -273,34 +274,8 @@ export class Npcs {
   }
 
   spawnDog(near) {
-    const g = new THREE.Group();
-    const col = R.pick([0x6b4a2b, 0x2a2420, 0xb88a4a, 0xd9c7a3, 0x8a6a4a]);
-    const m = new THREE.MeshLambertMaterial({ color: col });
-    const body = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.75), m);
-    body.position.y = 0.5;
-    g.add(body);
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.24, 0.3), m);
-    head.position.set(0, 0.72, 0.45);
-    g.add(head);
-    const ear = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.08, 0.08), m);
-    ear.position.set(0, 0.86, 0.4);
-    g.add(ear);
-    const legs = [];
-    for (const [x, z] of [
-      [-0.1, 0.28],
-      [0.1, 0.28],
-      [-0.1, -0.28],
-      [0.1, -0.28],
-    ]) {
-      const l = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.36, 0.08), m);
-      l.position.set(x, 0.18, z);
-      g.add(l);
-      legs.push(l);
-    }
-    const tail = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.3), m);
-    tail.position.set(0, 0.62, -0.45);
-    tail.rotation.x = -0.6;
-    g.add(tail);
+    const col = R.pick([0x6b4a2b, 0x2a2420, 0xb88a4a, 0xd9c7a3, 0x8a6a4a, 0x3a3230]);
+    const { g, legs, tail } = makeDog(col);
     g.traverse((o) => (o.castShadow = true));
     const p = this.sidewalkPoint(near.x, near.z, 20, 140) ?? { x: near.x, z: near.z };
     const dog = { g, legs, tail, x: p.x, z: p.z, heading: 0, speed: 0, t: R.range(0, 5), barkT: 0, phase: 0 };
@@ -799,7 +774,13 @@ export class Npcs {
       d.g.visible = vis;
       if (!vis) continue;
       d.phase += dt * (4 + d.speed * 3);
-      d.legs.forEach((l, i) => (l.rotation.x = Math.sin(d.phase + (i % 2 ? Math.PI : 0) + (i > 1 ? Math.PI / 2 : 0)) * Math.min(0.8, d.speed * 0.25)));
+      // patas: la rodilla se dobla cuando la pata va hacia adelante
+      const amp = Math.min(0.8, d.speed * 0.25);
+      d.legs.forEach((l, i) => {
+        const w = Math.sin(d.phase + (i % 2 ? Math.PI : 0) + (i > 1 ? Math.PI / 2 : 0));
+        l.rotation.x = w * amp;
+        l.userData.lower.rotation.x = (i > 1 ? -1 : 1) * Math.max(0, i > 1 ? w : -w) * amp * 1.4;
+      });
       d.tail.rotation.y = Math.sin(d.t * 12) * 0.6;
       d.g.position.set(d.x, this.heightAt(d.x, d.z), d.z);
       d.g.rotation.y = d.heading;

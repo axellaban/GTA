@@ -65,7 +65,12 @@ export class Vehicle {
     // patas del caballo
     if (u.legs) {
       const k = Math.min(1, Math.abs(this.speed) / 2);
-      u.legs.forEach((l, i) => (l.rotation.x = Math.sin(this.wheelSpin * 1.6 + (i % 2 ? Math.PI : 0) + (i > 1 ? Math.PI / 2 : 0)) * 0.5 * k));
+      u.legs.forEach((l, i) => {
+        const w = Math.sin(this.wheelSpin * 1.6 + (i % 2 ? Math.PI : 0) + (i > 1 ? Math.PI / 2 : 0));
+        l.rotation.x = w * 0.45 * k;
+        // rodilla (adelante) y garrón (atrás) se doblan al levantar la pata
+        if (l.userData.lower) l.userData.lower.rotation.x = (i > 1 ? -1 : 1) * Math.max(0, i > 1 ? w : -w) * 0.9 * k;
+      });
     }
   }
 }

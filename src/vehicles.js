@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { busTexture, trainSideTexture, textTexture } from './textures.js';
 import { BoxBuilder } from './builder.js';
 import { R } from './rng.js';
+import { makeHorse } from './animals.js';
 
 const M = (c, extra = {}) => new THREE.MeshLambertMaterial({ color: c, ...extra });
 const glass = M(0x1b2630);
@@ -231,28 +232,13 @@ export function makeCarro(driver) {
   B.box(0.7, 0.3, 0.6, 0xa07a48, 0.1, 1.6, -1.2);
   // varas hasta el caballo
   for (const s of [-1, 1]) B.box(0.05, 0.05, 1.6, 0x5a3a1a, s * 0.4, 0.95, 0.6);
-  // caballo
-  const coat = R.pick([0x6b4226, 0x3b2616, 0xa0785a, 0xd8d0c0]);
-  B.box(0.5, 0.62, 1.35, coat, 0, 1.3, 1.25);
-  B.add(new THREE.BoxGeometry(0.3, 0.75, 0.3).rotateX(-0.6).translate(0, 1.8, 1.9), coat);
-  B.box(0.26, 0.26, 0.55, coat, 0, 2.05, 2.25);
-  B.box(0.08, 0.5, 0.1, 0x1a1410, 0, 1.95, 1.8);
-  B.box(0.06, 0.4, 0.06, 0x1a1410, 0, 1.2, 0.5);
   const body = B.mesh(new THREE.MeshLambertMaterial({ vertexColors: true }));
   g.add(body);
-  const legs = [];
-  for (const [x, z] of [
-    [-0.16, 1.75],
-    [0.16, 1.75],
-    [-0.16, 0.75],
-    [0.16, 0.75],
-  ]) {
-    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.0, 0.12).translate(0, -0.5, 0), M(coat));
-    leg.position.set(x, 1.05, z);
-    leg.castShadow = true;
-    g.add(leg);
-    legs.push(leg);
-  }
+  // caballo
+  const horse = makeHorse(R.pick([0x6b4226, 0x3b2616, 0xa0785a, 0xd8d0c0, 0x8a5a36]));
+  horse.g.traverse((o) => (o.castShadow = true));
+  g.add(horse.g);
+  const legs = horse.legs;
   const wheels = [];
   for (const s of [-1, 1]) {
     const w = mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.08, 14).rotateZ(Math.PI / 2), wood, s * 0.72, 0.55, -1, g);
