@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import './style.css';
 import { ATMO, LAMPS, NIGHT, buildLampMap } from './atmosphere.js';
 import { buildCity } from './city.js';
-import { makeGround, ROADS, project, STATION, cornerName, nearestStreetName } from './map.js';
+import { makeGround, ROADS, project, STATION, cornerName, nearestStreetName, nearestRoad } from './map.js';
 import { Input } from './input.js';
 import { Audio } from './audio.js';
 import { Player } from './player.js';
@@ -14,7 +14,7 @@ import { Events } from './events.js';
 import { Trains } from './trains.js';
 import { Hud } from './hud.js';
 import { lightMat, paintMat } from './cars.js';
-import { CAR_COLORS } from './vehicles.js';
+import { CAR_COLORS, makeCar } from './vehicles.js';
 import { loadGaspiPhoto, updateHumanLod } from './human.js';
 import { Sky } from './sky.js';
 import { Post, QUALITY } from './post.js';
@@ -323,6 +323,55 @@ function updateFare(dt) {
   }
 }
 
+// ---------- Changa de patrullero: con el patrullero salís a bajar motochorros ----------
+const cop = { active: false, offered: false, m: null, level: 0, t: 0 };
+{
+  // un patrullero estacionado en la puerta de la comisaría
+  const nr = nearestRoad(comisaria.x, comisaria.z);
+  if (nr) {
+    const off = (nr.road.w ?? 8) / 2 - 1.3;
+    const k = off / (nr.dist || 1);
+    traffic.addParked(makeCar('patrullero'), nr.x + (comisaria.x - nr.x) * k, nr.z + (comisaria.z - nr.z) * k, Math.atan2(nr.dx, nr.dz));
+  }
+}
+function startCop() {
+  const m = crime.spawn(player);
+  if (!m) return;
+  Object.assign(cop, { active: true, m, t: 100 });
+  hud.flash('CHANGA DE PATRULLERO', `Motochorros por ${cornerName(m.v.x, m.v.z)}. Chocalos para bajarlos`, 'ok', 2.8);
+}
+function endCop(msg) {
+  Object.assign(cop, { active: false, m: null, level: 0 });
+  if (msg) hud.flash('SE ESCAPARON', msg, 'bad', 2.6);
+}
+function updateCop(dt) {
+  const isCop = player.vehicle?.model === 'patrullero';
+  if (!cop.active) {
+    if (isCop && !cop.offered && !missions.m && !fare.active) {
+      cop.offered = true;
+      startCop();
+    }
+    if (!player.vehicle) cop.offered = false;
+    return;
+  }
+  if (!isCop) return endCop('Te bajaste del patrullero');
+  cop.t -= dt;
+  const m = cop.m;
+  if (m.state === 'down') {
+    // cada nivel paga más y aparece otro
+    cop.level++;
+    const pay = 2000 + cop.level * 1500;
+    player.addMoney(pay);
+    player.addRespeto(1);
+    audio.cumplida?.();
+    hud.flash('¡MOTOCHORROS AL PISO!', `+$${pay.toLocaleString('es-AR')} · Nivel ${cop.level}`, 'ok', 2.6);
+    Object.assign(cop, { active: false, m: null });
+    setTimeout(() => player.vehicle?.model === 'patrullero' && !cop.active && startCop(), 3000);
+    return;
+  }
+  if (cop.t <= 0 || !crime.motos.includes(m)) endCop('Los motochorros se perdieron');
+}
+
 // ---------- Chapa y pintura: entrás con el auto, sale arreglado, de otro color y la cana te pierde ----------
 const GARAGE_COST = 1500;
 const garages = [];
@@ -619,6 +668,11 @@ const praise = ['¡BIEN AHÍ!', '¡VAMOS, GASPI!', '¡DE UNA!', '¡ESO!', '¡QU�
 function updateObjective() {
   if (job.active) {
     hud.setObjective(`Delivery a ${job.street}: ${Math.ceil(job.t)} s`, { x: job.x, z: job.z });
+    hud.updateObjective(player);
+    return;
+  }
+  if (cop.active) {
+    hud.setObjective(`Bajá a los motochorros: ${Math.ceil(cop.t)} s`, cop.m.v);
     hud.updateObjective(player);
     return;
   }
@@ -1007,7 +1061,8 @@ function frame(now) {
   updateArmeria();
   gym.update(dt, world);
   updateFare(dt);
-  missions.update(dt, step >= steps.length - 1 && !job.active && !fare.active);
+  updateCop(dt);
+  missions.update(dt, step >= steps.length - 1 && !job.active && !fare.active && !cop.active);
   updateObjective();
   updateGps(dt);
   player.updateCamera(camera, dt, city.colliders, fx);
