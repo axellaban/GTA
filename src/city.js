@@ -177,13 +177,13 @@ function addGround(scene, city) {
 
   const st = sidewalkTexture();
   const walkMat = new THREE.MeshStandardMaterial({ map: st, normalMap: normalMapFrom(st.image, 3, true), normalScale: new THREE.Vector2(0.8, 0.8), roughness: 0.95, metalness: 0, envMapIntensity: 0.5 });
-  const walk = new THREE.Mesh(flat(D.sidewalks, 0.153, 3.2), addWorldDetail(walkMat, { strength: 0.3, scale: 0.12, damp: 0 }));
+  const walk = new THREE.Mesh(flat(D.sidewalks, 0.153, 3.2), addWorldDetail(walkMat, { strength: 0.3, scale: 0.12, damp: 0, wet: true }));
   walk.receiveShadow = true;
   scene.add(walk);
 
   const at = asphaltTexture();
   const roadMat = new THREE.MeshStandardMaterial({ map: at, normalMap: normalMapFrom(at.image, 3, true), normalScale: new THREE.Vector2(0.7, 0.7), roughness: 0.92, metalness: 0, envMapIntensity: 0.5 });
-  const road = new THREE.Mesh(flat(D.roadPoly, 0.02, 9), addWorldDetail(roadMat, { strength: 0.28, scale: 0.035, damp: 0 }));
+  const road = new THREE.Mesh(flat(D.roadPoly, 0.02, 9), addWorldDetail(roadMat, { strength: 0.28, scale: 0.035, damp: 0, wet: true }));
   road.receiveShadow = true;
   scene.add(road);
   // con lluvia se mojan: menos rugosos y más oscuros

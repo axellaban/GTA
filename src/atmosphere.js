@@ -54,6 +54,10 @@ THREE.ShaderChunk.fog_pars_fragment = /* glsl */ `
   uniform vec3 fogSunDir;
   uniform vec3 fogSunColor;
   uniform vec4 fogParams;
+  uniform sampler2D lampPool;
+  uniform sampler2D lampSpot;
+  uniform vec4 lampParams;
+  uniform float lampWet;
   varying vec3 vFogRay;
   #ifdef FOG_EXP2
     uniform float fogDensity;
@@ -84,9 +88,92 @@ THREE.ShaderChunk.fog_fragment = /* glsl */ `
   gl_FragColor.rgb = mix(gl_FragColor.rgb, fogColor + fogSunColor * fogSun, fogFactor);
 #endif`;
 
+// ---------- Luz de los faroles ----------
+// En vez de cientos de luces reales, un mapa visto desde arriba con la luz de sodio de cada farol
+// (y la de las vidrieras). Todo material iluminado lo suma de noche: piso, paredes, autos y gente.
+export const LAMPS = {
+  lampPool: { value: null },
+  lampSpot: { value: null },
+  // x, z del origen, tamaño en metros, intensidad (0 de día)
+  lampParams: { value: new THREE.Vector4(-620, -620, 1240, 0) },
+  // qué tan mojada está la calle (para los reflejos)
+  lampWet: { value: 0 },
+};
+
+THREE.ShaderChunk.lights_fragment_end += /* glsl */ `
+#ifdef USE_FOG
+  if (lampParams.w > 0.001) {
+    vec3 lampW = cameraPosition + vFogRay;
+    vec3 lampC = texture2D(lampPool, (lampW.xz - lampParams.xy) / lampParams.z).rgb;
+    vec3 lampN = inverseTransformDirection(normal, viewMatrix);
+    float lampH = 1.0 - smoothstep(6.5, 9.5, lampW.y);
+    float lampFace = 0.5 + 0.5 * max(lampN.y, 0.0);
+    reflectedLight.indirectDiffuse += lampC * lampC * (lampParams.w * lampH * lampFace) * diffuseColor.rgb;
+  }
+#endif
+`;
+
+function lampCanvas(N, S, O, draw) {
+  const c = document.createElement('canvas');
+  c.width = c.height = N;
+  const g = c.getContext('2d');
+  g.fillStyle = '#000';
+  g.fillRect(0, 0, N, N);
+  g.globalCompositeOperation = 'lighter';
+  const px = (v) => ((v - O) / S) * N;
+  const blob = (x, z, r, stops) => {
+    const cx = px(x);
+    const cy = px(z);
+    const R = (r / S) * N;
+    const gr = g.createRadialGradient(cx, cy, 0, cx, cy, R);
+    for (const [t, col] of stops) gr.addColorStop(t, col);
+    g.fillStyle = gr;
+    g.fillRect(cx - R, cy - R, R * 2, R * 2);
+  };
+  draw(blob);
+  const t = new THREE.CanvasTexture(c);
+  t.flipY = false;
+  t.colorSpace = THREE.NoColorSpace;
+  t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+  return t;
+}
+
+// lamps: cabezales de los faroles {x, z}; shops: frentes de negocios {x, z, nx, nz}
+export function buildLampMap(lamps, shops = []) {
+  const O = LAMPS.lampParams.value.x;
+  const S = LAMPS.lampParams.value.z;
+  LAMPS.lampPool.value = lampCanvas(2048, S, O, (blob) => {
+    for (const l of lamps)
+      blob(l.x, l.z, 12, [
+        [0, 'rgba(255,176,96,1)'],
+        [0.3, 'rgba(230,140,70,0.6)'],
+        [1, 'rgba(0,0,0,0)'],
+      ]);
+    // luz blanca que sale de las vidrieras a la vereda
+    for (const s of shops)
+      blob(s.x + s.nx * 1.5, s.z + s.nz * 1.5, 6, [
+        [0, 'rgba(255,236,200,0.75)'],
+        [1, 'rgba(0,0,0,0)'],
+      ]);
+  });
+  // puntitos chicos: lo que se refleja en la calle mojada
+  LAMPS.lampSpot.value = lampCanvas(1024, S, O, (blob) => {
+    for (const l of lamps)
+      blob(l.x, l.z, 3.2, [
+        [0, 'rgba(255,190,110,1)'],
+        [0.5, 'rgba(255,150,70,0.5)'],
+        [1, 'rgba(0,0,0,0)'],
+      ]);
+  });
+}
+
 // Todos los materiales reciben los uniforms compartidos al compilarse.
 THREE.Material.prototype.onBeforeCompile = function (shader) {
   shader.uniforms.fogSunDir = ATMO.fogSunDir;
   shader.uniforms.fogSunColor = ATMO.fogSunColor;
   shader.uniforms.fogParams = ATMO.fogParams;
+  shader.uniforms.lampPool = LAMPS.lampPool;
+  shader.uniforms.lampSpot = LAMPS.lampSpot;
+  shader.uniforms.lampParams = LAMPS.lampParams;
+  shader.uniforms.lampWet = LAMPS.lampWet;
 };

@@ -53,8 +53,24 @@ function makeDetail(size = 256) {
   return t;
 }
 
+// Reflejo de los faroles en el piso mojado: se sigue el rayo reflejado hasta la altura de los
+// cabezales y se mira el mapa de puntitos de luz ahí (con más desenfoque cuanto más lejos).
+const WET_REFLECT = /* glsl */ `
+#ifdef USE_FOG
+  if (lampParams.w > 0.001 && lampWet > 0.02) {
+    vec3 rw = cameraPosition + vFogRay;
+    vec3 rn = inverseTransformDirection(normal, viewMatrix);
+    vec3 rr = reflect(normalize(vFogRay), rn);
+    float rt = (7.7 - rw.y) / max(rr.y, 0.04);
+    vec2 rp = rw.xz + rr.xz * rt;
+    vec3 spot = texture2D(lampSpot, (rp - lampParams.xy) / lampParams.z, log2(1.0 + rt * 0.3)).rgb;
+    reflectedLight.indirectSpecular += spot * spot * (lampWet * lampParams.w * 2.2);
+  }
+#endif`;
+
 // Agrega el grano (y un poco de mugre a ras del piso) a un material Lambert o Standard.
-export function addWorldDetail(mat, { strength = 0.34, scale = 0.9, damp = 0.1 } = {}) {
+// wet: además refleja los faroles cuando llueve (calles y veredas).
+export function addWorldDetail(mat, { strength = 0.34, scale = 0.9, damp = 0.1, wet = false } = {}) {
   detailTex ??= makeDetail();
   mat.onBeforeCompile = (shader) => {
     THREE.Material.prototype.onBeforeCompile.call(mat, shader);
@@ -85,7 +101,8 @@ export function addWorldDetail(mat, { strength = 0.34, scale = 0.9, damp = 0.1 }
         diffuseColor.rgb *= 1.0 - dampK;
       }`,
     );
+    if (wet) shader.fragmentShader = shader.fragmentShader.replace('#include <lights_fragment_end>', '#include <lights_fragment_end>\n' + WET_REFLECT);
   };
-  mat.customProgramCacheKey = () => `detail-${strength}-${scale}-${damp}`;
+  mat.customProgramCacheKey = () => `detail-${strength}-${scale}-${damp}-${wet}`;
   return mat;
 }
