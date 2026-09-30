@@ -382,7 +382,7 @@ export class Hud {
       this.route.forEach(([x, z], i) => (i ? g.lineTo(X(x), X(z)) : g.moveTo(X(x), X(z))));
       g.stroke();
     }
-    for (const m of world.pickups.markers({ x: player.x, z: player.z }, true)) dot(m.x, m.z, m.kind === 'weapon' ? '#ffa726' : m.kind === 'health' ? '#ff5a5a' : '#5aa9ff', 6);
+    for (const m of world.pickups.markers({ x: player.x, z: player.z }, true)) dot(m.x, m.z, m.kind === 'weapon' ? '#ffa726' : m.kind === 'health' ? '#ff5a5a' : m.kind === 'coima' ? '#ffd23a' : '#5aa9ff', 6);
     for (const m of world.events.markers()) dot(m.x, m.z, '#ff7a1a', 7, 'square');
     for (const m of world.garages || []) dot(m.x, m.z, '#3ddc84', 7, 'square');
     for (const m of world.police.markers()) dot(m.x, m.z, '#3060ff', 5, 'square');
@@ -453,7 +453,7 @@ export class Hud {
     for (const m of events.markers()) mark(m.x, m.z, m.kind === 'corte' ? '#ff7a1a' : '#ffb23e', 6, 'square');
     for (const m of world.garages || []) mark(m.x, m.z, '#3ddc84', 6, 'square');
     for (const m of crime.markers()) mark(m.x, m.z, m.kind === 'moto' ? '#e5484d' : '#6ec3ea', 5);
-    for (const m of world.pickups.markers(player)) mark(m.x, m.z, m.kind === 'weapon' ? '#ffa726' : m.kind === 'health' ? '#ff5a5a' : m.kind === 'armor' ? '#5aa9ff' : '#6ec3ea', 3.5);
+    for (const m of world.pickups.markers(player)) mark(m.x, m.z, m.kind === 'weapon' ? '#ffa726' : m.kind === 'health' ? '#ff5a5a' : m.kind === 'armor' ? '#5aa9ff' : m.kind === 'coima' ? '#ffd23a' : '#6ec3ea', 3.5);
     const blink = ((performance.now() / 250) | 0) % 2;
     for (const m of world.police.markers()) mark(m.x, m.z, m.kind === 'heli' ? '#ffffff' : blink ? '#ff3030' : '#3060ff', m.kind === 'poli' ? 5 : 3.5, m.kind === 'poli' ? 'square' : 'dot');
     const o = this.objective;

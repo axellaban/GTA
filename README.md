@@ -129,6 +129,13 @@ Subite a un taxi o a un remís y te sale un pasajero que te llama desde la vered
 
 La gente dice en voz alta lo que aparece en los globitos: vecinos, la cana, los motochorros, el corte y Gaspi. Habla uno a la vez, el más cercano (a menos de 24 m), con voz de hombre o de mujer y un tono distinto para cada uno. Las llamadas de las misiones también se escuchan. Usa la voz en español que traiga el celu o la compu (argentina si la tiene); si no hay ninguna, quedan solo los globitos. El botón de sonido también las calla.
 
+## Coimas, figuritas y porcentaje (0.11)
+
+- **Coimas**: estrellas amarillas en la calle (también en el radar). Si te busca la cana, agarrás una y se va una estrella. Reaparecen a los 4 minutos.
+- **Figuritas**: 30 escondidas por Temperley, sin luz ni marca en el mapa. A las 10: $15.000 y chaleco; a las 20: la tumbera; a las 30: $50.000 y +5 de respeto. Se guardan.
+- **Porcentaje**: en la pausa, cuánto del juego completaste (tutorial, misiones y figuritas).
+- **Muerte a lo GTA**: cámara lenta, la imagen se va a blanco y negro y entra el "TE BAJARON".
+
 ## Estructura
 
 | Archivo | Qué hace |

@@ -41,6 +41,7 @@ export class Player {
     this.money = 20000;
     this.health = 100;
     this.armor = 0;
+    this.figus = new Set(); // figuritas encontradas (ids)
     this.respeto = 0;
     this.phone = true;
     this.grabbed = 0;

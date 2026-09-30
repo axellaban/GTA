@@ -8,7 +8,19 @@ import { R } from './rng.js';
 import { outward } from './city.js';
 import { TOUCH } from './input.js';
 
-const COLORS = { money: 0x6fdc6f, weapon: 0xffa726, health: 0xff5a5a, armor: 0x5aa9ff, loot: 0x6ec3ea };
+const COLORS = { money: 0x6fdc6f, weapon: 0xffa726, health: 0xff5a5a, armor: 0x5aa9ff, loot: 0x6ec3ea, coima: 0xffd23a, figu: 0xff4fd8 };
+export const FIGUS = 30;
+
+// estrella de la coima (la de la policía de los GTA)
+function starGeo() {
+  const s = new THREE.Shape();
+  for (let i = 0; i < 10; i++) {
+    const r = i % 2 ? 0.12 : 0.28;
+    const a = (i / 10) * Math.PI * 2;
+    i ? s.lineTo(Math.sin(a) * r, Math.cos(a) * r) : s.moveTo(Math.sin(a) * r, Math.cos(a) * r);
+  }
+  return new THREE.ExtrudeGeometry(s, { depth: 0.06, bevelEnabled: true, bevelSize: 0.02, bevelThickness: 0.02, bevelSegments: 1 }).translate(0, 0, -0.03);
+}
 
 // columna de luz que se ve de lejos, como en los GTA
 function beamTexture() {
@@ -27,6 +39,13 @@ function beamTexture() {
 
 function itemMesh(kind, data) {
   if (kind === 'weapon') return pickupWeapon(data.id);
+  if (kind === 'coima') return new THREE.Mesh(starGeo(), new THREE.MeshStandardMaterial({ color: 0xffc81e, emissive: 0x6a4a00, metalness: 0.7, roughness: 0.3 }));
+  if (kind === 'figu') {
+    // figurita del álbum: sobre brillante que gira
+    const m = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.36, 0.02), new THREE.MeshStandardMaterial({ color: 0xff4fd8, emissive: 0x551040, metalness: 0.4, roughness: 0.35 }));
+    m.add(new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.28, 0.022), new THREE.MeshStandardMaterial({ color: 0xf6f0e0, roughness: 0.6 })));
+    return m;
+  }
   const B = new BoxBuilder();
   if (kind === 'money' || (kind === 'loot' && !data.phone)) {
     for (let i = 0; i < 3; i++) B.box(0.34, 0.05, 0.16, i % 2 ? 0x2e7d32 : 0x43a047, 0, i * 0.05, 0);
@@ -69,10 +88,13 @@ export class Pickups {
 
   spawn(kind, x, z, data = {}, o = {}) {
     const g = new THREE.Group();
-    const ring = new THREE.Mesh(this.ringGeo, this.mat(kind, false));
-    ring.position.y = 0.05;
-    g.add(ring);
-    if (kind !== 'money') {
+    // las figuritas están escondidas: sin aro ni columna de luz
+    if (kind !== 'figu') {
+      const ring = new THREE.Mesh(this.ringGeo, this.mat(kind, false));
+      ring.position.y = 0.05;
+      g.add(ring);
+    }
+    if (kind !== 'money' && kind !== 'figu') {
       const beam = new THREE.Mesh(this.beamGeo, this.mat(kind, true));
       g.add(beam);
     }
@@ -149,6 +171,22 @@ export class Pickups {
     this.shops = shops;
     for (let i = 3; i < shops.length && i < 60; i += 11) at(shops[i], 'health', {});
     put(curb(420, 560, 0.5), 'armor', {});
+    // coimas: una estrella menos si la cana te busca
+    for (const [d0, d1, k] of [[70, 200, 0.2], [150, 300, 0.65], [250, 400, 0.3], [300, 500, 0.85], [400, 600, 0.5], [500, 800, 0.15], [600, 900, 0.7]]) {
+      const p = curb(d0, d1, k);
+      if (p) at(p, 'coima', {}, { respawn: 240 });
+    }
+    // figuritas escondidas: siempre en el mismo lugar (para poder guardar cuáles tenés)
+    const cs = city.curbSpots || [];
+    for (let i = 0; i < FIGUS; i++) {
+      const pk = i % 3 === 0 ? parks[3 + i / 3] : null;
+      let p = pk ? { x: pk.x + 3.5, z: pk.z - 2 } : null;
+      if (!p && cs.length) {
+        const c = cs[Math.floor(((i * 0.6180339) % 1) * cs.length)];
+        p = { x: c.x - Math.cos(c.heading) * 2.8, z: c.z + Math.sin(c.heading) * 2.8 };
+      }
+      if (p) at(p, 'figu', { id: i }, { respawn: 0 });
+    }
     this.spots = spots;
   }
 
@@ -167,7 +205,7 @@ export class Pickups {
       }
       p.t += dt;
       p.life -= dt;
-      if (p.life <= 0) {
+      if (p.life <= 0 || (p.kind === 'figu' && player.figus.has(p.data.id))) {
         p.dead = true;
         continue;
       }
@@ -198,6 +236,34 @@ export class Pickups {
         const w = WEAPONS[p.data.id];
         hud.flash(w.name.toUpperCase(), TOUCH ? (w.gun ? 'Apunta solo. Tocá el arma arriba para cambiarla' : 'Tocá el arma arriba para cambiarla') : w.gun ? 'Clic para tirar · clic derecho para apuntar · Q cambia de arma' : 'Clic para pegar · Q cambia de arma', 'ok', 2.6);
         audio.recarga?.();
+      } else if (p.kind === 'coima') {
+        const { police } = world;
+        if (!police.stars) ok = false;
+        else {
+          police.heat = Math.max(0, police.heat - 1);
+          police.updateStars();
+          if (!police.stars) police.clear();
+          hud.flash('COIMA', 'Unos mangos para la cana: una estrella menos', 'ok', 2.2);
+          audio.plata();
+        }
+      } else if (p.kind === 'figu') {
+        player.figus.add(p.data.id);
+        const n = player.figus.size;
+        audio.cumplida?.();
+        let sub = `Hay ${FIGUS} escondidas en Temperley. Cada 10, un premio`;
+        if (n === 10) {
+          player.addMoney(15000);
+          player.armor = 100;
+          sub = 'Premio: $15.000 y un chaleco';
+        } else if (n === 20) {
+          combat.give(player, 'escopeta');
+          sub = 'Premio: la tumbera con balas';
+        } else if (n === FIGUS) {
+          player.addMoney(50000);
+          player.addRespeto(5);
+          sub = '¡Álbum lleno! $50.000 y +5 de respeto';
+        }
+        hud.flash(`FIGURITA ${n}/${FIGUS}`, sub, 'ok', 2.8);
       } else if (p.kind === 'health') {
         if (player.health >= 100) ok = false;
         else {
@@ -229,7 +295,7 @@ export class Pickups {
   markers(player, all = false) {
     const out = [];
     for (const p of this.list) {
-      if (p.taken || p.kind === 'money') continue;
+      if (p.taken || p.kind === 'money' || p.kind === 'figu') continue;
       if (!all && (Math.abs(p.x - player.x) > 160 || Math.abs(p.z - player.z) > 160)) continue;
       out.push({ x: p.x, z: p.z, kind: p.kind });
     }

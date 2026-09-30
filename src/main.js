@@ -21,7 +21,7 @@ import { Post, QUALITY } from './post.js';
 import { Glows } from './glow.js';
 import { buildProps, TrafficLights, BlobShadows } from './props.js';
 import { Fx } from './fx.js';
-import { Pickups } from './pickups.js';
+import { Pickups, FIGUS } from './pickups.js';
 import { Combat } from './combat.js';
 import { Police } from './police.js';
 import { Nav } from './nav.js';
@@ -797,7 +797,7 @@ function speakers() {
 const SAVE = 'gta-conurbano-partida';
 function saveGame() {
   try {
-    localStorage.setItem(SAVE, JSON.stringify({ money: player.money, respeto: player.respeto, phone: player.phone, step, hour: time.hour, inv: player.inv, ammo: player.ammo, weapon: player.weapon, armor: player.armor, flags, missions: missions.save() }));
+    localStorage.setItem(SAVE, JSON.stringify({ money: player.money, respeto: player.respeto, phone: player.phone, step, hour: time.hour, inv: player.inv, ammo: player.ammo, weapon: player.weapon, armor: player.armor, flags, missions: missions.save(), figus: [...player.figus] }));
   } catch {
     /* sin almacenamiento */
   }
@@ -815,6 +815,7 @@ function loadGame() {
     player.ammo = d.ammo || {};
     player.weapon = player.inv[d.weapon] ? d.weapon : 'punos';
     player.armor = d.armor ?? 0;
+    player.figus = new Set(d.figus || []);
     Object.assign(flags, d.flags || {});
     missions.next = d.missions?.next ?? 0;
     missions.done = d.missions?.done ?? 0;
@@ -844,6 +845,11 @@ function setPaused(p) {
   document.getElementById('pausemap').hidden = !p;
   if (p) {
     hud.drawBig(world);
+    // cuánto del juego hiciste, como el porcentaje de los GTA
+    const mis = Math.min(missions.done, 3);
+    const figus = player.figus.size;
+    const pct = Math.round((mis / 3) * 40 + (figus / FIGUS) * 40 + (Math.min(step, steps.length - 1) / (steps.length - 1)) * 20);
+    document.getElementById('stats').textContent = `Completado ${pct}% · Misiones ${mis}/3 · Figuritas ${figus}/${FIGUS}`;
     try {
       document.exitPointerLock?.();
     } catch {
