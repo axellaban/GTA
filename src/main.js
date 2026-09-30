@@ -1,6 +1,7 @@
 // GTA Conurbano · Temperley. Arma el mundo, el ciclo de día y noche, el clima y el loop del juego.
 import * as THREE from 'three';
 import './style.css';
+import { ATMO } from './atmosphere.js';
 import { buildCity } from './city.js';
 import { makeGround, ROADS, project, STATION, cornerName, nearestStreetName } from './map.js';
 import { Input } from './input.js';
@@ -32,7 +33,7 @@ setupInstall();
 const canvas = document.getElementById('game');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
 renderer.setSize(innerWidth, innerHeight);
-renderer.shadowMap.type = THREE.PCFShadowMap;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -86,6 +87,7 @@ function applyQuality(name) {
     sun.shadow.map?.dispose();
     sun.shadow.map = null;
   }
+  post?.dispose();
   post = new Post(renderer, scene, camera, Q);
   for (const b of document.querySelectorAll('[data-quality]')) b.setAttribute('aria-pressed', String(b.dataset.quality === name));
   try {
@@ -271,6 +273,13 @@ function updateWeather(dt) {
 
 // ---------- Día y noche ----------
 const lampColor = new THREE.Color();
+const nightTop = new THREE.Color(0x040817);
+const nightBottom = new THREE.Color(0x17213a);
+const dayTop = new THREE.Color(0x2c6bd3);
+const dayBottom = new THREE.Color(0xb3d0ea);
+const duskBottom = new THREE.Color(0xff8a3d);
+const duskTop = new THREE.Color(0x35427f);
+const greyTmp = new THREE.Color();
 function updateTime(dt) {
   const rate = time.night ? 2.2 : 1; // minutos de juego por segundo real
   time.hour = (time.hour + (dt * rate) / 60) % 24;
@@ -283,18 +292,12 @@ function updateTime(dt) {
   const dusk = THREE.MathUtils.clamp(1 - Math.abs(elev) * 3.2, 0, 1) * (h > 12 ? 1 : 0.6);
   const rain = weather.rain;
   time.night = day < 0.15;
-  const nightTop = new THREE.Color(0x050a1a);
-  const nightBottom = new THREE.Color(0x1a2233);
-  const dayTop = new THREE.Color(0x3d7fcf);
-  const dayBottom = new THREE.Color(0xcfdde4);
-  const duskBottom = new THREE.Color(0xf59a52);
-  const duskTop = new THREE.Color(0x4a5d9e);
   const U = sky.uniforms;
   U.zenith.value.copy(nightTop).lerp(dayTop, day).lerp(duskTop, dusk * 0.6 * (1 - rain));
   U.horizon.value.copy(nightBottom).lerp(dayBottom, day).lerp(duskBottom, dusk * 0.85 * (1 - rain));
   // nublado: el cielo se pone gris
-  U.zenith.value.lerp(grey.clone().multiplyScalar(0.25 + day * 0.75), rain * 0.8);
-  U.horizon.value.lerp(grey.clone().multiplyScalar(0.3 + day * 0.9), rain * 0.8);
+  U.zenith.value.lerp(greyTmp.copy(grey).multiplyScalar(0.25 + day * 0.75), rain * 0.8);
+  U.horizon.value.lerp(greyTmp.copy(grey).multiplyScalar(0.3 + day * 0.9), rain * 0.8);
   if (weather.flash > 0) {
     U.zenith.value.lerp(flashColor, weather.flash * 0.7);
     U.horizon.value.lerp(flashColor, weather.flash * 0.7);
@@ -303,24 +306,39 @@ function updateTime(dt) {
   U.time.value += dt;
   U.sunColor.value.setHSL(0.1 - dusk * 0.05, 0.9, 0.62 - dusk * 0.05);
   scene.fog.color.copy(U.horizon.value).lerp(U.zenith.value, 0.15);
-  scene.fog.near = (50 + day * 50) * (1 - rain * 0.5);
-  scene.fog.far = (240 + day * 200) * (1 - rain * 0.45);
-  sun.intensity = (0.45 + day * 2.2) * (1 - rain * 0.7);
-  sun.color.setHSL(0.09 - dusk * 0.04, 0.5 + dusk * 0.4, 0.75 - dusk * 0.1);
-  if (time.night) sun.color.set(0x8fa8ff);
-  hemi.intensity = (0.75 + day * 0.55) * (1 - rain * 0.2) + weather.flash * 2.5;
-  hemi.color.copy(U.zenith.value).lerp(new THREE.Color(time.night ? 0x7d8fd0 : 0xffffff), 0.55);
-  hemi.groundColor.set(time.night ? 0x2e2a3a : 0x5b5646);
+  scene.fog.far = (280 + day * 230) * (1 - rain * 0.45);
+  scene.fog.near = scene.fog.far * 0.55;
+  // bruma: más espesa con lluvia y de noche; del lado del sol se pone dorada
+  ATMO.fogParams.value.set((0.0022 + (1 - day) * 0.0012 + rain * 0.005) * (1 + dusk * 0.4), 0.04, 0, 0);
+  ATMO.fogSunColor.value.copy(U.sunColor.value).multiplyScalar((0.3 + dusk * 1.1) * day * (1 - rain * 0.8));
+  // la luz del sol viene de donde se ve el sol; de noche, de la luna
   const az = ((h - 6) / 24) * Math.PI * 2;
-  const sx = Math.cos(az) * 120;
-  const sy = Math.max(35, Math.abs(elev) * 170);
-  const sz = Math.sin(az) * 60 - 40;
-  sun.position.set(player.x + sx, sy, player.z + sz);
-  sun.target.position.set(player.x, 0, player.z);
-  // el disco del sol en el cielo sigue la luz (baja hasta el horizonte al atardecer)
   U.sunDir.value.set(Math.cos(az), Math.max(-0.2, elev * 0.9), Math.sin(az) * 0.5 - 0.33).normalize();
+  ATMO.fogSunDir.value.copy(U.sunDir.value);
+  if (elev > 0) lightDir.copy(U.sunDir.value);
+  else lightDir.copy(U.sunDir.value).negate().add(moonUp).normalize();
+  lightDir.y = Math.max(lightDir.y, 0.2);
+  lightDir.normalize();
+  // cuando el sol cruza el horizonte la luz se apaga un instante (sin saltos de sombra)
+  const cross = THREE.MathUtils.smoothstep(Math.abs(elev), 0.0, 0.08);
+  sun.intensity = (0.35 + day * 2.9) * (1 - rain * 0.75) * cross;
+  sun.color.setHSL(0.085 - dusk * 0.045, 0.55 + dusk * 0.4, 0.74 - dusk * 0.12);
+  if (elev <= 0) sun.color.set(0x8fa8ff);
+  // cielo: relleno azulado para que las sombras tengan color
+  hemi.intensity = (0.5 + day * 0.38) * (1 - rain * 0.1) + rain * day * 0.45 + weather.flash * 2.5;
+  hemi.color.copy(U.zenith.value).lerp(time.night ? nightFill : dayFill, 0.6);
+  hemi.groundColor.set(time.night ? 0x2a2733 : 0x6b5e4c);
+  scene.environmentIntensity = 0.55 + day * 0.35;
+  // la sombra cubre sobre todo lo que tenemos adelante, y se mueve de a un texel (sin temblequeo)
+  camera.getWorldDirection(camFwd);
+  camFwd.y = 0;
+  camFwd.normalize();
+  shadowCenter.set(player.x + camFwd.x * 28, 0, player.z + camFwd.z * 28);
+  snapShadow(shadowCenter);
+  sun.target.position.copy(shadowCenter);
+  sun.position.copy(shadowCenter).addScaledVector(lightDir, 220);
   sky.updateEnv(h, scene);
-  post?.setMood(1 - day, dusk);
+  post?.setMood(1 - day, dusk, rain);
   // faroles de sodio (con lluvia se prenden antes)
   const lit = day - rain * 0.3;
   const lampsOn = lit < 0.35;
@@ -332,7 +350,27 @@ function updateTime(dt) {
   city.windowMat.emissiveIntensity = THREE.MathUtils.clamp((0.45 - lit) * 2.2, 0, 0.85);
   if (city.signMat) city.signMat.emissiveIntensity = THREE.MathUtils.clamp((0.5 - lit) * 2.4, 0, 1);
   city.lampPools.material.opacity = THREE.MathUtils.clamp((0.35 - lit) * 0.8, 0, 0.2);
-  renderer.toneMappingExposure = 1.0 + (1 - day) * 0.45;
+  renderer.toneMappingExposure = 0.95 + (1 - day) * 0.5;
+}
+
+const lightDir = new THREE.Vector3();
+const moonUp = new THREE.Vector3(0, 0.6, 0);
+const dayFill = new THREE.Color(0xb4cdf0);
+const nightFill = new THREE.Color(0x6a7cc4);
+const camFwd = new THREE.Vector3();
+const shadowCenter = new THREE.Vector3();
+const lx = new THREE.Vector3();
+const ly = new THREE.Vector3();
+const UP = new THREE.Vector3(0, 1, 0);
+// Redondea el centro de la sombra a la grilla de texels vista desde la luz.
+function snapShadow(c) {
+  const texel = (sc.right - sc.left) / Math.max(1, sun.shadow.mapSize.x);
+  lx.crossVectors(UP, lightDir).normalize();
+  ly.crossVectors(lightDir, lx);
+  const a = Math.round(c.dot(lx) / texel) * texel;
+  const b = Math.round(c.dot(ly) / texel) * texel;
+  const d = c.dot(lightDir);
+  c.copy(lx).multiplyScalar(a).addScaledVector(ly, b).addScaledVector(lightDir, d);
 }
 
 // ---------- Objetivos ----------

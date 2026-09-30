@@ -274,7 +274,7 @@ function baskets(scene, city, rng) {
   }
   const post = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.03, 0.03, 1.05, 5), new THREE.MeshLambertMaterial({ color: 0x2a2d30 }), list.length);
   const box = new THREE.BoxGeometry(0.6, 0.35, 0.45);
-  const basket = new THREE.InstancedMesh(box, new THREE.MeshLambertMaterial({ map: basketTexture(), alphaTest: 0.5, side: THREE.DoubleSide }), list.length);
+  const basket = new THREE.InstancedMesh(box, new THREE.MeshLambertMaterial({ map: basketTexture(), alphaTest: 0.5, alphaToCoverage: true, side: THREE.DoubleSide }), list.length);
   const full = list.filter((l) => l[2]);
   const bag = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.2, 0), new THREE.MeshLambertMaterial({ color: 0x151618, flatShading: true }), full.length);
   let j = 0;

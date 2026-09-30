@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import { viteSingleFile } from 'vite-plugin-singlefile';
 
@@ -5,5 +6,6 @@ import { viteSingleFile } from 'vite-plugin-singlefile';
 export default defineConfig({
   base: './',
   plugins: [viteSingleFile()],
+  resolve: { alias: { postprocessing: fileURLToPath(new URL('./src/shims/postprocessing.js', import.meta.url)) } },
   build: { assetsInlineLimit: 100_000_000, chunkSizeWarningLimit: 2000 },
 });

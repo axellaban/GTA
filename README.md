@@ -113,7 +113,7 @@ Datos del mapa: © colaboradores de OpenStreetMap (ODbL) y Overture Maps Foundat
 | `src/radio.js`, `src/audio.js` | Radio y sonidos sintetizados |
 | `src/fx.js` | Partículas, trazas, marcas de frenada, lluvia |
 | `src/hud.js`, `src/style.css` | Tarjeta SUBE, estrellas, minimapa, mapa grande, zócalo, diálogos |
-| `src/sky.js`, `src/post.js`, `src/glow.js` | Cielo, postprocesado y luces de noche |
+| `src/sky.js`, `src/atmosphere.js`, `src/post.js`, `src/glow.js` | Cielo, bruma con altura y sol, oclusión ambiental (N8AO), gradeo de color y luces de noche |
 
 ## Pendiente
 

@@ -714,7 +714,7 @@ function addFences(scene, colliders, balconyRails) {
     rail(x1, z1, x1 - e.nx * depth, z1 - e.nz * depth, y, y + 1.0);
   }
   const t = rejaTexture();
-  scene.add(new THREE.Mesh(q.geometry(), new THREE.MeshLambertMaterial({ map: t, alphaTest: 0.5, side: THREE.DoubleSide })));
+  scene.add(new THREE.Mesh(q.geometry(), new THREE.MeshLambertMaterial({ map: t, alphaTest: 0.5, alphaToCoverage: true, side: THREE.DoubleSide })));
   scene.add(walls.mesh(new THREE.MeshLambertMaterial({ vertexColors: true })));
 }
 
@@ -1036,7 +1036,7 @@ function addTrees(scene, colliders, rng) {
   const T = treeTemplates();
   const leafTex = leafTexture();
   const ti = new THREE.InstancedMesh(T.trunk, new THREE.MeshLambertMaterial({ color: 0x5a4a3a }), trees.length);
-  const li = new THREE.InstancedMesh(T.leaves, new THREE.MeshLambertMaterial({ map: leafTex, alphaTest: 0.45, side: THREE.DoubleSide }), trees.length);
+  const li = new THREE.InstancedMesh(T.leaves, new THREE.MeshLambertMaterial({ map: leafTex, alphaTest: 0.45, alphaToCoverage: true, side: THREE.DoubleSide }), trees.length);
   const ci = new THREE.InstancedMesh(T.core, new THREE.MeshLambertMaterial({ color: 0x2f4a22 }), trees.length);
   li.customDepthMaterial = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: leafTex, alphaTest: 0.45 });
   const m4 = new THREE.Matrix4();
