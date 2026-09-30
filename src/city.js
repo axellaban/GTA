@@ -1112,21 +1112,47 @@ function treeTrunk(sp, painted) {
   return g;
 }
 
+// Copa: ramilletes de hojas (planos) inclinados al azar. La luz se calcula como si la copa fuera
+// redonda (normales que salen del centro de cada ramillete y de la copa), así no quedan planos
+// oscuros ni se ve como un plato: arriba se ilumina y abajo se oscurece suave.
 function treeCanopy(sp) {
   const cards = [];
+  let cx = 0;
+  let cy = 0;
+  let cz = 0;
+  for (const [x, y, z] of sp.blobs) {
+    cx += x / sp.blobs.length;
+    cy += y / sp.blobs.length;
+    cz += z / sp.blobs.length;
+  }
+  const R = Math.max(...sp.blobs.map(([x, y, z, r]) => Math.hypot(x - cx, (y - cy) * 1.4, z - cz) + r));
+  let seed = sp.blobs.length * 7.31;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const v = new THREE.Vector3();
   for (const [x, y, z, r] of sp.blobs) {
-    for (let k = 0; k < 3; k++) {
+    for (let k = 0; k < 6; k++) {
       const p = new THREE.PlaneGeometry(r * 2, r * 1.8);
-      p.rotateY((k / 3) * Math.PI);
-      if (k === 2) p.rotateX(Math.PI / 2);
-      p.translate(x, y, z);
+      p.rotateX((rnd() - 0.5) * 1.3);
+      p.rotateY((k / 6) * Math.PI + rnd() * 0.5);
+      if (k === 5) p.rotateX(Math.PI / 2);
+      p.translate(x + (rnd() - 0.5) * r * 0.3, y + (rnd() - 0.5) * r * 0.25, z + (rnd() - 0.5) * r * 0.3);
+      const pos = p.attributes.position;
+      const nor = p.attributes.normal;
+      for (let i = 0; i < pos.count; i++) {
+        v.set((pos.getX(i) - x) / r, (pos.getY(i) - y) / r, (pos.getZ(i) - z) / r).multiplyScalar(0.55);
+        v.x += ((pos.getX(i) - cx) / R) * 0.45;
+        v.y += ((pos.getY(i) - cy) / R) * 0.45 + 0.12;
+        v.z += ((pos.getZ(i) - cz) / R) * 0.45;
+        v.normalize();
+        nor.setXYZ(i, v.x, v.y, v.z);
+      }
       cards.push(p);
     }
   }
-  const [cr, sxz, sy, cy] = sp.core;
-  const core = new THREE.IcosahedronGeometry(cr, 1);
+  const [cr, sxz, sy, ccy] = sp.core;
+  const core = new THREE.IcosahedronGeometry(cr * 0.82, 1);
   core.scale(sxz, sy, sxz);
-  core.translate(0, cy, 0);
+  core.translate(0, ccy, 0);
   return { leaves: mergeGeometries(cards), core };
 }
 
@@ -1178,6 +1204,12 @@ function addTrees(scene, colliders, rng) {
     const { leaves, core } = treeCanopy(sp);
     const leafTex = leafTexture(name);
     const lm = addWind(new THREE.MeshLambertMaterial({ map: leafTex, alphaTest: 0.45, alphaToCoverage: true, side: THREE.DoubleSide }));
+    const windCompile = lm.onBeforeCompile;
+    lm.onBeforeCompile = (sh, r) => {
+      windCompile(sh, r);
+      sh.fragmentShader = sh.fragmentShader.replace('#include <normal_fragment_begin>', '#include <normal_fragment_begin>\n#ifdef DOUBLE_SIDED\n  normal *= faceDirection;\n#endif');
+    };
+    lm.customProgramCacheKey = () => 'wind-leaf';
     const li = new THREE.InstancedMesh(leaves, lm, list.length);
     li.customDepthMaterial = addWind(new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: leafTex, alphaTest: 0.45 }));
     const ci = new THREE.InstancedMesh(core, new THREE.MeshLambertMaterial({ color: sp.coreColor }), list.length);
