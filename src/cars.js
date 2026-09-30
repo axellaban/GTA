@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { BoxBuilder } from './builder.js';
+import { Mesher, loft } from './body.js';
 
 // Pintura con laca: una capa de barniz (clearcoat) arriba del color, como la de los autos de
 // verdad. Los grises, azules y verdes son metalizados; el blanco, el negro y el rojo, lisos.
@@ -85,6 +86,65 @@ function bodyShape(m) {
   return s;
 }
 
+// Carrocería como superficie continua a lo largo del auto (eje z): esquinas redondeadas vistas
+// desde arriba, secciones con cantos suaves y pasaruedas que siguen el arco de la rueda.
+function bodyLoft(m) {
+  const { L, W, belt, nose, tail, hood, trunk, wheelR } = m;
+  const f = L / 2;
+  const low = 0.3;
+  const ar = wheelR + 0.07;
+  const corner = Math.min(0.34, W * 0.2);
+  const top = (z) => {
+    if (z > f - 0.15) return nose + 0.05 - ((z - (f - 0.15)) / 0.15) ** 2 * 0.1;
+    if (z > f - hood) return belt + ((z - (f - hood)) / (hood - 0.15)) * (nose + 0.05 - belt);
+    const rearEnd = m.bed ? -f + 0.05 : -f + trunk * 0.95;
+    if (z < -f + 0.1) return tail - 0.02 - ((-f + 0.1 - z) / 0.1) ** 2 * 0.06;
+    if (z < rearEnd) return tail + 0.03 + ((z - (-f + 0.1)) / Math.max(0.01, rearEnd + f - 0.1)) * (belt - 0.02 - tail - 0.03);
+    return belt;
+  };
+  const bottom = (z) => {
+    let b = low + 0.02;
+    for (const zw of [f - 0.82, -f + 0.82]) {
+      const d = Math.abs(z - zw);
+      if (d < ar) b = Math.max(b, low + Math.sqrt(ar * ar - d * d));
+    }
+    // paragolpes: la trompa y la cola suben un poco abajo
+    const end = Math.max(0, Math.abs(z) - (f - 0.25)) / 0.25;
+    return b + end * end * 0.1;
+  };
+  const halfW = (z) => {
+    const d = Math.max(0, corner - (f - Math.abs(z)));
+    return W / 2 - (corner - Math.sqrt(Math.max(0, corner * corner - d * d)));
+  };
+  const keys = [];
+  const n = Math.round(L / 0.06);
+  for (let i = 0; i <= n; i++) {
+    const z = -f + (L * i) / n;
+    const t = top(z);
+    const b = bottom(z);
+    keys.push([z, halfW(z), (t - b) / 2, (t - b) / 2, (t + b) / 2]);
+  }
+  const mesh = new Mesher();
+  loft(mesh, { keys, axis: 'z', seg: 26, sub: 0, p: 4.2, capStart: true, capEnd: true, color: 0xffffff, cell: { u0: 0, u1: 1, v0: 0, v1: 1 }, weights: () => [[0, 1]] });
+  const g = mesh.build();
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', g.attributes.position);
+  out.setAttribute('normal', g.attributes.normal);
+  out.setIndex(g.index);
+  return out.toNonIndexed();
+}
+
+// la cabina se angosta hacia arriba (los costados se inclinan hacia adentro)
+function tumblehome(g, belt, roof, k = 0.13) {
+  const p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const t = Math.min(1, Math.max(0, (p.getY(i) - belt) / (roof - belt)));
+    p.setX(i, p.getX(i) * (1 - k * t));
+  }
+  g.computeVertexNormals();
+  return g;
+}
+
 function cabinPts(m) {
   const { L, belt, hood, trunk, roof, glassF, glassR } = m;
   const f = L / 2 - hood;
@@ -136,7 +196,7 @@ function buildModel(name) {
   const { L, W, belt, roof } = m;
   // carrocería pintada: parte baja + techo + marcos laterales de las ventanillas
   const paint = [];
-  paint.push(clean(extrudeX(bodyShape(m), W, 0.11, true)));
+  paint.push(bodyLoft(m));
   const cab = cabinPts(m);
   const roofPts = [
     [cab[1][0] - 0.02, roof - 0.05],
@@ -144,7 +204,7 @@ function buildModel(name) {
     [cab[2][0], roof + 0.03],
     [cab[1][0], roof + 0.03],
   ];
-  paint.push(clean(extrudeX(polyShape(roofPts), W * 0.9, 0.05, true)));
+  paint.push(tumblehome(clean(extrudeX(polyShape(roofPts), W * 0.9, 0.05, true)), belt, roof));
   for (const s of [-1, 1]) {
     const frame = polyShape(cab);
     const inner = inset(cab, 0.07);
@@ -157,7 +217,7 @@ function buildModel(name) {
     const g = new THREE.ExtrudeGeometry(frame, { depth: 0.04, bevelEnabled: false });
     g.rotateY(-Math.PI / 2);
     g.translate(s * (W * 0.44) + 0.02, 0, 0);
-    paint.push(clean(g));
+    paint.push(tumblehome(clean(g), belt, roof));
   }
   if (m.bed) {
     // caja de la camioneta
@@ -170,11 +230,11 @@ function buildModel(name) {
   paintGeo.computeVertexNormals();
 
   // vidrios polarizados
-  const glassGeo = clean(extrudeX(polyShape(inset(cab, 0.01)), W * 0.86, 0.04, true));
-  glassGeo.computeVertexNormals();
+  const glassGeo = tumblehome(clean(extrudeX(polyShape(inset(cab, 0.01)), W * 0.86, 0.04, true)), belt, roof);
   // cromados
   const shiny = [];
-  for (const z of [L / 2 + 0.02, -L / 2 - 0.02]) shiny.push(colorize(clean(new THREE.BoxGeometry(W + 0.04, 0.14, 0.1).translate(0, 0.42, z)), 0xd8d8d8));
+  // paragolpes cromados: un poco más angostos que la carrocería (que tiene las esquinas redondas)
+  for (const z of [L / 2 + 0.01, -L / 2 - 0.01]) shiny.push(colorize(clean(new THREE.BoxGeometry(W - 0.12, 0.13, 0.1).translate(0, 0.44, z)), 0xd8d8d8));
   // manijas y marco de parrilla
   for (const s of [-1, 1]) {
     shiny.push(colorize(clean(new THREE.BoxGeometry(0.03, 0.03, 0.14).translate(s * (W / 2 + 0.01), belt - 0.12, 0.2)), 0xcfcfcf));
@@ -201,9 +261,10 @@ function buildModel(name) {
   for (const s of [-1, 1]) {
     D.box(0.12, 0.08, 0.06, 0x1a1a1a, s * (W / 2 + 0.05), belt + 0.1, cab[3][0] - 0.1);
     // líneas de puertas
-    D.box(0.012, belt - 0.4, 0.015, 0x222222, s * (W / 2 + 0.002), (belt + 0.35) / 2, cab[3][0] - 0.05);
-    D.box(0.012, belt - 0.4, 0.015, 0x222222, s * (W / 2 + 0.002), (belt + 0.35) / 2, (cab[0][0] + cab[3][0]) / 2 - 0.1);
-    D.box(0.03, 0.06, L * 0.96, 0x1d1d1d, s * (W / 2 + 0.005), 0.4, 0);
+    // líneas de puertas y franja de abajo, pegadas a la carrocería (que se mete hacia el zócalo)
+    D.box(0.012, belt - 0.5, 0.015, 0x222222, s * (W / 2 - 0.004), (belt + 0.48) / 2, cab[3][0] - 0.05);
+    D.box(0.012, belt - 0.5, 0.015, 0x222222, s * (W / 2 - 0.004), (belt + 0.48) / 2, (cab[0][0] + cab[3][0]) / 2 - 0.1);
+    D.box(0.03, 0.05, L * 0.62, 0x1d1d1d, s * (W / 2 * 0.955), 0.47, 0);
   }
   D.box(W * 0.9, 0.12, L * 0.8, 0x0f0f0f, 0, 0.28, 0);
   for (const z of [L / 2 - 0.82, -L / 2 + 0.82]) D.box(W * 0.94, 0.3, m.wheelR * 2.2, 0x0a0a0a, 0, 0.45, z);
@@ -214,7 +275,7 @@ function buildModel(name) {
   if (name === 'remis') D.box(0.6, 0.18, 0.22, 0xffd600, 0, roof + 0.12, (cab[1][0] + cab[2][0]) / 2);
   if (name === 'taxi') {
     // taxi porteño: negro con techo amarillo y el cartel de LIBRE
-    D.box(W * 0.9, 0.05, cab[2][0] - cab[1][0] + 0.05, 0xf5c400, 0, roof + 0.05, (cab[1][0] + cab[2][0]) / 2);
+    D.box(W * 0.76, 0.05, cab[2][0] - cab[1][0] + 0.05, 0xf5c400, 0, roof + 0.05, (cab[1][0] + cab[2][0]) / 2);
     D.box(0.5, 0.16, 0.2, 0xf5c400, 0, roof + 0.16, (cab[1][0] + cab[2][0]) / 2);
   }
   if (name === 'trafic') {
@@ -231,8 +292,8 @@ function buildModel(name) {
   for (const s of [-1, 1]) {
     if (round) Lb.add(new THREE.CylinderGeometry(0.085, 0.085, 0.04, 12).rotateX(Math.PI / 2), 0xfff3cf, s * (W / 2 - 0.22), m.nose - 0.12, L / 2 + 0.02);
     else Lb.box(0.3, 0.13, 0.04, 0xfff3cf, s * (W / 2 - 0.25), m.nose - 0.12, L / 2 + 0.02);
-    Lb.box(0.1, 0.06, 0.04, 0xffa000, s * (W / 2 - 0.05), m.nose - 0.2, L / 2 + 0.02);
-    Lb.box(0.3, 0.14, 0.04, 0xb01010, s * (W / 2 - 0.23), m.tail - 0.14, -L / 2 - 0.03);
+    Lb.box(0.1, 0.06, 0.04, 0xffa000, s * (W / 2 - 0.13), m.nose - 0.2, L / 2 + 0.01);
+    Lb.box(0.28, 0.14, 0.04, 0xb01010, s * (W / 2 - 0.3), m.tail - 0.14, -L / 2 - 0.005);
   }
   const lightGeo = Lb.mesh().geometry;
 
