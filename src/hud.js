@@ -72,13 +72,13 @@ export class Hud {
     const w = WEAPONS[player.weapon || 'punos'];
     $('w-name').textContent = w.name;
     const a = player.ammo?.[w.id];
-    $('w-ammo').textContent = w.gun ? (player.reloadT > 0 ? 'recargando' : `${a?.mag ?? 0} / ${a?.res ?? 0}`) : '';
+    $('w-ammo').textContent = w.gun ? (player.reloadT > 0 ? 'recargando' : `${a?.mag ?? 0} / ${a?.res ?? 0}`) : w.throw ? `${a?.mag ?? 0}` : '';
     // controles táctiles: a pie, en auto o en moto; el botón de ataque dice qué hace
     const v = player.vehicle;
     const mode = v ? (v.kind === 'moto' ? 'car moto' : 'car') : 'foot';
     const touch = $('touch');
     if (touch.className !== mode) touch.className = mode;
-    const verb = w.gun ? 'Tirar' : w.id === 'palo' ? 'Palo' : 'Pegar';
+    const verb = w.gun || w.throw ? 'Tirar' : w.verb || 'Pegar';
     const atk = $('btn-attack');
     if (atk.textContent !== verb) atk.textContent = verb;
     // mira: círculo al apuntar, punto si tiene un arma de fuego en la mano
@@ -385,6 +385,7 @@ export class Hud {
     for (const m of world.pickups.markers({ x: player.x, z: player.z }, true)) dot(m.x, m.z, m.kind === 'weapon' ? '#ffa726' : m.kind === 'health' ? '#ff5a5a' : m.kind === 'coima' ? '#ffd23a' : '#5aa9ff', 6);
     for (const m of world.events.markers()) dot(m.x, m.z, '#ff7a1a', 7, 'square');
     for (const m of world.garages || []) dot(m.x, m.z, '#3ddc84', 7, 'square');
+    if (world.armeria) dot(world.armeria.x, world.armeria.z, '#ff5a36', 7, 'square');
     for (const m of world.police.markers()) dot(m.x, m.z, '#3060ff', 5, 'square');
     const o = this.objective;
     if (o?.target) dot(o.target.x, o.target.z, '#ffe14a', 9);
@@ -452,6 +453,7 @@ export class Hud {
     }
     for (const m of events.markers()) mark(m.x, m.z, m.kind === 'corte' ? '#ff7a1a' : '#ffb23e', 6, 'square');
     for (const m of world.garages || []) mark(m.x, m.z, '#3ddc84', 6, 'square');
+    if (world.armeria) mark(world.armeria.x, world.armeria.z, '#ff5a36', 6, 'square');
     for (const m of crime.markers()) mark(m.x, m.z, m.kind === 'moto' ? '#e5484d' : '#6ec3ea', 5);
     for (const m of world.pickups.markers(player)) mark(m.x, m.z, m.kind === 'weapon' ? '#ffa726' : m.kind === 'health' ? '#ff5a5a' : m.kind === 'armor' ? '#5aa9ff' : m.kind === 'coima' ? '#ffd23a' : '#6ec3ea', 3.5);
     const blink = ((performance.now() / 250) | 0) % 2;

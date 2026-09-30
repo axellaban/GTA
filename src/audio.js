@@ -226,6 +226,25 @@ export class Audio {
     o.start(t);
     o.stop(t + dur + 0.05);
   }
+  // motosierra: motor de dos tiempos que acelera en cada corte
+  motosierra(v = 0.6) {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const o = this.ctx.createOscillator();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(95, t);
+    o.frequency.linearRampToValueAtTime(160, t + 0.12);
+    o.frequency.linearRampToValueAtTime(125, t + 0.34);
+    const f = this.ctx.createBiquadFilter();
+    f.type = 'lowpass';
+    f.frequency.value = 1800;
+    const g = this.ctx.createGain();
+    this.env(g, t, 0.01, v * 0.5, 0.34);
+    o.connect(f).connect(g).connect(this.master);
+    o.start(t);
+    o.stop(t + 0.4);
+    this.burst(0.3, 3000, 'bandpass', v * 0.2);
+  }
   disparo(kind = 'pistola', v = 1) {
     if (!this.ctx || v < 0.02) return;
     if (kind === 'escopeta') {

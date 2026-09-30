@@ -36,11 +36,13 @@ export class Combat {
     this.fx = fx;
     this.audio = audio;
     this.fireCd = 0;
+    this.flying = []; // molotovs en el aire
+    this.fires = []; // fuego en el piso
   }
 
   // ---------- Arsenal de Gaspi ----------
   setupPlayer(P) {
-    P.inv = { punos: true };
+    P.inv = { punos: true, motosierra: true };
     P.ammo = {};
     P.weapon = 'punos';
     P.armor = 0;
@@ -65,6 +67,7 @@ export class Combat {
       a.mag += fill;
       a.res += add - fill;
     }
+    if (w.throw) (P.ammo[id] ??= { mag: 0, res: 0 }).mag += w.ammoPickup;
     if (isNew || P.weapon === 'punos') P.weapon = id;
     this.syncHand(P);
   }
@@ -80,7 +83,7 @@ export class Combat {
     for (const [id, m] of Object.entries(P.handMeshes)) m.visible = id === P.weapon && !P.vehicle;
   }
   strip(P) {
-    P.inv = { punos: true };
+    P.inv = { punos: true, motosierra: true };
     P.ammo = {};
     P.weapon = 'punos';
     this.syncHand(P);
@@ -103,6 +106,7 @@ export class Combat {
       P.attack = null;
     }
     this.updateVehicles(dt, world);
+    this.updateMolotovs(dt, world);
   }
 
   playerCombat(dt, world) {
@@ -131,7 +135,10 @@ export class Combat {
     if (w.gun && input.hit('r')) this.reload(P);
     if (hud.dialog) return;
     if (w.melee) {
-      if (input.hit('mouse0', 'attack')) this.melee(P, world);
+      if (input.hit('mouse0', 'attack') || (w.auto && input.down('mouse0', 'attack') && !P.attack)) this.melee(P, world);
+      this.meleeUpdate(dt, world);
+    } else if (w.throw) {
+      if (input.hit('mouse0', 'attack') && this.fireCd <= 0 && !P.attack) this.throwMolotov(world);
       this.meleeUpdate(dt, world);
     } else {
       P.attack = null;
@@ -150,11 +157,12 @@ export class Combat {
   }
   startMelee(P, world, step) {
     const w = WEAPONS[P.weapon];
-    const move = w.id === 'palo' ? { pose: 'swing', dur: w.dur, dmg: w.dmg, reach: w.range, knock: R.chance(0.45) } : COMBO[step % COMBO.length];
+    const move = w.id !== 'punos' ? { pose: 'swing', dur: w.dur, dmg: w.dmg, reach: w.range, knock: w.knock ?? R.chance(0.45), saw: !!w.saw } : COMBO[step % COMBO.length];
     const tgt = this.meleeTarget(P, world, 3);
     if (tgt) P.heading = Math.atan2(tgt.x - P.x, tgt.z - P.z);
     P.attack = { ...move, step, t: 0, hitDone: false, queued: false };
-    this.audio.whoosh(move.pose === 'kick' || move.pose === 'swing' ? 0.5 : 0.3);
+    if (move.saw) this.audio.motosierra?.();
+    else this.audio.whoosh(move.pose === 'kick' || move.pose === 'swing' ? 0.5 : 0.3);
   }
   meleeUpdate(dt, world) {
     const P = world.player;
@@ -201,20 +209,27 @@ export class Combat {
     const fx = Math.sin(P.heading);
     const fz = Math.cos(P.heading);
     const heavy = a.pose === 'kick' || a.pose === 'swing' || a.pose === 'hook';
-    this.fx.shake += heavy ? 0.24 : 0.12;
-    this.audio.golpe(a.pose === 'swing' ? 0.9 : 0.6);
+    this.fx.shake += a.saw ? 0.1 : heavy ? 0.24 : 0.12;
+    if (!a.saw) this.audio.golpe(a.pose === 'swing' ? 0.9 : 0.6);
     P.hitMarker = 0.15;
-    // el golpe "pega": el tiempo se congela un instante
-    world.hitStop = heavy ? 0.1 : 0.07;
+    // el golpe "pega": el tiempo se congela un instante (con la motosierra, apenas)
+    world.hitStop = a.saw ? 0.03 : heavy ? 0.1 : 0.07;
     if (t.kind === 'npc') {
       const n = t.obj;
       const down = n.down;
       const lying = n.state === 'ko';
       // sangre de la boca o la nariz (y más con el palo)
       const bh = lying ? 0.25 : 1.55;
-      if (a.pose === 'swing' || R.chance(0.65)) this.fx.blood(t.x - fx * 0.15, bh, t.z - fz * 0.15, fx, fz, a.pose === 'swing' ? 12 : 6, a.pose === 'swing' ? 3 : 2);
+      if (a.pose === 'swing' || R.chance(0.65)) this.fx.blood(t.x - fx * 0.15, bh, t.z - fz * 0.15, fx, fz, a.saw ? 24 : a.pose === 'swing' ? 12 : 6, a.saw ? 4 : a.pose === 'swing' ? 3 : 2);
       else this.fx.hit(t.x - fx * 0.3, 1.3, t.z - fz * 0.3);
+      const px = n.x;
+      const pz = n.z;
       const res = world.npcs.hurt(n, down ? a.dmg * 0.7 : a.dmg, fx, fz, { byPlayer: true, knock: a.knock, world });
+      // la motosierra no suelta: el que corta queda enganchado en el lugar
+      if (a.saw) {
+        n.x = px;
+        n.z = pz;
+      }
       world.police.crime(n.type === 'cana' ? 'cana' : res === 'muerte' ? 'muerte' : res === 'ko' ? 'ko' : 'pina', n.x, n.z);
       if (res === 'ko' && !down) {
         world.hud.toast(R.pick(['¡Nocaut!', '¡A dormir!', '¡Fuera!']), 1.2);
@@ -227,6 +242,69 @@ export class Combat {
       world.traffic.ejectRider(t.obj, world, fx, fz);
       world.police.crime('pina', t.x, t.z);
     }
+  }
+
+  // ---------- Molotov: la botella vuela en arco y deja fuego en el piso ----------
+  throwMolotov(world) {
+    const P = world.player;
+    const a = P.ammo.molotov;
+    if (!a || a.mag <= 0) return;
+    a.mag--;
+    this.fireCd = 0.7;
+    const fx = Math.sin(P.heading);
+    const fz = Math.cos(P.heading);
+    const m = handWeapon('molotov');
+    m.position.set(P.x + fx * 0.5, 1.7, P.z + fz * 0.5);
+    this.scene.add(m);
+    this.flying.push({ m, vx: fx * 13, vy: 4.2, vz: fz * 13 });
+    P.attack = { pose: 'swing', dur: 0.4, t: 0, hitDone: true, queued: false, step: 0 };
+    this.audio.whoosh(0.5);
+    if (a.mag <= 0) {
+      delete P.inv.molotov;
+      setTimeout(() => P.weapon === 'molotov' && ((P.weapon = 'punos'), this.syncHand(P)), 450);
+    }
+  }
+  updateMolotovs(dt, world) {
+    const ground = (x, z) => world.heightAt?.(x, z) ?? 0;
+    for (const b of this.flying) {
+      const p = b.m.position;
+      b.vy -= 9.8 * dt;
+      p.x += b.vx * dt;
+      p.y += b.vy * dt;
+      p.z += b.vz * dt;
+      b.m.rotation.x += dt * 14;
+      const gy = ground(p.x, p.z);
+      if (p.y > gy + 0.05 && world.colliders.blocked(p.x - b.vx * dt, p.z - b.vz * dt, p.x, p.z, 0.2) > 0.98) continue;
+      // se rompe: fogonazo y fuego que dura unos segundos
+      b.done = true;
+      this.scene.remove(b.m);
+      this.fx.fire(p.x, gy + 0.3, p.z, 30, 1.6);
+      this.fx.smoke(p.x, gy + 0.8, p.z, 6);
+      this.audio.metal?.(0.5);
+      this.audio.explosion?.(0.35);
+      this.fires.push({ x: p.x, z: p.z, y: gy, t: 7, tick: 0 });
+      world.police.crime('tiros', p.x, p.z);
+      world.npcs.scare?.(p.x, p.z, 25, world);
+    }
+    this.flying = this.flying.filter((b) => !b.done);
+    const P = world.player;
+    for (const f of this.fires) {
+      f.t -= dt;
+      f.tick -= dt;
+      if (R.chance(dt * 25)) this.fx.fire(f.x + R.range(-1.4, 1.4), f.y + 0.15, f.z + R.range(-1.4, 1.4), 2, 0.5);
+      if (f.tick > 0) continue;
+      f.tick = 0.35;
+      for (const n of world.npcs.list) {
+        const d = Math.hypot(n.x - f.x, n.z - f.z);
+        if (d < 2.6 && !n.killed) {
+          const res = world.npcs.hurt(n, 14, (n.x - f.x) / (d || 1), (n.z - f.z) / (d || 1), { byPlayer: true, world });
+          if (res === 'muerte') world.police.crime('muerte', n.x, n.z);
+        }
+      }
+      if (!P.vehicle && Math.hypot(P.x - f.x, P.z - f.z) < 1.8) P.hurt(9, 'Te quemaste con tu propio molotov');
+      for (const v of this.vehicles(world)) if (Math.hypot(v.x - f.x, v.z - f.z) < 3) this.damageVehicle(world, v, 8, true);
+    }
+    this.fires = this.fires.filter((f) => f.t > 0);
   }
 
   // ---------- Tiros ----------

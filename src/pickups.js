@@ -150,6 +150,9 @@ export class Pickups {
     put(where(2, 100, 250, 0.7), 'health', {});
     spots.pistola = put(curb(260, 420, 0.4), 'weapon', { id: 'pistola' });
     put(curb(200, 380, 0.8), 'armor', {});
+    spots.baston = put(where(3, 60, 160, 0.5), 'weapon', { id: 'baston' });
+    put(curb(350, 520, 0.6), 'weapon', { id: 'metra' });
+    put(curb(150, 280, 0.9), 'weapon', { id: 'molotov' });
     // la tumbera, escondida en la playa de vías
     const yard = D.yard[0]?.[0];
     if (yard) {

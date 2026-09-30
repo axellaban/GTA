@@ -136,6 +136,14 @@ La gente dice en voz alta lo que aparece en los globitos: vecinos, la cana, los 
 - **Porcentaje**: en la pausa, cuánto del juego completaste (tutorial, misiones y figuritas).
 - **Muerte a lo GTA**: cámara lenta, la imagen se va a blanco y negro y entra el "TE BAJARON".
 
+## Armas nuevas y armería (0.12)
+
+- **Motosierra**: la tenés siempre (se elige como cualquier arma). Mientras apretás, corta sin parar y el que agarra queda enganchado.
+- **Bastón presidencial**: puño de oro con borlas celeste y blanca, y hoja de espada. Hay uno en una plaza cerca de la estación y se compra en la armería.
+- **Metra**: automática, 30 balas por cargador.
+- **Molotov**: la botella vuela en arco y deja fuego en el piso unos segundos (quema gente y autos, y a vos si te quedás adentro).
+- **Armería "El Tano"** (cuadrado rojo en el mapa): entrás a pie y comprás metra, molotovs, balas para todas tus armas o el bastón.
+
 ## Estructura
 
 | Archivo | Qué hace |

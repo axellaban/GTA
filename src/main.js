@@ -22,6 +22,7 @@ import { Glows } from './glow.js';
 import { buildProps, TrafficLights, BlobShadows } from './props.js';
 import { Fx } from './fx.js';
 import { Pickups, FIGUS } from './pickups.js';
+import { WEAPONS } from './weapons.js';
 import { Combat } from './combat.js';
 import { Police } from './police.js';
 import { Nav } from './nav.js';
@@ -338,6 +339,50 @@ const garages = [];
   }
 }
 world.garages = garages;
+
+// ---------- Armería "El Tano": entrás a pie y elegís qué comprar ----------
+const armeria = (() => {
+  const shops = pickups.shops || [];
+  const s = shops[Math.floor(shops.length * 0.3)];
+  if (!s) return null;
+  const a = { x: s.x, z: s.z, used: false, mesh: makeMarker() };
+  a.mesh.userData.tube.material.color.set(0xff5a36);
+  a.mesh.userData.ring.material.color.set(0xff8a66);
+  a.mesh.position.set(a.x, heightAt(a.x, a.z), a.z);
+  scene.add(a.mesh);
+  return a;
+})();
+world.armeria = armeria;
+const ARMERIA = [
+  { label: 'Metra · $7.000', cost: 7000, give: () => combat.give(player, 'metra') },
+  { label: '3 molotov · $3.000', cost: 3000, give: () => combat.give(player, 'molotov') },
+  { label: 'Balas para todo · $2.000', cost: 2000, give: () => {
+    for (const [id, a] of Object.entries(player.ammo)) if (WEAPONS[id]?.gun) a.res += WEAPONS[id].ammoPickup;
+  } },
+  { label: 'Bastón presidencial · $9.000', cost: 9000, give: () => combat.give(player, 'baston') },
+];
+function updateArmeria() {
+  const a = armeria;
+  if (!a) return;
+  a.mesh.visible = Math.hypot(a.x - player.x, a.z - player.z) < 180;
+  const d = Math.hypot(a.x - player.x, a.z - player.z);
+  if (d > 3) a.used = false;
+  if (a.used || d > 1.6 || player.vehicle || player.dead || hud.dialog) return;
+  a.used = true;
+  hud.ask(`🔫 Armería "El Tano": ¿qué llevás? (tenés $${player.money.toLocaleString('es-AR')})`, [
+    ...ARMERIA.map((o) => ({
+      label: o.label,
+      run: () => {
+        if (player.money < o.cost) return hud.toast('No te alcanza, pibe', 1.8);
+        player.addMoney(-o.cost);
+        o.give();
+        audio.recarga?.();
+        hud.toast('¡Llevalo, es tuyo!', 1.6);
+      },
+    })),
+    { label: 'Nada', run: () => {} },
+  ], 12);
+}
 function updateGarages() {
   const v = player.vehicle;
   for (const gar of garages) {
@@ -811,7 +856,7 @@ function loadGame() {
     player.phone = d.phone ?? true;
     step = Math.min(steps.length - 1, d.step ?? 0);
     time.hour = d.hour ?? time.hour;
-    player.inv = { punos: true, ...(d.inv || {}) };
+    player.inv = { punos: true, motosierra: true, ...(d.inv || {}) };
     player.ammo = d.ammo || {};
     player.weapon = player.inv[d.weapon] ? d.weapon : 'punos';
     player.armor = d.armor ?? 0;
@@ -953,6 +998,7 @@ function frame(now) {
   for (const s of pickups.shops || []) if (s.cool > 0) s.cool -= dt;
   updateJob(dt);
   updateGarages();
+  updateArmeria();
   updateFare(dt);
   missions.update(dt, step >= steps.length - 1 && !job.active && !fare.active);
   updateObjective();
