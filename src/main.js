@@ -62,8 +62,45 @@ scene.add(sun, sun.target);
 let post = null;
 let glows = null;
 
+// Resolución: los efectos quedan siempre en alto; lo que se ajusta es cuántos píxeles se dibujan.
+// Tope de ~Full HD (en pantallas grandes o Retina el navegador lo escala) y resolución dinámica
+// como en GTA V o Fortnite: si no llega a ~48 cuadros por segundo dibuja un poco menos, y cuando
+// sobra vuelve a subir.
+const MAX_PIXELS = 2.1e6;
+const res = { scale: 1, t: 0, frames: 0, wait: 5 };
+function pixelRatio() {
+  return Math.min(devicePixelRatio, Q.pixelRatio, Math.sqrt(MAX_PIXELS / (innerWidth * innerHeight))) * res.scale;
+}
+function applyResolution() {
+  renderer.setPixelRatio(pixelRatio());
+  renderer.setSize(innerWidth, innerHeight);
+  post?.setSize(innerWidth, innerHeight);
+}
+function dynamicResolution(dt) {
+  if (document.hidden || paused) return;
+  if (res.wait > 0) {
+    // al arrancar y después de cada cambio se compilan shaders y se rearman texturas: no cuenta
+    res.wait -= dt;
+    res.frames = res.t = 0;
+    return;
+  }
+  res.frames++;
+  res.t += dt;
+  if (res.t < 2) return;
+  const fps = res.frames / res.t;
+  res.frames = res.t = 0;
+  let next = res.scale;
+  if (fps < 48) next = Math.max(0.5, res.scale * (fps < 32 ? 0.8 : 0.9));
+  else if (fps > 57 && res.scale < 1) next = Math.min(1, res.scale * 1.08);
+  if (Math.abs(next - res.scale) > 0.01) {
+    res.scale = next;
+    res.wait = 1.5;
+    applyResolution();
+  }
+}
+
 function applyQuality() {
-  renderer.setPixelRatio(Math.min(devicePixelRatio, Q.pixelRatio));
+  renderer.setPixelRatio(pixelRatio());
   renderer.setSize(innerWidth, innerHeight);
   renderer.shadowMap.enabled = true;
   sun.castShadow = true;
@@ -71,6 +108,32 @@ function applyQuality() {
   post = new Post(renderer, scene, camera, Q);
 }
 applyQuality();
+
+// ¿El navegador dibuja con la placa de video? Si está apagada la aceleración por hardware,
+// todo va por el procesador y anda lentísimo.
+const gpuName = (() => {
+  try {
+    const gl = renderer.getContext();
+    const ext = gl.getExtension('WEBGL_debug_renderer_info');
+    return ext ? String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)) : '';
+  } catch {
+    return '';
+  }
+})();
+const noGpu = /swiftshader|llvmpipe|softpipe|software|basic render/i.test(gpuName);
+
+// Contador de cuadros por segundo: agregar ?fps al final del link
+const fpsEl = /[?&]fps\b/.test(location.search) ? Object.assign(document.body.appendChild(document.createElement('div')), { id: 'fps' }) : null;
+const fpsInfo = { frames: 0, t: 0 };
+function showFps(dt) {
+  if (!fpsEl) return;
+  fpsInfo.frames++;
+  fpsInfo.t += dt;
+  if (fpsInfo.t < 0.5) return;
+  const px = Math.round(innerWidth * renderer.getPixelRatio()) + '×' + Math.round(innerHeight * renderer.getPixelRatio());
+  fpsEl.textContent = `${Math.round(fpsInfo.frames / fpsInfo.t)} fps · ${px} · ${Math.round(res.scale * 100)}% · ${gpuName || 'GPU desconocida'}`;
+  fpsInfo.frames = fpsInfo.t = 0;
+}
 
 // ---------- Mundo ----------
 const city = buildCity(scene);
@@ -656,6 +719,10 @@ let intro = 0;
 function frame(now) {
   const dt = Math.max(0, Math.min(0.05, (now - last) / 1000));
   last = now;
+  const real = (now - (frame.prev ?? now)) / 1000;
+  frame.prev = now;
+  dynamicResolution(real);
+  showFps(real);
   updateWeather(started ? dt : dt * 0.2);
   updateTime(started ? dt : dt * 0.2);
   ATMO.windT.value += dt * (1 + weather.rain * 1.5);
@@ -774,6 +841,7 @@ document.getElementById('play').addEventListener('click', () => {
   started = true;
   last = performance.now();
   const mapHint = coarse ? 'El mapa está en ☰.' : 'P abre el mapa.';
+  if (noGpu) setTimeout(() => hud.flash('SIN PLACA DE VIDEO', 'El navegador tiene apagada la aceleración por hardware: activala en la configuración para que ande fluido.', 'bad', 7), 3500);
   hud.flash('TEMPERLEY', loaded ? `Partida recuperada. ${mapHint}` : `Av. Meeks · Estación del Roca. ${mapHint}`, 'warn', 3);
 });
 document.getElementById('mute').addEventListener('click', () => {
@@ -782,8 +850,7 @@ document.getElementById('mute').addEventListener('click', () => {
 });
 
 addEventListener('resize', () => {
-  renderer.setSize(innerWidth, innerHeight);
-  post?.setSize(innerWidth, innerHeight);
+  applyResolution();
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
   fx.setScale(innerHeight);

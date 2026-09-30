@@ -1331,3 +1331,19 @@ body {
     right: calc(10px + env(safe-area-inset-right, 0px));
   }
 }
+
+/* contador de cuadros por segundo (?fps en el link) */
+#fps {
+  position: fixed;
+  left: 50%;
+  bottom: calc(40px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 30;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #9f9;
+  font: 600 12px/1.4 ui-monospace, monospace;
+  pointer-events: none;
+  white-space: nowrap;
+}

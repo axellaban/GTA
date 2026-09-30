@@ -24,7 +24,7 @@ Jugás con **Gaspi** (saco, camisa blanca, corbata a rayas rojas y blancas).
 - **Autos** con carrocería perfilada (Falcon, Duna, Gol, pickup, patrullero, remís), vidrios y cromados que reflejan el cielo, llantas, parrilla y patentes Mercosur.
 - **Ciudad**: árboles con follaje de hojas, balcones con rejas, toldos a rayas en los locales, parapetos y cornisas, sendas peatonales, cordones y tapas de cloaca, estación de ladrillo.
 - **Noche**: ventanas y vidrieras que se prenden, halos en faroles, faros y luces traseras, foco del auto de Gaspi y el fuego de los cortes brillando.
-- Gráficos siempre en calidad alta. La rueda del mouse acerca o aleja la cámara.
+- Gráficos siempre en calidad alta. Para que ande fluido también en pantallas grandes, se dibuja como máximo lo equivalente a Full HD, y la resolución baja o sube sola según los cuadros por segundo (resolución dinámica, como en GTA V o Fortnite). Si agregás `?fps` al final del link aparece un contador. Si el navegador no usa la placa de video, el juego avisa. La rueda del mouse acerca o aleja la cámara.
 
 ## Temperley real (0.3)
 

@@ -86,9 +86,11 @@ export class Post {
       const c = ao.configuration;
       c.transparencyAware = false;
       c.gammaCorrection = false;
-      c.halfRes = q.ao === 'half';
-      c.aoSamples = q.ao === 'half' ? 8 : 16;
-      c.denoiseSamples = q.ao === 'half' ? 4 : 8;
+      // en pantallas grandes la oclusión va a media resolución (se ve igual y cuesta 4 veces menos)
+      const half = q.ao === 'half' || css.x * pr * css.y * pr > 1.2e6;
+      c.halfRes = half;
+      c.aoSamples = half ? 12 : 16;
+      c.denoiseSamples = half ? 6 : 8;
       c.denoiseRadius = 12;
       c.aoRadius = 2.6;
       c.distanceFalloff = 1;
