@@ -25,6 +25,9 @@ import { Police } from './police.js';
 import { Nav } from './nav.js';
 import { Radio } from './radio.js';
 import { R } from './rng.js';
+import { setupInstall } from './install.js';
+
+setupInstall();
 
 const canvas = document.getElementById('game');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
@@ -732,7 +735,12 @@ else start(window.claude?.hot?.data ?? {});
 
 document.getElementById('play').addEventListener('click', () => {
   document.getElementById('start').hidden = true;
+  document.body.classList.add('playing');
   hud.show();
+  // en el celu: pantalla completa si el navegador deja
+  if (coarse && !document.fullscreenElement && document.documentElement.requestFullscreen) {
+    document.documentElement.requestFullscreen({ navigationUI: 'hide' }).then(() => window.screen.orientation?.lock?.('landscape').catch(() => {})).catch(() => {});
+  }
   audio.start();
   input.wantLock = true;
   try {

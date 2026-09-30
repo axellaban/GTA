@@ -4,6 +4,15 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>GTA Conurbano</title>
+    <meta name="theme-color" content="#15171a" />
+    <meta name="description" content="Mundo abierto en la estación Temperley: piñas, fierros, la Bonaerense, motochorros, cortes y el vendedor de medias." />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="GTA Conurbano" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Bowlby+One&family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@500;600&display=swap" rel="stylesheet" />
@@ -91,6 +100,27 @@
       <div class="w-sub" id="wasted-sub"></div>
     </div>
 
+    <section id="install" hidden aria-labelledby="install-title">
+      <div class="install-inner">
+        <img class="install-icon" src="icons/icon-192.png" alt="" width="96" height="96" />
+        <h2 id="install-title">Tené GTA Conurbano como app</h2>
+        <p class="install-lead">Pantalla completa, sin barra del navegador y con su ícono en el celu.</p>
+        <div id="install-android" hidden>
+          <button id="install-btn" type="button">Instalar la app</button>
+          <p class="install-note" id="install-android-manual">Si no aparece el botón: menú <b>⋮</b> del navegador → <b>Instalar app</b> o <b>Agregar a la pantalla principal</b>.</p>
+        </div>
+        <ol id="install-ios" hidden>
+          <li>Tocá <b>Compartir</b> <span class="ios-share" aria-hidden="true"></span> abajo en Safari.</li>
+          <li>Elegí <b>Agregar a inicio</b>.</li>
+          <li>Abrí <b>GTA Conurbano</b> desde el ícono nuevo.</li>
+        </ol>
+        <p class="install-note" id="install-ios-safari" hidden>En iPhone se instala desde <b>Safari</b>: abrí este link ahí.</p>
+        <button id="install-skip" type="button">Jugar en el navegador</button>
+      </div>
+    </section>
+
+    <div id="rotate" aria-hidden="true"><div>Girá el celular<br /><small>se juega acostado</small></div></div>
+
     <section id="start">
       <div class="start-inner">
         <p class="kicker">Estación Temperley · Línea Roca · Lomas de Zamora</p>
@@ -116,6 +146,7 @@
         <div class="play-row">
           <button id="play" type="button">Jugar</button>
           <button id="reset" type="button" hidden>Empezar de cero</button>
+          <button id="install-desk" type="button" hidden>Instalar la app</button>
           <div class="quality" role="group" aria-label="Calidad gráfica">
             <span>Gráficos</span>
             <button type="button" data-quality="alto" aria-pressed="false">Alto</button>
