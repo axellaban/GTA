@@ -770,20 +770,27 @@ hud.setTicker(events.news);
 // ---------- Globos ----------
 function speakers() {
   const out = [];
-  const add = (x, y, z, text, bad) => {
+  const add = (x, y, z, b, bad, voice = {}) => {
     const d = Math.hypot(x - player.x, z - player.z);
-    if (d < 38) out.push({ x, y, z, text, bad, d });
+    if (d < 38) out.push({ x, y, z, text: b.text, bad, d, b, voice });
   };
-  for (const n of npcs.list) if (n.bubble) add(n.x, n.y + 2.35, n.z, n.bubble.text, n.type === 'trapito' || n.type === 'cana' || n.state === 'fight');
-  for (const m of crime.motos) if (m.bubble) add(m.v.x, 2.6, m.v.z, m.bubble.text, true);
-  if (player.bubble) add(player.x, player.y + 2.4, player.z, player.bubble.text, false);
+  for (const n of npcs.list) if (n.bubble) add(n.x, n.y + 2.35, n.z, n.bubble, n.type === 'trapito' || n.type === 'cana' || n.state === 'fight', { female: n.h.female, key: n.h.phase });
+  for (const m of crime.motos) if (m.bubble) add(m.v.x, 2.6, m.v.z, m.bubble, true, { key: 7 });
+  if (player.bubble) add(player.x, player.y + 2.4, player.z, player.bubble, false, { key: 3 });
   // la gente del corte canta
   for (const e of events.list) {
     if (e.leaving || dist(e) > 30) continue;
     if (!e.chant || e.chant.t <= 0) e.chant = R.chance(0.02) ? { text: R.pick(['¡No se pasa, flaco!', '¡Luz! ¡Luz! ¡Luz!', '¡Queremos soluciones!', '¡Vamos, vamos, compañeros!', '¡Tocá bocina si nos apoyás!']), t: 3 } : null;
-    if (e.chant) add(e.x, 3, e.z, e.chant.text, true);
+    if (e.chant) add(e.x, 3, e.z, e.chant, true, { female: R.chance(0.5), key: e.x });
   }
-  return out.sort((a, b) => a.d - b.d);
+  out.sort((a, b) => a.d - b.d);
+  // voces: dice en voz alta lo más cercano que todavía no se dijo (lo lejano queda solo en el globito)
+  for (const s of out) {
+    if (s.b.spoken || s.d > 24) continue;
+    s.b.spoken = true;
+    if (audio.speak(s.text, { ...s.voice, vol: 1.1 - s.d / 24 })) break;
+  }
+  return out;
 }
 
 // ---------- Partida guardada (en este navegador) ----------

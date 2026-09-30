@@ -279,6 +279,8 @@ export class Missions {
     const w = this.w;
     const def = DEFS[this.next % DEFS.length];
     w.audio.ring?.();
+    // la voz del que llama, como en el celu
+    setTimeout(() => w.audio.speak?.(def.call, { female: /^Doña/.test(def.giver), key: this.next + 11, force: true }), 1300);
     w.hud.ask(`📱 ${def.giver}: "${def.call}"`, [
       {
         label: 'Atender: "Dale, voy"',

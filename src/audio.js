@@ -21,7 +21,37 @@ export class Audio {
   toggleMute() {
     this.muted = !this.muted;
     if (this.master) this.master.gain.value = this.muted ? 0 : 0.55;
+    if (this.muted) window.speechSynthesis?.cancel();
     return this.muted;
+  }
+  // Voces con la síntesis del navegador: español latino (argentino si el equipo lo tiene).
+  // Una sola voz a la vez; cada personaje con su tono (key) para que no suenen todos iguales.
+  speak(text, { female = false, key = 0, vol = 1, force = false } = {}) {
+    const S = window.speechSynthesis;
+    if (!S || this.muted || !this.ctx) return false;
+    if (S.speaking || S.pending) {
+      if (!force) return false;
+      S.cancel();
+    }
+    if (!this.voices?.length) {
+      const all = S.getVoices();
+      const lang = (v) => v.lang.replace('_', '-');
+      this.voices = ['es-AR', 'es-419', 'es-US', 'es-MX', 'es-', 'es'].flatMap((l) => all.filter((v) => lang(v).startsWith(l)));
+    }
+    if (!this.voices.length) return false;
+    // si hay voces de mujer y de hombre en el mismo idioma, elegir la que va
+    const fem = /paulina|m[oó]nica|helena|laura|sabina|luciana|isabel|elena|marisol|ang[eé]lica|soledad|female|mujer/i;
+    const same = this.voices.filter((v) => v.lang === this.voices[0].lang);
+    const voice = same.find((v) => fem.test(v.name) === female) || this.voices[0];
+    const u = new SpeechSynthesisUtterance(text);
+    u.voice = voice;
+    u.lang = voice.lang;
+    const k = (Math.sin(key * 12.9898) * 43758.5453) % 1;
+    u.pitch = (female ? 1.25 : 0.85) + Math.abs(k) * 0.3;
+    u.rate = 1.08 + Math.abs(k) * 0.12;
+    u.volume = Math.max(0.2, Math.min(1, vol));
+    S.speak(u);
+    return true;
   }
   makeNoise() {
     const b = this.ctx.createBuffer(1, this.ctx.sampleRate, this.ctx.sampleRate);

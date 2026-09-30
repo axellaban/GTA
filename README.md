@@ -125,6 +125,10 @@ Dos talleres marcados con un cuadrado verde en el radar y en el mapa. Entrás de
 
 Subite a un taxi o a un remís y te sale un pasajero que te llama desde la vereda ("¡Remís!"). Frená al lado para que suba y llevalo a destino antes de que se acabe el tiempo. Cada viaje seguido paga un extra que va creciendo, y cada tres viajes sumás respeto. Si te bajás, llegás tarde o le pasa algo al pasajero, se cae el viaje. No arranca si tenés una misión en curso.
 
+## Voces (0.10)
+
+La gente dice en voz alta lo que aparece en los globitos: vecinos, la cana, los motochorros, el corte y Gaspi. Habla uno a la vez, el más cercano (a menos de 24 m), con voz de hombre o de mujer y un tono distinto para cada uno. Las llamadas de las misiones también se escuchan. Usa la voz en español que traiga el celu o la compu (argentina si la tiene); si no hay ninguna, quedan solo los globitos. El botón de sonido también las calla.
+
 ## Estructura
 
 | Archivo | Qué hace |

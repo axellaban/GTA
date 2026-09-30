@@ -865,7 +865,7 @@ export function makeHuman(o = {}) {
   const root = new THREE.Group();
   root.add(mesh);
   root.scale.setScalar((o.scale ?? 1) * (female ? 0.95 : 1));
-  const h = { root, mesh, bones, phase: Math.random() * 10, geos, lod: 0, keep: !!o.gaspi };
+  const h = { root, mesh, bones, phase: Math.random() * 10, geos, lod: 0, keep: !!o.gaspi, female };
   root.userData.human = h;
   ALL.add(h);
   return h;
