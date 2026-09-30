@@ -262,6 +262,65 @@ function updateJob(dt) {
   }
 }
 
+// ---------- Changa de remís (arriba de un taxi o remís): buscás al pasajero y lo llevás a tiempo ----------
+const fare = { active: false, offered: false, n: null, x: null, streak: 0 };
+const isCab = (v) => v?.model === 'taxi' || v?.model === 'remis';
+function startFare() {
+  const n = npcs.spawnWalker(null, player, 50, 140);
+  if (!n) return;
+  Object.assign(n, { vmax: 0, mission: true });
+  n.say('¡Remís! ¡Remís!', 4);
+  Object.assign(fare, { active: true, n, x: null, t: 60 });
+  hud.flash('CHANGA DE REMÍS', 'Un pasajero te está llamando. Buscalo', 'ok', 2.6);
+}
+function endFare(msg) {
+  if (fare.n && !fare.n.dead) Object.assign(fare.n, { mission: false, vmax: 1.3 });
+  Object.assign(fare, { active: false, n: null, x: null, streak: 0 });
+  if (msg) hud.flash('SE CAYÓ EL VIAJE', msg, 'bad', 2.6);
+}
+function updateFare(dt) {
+  const v = player.vehicle;
+  if (!fare.active) {
+    if (isCab(v) && !fare.offered && !missions.m) {
+      fare.offered = true;
+      startFare();
+    }
+    if (!v) fare.offered = false;
+    return;
+  }
+  if (!isCab(v)) return endFare('Te bajaste del remís');
+  fare.t -= dt;
+  const slow = Math.abs(v.speed) < 2.5;
+  if (fare.x == null) {
+    // buscando al pasajero
+    const n = fare.n;
+    if (n.down || n.dead) return endFare('Al pasajero le pasó algo');
+    if (fare.t <= 0) return endFare('El pasajero se cansó de esperar');
+    if (slow && Math.hypot(n.x - v.x, n.z - v.z) < 7) {
+      n.dead = true; // se sube al auto
+      fare.n = null;
+      const p = npcs.sidewalkPoint(v.x, v.z, 180, 420);
+      if (!p) return endFare();
+      const d = Math.hypot(p.x - v.x, p.z - v.z);
+      Object.assign(fare, { x: p.x, z: p.z, t: Math.round(d / 8 + 20), pay: Math.round((1500 + d * 9) / 100) * 100, street: nearestStreetName(p.x, p.z) });
+      hud.flash('SUBIÓ EL PASAJERO', `Llevalo a ${fare.street}`, 'ok', 2.4);
+    }
+    return;
+  }
+  if (fare.t <= 0) return endFare('Llegaste tarde y el pasajero se bajó sin pagar');
+  if (slow && Math.hypot(fare.x - v.x, fare.z - v.z) < 8) {
+    // viajes seguidos: premio que crece, como en Vice City
+    fare.streak++;
+    const bonus = fare.streak > 1 ? fare.streak * 500 : 0;
+    player.addMoney(fare.pay + bonus);
+    audio.plata();
+    hud.flash('¡VIAJE COMPLETO!', `+$${fare.pay.toLocaleString('es-AR')}${bonus ? ` y $${bonus.toLocaleString('es-AR')} por ${fare.streak} viajes seguidos` : ''}`, 'ok', 2.6);
+    if (fare.streak % 3 === 0) player.addRespeto(1);
+    Object.assign(fare, { active: false, x: null });
+    setTimeout(() => isCab(player.vehicle) && !fare.active && !missions.m && startFare(), 2500);
+  }
+}
+
 // ---------- Chapa y pintura: entrás con el auto, sale arreglado, de otro color y la cana te pierde ----------
 const GARAGE_COST = 1500;
 const garages = [];
@@ -509,6 +568,12 @@ const praise = ['¡BIEN AHÍ!', '¡VAMOS, GASPI!', '¡DE UNA!', '¡ESO!', '¡QU�
 function updateObjective() {
   if (job.active) {
     hud.setObjective(`Delivery a ${job.street}: ${Math.ceil(job.t)} s`, { x: job.x, z: job.z });
+    hud.updateObjective(player);
+    return;
+  }
+  if (fare.active) {
+    const pick = fare.x == null;
+    hud.setObjective(pick ? `Buscá al pasajero: ${Math.ceil(fare.t)} s` : `Llevá al pasajero a ${fare.street}: ${Math.ceil(fare.t)} s`, pick ? fare.n : { x: fare.x, z: fare.z });
     hud.updateObjective(player);
     return;
   }
@@ -870,7 +935,8 @@ function frame(now) {
   for (const s of pickups.shops || []) if (s.cool > 0) s.cool -= dt;
   updateJob(dt);
   updateGarages();
-  missions.update(dt, step >= steps.length - 1 && !job.active);
+  updateFare(dt);
+  missions.update(dt, step >= steps.length - 1 && !job.active && !fare.active);
   updateObjective();
   updateGps(dt);
   player.updateCamera(camera, dt, city.colliders, fx);

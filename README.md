@@ -121,6 +121,10 @@ Al cumplirlas: plata, respeto y la próxima llamada. Cuando se terminan, vuelven
 
 Dos talleres marcados con un cuadrado verde en el radar y en el mapa. Entrás despacio con el auto y por $1.500 te lo arreglan (daño, fuego y gomas pinchadas), te lo pintan de otro color y la cana te pierde: se van todas las estrellas. Es el Pay 'n' Spray del conurbano.
 
+## Changa de remís (0.9)
+
+Subite a un taxi o a un remís y te sale un pasajero que te llama desde la vereda ("¡Remís!"). Frená al lado para que suba y llevalo a destino antes de que se acabe el tiempo. Cada viaje seguido paga un extra que va creciendo, y cada tres viajes sumás respeto. Si te bajás, llegás tarde o le pasa algo al pasajero, se cae el viaje. No arranca si tenés una misión en curso.
+
 ## Estructura
 
 | Archivo | Qué hace |
