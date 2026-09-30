@@ -263,7 +263,7 @@ export class Npcs {
 
   // Cana a pie (la maneja la policía, pero camina, pega y cae como cualquiera)
   spawnCop(x, z) {
-    const h = makeHuman({ skin: R.pick(SKINS), hair: 0x1a1a1a, shirt: 0x9fb3c8, jacket: 0x1c2a44, pants: 0x1c2a44, cap: 0x1c2a44, longSleeves: true, scale: R.range(0.98, 1.06) });
+    const h = makeHuman({ skin: R.pick(SKINS), hair: 0x1a1a1a, hairStyle: R.pick(['short', 'buzz']), police: true, shirt: 0x8fb4d8, pants: 0x1c2a44, shoes: 0x111111, cap: 0x1c2a44, stubble: R.chance(0.4), scale: R.range(0.98, 1.06) });
     const n = this.add(new Npc('cana', h, x, z));
     n.state = 'chase';
     n.hp = 140;

@@ -14,7 +14,7 @@ import { Events } from './events.js';
 import { Trains } from './trains.js';
 import { Hud } from './hud.js';
 import { lightMat } from './cars.js';
-import { loadGaspiPhoto } from './human.js';
+import { loadGaspiPhoto, updateHumanLod } from './human.js';
 import { Sky } from './sky.js';
 import { Post, QUALITY, LEVELS } from './post.js';
 import { Glows } from './glow.js';
@@ -811,6 +811,7 @@ function frame(now) {
   glows.update(world, time.glow);
   lights.update(dt);
   blobs.update(world, heightAt);
+  if ((frame.n = (frame.n || 0) + 1) % 8 === 1) updateHumanLod(camera, Q.lodNear);
   sky.follow(camera);
   post.render();
   input.endFrame();

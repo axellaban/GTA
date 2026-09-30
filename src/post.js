@@ -61,11 +61,11 @@ const GradeShader = {
 };
 
 export const QUALITY = {
-  alto: { post: true, ao: 'full', bloomScale: 0.5, shadows: 2048, pixelRatio: 1.5, samples: 4, sharpen: 0.3, npcScale: 1 },
-  medio: { post: true, ao: 'half', bloomScale: 0.35, shadows: 1024, pixelRatio: 1, samples: 2, sharpen: 0.2, npcScale: 0.8 },
-  bajo: { post: false, ao: null, bloomScale: 0, shadows: 0, pixelRatio: 1, samples: 0, sharpen: 0, npcScale: 0.6, lite: true },
+  alto: { post: true, ao: 'full', bloomScale: 0.5, shadows: 2048, pixelRatio: 1.5, samples: 4, sharpen: 0.3, npcScale: 1, lodNear: 28 },
+  medio: { post: true, ao: 'half', bloomScale: 0.35, shadows: 1024, pixelRatio: 1, samples: 2, sharpen: 0.2, npcScale: 0.8, lodNear: 18 },
+  bajo: { post: false, ao: null, bloomScale: 0, shadows: 0, pixelRatio: 1, samples: 0, sharpen: 0, npcScale: 0.6, lite: true, lodNear: 10 },
   // solo lo usa la calidad automática, para celulares que no dan ni en "bajo"
-  minimo: { post: false, ao: null, bloomScale: 0, shadows: 0, pixelRatio: 0.7, samples: 0, sharpen: 0, npcScale: 0.5, lite: true },
+  minimo: { post: false, ao: null, bloomScale: 0, shadows: 0, pixelRatio: 0.7, samples: 0, sharpen: 0, npcScale: 0.5, lite: true, lodNear: 6 },
 };
 // de peor a mejor, para que la calidad automática suba o baje de a un escalón
 export const LEVELS = ['minimo', 'bajo', 'medio', 'alto'];
