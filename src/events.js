@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { makeHuman, animateHuman, randomCivilian } from './human.js';
 import { bannerTexture } from './textures.js';
-import { STREETS } from './map.js';
+import { ROADS, NAMED, project, pointAt, withCum, cornerName } from './map.js';
 import { radialTexture } from './city.js';
 import { R, Rng } from './rng.js';
 
@@ -26,13 +26,10 @@ const TICKER_BASE = [
   'Consejo: no uses el celu en la esquina de la estación',
 ];
 
-function streetNameAtNode(node, street) {
-  // nombre de la calle perpendicular que pasa por el nodo
-  for (const s of STREETS) {
-    if (s.axis === street.axis) continue;
-    if (Math.abs(s.c - (street.axis === 'ns' ? node.z : node.x)) < 0.5) return s.name;
-  }
-  return null;
+// Calle transversal más cercana a un punto (distinta de `name`)
+function crossName(x, z, name) {
+  const c = cornerName(x, z).split(' y ');
+  return c.find((n) => n !== name) || null;
 }
 
 export class Events {
@@ -67,28 +64,30 @@ export class Events {
 
   // ---------- Cortes ----------
   spawnCorte(player, forced) {
-    const edges = this.traffic.graph.edges.filter((e) => {
-      if (e.len < 60) return false;
-      if (e.dx < 0 || e.dz < 0) return false; // una sola dirección por tramo
-      const mx = (e.from.x + e.to.x) / 2;
-      const mz = (e.from.z + e.to.z) / 2;
-      const d = Math.hypot(mx - player.x, mz - player.z);
-      if (this.list.some((o) => Math.hypot(o.x - mx, o.z - mz) < 120)) return false;
-      return forced ? d > 45 && d < 220 : d > 70 && d < 380;
-    });
-    if (!edges.length) return null;
-    const avenues = edges.filter((e) => e.street.avenue);
-    const e = avenues.length && R.chance(0.7) ? R.pick(avenues) : R.pick(edges);
-    const s = e.street;
-    const mid = (s.axis === 'ns' ? (e.from.z + e.to.z) / 2 : (e.from.x + e.to.x) / 2) + R.range(-15, 15);
-    const x = s.axis === 'ns' ? s.c : mid;
-    const z = s.axis === 'ns' ? mid : s.c;
+    // un punto sobre una calle real (preferentemente avenida), lejos de las esquinas
+    const cands = ROADS.filter((r) => r.len > 40 && r.w >= 8.5);
+    let pick = null;
+    for (let tries = 0; tries < 60 && !pick; tries++) {
+      const avs = cands.filter((r) => r.avenue);
+      const r = avs.length && R.chance(0.7) ? R.pick(avs) : R.pick(cands);
+      const at = R.range(18, r.len - 18);
+      const p = pointAt(r.pts, r.cum, at);
+      const d = Math.hypot(p.x - player.x, p.z - player.z);
+      if (this.list.some((o) => Math.hypot(o.x - p.x, o.z - p.z) < 120)) continue;
+      if (forced ? d < 45 || d > 240 : d < 70 || d > 420) continue;
+      pick = { r, at, p };
+    }
+    if (!pick) return null;
+    const s = pick.r;
+    const x = pick.p.x;
+    const z = pick.p.z;
+    const e = { from: pointAt(s.pts, s.cum, 0), to: pointAt(s.pts, s.cum, s.len) };
     const reclamo = R.pick(RECLAMOS);
     const g = new THREE.Group();
     g.position.set(x, 0, z);
-    if (s.axis === 'ew') g.rotation.y = Math.PI / 2; // el eje local z corre a lo largo de la calle
+    g.rotation.y = Math.atan2(pick.p.dx, pick.p.dz); // el eje local z corre a lo largo de la calle
     this.scene.add(g);
-    const ev = { type: 'corte', street: s, x, z, along: mid, half: 7, g, people: [], fires: [], smoke: [], t: 0, dur: R.range(150, 260), reclamo, from: e.from, to: e.to };
+    const ev = { type: 'corte', street: s, x, z, dx: pick.p.dx, dz: pick.p.dz, half: 7, g, people: [], fires: [], smoke: [], t: 0, dur: R.range(150, 260), reclamo };
     // gomas quemándose en el medio
     for (const lx of [-s.w / 4, s.w / 4]) {
       const pile = new THREE.Group();
@@ -159,9 +158,9 @@ export class Events {
       ev.fires.push(flag);
       flag.userData.flag = true;
     }
-    const a = streetNameAtNode(e.from, s);
-    const b = streetNameAtNode(e.to, s);
-    ev.label = a && b ? `${s.name} entre ${a} y ${b}` : s.name;
+    const a = crossName(e.from.x, e.from.z, s.name);
+    const b = crossName(e.to.x, e.to.z, s.name);
+    ev.label = s.name && a && b && a !== b ? `${s.name} entre ${a} y ${b}` : s.name ? `${s.name} y ${a || b || 'la estación'}` : cornerName(x, z);
     this.list.push(ev);
     this.pushNews(`ÚLTIMO MOMENTO · Corte total en ${ev.label}: ${reclamo.quien.toLowerCase()} ${reclamo.por}`);
     return ev;
@@ -169,16 +168,21 @@ export class Events {
 
   // ---------- Marchas ----------
   spawnMarcha(player) {
-    const avenues = STREETS.filter((s) => s.avenue);
-    const s = R.pick(avenues);
-    const toward = player.z; // van hacia la zona del jugador/estación
-    const startAlong = toward > 0 ? -400 : 400;
-    const endAlong = Math.max(-380, Math.min(380, toward > 0 ? toward - 40 : toward + 40));
-    const dir = Math.sign(endAlong - startAlong);
+    const avNames = Object.keys(NAMED).filter((n) => ROADS.some((r) => r.name === n && r.avenue));
+    const name = avNames.length ? R.pick(avNames) : Object.keys(NAMED)[0];
+    const line = NAMED[name].reduce((a, b) => (b.length > a.length ? b : a));
+    const path = withCum(line);
+    const pp = project(path.pts, path.cum, player.x, player.z);
+    // arrancan en la punta más lejana y avanzan hacia la zona del jugador
+    const startAlong = pp.s > path.len / 2 ? 0 : path.len;
+    const endAlong = Math.max(10, Math.min(path.len - 10, pp.s + (startAlong === 0 ? -40 : 40)));
+    const dir = Math.sign(endAlong - startAlong) || 1;
+    const road = ROADS.find((r) => r.name === name) || ROADS[0];
+    const s = { name, w: road.w };
     const reclamo = R.pick(RECLAMOS);
     const g = new THREE.Group();
     this.scene.add(g);
-    const ev = { type: 'marcha', street: s, along: startAlong, end: endAlong, dir, half: 0, g, people: [], fires: [], smoke: [], t: 0, dur: 9999, reclamo, len: 30 };
+    const ev = { type: 'marcha', street: s, path, along: startAlong, end: endAlong, dir, half: 0, g, people: [], fires: [], smoke: [], t: 0, dur: 9999, reclamo, len: 30 };
     const rows = 9;
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < 5; c++) {
@@ -200,7 +204,8 @@ export class Events {
     const banner = new THREE.Mesh(new THREE.PlaneGeometry(s.w * 0.8, 1.4), new THREE.MeshLambertMaterial({ map: tex, side: THREE.DoubleSide }));
     banner.position.set(0, 2.3, 0.6);
     g.add(banner);
-    const st = streetNameAtNode({ x: s.c, z: endAlong }, s) ?? 'la estación';
+    const endP = pointAt(path.pts, path.cum, endAlong);
+    const st = crossName(endP.x, endP.z, name) ?? 'la estación';
     ev.label = s.name;
     this.list.push(ev);
     this.pushNews(`EN VIVO · Marcha por ${s.name} rumbo a ${st}: ${reclamo.quien.toLowerCase()} ${reclamo.por}`);
@@ -209,40 +214,42 @@ export class Events {
   }
 
   placeMarcha(ev) {
-    const s = ev.street;
-    const x = s.axis === 'ns' ? s.c : ev.along;
-    const z = s.axis === 'ns' ? ev.along : s.c;
-    ev.x = x;
-    ev.z = z;
-    ev.g.position.set(x, 0.02, z);
+    const p = pointAt(ev.path.pts, ev.path.cum, ev.along);
+    ev.x = p.x;
+    ev.z = p.z;
+    ev.dx = p.dx * ev.dir;
+    ev.dz = p.dz * ev.dir;
+    ev.g.position.set(p.x, 0.02, p.z);
     // el eje local +z apunta al sentido de marcha
-    ev.g.rotation.y = s.axis === 'ns' ? (ev.dir > 0 ? 0 : Math.PI) : ev.dir > 0 ? Math.PI / 2 : -Math.PI / 2;
+    ev.g.rotation.y = Math.atan2(ev.dx, ev.dz);
   }
 
-  // Zona bloqueada de un evento, en coordenada "a lo largo" de su calle
+  // Zona bloqueada en el marco local del evento: a lo largo [a, b], ancho medio
   span(ev) {
-    if (ev.type === 'corte') return [ev.along - 7, ev.along + 7];
-    const head = ev.along + ev.dir * 2;
-    const tail = ev.along - ev.dir * ev.len;
-    return [Math.min(head, tail), Math.max(head, tail)];
+    if (ev.type === 'corte') return [-7, 7];
+    return [-ev.len, 2];
+  }
+
+  local(ev, x, z) {
+    const rx = x - ev.x;
+    const rz = z - ev.z;
+    return { along: rx * ev.dx + rz * ev.dz, lat: -rx * ev.dz + rz * ev.dx };
   }
 
   blockAhead(x, z, fx, fz, look) {
     let best = null;
     for (const ev of this.list) {
       if (ev.leaving) continue;
-      const s = ev.street;
-      const ns = s.axis === 'ns';
-      const across = ns ? x : z;
-      if (Math.abs(across - s.c) > s.w / 2 + 1) continue;
-      const along = ns ? z : x;
-      const dirAlong = ns ? fz : fx;
-      if (Math.abs(dirAlong) < 0.5) continue;
+      if (Math.abs(x - ev.x) > look + 40 || Math.abs(z - ev.z) > look + 40) continue;
+      const { along, lat } = this.local(ev, x, z);
+      if (Math.abs(lat) > ev.street.w / 2 + 1) continue;
+      const fd = fx * ev.dx + fz * ev.dz;
+      if (Math.abs(fd) < 0.5) continue;
       const [a, b] = this.span(ev);
       let d;
       if (along >= a && along <= b) d = 0;
-      else if (dirAlong > 0 && a > along) d = a - along;
-      else if (dirAlong < 0 && b < along) d = along - b;
+      else if (fd > 0 && along < a) d = a - along;
+      else if (fd < 0 && along > b) d = along - b;
       else continue;
       if (d < look && (best === null || d < best)) best = d;
     }
@@ -253,11 +260,9 @@ export class Events {
   inside(x, z, pad = 0) {
     for (const ev of this.list) {
       if (ev.leaving) continue;
-      const s = ev.street;
-      const ns = s.axis === 'ns';
-      const across = ns ? x : z;
-      if (Math.abs(across - s.c) > s.w / 2 + 0.5 + pad) continue;
-      const along = ns ? z : x;
+      if (Math.abs(x - ev.x) > 50 || Math.abs(z - ev.z) > 50) continue;
+      const { along, lat } = this.local(ev, x, z);
+      if (Math.abs(lat) > ev.street.w / 2 + 0.5 + pad) continue;
       const [a, b] = this.span(ev);
       if (along > a - pad && along < b + pad) return ev;
     }

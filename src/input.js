@@ -20,8 +20,11 @@ export class Input {
     addEventListener('keyup', (e) => this.keys.delete(e.key.toLowerCase()));
     addEventListener('blur', () => this.keys.clear());
 
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+    addEventListener('mouseup', (e) => this.keys.delete(`mouse${e.button}`));
     canvas.addEventListener('mousedown', (e) => {
-      if (e.button === 0) this.pressed.add('mouse0');
+      this.pressed.add(`mouse${e.button}`);
+      this.keys.add(`mouse${e.button}`);
       this.dragging = true;
       if (!this.locked && this.wantLock && canvas.requestPointerLock) {
         try {
@@ -119,6 +122,12 @@ export class Input {
       const key = b.dataset.btn;
       b.addEventListener('touchstart', (e) => {
         e.preventDefault();
+        if (key === 'aim') {
+          // apuntar se prende y se apaga
+          this.touchAim = !this.touchAim;
+          b.classList.toggle('on', this.touchAim);
+          return;
+        }
         this.pressed.add(key);
         this.touchButtons.add(key);
       });

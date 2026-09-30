@@ -150,6 +150,170 @@ export class Audio {
     this.tone([220, 233], 0.5, 'sawtooth', 0.22);
   }
 
+  // ruido filtrado con envolvente: base de tiros, golpes y explosiones
+  burst(dur, freq, type, peak, t0 = 0, q = 0.7) {
+    if (!this.ctx) return null;
+    const t = this.ctx.currentTime + t0;
+    const n = this.ctx.createBufferSource();
+    n.buffer = this.noiseBuf;
+    n.playbackRate.value = 0.8 + Math.random() * 0.4;
+    const f = this.ctx.createBiquadFilter();
+    f.type = type;
+    f.frequency.value = freq;
+    f.Q.value = q;
+    const g = this.ctx.createGain();
+    this.env(g, t, 0.002, peak, dur);
+    n.connect(f).connect(g).connect(this.master);
+    n.start(t, Math.random() * 0.5);
+    n.stop(t + dur + 0.05);
+    return f;
+  }
+  thump(f0, f1, dur, peak, t0 = 0) {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime + t0;
+    const o = this.ctx.createOscillator();
+    o.frequency.setValueAtTime(f0, t);
+    o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    const g = this.ctx.createGain();
+    this.env(g, t, 0.003, peak, dur);
+    o.connect(g).connect(this.master);
+    o.start(t);
+    o.stop(t + dur + 0.05);
+  }
+  disparo(kind = 'pistola', v = 1) {
+    if (!this.ctx || v < 0.02) return;
+    if (kind === 'escopeta') {
+      this.burst(0.5, 1200, 'lowpass', 1.1 * v);
+      this.thump(120, 38, 0.35, 0.9 * v);
+      this.burst(0.9, 500, 'lowpass', 0.25 * v, 0.06);
+    } else if (kind === 'revolver') {
+      this.burst(0.28, 2400, 'lowpass', 0.95 * v);
+      this.thump(180, 50, 0.22, 0.7 * v);
+      this.burst(0.6, 700, 'lowpass', 0.15 * v, 0.05);
+    } else {
+      this.burst(0.16, 3200, 'lowpass', 0.8 * v);
+      this.thump(220, 70, 0.12, 0.45 * v);
+      this.burst(0.4, 900, 'lowpass', 0.1 * v, 0.04);
+    }
+  }
+  click() {
+    this.burst(0.03, 4000, 'highpass', 0.3);
+  }
+  recarga() {
+    this.burst(0.04, 3000, 'bandpass', 0.35, 0, 3);
+    this.burst(0.05, 2200, 'bandpass', 0.4, 0.18, 3);
+  }
+  whoosh(v = 0.3) {
+    if (!this.ctx) return;
+    const f = this.burst(0.18, 600, 'bandpass', v * 0.6, 0, 1.5);
+    if (f) f.frequency.exponentialRampToValueAtTime(2200, this.ctx.currentTime + 0.15);
+  }
+  metal(v = 0.5) {
+    this.burst(0.12, 2600, 'bandpass', v * 0.5, 0, 6);
+    this.tone([1830, 2710], 0.15, 'triangle', v * 0.08);
+  }
+  explosion(v = 1) {
+    if (!this.ctx) return;
+    this.burst(1.6, 700, 'lowpass', 1.2 * v);
+    this.thump(90, 25, 1.2, 1.2 * v);
+    this.burst(2.4, 250, 'lowpass', 0.6 * v, 0.1);
+  }
+  trueno(v = 0.8, delay = 0) {
+    if (!this.ctx) return;
+    this.burst(0.25, 1800, 'lowpass', 0.35 * v, delay);
+    this.burst(3.5, 180, 'lowpass', 0.9 * v, delay + 0.05);
+    this.thump(60, 28, 2.5, 0.5 * v, delay);
+  }
+  // Sirena de patrullero: dos tonos que suben y bajan (se prende y apaga)
+  sirena(v) {
+    if (!this.ctx) return;
+    if (!this.siren) {
+      const o = this.ctx.createOscillator();
+      o.type = 'square';
+      const lfo = this.ctx.createOscillator();
+      lfo.frequency.value = 0.45;
+      const lg = this.ctx.createGain();
+      lg.gain.value = 320;
+      lfo.connect(lg).connect(o.frequency);
+      o.frequency.value = 980;
+      const f = this.ctx.createBiquadFilter();
+      f.type = 'lowpass';
+      f.frequency.value = 2400;
+      const g = this.ctx.createGain();
+      g.gain.value = 0;
+      o.connect(f).connect(g).connect(this.master);
+      o.start();
+      lfo.start();
+      this.siren = { g };
+    }
+    this.siren.g.gain.setTargetAtTime(Math.min(0.12, v * 0.12), this.ctx.currentTime, 0.3);
+  }
+  // Helicóptero: pulso grave
+  helicoptero(v) {
+    if (!this.ctx) return;
+    if (!this.heli) {
+      const n = this.ctx.createBufferSource();
+      n.buffer = this.noiseBuf;
+      n.loop = true;
+      const f = this.ctx.createBiquadFilter();
+      f.type = 'lowpass';
+      f.frequency.value = 260;
+      const am = this.ctx.createGain();
+      am.gain.value = 0.5;
+      const lfo = this.ctx.createOscillator();
+      lfo.type = 'square';
+      lfo.frequency.value = 11;
+      const lg = this.ctx.createGain();
+      lg.gain.value = 0.5;
+      lfo.connect(lg).connect(am.gain);
+      const g = this.ctx.createGain();
+      g.gain.value = 0;
+      n.connect(f).connect(am).connect(g).connect(this.master);
+      n.start();
+      lfo.start();
+      this.heli = { g };
+    }
+    this.heli.g.gain.setTargetAtTime(Math.min(0.5, v * 0.5), this.ctx.currentTime, 0.4);
+  }
+  // Chirrido de gomas al derrapar
+  chirrido(v) {
+    if (!this.ctx) return;
+    if (!this.screech) {
+      const n = this.ctx.createBufferSource();
+      n.buffer = this.noiseBuf;
+      n.loop = true;
+      const f = this.ctx.createBiquadFilter();
+      f.type = 'bandpass';
+      f.frequency.value = 2100;
+      f.Q.value = 6;
+      const g = this.ctx.createGain();
+      g.gain.value = 0;
+      n.connect(f).connect(g).connect(this.master);
+      n.start();
+      this.screech = { g, f };
+    }
+    this.screech.g.gain.setTargetAtTime(v * 0.22, this.ctx.currentTime, 0.05);
+    this.screech.f.frequency.setTargetAtTime(1800 + v * 700, this.ctx.currentTime, 0.1);
+  }
+  // Lluvia: ruido suave continuo
+  lluvia(v) {
+    if (!this.ctx) return;
+    if (!this.rain) {
+      const n = this.ctx.createBufferSource();
+      n.buffer = this.noiseBuf;
+      n.loop = true;
+      const f = this.ctx.createBiquadFilter();
+      f.type = 'highpass';
+      f.frequency.value = 900;
+      const g = this.ctx.createGain();
+      g.gain.value = 0;
+      n.connect(f).connect(g).connect(this.master);
+      n.start();
+      this.rain = { g };
+    }
+    this.rain.g.gain.setTargetAtTime(v * 0.08, this.ctx.currentTime, 1);
+  }
+
   setupEngine() {
     const o = this.ctx.createOscillator();
     o.type = 'sawtooth';
@@ -172,14 +336,20 @@ export class Audio {
     this.engine = { o, g, mo, mg };
   }
   // Motor del auto de Gaspi y el "ñeeee" de la moto que se acerca.
-  update(carSpeed, inCar, motoDist) {
+  update(carSpeed, inCar, motoDist, onMoto = false) {
     if (!this.engine) return;
     const t = this.ctx.currentTime;
     const e = this.engine;
-    e.o.frequency.setTargetAtTime(inCar ? 45 + Math.abs(carSpeed) * 5 : 40, t, 0.1);
-    e.g.gain.setTargetAtTime(inCar ? 0.12 + Math.min(0.1, Math.abs(carSpeed) * 0.005) : 0, t, 0.2);
-    const mv = motoDist < 60 ? (1 - motoDist / 60) * 0.1 : 0;
-    e.mo.frequency.setTargetAtTime(190 + Math.sin(t * 3) * 25, t, 0.1);
+    const car = inCar && !onMoto;
+    // cambios: el motor sube de vueltas y cae al pasar de marcha
+    const sp = Math.abs(carSpeed);
+    const gear = sp < 7 ? sp / 7 : sp < 15 ? (sp - 7) / 8 : sp < 24 ? (sp - 15) / 9 : (sp - 24) / 12;
+    e.o.frequency.setTargetAtTime(car ? 42 + gear * 55 + sp * 1.2 : 40, t, 0.08);
+    e.g.gain.setTargetAtTime(car ? 0.12 + Math.min(0.1, sp * 0.005) : 0, t, 0.2);
+    // moto de Gaspi o motos cerca
+    const mine = onMoto ? 0.09 : 0;
+    const mv = Math.max(mine, motoDist < 60 ? (1 - motoDist / 60) * 0.1 : 0);
+    e.mo.frequency.setTargetAtTime(onMoto ? 150 + gear * 200 + sp * 3 : 190 + Math.sin(t * 3) * 25, t, 0.06);
     e.mg.gain.setTargetAtTime(mv, t, 0.2);
   }
 }

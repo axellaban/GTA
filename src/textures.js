@@ -52,7 +52,11 @@ const PINTADAS = [
 export const ATLAS = {
   casa: [], // 0..19
   alto: [], // 20..25 piso superior de casa
-  local: {}, // por nombre de local
+  local: [], // vidrieras genéricas
+  estacion: [],
+  estadio: [],
+  galpon: [],
+  escuela: [],
   edificio: [], // pisos de edificio
   entrada: [],
   medianera: [],
@@ -62,6 +66,12 @@ export const ATLAS = {
 
 // Segundo lienzo del mismo tamaño: qué se ilumina de noche (ventanas, vidrieras, carteles)
 let EM = null;
+// Aberturas dibujadas en la celda actual (para ponerles marcos 3D en la pared)
+let CUR = null;
+function record(kind, x, y, w, h) {
+  if (!CUR) return;
+  CUR.list.push({ kind, x0: (x - CUR.ox) / CELL_W, x1: (x + w - CUR.ox) / CELL_W, y0: (y - CUR.oy) / CELL_H, y1: (y + h - CUR.oy) / CELL_H });
+}
 const LIT = ['#e0b070', '#e8c890', '#d8c8a8', '#d89a50', '#8aa6d8'];
 
 function uvRect(i) {
@@ -118,6 +128,7 @@ function drawReja(ctx, x, y, w, h, style) {
 }
 
 function drawWindow(ctx, x, y, w, h, rng, reja = true) {
+  record('window', x, y, w, h);
   ctx.fillStyle = '#e9e4da';
   ctx.fillRect(x - 3, y - 3, w + 6, h + 6);
   const g = ctx.createLinearGradient(x, y, x + w, y + h);
@@ -196,6 +207,7 @@ function drawCasa(ctx, x, y, rng) {
       const w = 130;
       ctx.fillStyle = rng.pick(['#3f4a52', '#5c4636', '#2f4f3a', '#6b6b6b', '#7a2a24']);
       ctx.fillRect(cursor, y + 22, w, H - 38);
+      record('garage', cursor, y + 22, w, H - 38);
       ctx.strokeStyle = 'rgba(0,0,0,0.35)';
       ctx.lineWidth = 2;
       for (let yy = y + 26; yy < y + H - 18; yy += 7) {
@@ -216,6 +228,7 @@ function drawCasa(ctx, x, y, rng) {
       const w = 50;
       ctx.fillStyle = rng.pick(['#4a3526', '#2e3b2e', '#3a3f45', '#6d4c33', '#1e2a38']);
       ctx.fillRect(cursor, y + 26, w, H - 42);
+      record('door', cursor, y + 26, w, H - 42);
       ctx.fillStyle = '#29343b';
       ctx.fillRect(cursor + 12, y + 34, w - 24, 26);
       drawReja(ctx, cursor + 10, y + 32, w - 20, 30, 0);
@@ -288,17 +301,21 @@ function drawLocal(ctx, x, y, rng, name) {
   const H = CELL_H;
   ctx.fillStyle = rng.pick(PLASTER);
   ctx.fillRect(x, y, W, H);
-  // cartel
+  // banda del cartel (el nombre va en un cartel 3D encima)
   const sc = rng.pick(SIGN_COLORS);
   ctx.fillStyle = sc;
   ctx.fillRect(x + 8, y + 4, W - 16, 30);
-  ctx.fillStyle = sc === '#f9a825' ? '#1a1a1a' : '#ffffff';
-  ctx.font = `22px ${FONT}`;
-  const tw = ctx.measureText(name).width;
-  ctx.fillText(name, x + (W - tw) / 2, y + 28);
+  if (name) {
+    ctx.fillStyle = sc === '#f9a825' ? '#1a1a1a' : '#ffffff';
+    ctx.font = `22px ${FONT}`;
+    const tw = ctx.measureText(name).width;
+    ctx.fillText(name, x + (W - tw) / 2, y + 28);
+  }
   // vidriera y persiana
   const vx = x + 20;
   const vw = W - 40;
+  record('shop', vx, y + 42, vw, H - 52);
+  record('sign', x + 8, y + 4, W - 16, 30);
   ctx.fillStyle = '#26323a';
   ctx.fillRect(vx, y + 42, vw, H - 52);
   // góndolas con colores
@@ -366,6 +383,7 @@ function drawEntrada(ctx, x, y, rng) {
   drawEdificio(ctx, x, y, rng);
   ctx.fillStyle = '#20262b';
   ctx.fillRect(x + 190, y + 20, 130, CELL_H - 30);
+  record('door', x + 190, y + 20, 130, CELL_H - 30);
   drawReja(ctx, x + 190, y + 20, 130, CELL_H - 30, 1);
   if (EM) {
     EM.fillStyle = '#c8a870';
@@ -430,7 +448,112 @@ function drawLadrillo(ctx, x, y, rng) {
   }
 }
 
-export function buildAtlas(shopNames) {
+function drawEstacion(ctx, x, y, rng, upper) {
+  const W = CELL_W;
+  const H = CELL_H;
+  // ladrillo del Ferrocarril del Sud con arcos y guardas crema
+  const bw = 22;
+  const bh = 9;
+  ctx.fillStyle = '#b9a58a';
+  ctx.fillRect(x, y, W, H);
+  for (let r = 0; r * bh < H; r++) {
+    for (let k = -1; k * bw < W; k++) {
+      const off = r % 2 ? bw / 2 : 0;
+      ctx.fillStyle = rng.pick(['#a3563b', '#9b4d34', '#ad5e40', '#94472f']);
+      ctx.fillRect(x + k * bw + off + 1, y + r * bh + 1, bw - 2, bh - 2);
+    }
+  }
+  ctx.fillStyle = '#e7dcc3';
+  ctx.fillRect(x, y + (upper ? 0 : H - 10), W, 8);
+  ctx.fillRect(x, y + (upper ? H - 16 : 0), W, 10);
+  for (let k = 0; k < 4; k++) {
+    const wx = x + 28 + k * 124;
+    const ww = 70;
+    const top = y + (upper ? 26 : 30);
+    const bot = y + H - (upper ? 24 : 14);
+    ctx.fillStyle = '#e7dcc3';
+    ctx.beginPath();
+    ctx.moveTo(wx - 6, bot);
+    ctx.lineTo(wx - 6, top + ww / 2);
+    ctx.arc(wx + ww / 2, top + ww / 2, ww / 2 + 6, Math.PI, 0);
+    ctx.lineTo(wx + ww + 6, bot);
+    ctx.fill();
+    ctx.fillStyle = upper || k % 2 ? '#2b3a44' : '#3a2a20';
+    ctx.beginPath();
+    ctx.moveTo(wx, bot);
+    ctx.lineTo(wx, top + ww / 2);
+    ctx.arc(wx + ww / 2, top + ww / 2, ww / 2, Math.PI, 0);
+    ctx.lineTo(wx + ww, bot);
+    ctx.fill();
+    record(upper || k % 2 ? 'window' : 'door', wx, top, ww, bot - top);
+    if (EM && rng.chance(0.6)) {
+      EM.fillStyle = '#d8b070';
+      EM.fillRect(wx + 4, top + ww / 2, ww - 8, bot - top - ww / 2);
+    }
+  }
+  noise(ctx, W, H, rng, 500, 0.05);
+}
+
+function drawEstadio(ctx, x, y, rng) {
+  const W = CELL_W;
+  const H = CELL_H;
+  for (let i = 0; i < 8; i++) {
+    ctx.fillStyle = i % 2 ? '#f2f2f2' : '#6ec3ea';
+    ctx.fillRect(x, y + (i * H) / 8, W, H / 8);
+  }
+  ctx.fillStyle = '#1b4f9c';
+  ctx.fillRect(x + 10, y + 40, W - 20, 48);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = `26px ${FONT}`;
+  ctx.textAlign = 'center';
+  ctx.fillText('CLUB ATLÉTICO TEMPERLEY', x + W / 2, y + 74, W - 30);
+  ctx.textAlign = 'left';
+  noise(ctx, W, H, rng, 400, 0.05);
+}
+
+function drawGalpon(ctx, x, y, rng) {
+  const W = CELL_W;
+  const H = CELL_H;
+  const chapa = rng.chance(0.5);
+  ctx.fillStyle = chapa ? rng.pick(['#8e969b', '#7f8a8f', '#a0a4a6']) : rng.pick(['#cfc6b6', '#bdb4a5']);
+  ctx.fillRect(x, y, W, H);
+  if (chapa) {
+    for (let k = 0; k < W; k += 8) {
+      ctx.fillStyle = 'rgba(0,0,0,0.18)';
+      ctx.fillRect(x + k, y, 3, H);
+    }
+  }
+  // portón grande
+  const px = x + rng.range(40, 260);
+  ctx.fillStyle = rng.pick(['#3f4a52', '#5c4636', '#2f4f3a', '#6b6b6b']);
+  ctx.fillRect(px, y + 20, 180, H - 20);
+  record('garage', px, y + 20, 180, H - 20);
+  for (let yy = y + 26; yy < y + H; yy += 8) {
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(px, yy, 180, 2);
+  }
+  if (rng.chance(0.5)) {
+    ctx.fillStyle = '#f5f5f5';
+    ctx.fillRect(px + 30, y + 44, 120, 24);
+    ctx.fillStyle = '#b71c1c';
+    ctx.font = `14px ${FONT}`;
+    ctx.fillText('NO ESTACIONAR', px + 36, y + 61);
+  }
+  stains(ctx, x, y, W, H, rng);
+}
+
+function drawEscuela(ctx, x, y, rng) {
+  const W = CELL_W;
+  const H = CELL_H;
+  ctx.fillStyle = '#e8dcc4';
+  ctx.fillRect(x, y, W, H);
+  ctx.fillStyle = '#c9b89a';
+  ctx.fillRect(x, y + H - 14, W, 14);
+  for (let k = 0; k < 4; k++) drawWindow(ctx, x + 24 + k * 122, y + 24, 92, 70, rng, true);
+  stains(ctx, x, y, W, H, rng);
+}
+
+export function buildAtlas() {
   const c = canvas(CELL_W * COLS, CELL_H * ROWS);
   const ctx = c.getContext('2d');
   const ec = canvas(CELL_W * COLS, CELL_H * ROWS);
@@ -442,23 +565,110 @@ export function buildAtlas(shopNames) {
   const at = (fn) => {
     const col = i % COLS;
     const row = Math.floor(i / COLS);
+    CUR = { ox: col * CELL_W, oy: row * CELL_H, list: [] };
     fn(col * CELL_W, row * CELL_H);
-    return uvRect(i++);
+    const r = uvRect(i++);
+    r.open = CUR.list;
+    CUR = null;
+    return r;
   };
-  for (let k = 0; k < 18; k++) ATLAS.casa.push(at((x, y) => drawCasa(ctx, x, y, rng)));
+  for (let k = 0; k < 16; k++) ATLAS.casa.push(at((x, y) => drawCasa(ctx, x, y, rng)));
   for (let k = 0; k < 6; k++) ATLAS.alto.push(at((x, y) => drawAlto(ctx, x, y, rng)));
-  for (const name of shopNames) ATLAS.local[name] = at((x, y) => drawLocal(ctx, x, y, rng, name));
-  for (let k = 0; k < 5; k++) ATLAS.edificio.push(at((x, y) => drawEdificio(ctx, x, y, rng)));
+  for (let k = 0; k < 8; k++) ATLAS.local.push(at((x, y) => drawLocal(ctx, x, y, rng, null)));
+  ATLAS.estacion.push(at((x, y) => drawEstacion(ctx, x, y, rng, false)));
+  ATLAS.estacion.push(at((x, y) => drawEstacion(ctx, x, y, rng, true)));
+  ATLAS.estadio.push(at((x, y) => drawEstadio(ctx, x, y, rng)));
+  ATLAS.galpon.push(at((x, y) => drawGalpon(ctx, x, y, rng)));
+  ATLAS.galpon.push(at((x, y) => drawGalpon(ctx, x, y, rng)));
+  ATLAS.escuela.push(at((x, y) => drawEscuela(ctx, x, y, rng)));
+  for (let k = 0; k < 4; k++) ATLAS.edificio.push(at((x, y) => drawEdificio(ctx, x, y, rng)));
   for (let k = 0; k < 2; k++) ATLAS.entrada.push(at((x, y) => drawEntrada(ctx, x, y, rng)));
-  for (let k = 0; k < 5; k++) ATLAS.medianera.push(at((x, y) => drawMedianera(ctx, x, y, rng, null)));
-  for (let k = 0; k < 5; k++) ATLAS.pintada.push(at((x, y) => drawMedianera(ctx, x, y, rng, PINTADAS[k * 2 % PINTADAS.length])));
+  for (let k = 0; k < 4; k++) ATLAS.medianera.push(at((x, y) => drawMedianera(ctx, x, y, rng, null)));
+  for (let k = 0; k < 4; k++) ATLAS.pintada.push(at((x, y) => drawMedianera(ctx, x, y, rng, PINTADAS[k * 2 % PINTADAS.length])));
   ATLAS.ladrillo.push(at((x, y) => drawLadrillo(ctx, x, y, rng)));
   if (i > COLS * ROWS) console.warn('Atlas lleno', i);
   const t = tex(c);
   t.generateMipmaps = true;
   const e = tex(ec);
   EM = null;
-  return { map: t, emissive: e };
+  return { map: t, emissive: e, normal: normalMapFrom(c, 2.2) };
+}
+
+// Normal map a partir del brillo de un lienzo (lo oscuro se hunde): da relieve con la luz.
+export function normalMapFrom(src, strength = 2, repeat = false) {
+  const w = src.width;
+  const h = src.height;
+  const data = src.getContext('2d').getImageData(0, 0, w, h).data;
+  const hgt = new Float32Array(w * h);
+  for (let i = 0; i < w * h; i++) hgt[i] = (data[i * 4] * 0.3 + data[i * 4 + 1] * 0.59 + data[i * 4 + 2] * 0.11) / 255;
+  const out = document.createElement('canvas');
+  out.width = w;
+  out.height = h;
+  const octx = out.getContext('2d');
+  const img = octx.createImageData(w, h);
+  const o = img.data;
+  const H = (x, y) => {
+    if (repeat) {
+      x = (x + w) % w;
+      y = (y + h) % h;
+    } else {
+      x = Math.max(0, Math.min(w - 1, x));
+      y = Math.max(0, Math.min(h - 1, y));
+    }
+    return hgt[y * w + x];
+  };
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const dx = (H(x + 1, y - 1) + 2 * H(x + 1, y) + H(x + 1, y + 1) - H(x - 1, y - 1) - 2 * H(x - 1, y) - H(x - 1, y + 1)) * strength;
+      const dy = (H(x - 1, y + 1) + 2 * H(x, y + 1) + H(x + 1, y + 1) - H(x - 1, y - 1) - 2 * H(x, y - 1) - H(x + 1, y - 1)) * strength;
+      let nx = -dx;
+      let ny = dy;
+      let nz = 1;
+      const l = Math.hypot(nx, ny, nz);
+      nx /= l;
+      ny /= l;
+      nz /= l;
+      const i = (y * w + x) * 4;
+      o[i] = (nx * 0.5 + 0.5) * 255;
+      o[i + 1] = (ny * 0.5 + 0.5) * 255;
+      o[i + 2] = (nz * 0.5 + 0.5) * 255;
+      o[i + 3] = 255;
+    }
+  }
+  octx.putImageData(img, 0, 0);
+  const t = new THREE.CanvasTexture(out);
+  t.colorSpace = THREE.NoColorSpace;
+  if (repeat) t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+}
+
+// Carteles de comercios (nombres reales de la zona): celdas de 512x64 en un lienzo de 2048x2048
+export function signAtlas(names) {
+  const c = canvas(2048, 2048);
+  const g = c.getContext('2d');
+  const map = new Map();
+  const rng = new Rng(9090);
+  names.slice(0, 128).forEach((n, i) => {
+    const col = i % 4;
+    const row = Math.floor(i / 4);
+    const x = col * 512;
+    const y = row * 64;
+    const bg = rng.pick(SIGN_COLORS);
+    g.fillStyle = bg;
+    g.fillRect(x + 2, y + 2, 508, 60);
+    g.strokeStyle = 'rgba(255,255,255,0.7)';
+    g.lineWidth = 3;
+    g.strokeRect(x + 6, y + 6, 500, 52);
+    g.fillStyle = bg === '#f9a825' ? '#1a1a1a' : '#ffffff';
+    g.font = `34px ${FONT}`;
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText(n.toUpperCase(), x + 256, y + 34, 480);
+    map.set(n, { u0: x / 2048, u1: (x + 512) / 2048, v0: 1 - (y + 64) / 2048, v1: 1 - y / 2048 });
+  });
+  const t = tex(c);
+  t.anisotropy = 8;
+  return { tex: t, uv: (n) => map.get(n) };
 }
 
 // Toldos a rayas de los locales: 4 combinaciones en filas

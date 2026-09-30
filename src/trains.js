@@ -1,33 +1,113 @@
 // Trenes del Roca, barreras y pasos a nivel.
 import * as THREE from 'three';
-import { ROUTES, STREETS, TRACKS, YARD } from './map.js';
+import { ROADS, TRACKS, HALF, STATION, project, withCum } from './map.js';
 import { makeTrainCar } from './vehicles.js';
 import { R } from './rng.js';
 
 const SPACING = 20.3;
 
+// Grafo de vías reales y recorridos que atraviesan la estación de norte a sur
+function railRoutes() {
+  const nodes = new Map();
+  const key = (x, z) => `${Math.round(x)},${Math.round(z)}`;
+  const node = (x, z) => {
+    const k = key(x, z);
+    if (!nodes.has(k)) nodes.set(k, { x, z, adj: [] });
+    return nodes.get(k);
+  };
+  for (const t of TRACKS) {
+    for (let i = 0; i < t.length - 1; i++) {
+      const a = node(t[i][0], t[i][1]);
+      const b = node(t[i + 1][0], t[i + 1][1]);
+      const l = Math.hypot(b.x - a.x, b.z - a.z);
+      if (l < 0.01) continue;
+      a.adj.push({ n: b, l });
+      b.adj.push({ n: a, l });
+    }
+  }
+  const all = [...nodes.values()];
+  const north = all.filter((n) => n.z < -HALF + 8);
+  const south = all.filter((n) => n.z > HALF - 8 || Math.abs(n.x) > HALF - 8);
+  // Dijkstra sobre estados (nodo, nodo anterior) para no permitir giros bruscos en los cambios
+  const path = (src, dst) => {
+    const sk = (n, f) => `${key(n.x, n.z)}|${f ? key(f.x, f.z) : '-'}`;
+    const dist = new Map();
+    const back = new Map();
+    const open = [[0, src, null]];
+    dist.set(sk(src, null), 0);
+    while (open.length) {
+      let bi = 0;
+      for (let i = 1; i < open.length; i++) if (open[i][0] < open[bi][0]) bi = i;
+      const [d, n, from] = open.splice(bi, 1)[0];
+      const k = sk(n, from);
+      if (d > (dist.get(k) ?? Infinity) + 1e-6) continue;
+      if (n === dst) {
+        const out = [];
+        let cur = k;
+        let node = n;
+        let prevNode = from;
+        while (node) {
+          out.push([node.x, node.z]);
+          const b = back.get(cur);
+          if (!b) break;
+          cur = b.k;
+          node = b.n;
+          prevNode = b.f;
+        }
+        void prevNode;
+        return { pts: out.reverse(), d };
+      }
+      for (const { n: m, l } of n.adj) {
+        if (from) {
+          const ax = n.x - from.x;
+          const az = n.z - from.z;
+          const bx = m.x - n.x;
+          const bz = m.z - n.z;
+          const c = (ax * bx + az * bz) / (Math.hypot(ax, az) * Math.hypot(bx, bz) || 1);
+          if (c < 0.6) continue;
+        }
+        const mk = sk(m, n);
+        const nd = d + l;
+        if (nd < (dist.get(mk) ?? Infinity) - 1e-6) {
+          dist.set(mk, nd);
+          back.set(mk, { k, n, f: from });
+          open.push([nd, m, n]);
+        }
+      }
+    }
+    return null;
+  };
+  const found = [];
+  for (const a of north) {
+    for (const b of south) {
+      const p = path(a, b);
+      if (!p || p.pts.length < 3) continue;
+      // tiene que pasar por la estación
+      const near = p.pts.some(([x, z]) => Math.hypot(x - STATION.x, z - STATION.z) < 45);
+      if (!near) continue;
+      if (found.some((f) => Math.hypot(f.pts[0][0] - p.pts[0][0], f.pts[0][1] - p.pts[0][1]) < 3 && Math.hypot(f.pts.at(-1)[0] - p.pts.at(-1)[0], f.pts.at(-1)[1] - p.pts.at(-1)[1]) < 3)) continue;
+      found.push(p);
+    }
+  }
+  found.sort((a, b) => a.d - b.d);
+  const names = ['Glew', 'Ezeiza', 'Bosques', 'Haedo', 'Korn'];
+  const routes = [];
+  found.slice(0, 5).forEach((p, i) => {
+    const southbound = { name: names[i % names.length], kind: i === 3 ? 'diesel' : 'electrico', pts: p.pts };
+    routes.push(i % 2 === 0 ? southbound : { ...southbound, name: 'Constitución', pts: p.pts.slice().reverse() });
+  });
+  return routes;
+}
+
 class Route {
   constructor(def) {
     Object.assign(this, def);
-    this.cum = [0];
-    for (let i = 1; i < this.pts.length; i++) {
-      const [ax, az] = this.pts[i - 1];
-      const [bx, bz] = this.pts[i];
-      this.cum.push(this.cum[i - 1] + Math.hypot(bx - ax, bz - az));
-    }
-    this.length = this.cum[this.cum.length - 1];
-    // arco donde frena: el punto de la estación más cercano a stopZ
-    let best = 0;
-    let bd = Infinity;
-    this.pts.forEach(([x, z], i) => {
-      if (Math.abs(x) > 60) return;
-      const d = Math.abs(z - this.stopZ);
-      if (d < bd) {
-        bd = d;
-        best = i;
-      }
-    });
-    this.stopS = this.cum[best];
+    const w = withCum(this.pts);
+    this.cum = w.cum;
+    this.length = w.len;
+    // frena donde el recorrido pasa más cerca del centro de la estación
+    const p = project(this.pts, this.cum, STATION.x - 5, STATION.z);
+    this.stopS = p.s + 60;
   }
   at(s) {
     s = Math.max(0, Math.min(this.length, s));
@@ -50,7 +130,7 @@ export class Trains {
   constructor(scene, audio) {
     this.scene = scene;
     this.audio = audio;
-    this.routes = ROUTES.map((r) => new Route(r));
+    this.routes = railRoutes().map((r) => new Route(r));
     this.trains = [];
     this.crossings = findCrossings();
     this.buildBarriers();
@@ -207,15 +287,20 @@ export class Trains {
     const xMat = new THREE.MeshLambertMaterial({ color: 0xf5f5f5 });
     for (const c of this.crossings) {
       c.booms = [];
-      c.closed = 0; // 0 abierta, 1 cerrada
-      const s = c.street;
-      const half = s.w / 2;
+      c.closed = 0;
+      const r = c.road;
+      const half = r.w / 2;
       for (const side of [-1, 1]) {
-        // cada lado cierra el carril que entra hacia las vías (mano derecha)
-        const along = side < 0 ? c.min - 4 : c.max + 4;
-        const across = s.c + (side < 0 ? 1 : -1) * (half + 0.4) * (s.axis === 'ns' ? -1 : 1);
-        const px = s.axis === 'ns' ? across : along;
-        const pz = s.axis === 'ns' ? along : across;
+        // antes del cruce (side -1) se llega avanzando; después (side 1) se llega retrocediendo
+        const s = side < 0 ? c.min - 4 : c.max + 4;
+        const p = pointAtRoad(r, s);
+        const fx = side < 0 ? p.dx : -p.dx;
+        const fz = side < 0 ? p.dz : -p.dz;
+        // mano derecha de quien llega
+        const rx = -fz;
+        const rz = fx;
+        const px = p.x + rx * (half + 0.4);
+        const pz = p.z + rz * (half + 0.4);
         const post = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.2, 0.3), postMat);
         post.position.set(px, 0.6, pz);
         this.scene.add(post);
@@ -225,14 +310,10 @@ export class Trains {
         const boom = new THREE.Mesh(new THREE.BoxGeometry(len, 0.12, 0.12), boomMat);
         boom.position.x = len / 2;
         pivot.add(boom);
-        // el brazo apunta hacia el centro de la calle
-        const toCx = (s.axis === 'ns' ? s.c : along) - px;
-        const toCz = (s.axis === 'ns' ? along : s.c) - pz;
-        pivot.rotation.y = Math.atan2(-toCz, toCx);
-        pivot.userData.baseY = pivot.rotation.y;
+        // el brazo apunta hacia el centro de la calle (-r)
+        pivot.rotation.y = Math.atan2(rz, -rx);
         this.scene.add(pivot);
         c.booms.push(pivot);
-        // cruz de San Andrés
         const cross = new THREE.Group();
         for (const a of [0.7, -0.7]) {
           const bar = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.18, 0.04), xMat);
@@ -240,17 +321,11 @@ export class Trains {
           cross.add(bar);
         }
         cross.position.set(px, 2.6, pz);
+        cross.rotation.y = Math.atan2(fx, fz);
         const cpost = new THREE.Mesh(new THREE.BoxGeometry(0.1, 2.6, 0.1), postMat);
         cpost.position.set(px, 1.3, pz);
         this.scene.add(cross, cpost);
       }
-      // tablones sobre la calle
-      const plank = new THREE.Mesh(
-        new THREE.BoxGeometry(s.axis === 'ns' ? s.w : c.max - c.min + 4, 0.05, s.axis === 'ns' ? c.max - c.min + 4 : s.w),
-        new THREE.MeshLambertMaterial({ color: 0x3d3a36 }),
-      );
-      plank.position.set(s.axis === 'ns' ? s.c : (c.min + c.max) / 2, 0.33, s.axis === 'ns' ? (c.min + c.max) / 2 : s.c);
-      this.scene.add(plank);
     }
   }
 
@@ -280,55 +355,75 @@ export class Trains {
 
   // Para el tránsito: ¿hay una barrera baja entre 1 y `look` metros adelante?
   barrierAhead(x, z, fx, fz, look = 16) {
+    let best = null;
     for (const c of this.crossings) {
       if (!c.shut) continue;
-      const s = c.street;
-      const onStreet = s.axis === 'ns' ? Math.abs(x - s.c) < s.w / 2 + 1 && Math.abs(fx) < 0.5 : Math.abs(z - s.c) < s.w / 2 + 1 && Math.abs(fz) < 0.5;
-      if (!onStreet) continue;
-      const along = s.axis === 'ns' ? z : x;
-      const dir = s.axis === 'ns' ? Math.sign(fz) : Math.sign(fx);
-      const edge = dir > 0 ? c.min - 5 : c.max + 5;
-      const d = (edge - along) * dir;
-      if (d > 0 && d < look) return d;
+      if (Math.abs(x - c.x) > 80 || Math.abs(z - c.z) > 80) continue;
+      const r = c.road;
+      const p = project(r.pts, r.cum, x, z);
+      if (p.dist > r.w / 2 + 1) continue;
+      const dir = fx * p.dx + fz * p.dz;
+      if (Math.abs(dir) < 0.5) continue;
+      let d = null;
+      if (dir > 0 && p.s < c.min - 5) d = c.min - 5 - p.s;
+      if (dir < 0 && p.s > c.max + 5) d = p.s - (c.max + 5);
+      if (d !== null && d < look && (best === null || d < best)) best = d;
     }
-    return null;
+    return best;
   }
 }
 
 function findCrossings() {
-  const hits = [];
-  for (const s of STREETS) {
-    for (const t of TRACKS) {
-      for (let i = 0; i < t.length - 1; i++) {
-        const [ax, az] = t[i];
-        const [bx, bz] = t[i + 1];
-        const a1 = s.axis === 'ns' ? ax : az;
-        const b1 = s.axis === 'ns' ? bx : bz;
-        if ((a1 - s.c) * (b1 - s.c) > 0 || a1 === b1) continue;
-        const u = (s.c - a1) / (b1 - a1);
-        const along = s.axis === 'ns' ? az + (bz - az) * u : ax + (bx - ax) * u;
-        if (along < s.a || along > s.b) continue;
-        const x = s.axis === 'ns' ? s.c : along;
-        const z = s.axis === 'ns' ? along : s.c;
-        if (x > YARD.x0 && x < YARD.x1 && z < YARD.z1 && z > -200) continue;
-        hits.push({ s, along, x, z });
+  const out = [];
+  for (const r of ROADS) {
+    const hits = [];
+    for (let i = 0; i < r.pts.length - 1; i++) {
+      const [ax, az] = r.pts[i];
+      const [bx, bz] = r.pts[i + 1];
+      for (const t of TRACKS) {
+        for (let j = 0; j < t.length - 1; j++) {
+          const [cx, cz] = t[j];
+          const [dx, dz] = t[j + 1];
+          const rx = bx - ax;
+          const rz = bz - az;
+          const sx = dx - cx;
+          const sz = dz - cz;
+          const den = rx * sz - rz * sx;
+          if (Math.abs(den) < 1e-9) continue;
+          const u = ((cx - ax) * sz - (cz - az) * sx) / den;
+          const v = ((cx - ax) * rz - (cz - az) * rx) / den;
+          if (u >= 0 && u <= 1 && v >= 0 && v <= 1) hits.push(r.cum[i] + u * Math.hypot(rx, rz));
+        }
       }
     }
-  }
-  const out = [];
-  for (const h of hits) {
-    const c = out.find((o) => o.street === h.s && h.along > o.min - 25 && h.along < o.max + 25);
-    if (c) {
-      c.min = Math.min(c.min, h.along);
-      c.max = Math.max(c.max, h.along);
-    } else out.push({ street: h.s, min: h.along, max: h.along });
-  }
-  for (const c of out) {
-    c.min -= 2;
-    c.max += 2;
-    const mid = (c.min + c.max) / 2;
-    c.x = c.street.axis === 'ns' ? c.street.c : mid;
-    c.z = c.street.axis === 'ns' ? mid : c.street.c;
+    if (!hits.length) continue;
+    hits.sort((a, b) => a - b);
+    let group = [hits[0]];
+    const flush = () => {
+      const min = group[0] - 2;
+      const max = group[group.length - 1] + 2;
+      const mid = pointAtRoad(r, (min + max) / 2);
+      out.push({ road: r, min, max, x: mid.x, z: mid.z });
+    };
+    for (let k = 1; k < hits.length; k++) {
+      if (hits[k] - group[group.length - 1] < 25) group.push(hits[k]);
+      else {
+        flush();
+        group = [hits[k]];
+      }
+    }
+    flush();
   }
   return out;
+}
+
+function pointAtRoad(r, s) {
+  s = Math.max(0, Math.min(r.len, s));
+  let i = 0;
+  while (i < r.cum.length - 2 && r.cum[i + 1] < s) i++;
+  const [ax, az] = r.pts[i];
+  const [bx, bz] = r.pts[i + 1];
+  const l = r.cum[i + 1] - r.cum[i] || 1;
+  const t = (s - r.cum[i]) / l;
+  return { x: ax + (bx - ax) * t, z: az + (bz - az) * t, dx: (bx - ax) / l, dz: (bz - az) / l };
 }

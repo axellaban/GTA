@@ -1,33 +1,54 @@
-// Colisiones 2D (planta) contra cajas alineadas a los ejes, con grilla espacial.
-const CELL = 16;
+// Colisiones en planta contra segmentos (paredes de casas giradas, rejas) y círculos (árboles),
+// con grilla espacial.
+const CELL = 8;
 
 export class Colliders {
   constructor() {
     this.grid = new Map();
-    this.all = [];
+    this.count = 0;
   }
   key(i, j) {
     return i * 100003 + j;
   }
-  add(box) {
-    // box: {x0, z0, x1, z1, kind, h}
-    this.all.push(box);
-    const i0 = Math.floor(box.x0 / CELL);
-    const i1 = Math.floor(box.x1 / CELL);
-    const j0 = Math.floor(box.z0 / CELL);
-    const j1 = Math.floor(box.z1 / CELL);
+  insert(item, x0, z0, x1, z1) {
+    const i0 = Math.floor(Math.min(x0, x1) / CELL);
+    const i1 = Math.floor(Math.max(x0, x1) / CELL);
+    const j0 = Math.floor(Math.min(z0, z1) / CELL);
+    const j1 = Math.floor(Math.max(z0, z1) / CELL);
     for (let i = i0; i <= i1; i++) {
       for (let j = j0; j <= j1; j++) {
         const k = this.key(i, j);
         let list = this.grid.get(k);
         if (!list) this.grid.set(k, (list = []));
-        list.push(box);
+        list.push(item);
       }
     }
-    return box;
+    this.count++;
+    return item;
   }
-  remove(box) {
-    box.dead = true;
+  addSegment(ax, az, bx, bz, h = 3, kind = 'wall') {
+    return this.insert({ s: true, ax, az, bx, bz, h, kind }, ax, az, bx, bz);
+  }
+  addRing(ring, h = 3, kind = 'building') {
+    for (let i = 0; i < ring.length; i++) {
+      const [ax, az] = ring[i];
+      const [bx, bz] = ring[(i + 1) % ring.length];
+      this.addSegment(ax, az, bx, bz, h, kind);
+    }
+  }
+  addCircle(x, z, r, h = 3, kind = 'tree') {
+    return this.insert({ c: true, x, z, r, h, kind }, x - r, z - r, x + r, z + r);
+  }
+  // compatibilidad: caja alineada -> 4 segmentos
+  add(b) {
+    const ring = [
+      [b.x0, b.z0],
+      [b.x1, b.z0],
+      [b.x1, b.z1],
+      [b.x0, b.z1],
+    ];
+    this.addRing(ring, b.h ?? 3, b.kind ?? 'wall');
+    return b;
   }
   query(x, z, r) {
     const out = new Set();
@@ -38,65 +59,88 @@ export class Colliders {
     for (let i = i0; i <= i1; i++) {
       for (let j = j0; j <= j1; j++) {
         const list = this.grid.get(this.key(i, j));
-        if (list) for (const b of list) if (!b.dead) out.add(b);
+        if (list) for (const b of list) out.add(b);
       }
     }
     return out;
   }
-  // Empuja un círculo fuera de las cajas. Devuelve la normal del choque más fuerte (o null).
+  // Empuja un círculo fuera de paredes y árboles. Devuelve el choque más fuerte.
   resolveCircle(pos, r, filter) {
     let hit = null;
     let best = 0;
-    for (const b of this.query(pos.x, pos.z, r + 1)) {
-      if (filter && !filter(b)) continue;
-      const cx = Math.max(b.x0, Math.min(pos.x, b.x1));
-      const cz = Math.max(b.z0, Math.min(pos.z, b.z1));
-      let dx = pos.x - cx;
-      let dz = pos.z - cz;
-      let d2 = dx * dx + dz * dz;
-      if (d2 >= r * r) continue;
-      let nx;
-      let nz;
-      let pen;
-      if (d2 > 1e-8) {
+    for (let iter = 0; iter < 2; iter++) {
+      for (const b of this.query(pos.x, pos.z, r + 0.5)) {
+        if (filter && !filter(b)) continue;
+        let cx;
+        let cz;
+        let rr = r;
+        if (b.c) {
+          cx = b.x;
+          cz = b.z;
+          rr = r + b.r;
+        } else {
+          const dx = b.bx - b.ax;
+          const dz = b.bz - b.az;
+          const l2 = dx * dx + dz * dz || 1;
+          let t = ((pos.x - b.ax) * dx + (pos.z - b.az) * dz) / l2;
+          t = Math.max(0, Math.min(1, t));
+          cx = b.ax + dx * t;
+          cz = b.az + dz * t;
+        }
+        const ex = pos.x - cx;
+        const ez = pos.z - cz;
+        const d2 = ex * ex + ez * ez;
+        if (d2 >= rr * rr) continue;
         const d = Math.sqrt(d2);
-        nx = dx / d;
-        nz = dz / d;
-        pen = r - d;
-      } else {
-        // centro adentro de la caja: salir por el lado más cercano
-        const l = pos.x - b.x0;
-        const rr = b.x1 - pos.x;
-        const t = pos.z - b.z0;
-        const bb = b.z1 - pos.z;
-        const m = Math.min(l, rr, t, bb);
-        if (m === l) (nx = -1), (nz = 0), (pen = l + r);
-        else if (m === rr) (nx = 1), (nz = 0), (pen = rr + r);
-        else if (m === t) (nx = 0), (nz = -1), (pen = t + r);
-        else (nx = 0), (nz = 1), (pen = bb + r);
-      }
-      pos.x += nx * pen;
-      pos.z += nz * pen;
-      if (pen > best) {
-        best = pen;
-        hit = { nx, nz, pen, box: b };
+        let nx;
+        let nz;
+        if (d > 1e-6) {
+          nx = ex / d;
+          nz = ez / d;
+        } else if (!b.c) {
+          const l = Math.hypot(b.bx - b.ax, b.bz - b.az) || 1;
+          nx = -(b.bz - b.az) / l;
+          nz = (b.bx - b.ax) / l;
+        } else {
+          nx = 1;
+          nz = 0;
+        }
+        const pen = rr - d;
+        pos.x += nx * pen;
+        pos.z += nz * pen;
+        if (pen > best) {
+          best = pen;
+          hit = { nx, nz, pen, box: b };
+        }
       }
     }
     return hit;
   }
-  // Rayo simple en planta para la cámara: ¿hay algo alto entre a y b?
+  // ¿Hay algo alto entre a y b? Devuelve la fracción del camino libre (1 = libre)
   blocked(ax, az, bx, bz, minH = 2.5) {
-    const steps = Math.ceil(Math.hypot(bx - ax, bz - az) / 1.5);
-    for (let s = 1; s <= steps; s++) {
-      const t = s / steps;
-      const x = ax + (bx - ax) * t;
-      const z = az + (bz - az) * t;
-      for (const b of this.query(x, z, 0.1)) {
-        if (b.h >= minH && x >= b.x0 && x <= b.x1 && z >= b.z0 && z <= b.z1) return t;
-      }
+    let tmin = 1;
+    const r = Math.hypot(bx - ax, bz - az) / 2 + 1;
+    const cand = this.query((ax + bx) / 2, (az + bz) / 2, r);
+    for (const s of cand) {
+      if (!s.s || s.h < minH) continue;
+      const t = segT(ax, az, bx, bz, s.ax, s.az, s.bx, s.bz);
+      if (t !== null && t < tmin) tmin = t;
     }
-    return 1;
+    return tmin;
   }
+}
+
+function segT(ax, az, bx, bz, cx, cz, dx, dz) {
+  const rx = bx - ax;
+  const rz = bz - az;
+  const sx = dx - cx;
+  const sz = dz - cz;
+  const den = rx * sz - rz * sx;
+  if (Math.abs(den) < 1e-9) return null;
+  const t = ((cx - ax) * sz - (cz - az) * sx) / den;
+  const u = ((cx - ax) * rz - (cz - az) * rx) / den;
+  if (t >= 0 && t <= 1 && u >= 0 && u <= 1) return t;
+  return null;
 }
 
 export function circleOverlap(a, ar, b, br) {

@@ -367,8 +367,8 @@ function reset(h) {
   h.bones.hips.position.set(0, 0.95, 0);
 }
 
-// Anima caminata y poses. `speed` en m/s.
-export function animateHuman(h, dt, speed, pose = 'walk') {
+// Anima caminata y poses. `speed` en m/s. `t` (0..1) es el avance de un golpe.
+export function animateHuman(h, dt, speed, pose = 'walk', t = 0) {
   h.phase += dt * (2 + speed * 2.4);
   const s = Math.sin(h.phase);
   const c = Math.cos(h.phase);
@@ -399,6 +399,34 @@ export function animateHuman(h, dt, speed, pose = 'walk') {
     b.uaR.rotation.x = -0.3;
     b.faR.rotation.x = -0.8;
     b.head.rotation.x = 0.3;
+    return;
+  }
+  if (pose === 'cower') {
+    // agachado con las manos en la cabeza
+    b.hips.position.y = 0.55;
+    b.thR.rotation.x = -1.6;
+    b.thL.rotation.x = -1.3;
+    b.shR.rotation.x = 2.2;
+    b.shL.rotation.x = 1.9;
+    b.ftR.rotation.x = -0.6;
+    b.spine.rotation.x = 0.7;
+    b.head.rotation.x = 0.4;
+    b.uaR.rotation.set(-2.6, 0, 0.5);
+    b.uaL.rotation.set(-2.6, 0, -0.5);
+    b.faR.rotation.x = -2.1;
+    b.faL.rotation.x = -2.1;
+    b.root.position.x = Math.sin(h.phase * 9) * 0.01;
+    return;
+  }
+  if (pose === 'getup') {
+    // de estar tirado a parado: t va de 0 (piso) a 1 (parado)
+    const k = Math.min(1, t);
+    b.root.rotation.x = -Math.PI / 2 * (1 - k) * (1 - k);
+    b.root.position.set(0, 0.12 * (1 - k), 0);
+    b.thR.rotation.x = -1.2 * Math.sin(k * Math.PI);
+    b.shR.rotation.x = 1.6 * Math.sin(k * Math.PI);
+    b.uaR.rotation.x = -0.8 * Math.sin(k * Math.PI);
+    b.uaL.rotation.x = -0.8 * Math.sin(k * Math.PI);
     return;
   }
   if (pose === 'ride') {
@@ -457,15 +485,101 @@ export function animateHuman(h, dt, speed, pose = 'walk') {
   } else if (pose === 'fist') {
     b.uaR.rotation.x = -2.6 + Math.sin(h.phase * 4) * 0.3;
     b.faR.rotation.x = -0.4 - Math.max(0, Math.sin(h.phase * 4)) * 0.5;
-  } else if (pose === 'punch') {
-    b.uaR.rotation.x = -1.55;
-    b.faR.rotation.x = 0;
+  } else if (pose === 'punch' || pose === 'jab' || pose === 'cross') {
+    // golpe recto: guardia -> brazo extendido -> vuelve. Jab con la izquierda.
+    const ext = Math.sin(Math.min(1, t) * Math.PI);
+    const left = pose === 'jab';
+    guard(b);
+    const [ua, fa] = left ? [b.uaL, b.faL] : [b.uaR, b.faR];
+    ua.rotation.x = -1.2 - ext * 0.4;
+    ua.rotation.z = (left ? -1 : 1) * ext * 0.25;
+    fa.rotation.x = -1.9 + ext * 1.9;
+    b.chest.rotation.y = (left ? -0.25 : 0.45) * ext;
+    b.spine.rotation.x = 0.1 + ext * 0.08;
+  } else if (pose === 'hook') {
+    const ext = Math.sin(Math.min(1, t) * Math.PI);
+    guard(b);
+    b.uaR.rotation.set(-1.45, 0, 1.2 * ext);
+    b.faR.rotation.x = -1.4;
+    b.faR.rotation.y = ext * 0.5;
+    b.chest.rotation.y = -0.2 + ext * 0.9;
+    b.hips.rotation.y = ext * 0.3;
+  } else if (pose === 'kick') {
+    const ext = Math.sin(Math.min(1, t) * Math.PI);
+    guard(b);
+    b.thR.rotation.x = -1.5 * ext;
+    b.shR.rotation.x = 1.2 * (1 - ext) * Math.min(1, t * 3);
+    b.thL.rotation.x = 0.15 * ext;
+    b.spine.rotation.x = -0.25 * ext;
+    b.hips.position.y = 0.95 - 0.04 * ext;
+  } else if (pose === 'guard') {
+    guard(b);
+  } else if (pose === 'swing') {
+    // palo: de atrás del hombro hacia adelante
+    const k = Math.min(1, t);
+    const a = k < 0.35 ? k / 0.35 : 1 - (k - 0.35) / 0.65;
+    const hit = k < 0.35 ? 0 : Math.sin(((k - 0.35) / 0.65) * Math.PI);
+    b.uaR.rotation.set(-2.4 * a - 1.0 * hit, 0, 0.3 + 0.5 * hit);
+    b.faR.rotation.x = -0.9 * a;
+    b.uaL.rotation.set(-1.2, 0, -0.6);
+    b.faL.rotation.x = -1.2;
+    b.chest.rotation.y = 0.6 * a - 0.7 * hit;
+  } else if (pose === 'aim') {
+    // pistola a dos manos, a la altura de los ojos
+    b.uaR.rotation.set(-1.52, 0, 0.12);
+    b.faR.rotation.x = -0.05;
+    b.uaL.rotation.set(-1.4, 0, -0.55);
+    b.faL.rotation.set(-0.25, 0, 0);
+    b.chest.rotation.y = 0.12;
+    b.head.rotation.y = 0.05;
+    b.uaR.rotation.x -= t * 0.35;
+  } else if (pose === 'aimLong') {
+    // escopeta al hombro
+    b.uaR.rotation.set(-1.1, 0, 0.5);
+    b.faR.rotation.x = -1.2;
+    b.uaL.rotation.set(-1.45, 0, -0.35);
+    b.faL.rotation.x = -0.2;
     b.chest.rotation.y = 0.35;
+    b.head.rotation.y = -0.2;
+    b.chest.rotation.x = -t * 0.12;
+  } else if (pose === 'holdGun') {
+    b.uaR.rotation.set(-0.35, 0, -0.05);
+    b.faR.rotation.x = -0.9;
+  } else if (pose === 'hit') {
+    const k = Math.sin(Math.min(1, t) * Math.PI);
+    b.spine.rotation.x = -0.35 * k;
+    b.head.rotation.x = -0.5 * k;
+    b.uaR.rotation.set(-0.6 * k, 0, -0.6 * k);
+    b.uaL.rotation.set(-0.6 * k, 0, 0.6 * k);
+  } else if (pose === 'handsup') {
+    b.uaR.rotation.set(-2.9, 0, 0.3);
+    b.uaL.rotation.set(-2.9, 0, -0.3);
+    b.faR.rotation.x = -0.4;
+    b.faL.rotation.x = -0.4;
+  } else if (pose === 'flee') {
+    b.uaR.rotation.set(-1.5 + s * 0.5, 0, -0.4);
+    b.uaL.rotation.set(-1.5 - s * 0.5, 0, 0.4);
+    b.spine.rotation.x = 0.25;
+  } else if (pose === 'carry') {
+    // vendedor: bolsa colgando de un brazo, el otro ofreciendo
+    b.uaL.rotation.set(-0.2, 0, 0.25);
+    b.faL.rotation.x = -1.3;
+    b.uaR.rotation.set(-1.1 + Math.sin(h.phase * 0.8) * 0.15, 0, 0.1);
+    b.faR.rotation.x = -0.6;
   } else if (pose === 'phone') {
     b.uaR.rotation.set(-0.35, 0, 0.35);
     b.faR.rotation.x = -2.3;
     b.head.rotation.set(0.1, 0, -0.15);
   }
+}
+
+function guard(b) {
+  b.uaR.rotation.set(-0.9, 0, 0.35);
+  b.uaL.rotation.set(-0.9, 0, -0.35);
+  b.faR.rotation.x = -2.0;
+  b.faL.rotation.x = -2.0;
+  b.spine.rotation.x = 0.12;
+  b.head.rotation.x = 0.08;
 }
 
 export function randomCivilian() {

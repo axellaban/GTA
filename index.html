@@ -17,6 +17,7 @@
         <div class="card-body">
           <div class="card-top"><span class="sube-tag">SUBE</span><span id="name">GASPI</span></div>
           <div class="bar" title="Salud"><div id="health"></div></div>
+          <div class="bar armor" title="Chaleco" id="armor-bar" hidden><div id="armor"></div></div>
           <div class="card-row"><span class="lbl">Respeto</span><span id="respeto">0</span></div>
         </div>
       </div>
@@ -24,8 +25,15 @@
       <div id="status">
         <div id="clock">17:30</div>
         <div id="money">$ 20.000</div>
+        <div id="stars" aria-label="Nivel de búsqueda"><span>★</span><span>★</span><span>★</span><span>★</span><span>★</span></div>
+        <div id="weapon"><span id="w-name">Piñas</span><span id="w-ammo"></span></div>
         <div id="phone" class="ok">Con celu</div>
       </div>
+
+      <div id="feed" aria-live="polite"></div>
+      <div id="crosshair" hidden></div>
+      <div id="hitmark" hidden></div>
+      <div id="radio" hidden><b id="radio-name"></b><span id="radio-sub"></span></div>
 
       <div id="objective"><span class="obj-tag">Objetivo</span><span id="obj-text"></span><span id="obj-dist"></span></div>
 
@@ -49,9 +57,13 @@
 
       <div id="touch">
         <div id="stick" hidden><div id="knob"></div></div>
+        <button type="button" data-btn="attack" class="tbtn big" id="btn-attack">Pegar</button>
         <button type="button" data-btn="e" class="tbtn" id="btn-e">Acción</button>
-        <button type="button" data-btn="f" class="tbtn" id="btn-f">Auto</button>
+        <button type="button" data-btn="f" class="tbtn" id="btn-f">Subir</button>
         <button type="button" data-btn="run" class="tbtn" id="btn-run">Correr</button>
+        <button type="button" data-btn=" " class="tbtn" id="btn-jump">Saltar</button>
+        <button type="button" data-btn="aim" class="tbtn" id="btn-aim">Apuntar</button>
+        <button type="button" data-btn="weapon" class="tbtn" id="btn-weapon">Arma</button>
         <button type="button" data-btn="h" class="tbtn" id="btn-h">Bocina</button>
       </div>
     </div>
@@ -79,7 +91,8 @@
             <li><b>Trapitos</b> que te "cuidan" el auto. Si no pagás, fijate cómo lo encontrás.</li>
             <li><b>Motochorros</b> que te piden el celu. Dáselo, resistite o corré. Con un auto los podés voltear.</li>
             <li><b>Cortes y marchas</b> en Av. Meeks y Almirante Brown. Con el auto no se pasa.</li>
-            <li>Trenes del Roca, barreras que bajan, rejas en cada casa y perros que corren motos.</li>
+            <li><b>Piñas, palos y fierros.</b> Robá autos y motos. Si te zarpás, te busca la Bonaerense.</li>
+            <li>Vendedor de medias, trenes del Roca, barreras, rejas y perros que corren motos.</li>
           </ul>
         </div>
         <div class="play-row">
@@ -94,14 +107,17 @@
         <dl class="keys">
           <div><dt>WASD</dt><dd>Moverse / manejar</dd></div>
           <div><dt>Mouse</dt><dd>Mirar (clic para capturar)</dd></div>
-          <div><dt>Shift</dt><dd>Correr</dd></div>
-          <div><dt>E</dt><dd>Acción: pagar, dar, empujar</dd></div>
-          <div><dt>F</dt><dd>Subir o bajar del auto</dd></div>
-          <div><dt>H · Espacio</dt><dd>Bocina · freno de mano</dd></div>
-          <div><dt>1 2 3</dt><dd>Elegir en los diálogos</dd></div>
-          <div><dt>M</dt><dd>Silenciar</dd></div>
+          <div><dt>Clic</dt><dd>Pegar (combo) / tirar</dd></div>
+          <div><dt>Clic der.</dt><dd>Apuntar</dd></div>
+          <div><dt>Q · 1–5</dt><dd>Cambiar de arma</dd></div>
+          <div><dt>R</dt><dd>Recargar · radio en el auto</dd></div>
+          <div><dt>Espacio</dt><dd>Saltar · freno de mano</dd></div>
+          <div><dt>Shift</dt><dd>Correr · willy · quemar gomas</dd></div>
+          <div><dt>E</dt><dd>Acción: pagar, comprar, dar</dd></div>
+          <div><dt>F</dt><dd>Subir, robar o bajar</dd></div>
+          <div><dt>H · M</dt><dd>Bocina · silenciar</dd></div>
         </dl>
-        <p class="fine">El mapa respeta la estación (Av. Meeks 1400, 10 andenes, puente a Fray Justo Sta. María de Oro); la grilla de calles es aproximada.</p>
+        <p class="fine">Calles, vías, andenes, edificios, plazas y árboles reales de Temperley. Mapa: © colaboradores de OpenStreetMap y Overture Maps Foundation.</p>
       </div>
     </section>
 

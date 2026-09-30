@@ -1,6 +1,7 @@
 // Grafo de calles, autos con IA, colectivos y autos estacionados.
-import { STREETS, HALF } from './map.js';
-import { makeCar, makeBus, CAR_COLORS } from './vehicles.js';
+import { ROADS, HALF } from './map.js';
+import { makeCar, makeBus, makeMoto, makeTruck, makeCarro, CAR_COLORS } from './vehicles.js';
+import { makeHuman, animateHuman, randomCivilian } from './human.js';
 import { R } from './rng.js';
 
 export class Vehicle {
@@ -8,6 +9,8 @@ export class Vehicle {
     this.mesh = mesh;
     const u = mesh.userData;
     this.kind = u.kind;
+    this.model = u.model;
+    this.tall = u.tall;
     this.L = u.L;
     this.W = u.W;
     this.x = x;
@@ -41,56 +44,74 @@ export class Vehicle {
     return out;
   }
   sync(dt) {
+    const moto = this.kind === 'moto';
     this.mesh.position.set(this.x, this.flat ? -0.08 : 0, this.z);
     this.mesh.rotation.y = this.heading;
-    this.mesh.rotation.z = this.flat ? 0.04 : 0;
+    if (moto) {
+      // inclinación en curvas, willy o tirada en el piso
+      this.mesh.rotation.z = this.fallen ? 1.35 : this.lean || 0;
+      this.mesh.rotation.x = -(this.wheelie || 0);
+      if (this.wheelie) this.mesh.position.y += Math.sin(this.wheelie) * 0.72 - (1 - Math.cos(this.wheelie)) * 0.3;
+      if (this.fallen) this.mesh.position.y = 0.15;
+    } else this.mesh.rotation.z = this.flat ? 0.04 : 0;
     this.wheelSpin += this.speed * dt * 3;
-    const wh = this.mesh.userData.wheels;
-    if (wh) wh.forEach((w, i) => {
-      w.rotation.x = this.wheelSpin;
-      if (i < 2 && this.kind !== 'moto') w.rotation.y = this.steer * 0.5;
-    });
+    const u = this.mesh.userData;
+    if (u.wheels) {
+      u.wheels.forEach((w, i) => {
+        w.rotation.x = this.wheelSpin;
+        if (i < 2 && !moto && this.kind !== 'carro') w.rotation.y = this.steer * 0.5;
+      });
+    }
+    // patas del caballo
+    if (u.legs) {
+      const k = Math.min(1, Math.abs(this.speed) / 2);
+      u.legs.forEach((l, i) => (l.rotation.x = Math.sin(this.wheelSpin * 1.6 + (i % 2 ? Math.PI : 0) + (i > 1 ? Math.PI / 2 : 0)) * 0.5 * k));
+    }
   }
 }
 
 // ---------- Grafo ----------
+// Nodos: extremos de tramo (esquinas) y quiebres intermedios. Aristas rectas entre ellos.
 function buildGraph() {
   const nodes = [];
+  const byKey = new Map();
   const find = (x, z) => {
-    for (const n of nodes) if (Math.abs(n.x - x) < 0.5 && Math.abs(n.z - z) < 0.5) return n;
+    const k = `${Math.round(x * 2) / 2},${Math.round(z * 2) / 2}`;
+    if (byKey.has(k)) return byKey.get(k);
     const n = { x, z, out: [], id: nodes.length };
     nodes.push(n);
+    byKey.set(k, n);
     return n;
   };
   const edges = [];
-  for (const s of STREETS) {
-    const stops = new Set([s.a, s.b]);
-    for (const o of STREETS) {
-      if (o.axis === s.axis) continue;
-      if (o.c >= s.a - 0.5 && o.c <= s.b + 0.5 && s.c >= o.a - 0.5 && s.c <= o.b + 0.5) stops.add(o.c);
-    }
-    const list = [...stops].sort((a, b) => a - b);
-    const lane = s.avenue ? 2.7 : 1.5;
-    for (let i = 0; i < list.length - 1; i++) {
-      const p = s.axis === 'ns' ? [s.c, list[i]] : [list[i], s.c];
-      const q = s.axis === 'ns' ? [s.c, list[i + 1]] : [list[i + 1], s.c];
-      const A = find(p[0], p[1]);
-      const B = find(q[0], q[1]);
+  for (const r of ROADS) {
+    const lane = Math.max(1.2, Math.min(3.4, r.w * 0.2));
+    const pts = r.pts;
+    if (pts.length < 2) continue;
+    const ids = pts.map(([x, z], i) => (i === 0 || i === pts.length - 1 ? find(x, z) : { x, z, out: [], id: nodes.push(null) - 1 }));
+    ids.forEach((n) => {
+      if (!nodes[n.id]) nodes[n.id] = n;
+    });
+    for (let i = 0; i < ids.length - 1; i++) {
+      const A = ids[i];
+      const B = ids[i + 1];
       for (const [from, to] of [
         [A, B],
         [B, A],
       ]) {
         const len = Math.hypot(to.x - from.x, to.z - from.z);
+        if (len < 0.05) continue;
         const dx = (to.x - from.x) / len;
         const dz = (to.z - from.z) / len;
-        const e = { from, to, street: s, dx, dz, rx: -dz, rz: dx, len, lane };
+        const e = { from, to, street: r, dx, dz, rx: -dz, rz: dx, len, lane };
         from.out.push(e);
         edges.push(e);
       }
     }
   }
   for (const e of edges) e.rev = e.to.out.find((o) => o.to === e.from);
-  return { nodes, edges };
+  for (const n of nodes) n.deg = n.out.length;
+  return { nodes: nodes.filter(Boolean), edges };
 }
 
 export class Traffic {
@@ -102,28 +123,65 @@ export class Traffic {
     this.parked = [];
   }
 
-  populate(city, player, n = 26, buses = 3) {
-    const edges = this.graph.edges.filter((e) => e.len > 40);
+  // un auto del parque automotor del conurbano
+  randomCar() {
+    const model = R.pick(['duna', 'duna', 'gol', 'gol', 'gol', 'falcon', 'p504', 'p504', 'fiat600', 'pickup', 'pickup', 'remis', 'taxi', 'trafic', 'trafic']);
+    return makeCar(model, R.pick(CAR_COLORS));
+  }
+  randomMoto() {
+    const delivery = R.chance(0.45);
+    const box = delivery ? R.pick([0xe53935, 0xff6f00, 0x00a650, 0xffc400]) : null;
+    const mesh = makeMoto(R.pick([0x1c1c1c, 0xb71c1c, 0x0d47a1, 0x333333, 0xe0e0e0, 0x1b5e20]), { box });
+    const c = randomCivilian();
+    const look = { ...c, helmet: R.chance(0.7) ? R.pick([0x111111, 0xc62828, 0xf5f5f5, 0x1565c0]) : null, jacket: box ?? (R.chance(0.4) ? 0x222222 : null), shirt: box ?? c.shirt, longSleeves: true };
+    const rider = makeHuman(look);
+    animateHuman(rider, 0, 0, 'ride');
+    rider.root.position.set(0, 0.36, -0.12);
+    mesh.add(rider.root);
+    return { mesh, rider, look };
+  }
+
+  populate(city, player, n = 34, buses = 3) {
+    const edges = this.graph.edges.filter((e) => e.len > 25 && e.street.w >= 7);
+    this.spawnEdges = edges;
     for (let i = 0; i < n + buses; i++) {
       const isBus = i >= n;
-      const mesh = isBus ? makeBus([160, 266, 318][i - n]) : makeCar(R.pick(['duna', 'duna', 'falcon', 'gol', 'gol', 'pickup', 'remis', i === 3 ? 'patrullero' : 'duna']), R.pick(CAR_COLORS));
+      let mesh;
+      if (isBus) mesh = makeBus([160, 266, 318][i - n]);
+      else if (i < 2) mesh = makeTruck(R.pick([0xe8e8e8, 0xc62828, 0x1565c0]), R.pick(['FLETES TEMPERLEY', 'DISTRIBUIDORA SUR', 'MUDANZAS LOMAS']));
+      else if (i === 5 || i === 21) mesh = makeCar('patrullero'); // la cana también anda dando vueltas
+      else mesh = this.randomCar();
+      const pool = isBus ? edges.filter((e) => e.street.avenue) : edges;
+      const e = R.pick(pool.length ? pool : edges);
+      this.spawnOn(mesh, e, R.range(Math.min(5, e.len / 3), e.len * 0.7));
+    }
+    // muchas motos: delivery, laburantes, pibes
+    for (let i = 0; i < 20; i++) {
+      const m = this.randomMoto();
       const e = R.pick(edges);
-      this.spawnOn(mesh, e, R.range(10, e.len - 20));
+      const v = this.spawnOn(m.mesh, e, R.range(3, e.len * 0.8));
+      v.rider = m.rider;
+      v.riderLook = m.look;
+      v.ai.vmax = R.range(11, 15);
     }
-    // autos estacionados junto al cordón y en el estacionamiento de la estación
-    for (let i = 0; i < 70; i++) {
-      const s = R.pick(STREETS);
-      const side = R.chance(0.5) ? 1 : -1;
-      const off = s.w / 2 - 1.15;
-      const along = R.range(s.a + 12, s.b - 12);
-      if (STREETS.some((o) => o.axis !== s.axis && Math.abs(o.c - along) < o.w / 2 + 7)) continue;
-      const x = s.axis === 'ns' ? s.c + side * off : along;
-      const z = s.axis === 'ns' ? along : s.c + side * off;
-      if (this.parked.some((p) => Math.hypot(p.x - x, p.z - z) < 6)) continue;
-      const heading = s.axis === 'ns' ? (side > 0 ? Math.PI : 0) : side > 0 ? Math.PI / 2 : -Math.PI / 2;
-      this.addParked(makeCar(R.pick(['duna', 'falcon', 'gol', 'pickup']), R.pick(CAR_COLORS)), x, z, heading);
+    // el carro del cartonero, por las calles de barrio
+    const small = this.graph.edges.filter((e) => e.len > 25 && e.street.w >= 6 && !e.street.avenue);
+    for (let i = 0; i < 2 && small.length; i++) {
+      const d = makeHuman({ ...randomCivilian(), cap: R.chance(0.6) ? 0x6d4c41 : null, longSleeves: true });
+      animateHuman(d, 0, 0, 'sit');
+      const v = this.spawnOn(makeCarro(d), R.pick(small), 5);
+      v.ai.vmax = R.range(2.6, 3.4);
+      v.rider = null;
     }
-    for (const p of city.parking) if (R.chance(0.55)) this.addParked(makeCar(R.pick(['duna', 'gol', 'falcon']), R.pick(CAR_COLORS)), p.x, p.z, p.heading);
+    // autos estacionados en cordones reales (más cerca de la estación)
+    const used = [];
+    const spots = city.parking.concat(city.curbSpots.filter(() => R.chance(0.05)));
+    for (const c of spots) {
+      if (used.some((u) => Math.hypot(u.x - c.x, u.z - c.z) < 6)) continue;
+      used.push(c);
+      this.addParked(makeCar(R.pick(['duna', 'falcon', 'gol', 'pickup', 'gol']), R.pick(CAR_COLORS)), c.x, c.z, c.heading);
+      if (used.length > 110) break;
+    }
   }
 
   addParked(mesh, x, z, heading) {
@@ -135,8 +193,9 @@ export class Traffic {
   }
 
   spawnOn(mesh, e, at) {
-    const x = e.from.x + e.dx * at + e.rx * e.lane;
-    const z = e.from.z + e.dz * at + e.rz * e.lane;
+    const lane = e.lane + (mesh.userData.kind === 'moto' ? 0.7 : mesh.userData.kind === 'carro' ? 1.2 : 0);
+    const x = e.from.x + e.dx * at + e.rx * lane;
+    const z = e.from.z + e.dz * at + e.rz * lane;
     const v = new Vehicle(mesh, x, z, Math.atan2(e.dx, e.dz));
     v.ai = { edge: e, stage: 'run', wait: 0, stuck: 0, vmax: v.kind === 'bus' ? 8.5 : R.range(9, 12.5) };
     this.setTarget(v);
@@ -149,13 +208,16 @@ export class Traffic {
   setTarget(v) {
     const a = v.ai;
     const e = a.edge;
+    const extra = v.kind === 'moto' ? 0.7 : v.kind === 'carro' ? 1.2 : 0;
     if (a.stage === 'run') {
-      a.tx = e.to.x - e.dx * 7 + e.rx * e.lane;
-      a.tz = e.to.z - e.dz * 7 + e.rz * e.lane;
+      const k = e.to.deg > 2 ? Math.min(7, e.len * 0.35) : Math.min(1.5, e.len * 0.3);
+      a.tx = e.to.x - e.dx * k + e.rx * (e.lane + extra);
+      a.tz = e.to.z - e.dz * k + e.rz * (e.lane + extra);
     } else {
       const n = a.next;
-      a.tx = n.from.x + n.dx * 7 + n.rx * n.lane;
-      a.tz = n.from.z + n.dz * 7 + n.rz * n.lane;
+      const k = n.from.deg > 2 ? Math.min(7, n.len * 0.35) : Math.min(1.5, n.len * 0.3);
+      a.tx = n.from.x + n.dx * k + n.rx * (n.lane + extra);
+      a.tz = n.from.z + n.dz * k + n.rz * (n.lane + extra);
     }
   }
 
@@ -163,8 +225,12 @@ export class Traffic {
     const opts = e.to.out.filter((o) => o !== e.rev);
     if (!opts.length) return e.rev;
     // preferir seguir derecho
-    const straight = opts.find((o) => Math.abs(o.dx - e.dx) < 0.01 && Math.abs(o.dz - e.dz) < 0.01);
-    if (straight && R.chance(0.55)) return straight;
+    // preferir seguir por la misma calle o la más derecha
+    const straight = opts.reduce((best, o) => (o.dx * e.dx + o.dz * e.dz > (best ? best.dx * e.dx + best.dz * e.dz : -2) ? o : best), null);
+    if (straight && straight.dx * e.dx + straight.dz * e.dz > 0.7 && R.chance(0.6)) return straight;
+    // evitar calles de servicio y pasillos
+    const good = opts.filter((o) => o.street.w >= 6.5);
+    if (good.length) return R.pick(good);
     return R.pick(opts);
   }
 
@@ -179,6 +245,67 @@ export class Traffic {
   all() {
     return this.cars.concat(this.parked);
   }
+  motos() {
+    return this.cars.filter((v) => v.kind === 'moto');
+  }
+
+  // Sacar al que maneja un auto: cae al piso y después se enoja o se raja
+  ejectDriver(v, world) {
+    const lx = -Math.cos(v.heading);
+    const lz = Math.sin(v.heading);
+    const d = world.npcs.spawnWalker({ x: v.x + lx * (v.W / 2 + 1.3), z: v.z + lz * (v.W / 2 + 1.3), heading: v.heading + Math.PI / 2 });
+    if (!d) return;
+    world.npcs.hurt(d, 5, lx, lz, { knock: true, knockT: 1.4, world });
+    d.after = R.chance(d.brave) ? 'fight' : 'flee';
+    d.say(R.pick(['¡Eh! ¡Chorro! ¡Devolveme el auto!', '¡Mi auto! ¡Mi auto!', '¡Me lo robaron! ¡Policía!']), 3);
+    world.audio.alerta();
+  }
+  // El de la moto sale volando (golpe, tiro o empujón)
+  ejectRider(v, world, fx = 0, fz = 0) {
+    if (!v.rider) return;
+    v.mesh.remove(v.rider.root);
+    v.rider = null;
+    const d = world.npcs.spawnWalker({ x: v.x + fx * 1.5, z: v.z + fz * 1.5, heading: v.heading }, null, 0, 0, v.riderLook);
+    if (d) {
+      world.npcs.hurt(d, 10, fx, fz, { knock: true, knockT: 2, world });
+      d.after = R.chance(0.5) ? 'fight' : 'flee';
+    }
+    if (v.ai) {
+      this.release(v);
+      v.parked = true;
+      this.parked.push(v);
+    }
+    v.fallen = true;
+    v.speed = 0;
+    v.sync(0);
+  }
+
+  // los autos que quedan lejos reaparecen cerca de Gaspi (así siempre hay tránsito)
+  recycle(v, player) {
+    const d = Math.hypot(v.x - player.x, v.z - player.z);
+    if (d < 260) return false;
+    const cand = this.spawnEdges.filter((e) => {
+      const m = Math.hypot(e.from.x + e.dx * e.len * 0.5 - player.x, e.from.z + e.dz * e.len * 0.5 - player.z);
+      return m > 110 && m < 230 && (v.kind !== 'bus' || e.street.avenue);
+    });
+    if (!cand.length) return false;
+    const e = R.pick(cand);
+    const lane = e.lane + (v.kind === 'moto' ? 0.7 : 0);
+    const at = R.range(3, e.len - 3);
+    const x = e.from.x + e.dx * at + e.rx * lane;
+    const z = e.from.z + e.dz * at + e.rz * lane;
+    // que no aparezca encima de otro
+    if (this.cars.some((o) => o !== v && Math.abs(o.x - x) < 8 && Math.abs(o.z - z) < 8)) return false;
+    v.x = x;
+    v.z = z;
+    v.heading = Math.atan2(e.dx, e.dz);
+    v.ai.edge = e;
+    v.ai.stage = 'run';
+    v.ai.stuck = 0;
+    v.speed = v.ai.vmax * 0.5;
+    this.setTarget(v);
+    return true;
+  }
 
   update(dt, world) {
     const { player, events, trains, npcs } = world;
@@ -186,12 +313,54 @@ export class Traffic {
     // lo que queda detrás de la niebla no se dibuja
     for (const v of this.parked) v.mesh.visible = Math.abs(v.x - player.x) < 240 && Math.abs(v.z - player.z) < 240;
     for (const v of this.cars) v.mesh.visible = Math.abs(v.x - player.x) < 280 && Math.abs(v.z - player.z) < 280;
+    this.recycleI = ((this.recycleI || 0) + 1) % 30;
+    for (let i = this.recycleI; i < this.cars.length; i += 30) this.recycle(this.cars[i], player);
+    const police = world.police?.cars || [];
+    // grillas de obstáculos (vehículos y peatones) para no comparar todos contra todos
+    const CELL = 24;
+    const cell = (x, z) => (Math.floor(x / CELL) + 200) * 1000 + Math.floor(z / CELL) + 200;
+    const vgrid = new Map();
+    const pgrid = new Map();
+    const put = (g, o) => {
+      const k = cell(o.x, o.z);
+      let l = g.get(k);
+      if (!l) g.set(k, (l = []));
+      l.push(o);
+    };
+    for (const o of this.cars) put(vgrid, o);
+    for (const o of this.parked) put(vgrid, o);
+    for (const o of police) put(vgrid, o);
+    if (pv) put(vgrid, pv);
+    for (const p of npcs.walkers()) put(pgrid, p);
+    if (!pv) put(pgrid, player);
+    const buf = [];
+    const near = (g, x, z) => {
+      buf.length = 0;
+      const i0 = Math.floor(x / CELL) + 200;
+      const j0 = Math.floor(z / CELL) + 200;
+      for (let a = -1; a <= 1; a++) {
+        for (let b = -1; b <= 1; b++) {
+          const l = g.get((i0 + a) * 1000 + j0 + b);
+          if (l) for (const o of l) buf.push(o);
+        }
+      }
+      return buf;
+    };
     for (const v of this.cars) {
       const a = v.ai;
+      // alguien lo está robando: frena
+      if (a.hold) {
+        v.speed = Math.max(0, v.speed - 12 * dt);
+        v.x += v.fx * v.speed * dt;
+        v.z += v.fz * v.speed * dt;
+        v.sync(dt);
+        continue;
+      }
+      a.panic = Math.max(0, (a.panic || 0) - dt);
       const dx = a.tx - v.x;
       const dz = a.tz - v.z;
       const dist = Math.hypot(dx, dz);
-      if (dist < 3.5) {
+      if (dist < (a.stage === 'run' && a.edge.to.deg <= 2 ? 1.6 : 3.5)) {
         if (a.stage === 'run') {
           a.next = this.pickNext(a.edge);
           a.stage = 'turn';
@@ -211,18 +380,16 @@ export class Traffic {
       v.heading += Math.max(-turnRate * dt, Math.min(turnRate * dt, diff)) * Math.min(1, v.speed / 3 + 0.3);
 
       // velocidad objetivo
-      let target = a.vmax * (v.flat ? 0.4 : 1);
-      if (a.stage === 'turn') target = Math.min(target, 5.5);
+      let target = a.vmax * (v.flat ? 0.4 : 1) * (a.panic > 0 ? 1.6 : 1) * (world.weather?.slick ? 0.85 : 1);
+      if (a.stage === 'turn' && a.next && a.next.from.deg > 2) target = Math.min(target, 5.5);
       if (Math.abs(diff) > 0.6) target = Math.min(target, 4);
       const fx = v.fx;
       const fz = v.fz;
       let block = Infinity;
       let reason = null;
       // otros vehículos
-      const others = this.cars.concat(this.parked);
-      if (pv) others.push(pv);
       a.ghost = Math.max(0, (a.ghost || 0) - dt);
-      for (const o of others) {
+      for (const o of near(vgrid, v.x + fx * 11, v.z + fz * 11)) {
         if (o === v) continue;
         // destrabar cruces: por un rato ignora a los otros autos de la IA
         if (a.ghost > 0 && o.ai) continue;
@@ -240,9 +407,7 @@ export class Traffic {
         }
       }
       // peatones (incluido Gaspi a pie)
-      const peds = npcs.walkers();
-      if (!pv) peds.push(player);
-      for (const p of peds) {
+      for (const p of near(pgrid, v.x + fx * 6, v.z + fz * 6)) {
         const ox = p.x - v.x;
         const oz = p.z - v.z;
         const ahead = ox * fx + oz * fz;
@@ -265,6 +430,11 @@ export class Traffic {
       if (bar !== null && bar < block) {
         block = bar;
         reason = 'barrera';
+      }
+      const lt = a.panic > 0 ? null : world.lights?.stopAhead(v, a);
+      if (lt != null && lt < block) {
+        block = lt;
+        reason = 'semaforo';
       }
       if (block < Infinity) target = Math.min(target, Math.max(0, (block - 2.5) * 1.3));
       a.reason = block < 10 ? reason : null;
@@ -300,7 +470,7 @@ export class Traffic {
       if (v.speed < 0.2) a.stuck += dt;
       else a.stuck = 0;
       if (a.stuck > 35 && Math.hypot(player.x - v.x, player.z - v.z) > 120) {
-        const e = R.pick(this.graph.edges.filter((e) => e.len > 40));
+        const e = R.pick(this.spawnEdges);
         v.x = e.from.x + e.dx * 20 + e.rx * e.lane;
         v.z = e.from.z + e.dz * 20 + e.rz * e.lane;
         v.heading = Math.atan2(e.dx, e.dz);

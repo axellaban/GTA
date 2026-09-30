@@ -1,7 +1,8 @@
 // HUD: tarjeta SUBE, plata, reloj, minimapa, zócalo, diálogos, globos y carteles.
 import * as THREE from 'three';
-import { HALF, STREETS, TRACKS, ISLANDS, PLATFORM, nearestStreetName } from './map.js';
+import { HALF, DATA as D, TRACKS, nearestStreetName } from './map.js';
 import gaspiUrl from './gaspi.webp';
+import { WEAPONS } from './weapons.js';
 
 const $ = (id) => document.getElementById(id);
 const fmt = (n) => `$ ${Math.round(n).toLocaleString('es-AR')}`;
@@ -53,7 +54,34 @@ export class Hud {
     m.textContent = fmt(this.moneyShown);
     m.className = diff < -1 ? 'lost' : '';
     $('clock').textContent = time.label;
-    $('street').textContent = nearestStreetName(player.x, player.z);
+    this.streetT = (this.streetT || 0) - dt;
+    if (this.streetT <= 0) {
+      $('street').textContent = nearestStreetName(player.x, player.z);
+      this.streetT = 0.3;
+    }
+    // chaleco
+    const ab = $('armor-bar');
+    ab.hidden = !(player.armor > 0);
+    if (player.armor > 0) $('armor').style.width = `${player.armor}%`;
+    // estrellas de búsqueda
+    const pol = world.police;
+    const stars = $('stars').children;
+    for (let i = 0; i < 5; i++) stars[i].className = i < pol.stars ? 'on' : '';
+    $('stars').className = pol.stars && !pol.seen ? 'search' : pol.flash > 0 ? 'hot' : '';
+    // arma y balas
+    const w = WEAPONS[player.weapon || 'punos'];
+    $('w-name').textContent = w.name;
+    const a = player.ammo?.[w.id];
+    $('w-ammo').textContent = w.gun ? (player.reloadT > 0 ? 'recargando' : `${a?.mag ?? 0} / ${a?.res ?? 0}`) : '';
+    // mira: círculo al apuntar, punto si tiene un arma de fuego en la mano
+    const ch = $('crosshair');
+    ch.hidden = !(w.gun && !player.vehicle && !player.dead);
+    ch.className = player.aiming ? '' : 'dot';
+    $('hitmark').hidden = !(player.hitMarker > 0);
+    if (this.radioT > 0) {
+      this.radioT -= dt;
+      if (this.radioT <= 0) $('radio').hidden = true;
+    }
 
     if (this.flashT > 0) {
       this.flashT -= dt;
@@ -69,6 +97,33 @@ export class Hud {
       if (this.dialog.t <= 0) this.choose(this.dialog.def);
     }
     this.drawMinimap(world);
+  }
+
+  showRadio(st) {
+    $('radio').hidden = false;
+    $('radio-name').textContent = st.name;
+    $('radio-sub').textContent = st.sub;
+    const r = $('radio');
+    r.style.animation = 'none';
+    void r.offsetWidth;
+    r.style.animation = '';
+    this.radioT = 2.8;
+  }
+  // posteo de un vecino (arriba a la izquierda, se va solo)
+  post(handle, text) {
+    const feed = $('feed');
+    const el = document.createElement('div');
+    el.className = 'post';
+    const b = document.createElement('b');
+    b.textContent = `@${handle}`;
+    el.append(b, document.createTextNode(text));
+    feed.prepend(el);
+    while (feed.children.length > 3) feed.lastElementChild.remove();
+    setTimeout(() => el.classList.add('out'), 6500);
+    setTimeout(() => el.remove(), 7000);
+  }
+  setRoute(pts) {
+    this.route = pts;
   }
 
   setObjective(text, target) {
@@ -195,39 +250,62 @@ export class Hud {
 
   // ---------- Minimapa ----------
   drawBaseMap() {
-    const S = 1024;
+    const S = 2048;
     const c = document.createElement('canvas');
     c.width = c.height = S;
     const g = c.getContext('2d');
     const k = S / (HALF * 2);
     const X = (x) => (x + HALF) * k;
-    g.fillStyle = '#3a4234';
+    const path = (rings) => {
+      for (const r of rings) {
+        r.forEach(([x, z], i) => (i ? g.lineTo(X(x), X(z)) : g.moveTo(X(x), X(z))));
+        g.closePath();
+      }
+    };
+    const fillPolys = (polys, color) => {
+      g.fillStyle = color;
+      for (const p of polys) {
+        g.beginPath();
+        path(p);
+        g.fill('evenodd');
+      }
+    };
+    // calles de fondo (todo lo que no es manzana es calle)
+    g.fillStyle = '#c9c3b2';
     g.fillRect(0, 0, S, S);
-    // manzanas
-    g.fillStyle = '#5b5f55';
-    g.fillRect(0, 0, S, S);
-    // playa de vías
-    g.fillStyle = '#4b453e';
-    g.fillRect(X(-73), 0, 146 * k, (HALF + 175) * k);
-    // calles
-    for (const s of STREETS) {
-      g.fillStyle = s.avenue ? '#e9e2d0' : '#bdb7a8';
-      if (s.axis === 'ns') g.fillRect(X(s.c - s.w / 2), X(s.a), s.w * k, (s.b - s.a) * k);
-      else g.fillRect(X(s.a), X(s.c - s.w / 2), (s.b - s.a) * k, s.w * k);
+    fillPolys(D.yard, '#4b453e');
+    fillPolys(D.blocks, '#5b6152');
+    // plazas y canchas
+    for (const p of D.parks) fillPolys(p.r, p.c === 'pitch' ? '#4f8a3c' : '#467a3a');
+    // edificios: apenas más oscuros que la manzana
+    g.fillStyle = '#4a4f44';
+    g.beginPath();
+    for (const b of D.buildings) path([b.r]);
+    g.fill();
+    g.fillStyle = '#a3563b';
+    g.beginPath();
+    for (const b of D.buildings) if (b.k === 'estacion') path([b.r]);
+    g.fill();
+    // avenidas en amarillo claro
+    g.lineCap = 'round';
+    g.lineJoin = 'round';
+    for (const r of D.roads) {
+      if (r.c !== 'primary' && r.c !== 'secondary') continue;
+      g.strokeStyle = '#efe0a8';
+      g.lineWidth = r.w * k * 0.9;
+      g.beginPath();
+      r.p.forEach(([x, z], i) => (i ? g.lineTo(X(x), X(z)) : g.moveTo(X(x), X(z))));
+      g.stroke();
     }
     // vías
     g.strokeStyle = '#1d1b19';
-    g.lineWidth = 1.4;
+    g.lineWidth = 2.2;
     for (const t of TRACKS) {
       g.beginPath();
       t.forEach(([x, z], i) => (i ? g.lineTo(X(x), X(z)) : g.moveTo(X(x), X(z))));
       g.stroke();
     }
-    // andenes y estación
-    g.fillStyle = '#d9d2c3';
-    for (const x of ISLANDS) g.fillRect(X(x - 3), X(PLATFORM.z0), 6 * k, (PLATFORM.z1 - PLATFORM.z0) * k);
-    g.fillStyle = '#a3563b';
-    g.fillRect(X(-69), X(-32), 12 * k, 64 * k);
+    fillPolys(D.platforms, '#e3dccb');
     return c;
   }
 
@@ -264,11 +342,32 @@ export class Hud {
       g.fill();
       g.stroke();
     };
+    // ruta del GPS
+    if (this.route && this.route.length > 1) {
+      g.strokeStyle = '#c86bff';
+      g.lineWidth = (5 * k) / scale;
+      g.lineJoin = 'round';
+      g.lineCap = 'round';
+      g.beginPath();
+      this.route.forEach(([x, z], i) => (i ? g.lineTo((x + HALF) * k, (z + HALF) * k) : g.moveTo((x + HALF) * k, (z + HALF) * k)));
+      g.stroke();
+    }
     for (const m of events.markers()) mark(m.x, m.z, m.kind === 'corte' ? '#ff7a1a' : '#ffb23e', 6, 'square');
     for (const m of crime.markers()) mark(m.x, m.z, m.kind === 'moto' ? '#e5484d' : '#6ec3ea', 5);
+    for (const m of world.pickups.markers(player)) mark(m.x, m.z, m.kind === 'weapon' ? '#ffa726' : m.kind === 'health' ? '#ff5a5a' : m.kind === 'armor' ? '#5aa9ff' : '#6ec3ea', 3.5);
+    const blink = ((performance.now() / 250) | 0) % 2;
+    for (const m of world.police.markers()) mark(m.x, m.z, m.kind === 'heli' ? '#ffffff' : blink ? '#ff3030' : '#3060ff', m.kind === 'poli' ? 5 : 3.5, m.kind === 'poli' ? 'square' : 'dot');
     const o = this.objective;
     if (o?.target) mark(o.target.x, o.target.z, '#ffe14a', 6);
     g.restore();
+    // con la cana atrás, el borde titila rojo y azul
+    if (world.police.stars > 0) {
+      g.strokeStyle = blink ? 'rgba(255,48,48,0.9)' : 'rgba(48,96,255,0.9)';
+      g.lineWidth = 6;
+      g.beginPath();
+      g.arc(W / 2, W / 2, W / 2 - 3, 0, Math.PI * 2);
+      g.stroke();
+    }
     // borde: si el objetivo queda fuera, flecha en el borde
     if (o?.target) {
       const dx = o.target.x - player.x;

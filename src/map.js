@@ -1,138 +1,27 @@
-// Trazado de Temperley alrededor de la estación.
-// Coordenadas en metros: x crece hacia el este, z crece hacia el sur (el norte es -z).
-// Datos confirmados: estación en Av. Meeks 1400, 10 andenes, fin del cuádruple desde
-// Constitución, ramales a Glew/Korn, Ezeiza, Bosques y Haedo, puente peatonal hacia
-// Fray Justo Sta. María de Oro. La grilla de calles es aproximada hasta cargar OSM.
-import { Rng } from './rng.js';
+// Temperley real: calles, vías, andenes, edificios, plazas y árboles salidos de
+// Overture Maps (datos de OpenStreetMap + huellas de edificios), procesados por
+// scripts/preprocess.py. Coordenadas en metros: x al este, z al sur, origen en la estación.
+import D from './data/temperley.json';
 
-export const HALF = 440;
-export const SIDEWALK = 3.2;
-export const YARD = { x0: -73, x1: 73, z0: -HALF, z1: 175 }; // playa de vías
+export const DATA = D;
+export const HALF = D.half;
+export const SIDEWALK = 3.0;
 
-// Calles norte-sur (x constante)
-export const NS = [
-  { name: 'Colombres', c: -380, w: 9 },
-  { name: 'Av. 9 de Julio', c: -280, w: 13, avenue: true },
-  { name: 'Garibaldi', c: -180, w: 9 },
-  { name: 'Av. Meeks', c: -80, w: 13, avenue: true },
-  { name: 'Fray Justo Sta. María de Oro', c: 80, w: 9 },
-  { name: 'Av. Almirante Brown', c: 180, w: 13, avenue: true },
-  { name: 'Juan Pereuilh', c: 280, w: 9 },
-  { name: 'Boedo', c: 380, w: 9 },
-];
+const AVENUE = new Set(['primary', 'secondary']);
 
-// Calles este-oeste (z constante)
-export const EW = [
-  { name: 'Rosales', c: -380, w: 9 },
-  { name: 'Cangallo', c: -280, w: 9 },
-  { name: 'Sarmiento', c: -180, w: 9 },
-  { name: '25 de Mayo', c: -80, w: 9 },
-  { name: 'Belgrano', c: 20, w: 9 },
-  { name: 'Rivadavia', c: 120, w: 9 },
-  { name: 'San Martín', c: 220, w: 9 },
-  { name: 'Moreno', c: 320, w: 9 },
-];
-
-// Las calles que chocan contra la playa de vías cortan en Meeks y en Fray Justo.
-const CUT_AT_YARD = new Set([-180, -80, 20, 120]);
-
-export const STREETS = [];
-for (const s of NS) STREETS.push({ ...s, axis: 'ns', a: -HALF, b: HALF });
-for (const s of EW) {
-  if (CUT_AT_YARD.has(s.c)) {
-    STREETS.push({ ...s, axis: 'ew', a: -HALF, b: -80 });
-    STREETS.push({ ...s, axis: 'ew', a: 80, b: HALF });
-  } else {
-    STREETS.push({ ...s, axis: 'ew', a: -HALF, b: HALF });
-  }
-}
-
-// ---------- Vías ----------
-function line(x0, z0, x1, z1, step = 6) {
-  const n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, z1 - z0) / step));
-  const pts = [];
-  for (let i = 0; i <= n; i++) pts.push([x0 + ((x1 - x0) * i) / n, z0 + ((z1 - z0) * i) / n]);
-  return pts;
-}
-function sCurve(x0, z0, x1, z1, n = 20) {
-  const pts = [];
-  for (let i = 0; i <= n; i++) {
-    const t = i / n;
-    const s = t * t * (3 - 2 * t);
-    pts.push([x0 + (x1 - x0) * s, z0 + (z1 - z0) * t]);
-  }
-  return pts;
-}
-function arc(cx, cz, r, a0, a1, n = 24) {
-  const pts = [];
-  for (let i = 0; i <= n; i++) {
-    const a = a0 + ((a1 - a0) * i) / n;
-    pts.push([cx + r * Math.cos(a), cz + r * Math.sin(a)]);
-  }
-  return pts;
-}
-function join(...parts) {
-  const out = [];
-  for (const p of parts) {
-    for (const q of p) {
-      const last = out[out.length - 1];
-      if (!last || Math.hypot(last[0] - q[0], last[1] - q[1]) > 0.01) out.push(q);
-    }
-  }
-  return out;
-}
-
-export const STATION_TRACKS = [-49.5, -38.5, -27.5, -16.5, -5.5, 5.5, 16.5, 27.5, 38.5, 49.5];
-export const ISLANDS = [-44, -22, 0, 22, 44];
-export const PLATFORM = { z0: -100, z1: 80, halfW: 3, h: 1.1 };
-const MAIN = [-7.5, -2.5, 2.5, 7.5];
-const MAIN_FOR = [0, 0, 0, 1, 1, 2, 2, 3, 3, 3];
-
-// Haedo: dos vías que doblan hacia el oeste al sur de la estación.
-function haedoTrack(r, zStraight, xStation) {
-  const cx = -125.5;
-  const cz = 190;
-  return join(
-    line(-HALF, zStraight, cx, zStraight),
-    arc(cx, cz, r, Math.PI / 2, 0),
-    line(cx + r, cz, cx + r, 170),
-    sCurve(cx + r, 170, xStation, 90),
-  );
-}
-
-export const TRACKS = [];
-STATION_TRACKS.forEach((x, i) => {
-  TRACKS.push(line(x, -110, x, 90));
-  TRACKS.push(sCurve(x, -110, MAIN[MAIN_FOR[i]], -200));
-  if (i >= 2) TRACKS.push(sCurve(x, 90, i <= 5 ? -3 : 3, 170));
+// Calles transitables (cada tramo es una polilínea)
+export const ROADS = D.roads.map((r, i) => {
+  const pts = r.p;
+  const cum = [0];
+  for (let k = 1; k < pts.length; k++) cum.push(cum[k - 1] + Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]));
+  return { id: i, name: r.n || '', cls: r.c, w: r.w, avenue: AVENUE.has(r.c), pts, cum, len: cum[cum.length - 1] };
 });
-for (const x of MAIN) TRACKS.push(line(x, -200, x, -HALF));
-for (const x of [-3, 3]) TRACKS.push(line(x, 170, x, HALF));
-const HAEDO_A = haedoTrack(78, 268, -49.5);
-const HAEDO_B = haedoTrack(82, 272, -38.5);
-TRACKS.push(HAEDO_A, HAEDO_B);
+export const TRACKS = D.rails;
+export const PLATFORMS = D.platforms;
+export const STATION = { x: D.station[0], z: D.station[1] };
+export const NAMED = D.named;
 
-// Recorridos de los trenes. Reusan los mismos tramos que se dibujan, así el tren
-// siempre va arriba de una vía. `stopZ` es donde frena en el andén.
-function southbound(i) {
-  const x = STATION_TRACKS[i];
-  return join(
-    line(MAIN[MAIN_FOR[i]], -HALF, MAIN[MAIN_FOR[i]], -200),
-    sCurve(x, -110, MAIN[MAIN_FOR[i]], -200).reverse(),
-    line(x, -110, x, 90),
-    sCurve(x, 90, i <= 5 ? -3 : 3, 170),
-    line(i <= 5 ? -3 : 3, 170, i <= 5 ? -3 : 3, HALF),
-  );
-}
-
-export const ROUTES = [
-  { name: 'Glew', kind: 'electrico', pts: southbound(6), stopZ: -10 },
-  { name: 'Constitución', kind: 'electrico', pts: southbound(4).reverse(), stopZ: -10 },
-  { name: 'Ezeiza', kind: 'electrico', pts: southbound(7), stopZ: -10 },
-  { name: 'Haedo', kind: 'diesel', pts: join(HAEDO_A, line(-49.5, 90, -49.5, -30)), stopZ: -30, shuttle: true },
-];
-
-// ---------- Geometría auxiliar ----------
+// ---------- Geometría ----------
 export function distToPolyline(x, z, pts) {
   let best = Infinity;
   for (let i = 0; i < pts.length - 1; i++) {
@@ -149,171 +38,189 @@ export function distToPolyline(x, z, pts) {
   return best;
 }
 
-export function distToRail(x, z) {
-  let best = Infinity;
-  for (const t of TRACKS) {
-    // descarte rápido por caja
-    best = Math.min(best, distToPolyline(x, z, t));
-    if (best < 1) return best;
+// Proyección sobre una polilínea con largo acumulado: {s, dist, dx, dz, x, z}
+export function project(pts, cum, x, z) {
+  let best = { dist: Infinity };
+  for (let i = 0; i < pts.length - 1; i++) {
+    const [ax, az] = pts[i];
+    const [bx, bz] = pts[i + 1];
+    const dx = bx - ax;
+    const dz = bz - az;
+    const l2 = dx * dx + dz * dz || 1;
+    let t = ((x - ax) * dx + (z - az) * dz) / l2;
+    t = Math.max(0, Math.min(1, t));
+    const px = ax + dx * t;
+    const pz = az + dz * t;
+    const d = Math.hypot(x - px, z - pz);
+    if (d < best.dist) {
+      const l = Math.sqrt(l2);
+      best = { dist: d, s: cum[i] + t * l, dx: dx / l, dz: dz / l, x: px, z: pz, i };
+    }
   }
   return best;
 }
 
-export function streetAt(x, z) {
-  for (const s of STREETS) {
-    const along = s.axis === 'ns' ? z : x;
-    const across = s.axis === 'ns' ? x : z;
-    if (along >= s.a - s.w / 2 && along <= s.b + s.w / 2 && Math.abs(across - s.c) <= s.w / 2) return s;
+export function pointAt(pts, cum, s) {
+  s = Math.max(0, Math.min(cum[cum.length - 1], s));
+  let i = 0;
+  while (i < cum.length - 2 && cum[i + 1] < s) i++;
+  const [ax, az] = pts[i];
+  const [bx, bz] = pts[i + 1];
+  const l = cum[i + 1] - cum[i] || 1;
+  const t = (s - cum[i]) / l;
+  return { x: ax + (bx - ax) * t, z: az + (bz - az) * t, dx: (bx - ax) / l, dz: (bz - az) / l };
+}
+
+export function withCum(pts) {
+  const cum = [0];
+  for (let k = 1; k < pts.length; k++) cum.push(cum[k - 1] + Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]));
+  return { pts, cum, len: cum[cum.length - 1] };
+}
+
+// grilla gruesa para buscar calles cercanas rápido
+const RG = 40;
+const roadGrid = new Map();
+for (const r of ROADS) {
+  const seen = new Set();
+  for (let k = 0; k < r.pts.length - 1; k++) {
+    const [ax, az] = r.pts[k];
+    const [bx, bz] = r.pts[k + 1];
+    const n = Math.ceil(Math.hypot(bx - ax, bz - az) / 10) + 1;
+    for (let j = 0; j <= n; j++) {
+      const key = `${Math.floor((ax + ((bx - ax) * j) / n) / RG)},${Math.floor((az + ((bz - az) * j) / n) / RG)}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      if (!roadGrid.has(key)) roadGrid.set(key, []);
+      roadGrid.get(key).push(r);
+    }
   }
-  return null;
+}
+function roadsNear(x, z) {
+  const out = new Set();
+  const i = Math.floor(x / RG);
+  const j = Math.floor(z / RG);
+  for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) for (const r of roadGrid.get(`${i + a},${j + b}`) || []) out.add(r);
+  return out;
+}
+
+export function nearestRoad(x, z) {
+  let best = null;
+  let bp = null;
+  let cand = roadsNear(x, z);
+  if (!cand.size) cand = ROADS;
+  for (const r of cand) {
+    const p = project(r.pts, r.cum, x, z);
+    if (!bp || p.dist < bp.dist) {
+      bp = p;
+      best = r;
+    }
+  }
+  return best ? { road: best, ...bp } : null;
 }
 
 export function nearestStreetName(x, z) {
-  let best = null;
+  const n = nearestRoad(x, z);
+  if (!n) return '';
+  if (n.road.name) return n.road.name;
+  // tramo sin nombre: probar el siguiente más cercano con nombre
+  let best = '';
   let bd = Infinity;
-  for (const s of STREETS) {
-    const along = s.axis === 'ns' ? z : x;
-    const across = s.axis === 'ns' ? x : z;
-    const clamped = Math.max(s.a, Math.min(s.b, along));
-    const d = Math.abs(across - s.c) + Math.abs(along - clamped);
+  for (const r of roadsNear(x, z)) {
+    if (!r.name) continue;
+    const d = project(r.pts, r.cum, x, z).dist;
     if (d < bd) {
       bd = d;
-      best = s;
+      best = r.name;
     }
   }
-  return best ? best.name : '';
+  return best;
 }
 
-// Nombre de la esquina más cercana: "Av. Meeks y 25 de Mayo"
+// Planta baja comercial: sobre las avenidas y alrededor de la estación casi todo son negocios
+// (los datos solo marcan como local los que tienen un comercio cargado)
+const COMMERCIAL = new Set(['Avenida Meeks', 'Almirante Brown', 'Juan B. Péreuilh', '25 de Mayo']);
+for (const b of D.buildings) {
+  if (b.k !== 'casa' || !b.fr.length) continue;
+  const r = b.r;
+  const a = r[b.fr[0]];
+  const c = r[(b.fr[0] + 1) % r.length];
+  const mx = (a[0] + c[0]) / 2;
+  const mz = (a[1] + c[1]) / 2;
+  const n = nearestRoad(mx, mz);
+  if (!n || n.dist > n.road.w / 2 + 8) continue;
+  const dSt = Math.hypot(mx - D.station[0], mz - D.station[1]);
+  const p = COMMERCIAL.has(n.road.name) || n.road.avenue ? (dSt < 450 ? 0.75 : 0.4) : dSt < 170 ? 0.3 : 0;
+  if (((b.v * 9301 + 49297) % 233280) / 233280 < p) b.k = 'local';
+}
+
+// "Av. Meeks y 25 de Mayo": las dos calles con nombre distinto más cercanas
 export function cornerName(x, z) {
-  let ns = NS[0];
-  for (const s of NS) if (Math.abs(s.c - x) < Math.abs(ns.c - x)) ns = s;
-  let ew = EW[0];
-  for (const s of EW) if (Math.abs(s.c - z) < Math.abs(ew.c - z)) ew = s;
-  return `${ns.name} y ${ew.name}`;
+  const found = [];
+  const cand = [...roadsNear(x, z)].filter((r) => r.name).map((r) => ({ n: r.name, d: project(r.pts, r.cum, x, z).dist }));
+  cand.sort((a, b) => a.d - b.d);
+  for (const c of cand) if (!found.includes(c.n)) found.push(c.n);
+  if (found.length >= 2) return `${found[0]} y ${found[1]}`;
+  return found[0] || 'Temperley';
 }
 
-// ---------- Manzanas y lotes ----------
-function edges(list) {
-  return [-HALF, ...list.map((s) => s.c), HALF];
-}
-
-export function buildBlocks() {
-  const xs = edges(NS);
-  const zs = edges(EW);
-  const blocks = [];
-  for (let i = 0; i < xs.length - 1; i++) {
-    for (let j = 0; j < zs.length - 1; j++) {
-      const west = i > 0 ? NS[i - 1] : null;
-      const east = i < NS.length ? NS[i] : null;
-      const north = j > 0 ? EW[j - 1] : null;
-      const south = j < EW.length ? EW[j] : null;
-      const x0 = xs[i] + (west ? west.w / 2 : 0);
-      const x1 = xs[i + 1] - (east ? east.w / 2 : 0);
-      let z0 = zs[j] + (north ? north.w / 2 : 0);
-      const z1 = zs[j + 1] - (south ? south.w / 2 : 0);
-      const inYardCol = xs[i] === -80 && xs[i + 1] === 80;
-      if (inYardCol) {
-        if (zs[j + 1] <= YARD.z1) continue; // toda la playa de vías
-        if (zs[j] < YARD.z1) z0 = YARD.z1;
-      }
-      const streetN = north && !(inYardCol && CUT_AT_YARD.has(north.c));
-      const streetS = south && !(inYardCol && CUT_AT_YARD.has(south.c));
-      blocks.push({ x0, x1, z0, z1, sides: { N: !!streetN, S: !!streetS, W: !!west, E: !!east } });
+// ---------- Altura del piso (veredas, manzanas, andenes) ----------
+// Se rasteriza una vez a una grilla de 0,5 m para que la consulta sea instantánea.
+export function makeGround() {
+  const RES = 0.5;
+  const N = Math.ceil((HALF * 2) / RES);
+  const c = document.createElement('canvas');
+  c.width = c.height = N;
+  const g = c.getContext('2d');
+  g.fillStyle = '#000';
+  g.fillRect(0, 0, N, N);
+  const X = (x) => (x + HALF) / RES;
+  const fill = (rings, color) => {
+    g.fillStyle = color;
+    g.beginPath();
+    for (const r of rings) {
+      r.forEach(([x, z], i) => (i ? g.lineTo(X(x), X(z)) : g.moveTo(X(x), X(z))));
+      g.closePath();
     }
-  }
-  return blocks;
-}
-
-const SHOPS = [
-  'KIOSCO 24 HS',
-  'FARMACIA',
-  'PIZZERÍA',
-  'ROTISERÍA',
-  'QUINIELA',
-  'FERRETERÍA',
-  'VERDULERÍA',
-  'CELULARES',
-  'EMPANADAS',
-  'CARNICERÍA',
-  'PANADERÍA',
-  'COTILLÓN',
-  'LAVADERO',
-  'CERRAJERÍA',
-  'FIAMBRERÍA',
-  'CHINO',
-];
-
-export function buildLots(blocks, seed = 1400) {
-  const rng = new Rng(seed);
-  const lots = [];
-  for (const b of blocks) {
-    const ix0 = b.x0 + SIDEWALK;
-    const ix1 = b.x1 - SIDEWALK;
-    const iz0 = b.z0 + SIDEWALK;
-    const iz1 = b.z1 - SIDEWALK;
-    if (ix1 - ix0 < 12 || iz1 - iz0 < 12) continue;
-    const maxDz = Math.min(24, (iz1 - iz0) / 2 - 1);
-    const maxDx = Math.min(24, (ix1 - ix0) / 2 - 1);
-    const addRow = (face) => {
-      const horizontal = face === 'N' || face === 'S';
-      let a = horizontal ? ix0 : iz0 + maxDz;
-      const end = horizontal ? ix1 : iz1 - maxDz;
-      while (end - a > 5) {
-        let w = rng.range(8, 14);
-        if (end - a - w < 6) w = end - a;
-        const d = horizontal ? rng.range(14, maxDz) : rng.range(14, maxDx);
-        let lot;
-        if (face === 'N') lot = { x0: a, x1: a + w, z0: iz0, z1: iz0 + d };
-        if (face === 'S') lot = { x0: a, x1: a + w, z0: iz1 - d, z1: iz1 };
-        if (face === 'W') lot = { x0: ix0, x1: ix0 + d, z0: a, z1: a + w };
-        if (face === 'E') lot = { x0: ix1 - d, x1: ix1, z0: a, z1: a + w };
-        lot.face = face;
-        a += w;
-        const cx = (lot.x0 + lot.x1) / 2;
-        const cz = (lot.z0 + lot.z1) / 2;
-        if (distToRail(cx, cz) < 12 + Math.max(lot.x1 - lot.x0, lot.z1 - lot.z0) / 2) continue;
-        classify(lot, rng, b);
-        lots.push(lot);
-      }
-    };
-    for (const f of ['N', 'S', 'W', 'E']) addRow(f);
-  }
-  return lots;
-}
-
-function classify(lot, rng, block) {
-  const cx = (lot.x0 + lot.x1) / 2;
-  const cz = (lot.z0 + lot.z1) / 2;
-  const dStation = Math.hypot(cx + 20, cz + 10);
-  const onAvenue = STREETS.some((s) => s.avenue && Math.abs((s.axis === 'ns' ? cx : cz) - s.c) < 40);
-  const central = dStation < 260;
-  const r = rng.next();
-  let type = 'casa';
-  if (central && onAvenue) type = r < 0.55 ? 'local' : r < 0.85 ? 'edificio' : 'casa';
-  else if (central) type = r < 0.35 ? 'local' : r < 0.45 ? 'edificio' : r < 0.95 ? 'casa' : 'baldio';
-  else if (onAvenue) type = r < 0.3 ? 'local' : r < 0.4 ? 'edificio' : r < 0.93 ? 'casa' : 'baldio';
-  else type = r < 0.06 ? 'local' : r < 0.9 ? 'casa' : r < 0.95 ? 'obra' : 'baldio';
-  lot.type = type;
-  lot.floors = type === 'edificio' ? rng.int(3, 7) : type === 'casa' ? (rng.chance(0.3) ? 2 : 1) : type === 'obra' ? rng.int(1, 2) : 1;
-  lot.setback = type === 'casa' ? rng.range(2.5, 4.5) : 0;
-  lot.fence = type === 'casa' && rng.chance(0.85);
-  lot.pitched = type === 'casa' && lot.floors === 1 && rng.chance(0.3);
-  lot.tank = type !== 'baldio' && rng.chance(0.55);
-  lot.shop = type === 'local' ? rng.pick(SHOPS) : null;
-  lot.variant = rng.int(0, 1000);
-  lot.block = block;
-}
-
-// Árbol de decisión de alturas del suelo (andenes, veredas y calles).
-export function makeGround(blocks) {
+    g.fill('evenodd');
+  };
+  for (const b of D.blocks) fill(b, '#0f0f0f'); // 15 cm
+  for (const p of D.platforms) fill(p, '#6e6e6e'); // 110 cm
+  const data = g.getImageData(0, 0, N, N).data;
+  const H = new Float32Array(N * N);
+  for (let i = 0; i < N * N; i++) H[i] = data[i * 4] / 100;
   return function heightAt(x, z) {
-    for (const X of ISLANDS) {
-      if (Math.abs(x - X) <= PLATFORM.halfW && z >= PLATFORM.z0 && z <= PLATFORM.z1) return PLATFORM.h;
-    }
-    for (const b of blocks) {
-      if (x >= b.x0 && x <= b.x1 && z >= b.z0 && z <= b.z1) return 0.15;
-    }
-    return 0;
+    const i = Math.floor((x + HALF) / RES);
+    const j = Math.floor((z + HALF) / RES);
+    if (i < 0 || j < 0 || i >= N || j >= N) return 0;
+    return H[j * N + i];
   };
 }
+
+// ---------- Esquinas: nodos donde terminan tramos de calle ----------
+// Cada nodo sabe qué calles llegan y en qué dirección salen desde la esquina.
+function nodeKey(x, z) {
+  return `${Math.round(x * 2) / 2},${Math.round(z * 2) / 2}`;
+}
+export const ROAD_NODES = (() => {
+  const map = new Map();
+  const add = (r, end) => {
+    const pts = r.pts;
+    const p = end === 0 ? pts[0] : pts[pts.length - 1];
+    const q = end === 0 ? pts[1] : pts[pts.length - 2];
+    const k = nodeKey(p[0], p[1]);
+    if (!map.has(k)) map.set(k, { x: p[0], z: p[1], arms: [] });
+    const l = Math.hypot(q[0] - p[0], q[1] - p[1]) || 1;
+    map.get(k).arms.push({ road: r, end, dx: (q[0] - p[0]) / l, dz: (q[1] - p[1]) / l });
+  };
+  for (const r of ROADS) {
+    if (r.pts.length < 2) continue;
+    add(r, 0);
+    add(r, 1);
+  }
+  for (const n of map.values()) {
+    n.deg = n.arms.length;
+    n.maxW = Math.max(...n.arms.map((a) => a.road.w));
+  }
+  return [...map.values()];
+})();
+export const CORNERS = ROAD_NODES.filter((n) => n.deg >= 3);

@@ -1,8 +1,8 @@
-// GTA Conurbano · Temperley. Arma el mundo, el ciclo de día y noche y el loop del juego.
+// GTA Conurbano · Temperley. Arma el mundo, el ciclo de día y noche, el clima y el loop del juego.
 import * as THREE from 'three';
 import './style.css';
 import { buildCity } from './city.js';
-import { makeGround, ISLANDS, PLATFORM } from './map.js';
+import { makeGround, ROADS, project, STATION, cornerName, nearestStreetName } from './map.js';
 import { Input } from './input.js';
 import { Audio } from './audio.js';
 import { Player } from './player.js';
@@ -17,6 +17,13 @@ import { loadGaspiPhoto } from './human.js';
 import { Sky } from './sky.js';
 import { Post, QUALITY } from './post.js';
 import { Glows } from './glow.js';
+import { buildProps, TrafficLights, BlobShadows } from './props.js';
+import { Fx } from './fx.js';
+import { Pickups } from './pickups.js';
+import { Combat } from './combat.js';
+import { Police } from './police.js';
+import { Nav } from './nav.js';
+import { Radio } from './radio.js';
 import { R } from './rng.js';
 
 const canvas = document.getElementById('game');
@@ -89,25 +96,177 @@ for (const b of document.querySelectorAll('[data-quality]')) b.addEventListener(
 
 // ---------- Mundo ----------
 const city = buildCity(scene);
-const heightAt = makeGround(city.blocks);
+const heightAt = makeGround();
+
+// Gaspi arranca en la vereda de Av. Meeks, del lado de la estación
+function spawnPoint() {
+  const door = city.spots.stationDoor;
+  const sw = city.spots.stationWall;
+  let best = null;
+  for (const r of ROADS) {
+    if (r.name !== 'Avenida Meeks') continue;
+    const p = project(r.pts, r.cum, door.x, door.z);
+    if (!best || p.dist < best.p.dist) best = { r, p };
+  }
+  if (!best || best.p.dist > 140) return { x: door.x + (sw?.nx ?? 1) * 8, z: door.z + (sw?.nz ?? 0) * 8, face: Math.atan2(-(sw?.nx ?? 1), -(sw?.nz ?? 0)) };
+  const { p, r } = best;
+  const tx = door.x - p.x;
+  const tz = door.z - p.z;
+  const l = Math.hypot(tx, tz) || 1;
+  const off = r.w / 2 + 1.6;
+  return { x: p.x + (tx / l) * off, z: p.z + (tz / l) * off, face: Math.atan2(tx, tz) };
+}
+// la comisaría: sobre una avenida, a un par de cuadras
+function stationHouse() {
+  const c = city.curbSpots.find((c) => c.road.avenue && c.d > 180 && c.d < 280) ?? city.curbSpots[0];
+  return { x: c.x - Math.cos(c.heading) * 3, z: c.z + Math.sin(c.heading) * 3, face: c.heading + Math.PI / 2 };
+}
+
 const audio = new Audio();
 const input = new Input(canvas);
 const hud = new Hud();
+const fx = new Fx(scene);
+fx.setScale(innerHeight);
 const player = new Player(scene, city, heightAt);
+player.setSpawn(spawnPoint());
 loadGaspiPhoto();
 const traffic = new Traffic(scene, audio);
 traffic.populate(city, player);
-const npcs = new Npcs(scene, city, city.colliders, heightAt, audio);
-npcs.populate();
+const nav = new Nav(traffic.graph);
+const npcs = new Npcs(scene, city, traffic.graph, heightAt, audio);
+npcs.populate(player);
 const crime = new Crime(scene, traffic, city.colliders, audio);
 const events = new Events(scene, traffic, audio);
 const trains = new Trains(scene, audio);
 const glows = new Glows(scene, city);
+buildProps(scene, city);
+const lights = new TrafficLights(scene);
+const blobs = new BlobShadows(scene);
+const pickups = new Pickups(scene, audio);
+pickups.placeWorld(city, heightAt);
+const combat = new Combat(scene, fx, audio);
+combat.setupPlayer(player);
+const police = new Police(scene, audio, nav);
+const radio = new Radio(audio);
+const comisaria = stationHouse();
 
 const time = { hour: 17.5, night: false, label: '17:30' };
-const world = { scene, camera, city, input, audio, hud, player, traffic, npcs, crime, events, trains, time, colliders: city.colliders };
+const weather = { rain: 0, target: 0, wet: 0, slick: false, next: R.range(200, 320), t: 0, boltT: R.range(10, 25), flash: 0 };
+const world = { scene, camera, city, input, audio, hud, player, traffic, npcs, crime, events, trains, time, lights, colliders: city.colliders, fx, pickups, combat, police, nav, radio, weather };
+police.world = world;
 
-// Faroles y luces de los autos
+// ---------- Lo que postean los vecinos ----------
+const HANDLES = ['vecinosdetemperley', 'temperleyalerta', 'lomasnoticias', 'lachusma_tmp', 'rocaaldia', 'lavecinadelabarrera', 'turco_del_kiosco'];
+const POSTS = {
+  estrellas: (c) => [`¡Persecución en ${c}! La Bonaerense atrás de un tipo de traje`, `Patrulleros a full por ${c}. ¿Qué pasó?`, `Sirenas en ${c}, no salgan`],
+  perdio: () => ['Se les escapó otra vez. ¿Para qué pagamos impuestos?', 'La cana dando vueltas y el de traje ni rastro', 'Se les perdió. Clásico.'],
+  boom: (c) => [`¡Explotó un auto en ${c}! Humo negro por todo el barrio`, `¿Escucharon la explosión? Fue en ${c}`, `Se prendió fuego un auto en ${c}, ¡llamen a los bomberos!`],
+  ko: (c) => [`Piñas en ${c}. Uno quedó durmiendo en la vereda`, `Terrible trompada en ${c}, lo dejaron nocaut`, `Otra vez bardo en ${c}`],
+  robo_auto: (c) => [`Otro auto robado en ${c}. Cuiden los autos, vecinos`, `Le sacaron el auto a un señor en ${c}, a plena luz del día`],
+  willy: (c) => [`Un loco haciendo willy por ${c}. Así estamos`, `Pasó uno en una sola rueda por ${c}, casi se mata`],
+  robo: (c) => [`Asaltaron un negocio en ${c}. Estamos a la deriva`, `Robo en ${c}: se llevó toda la caja`],
+  medias: () => ['Llegó el de las medias a la estación: tres pares dos lucas, de algodón', 'Compré medias en la estación y son buenísimas, recomiendo'],
+  delivery: (c) => [`Un delivery de traje llegó volando a ${c}. Cinco estrellas`, `Me trajo el pedido un pibe de traje y corbata, re atento`],
+};
+const socialT = {};
+world.social = (kind, x = player.x, z = player.z) => {
+  const now = performance.now() / 1000;
+  if (socialT[kind] && now - socialT[kind] < 25) return;
+  socialT[kind] = now;
+  const lines = POSTS[kind]?.(cornerName(x, z));
+  if (lines) hud.post(R.pick(HANDLES), R.pick(lines));
+};
+
+// ---------- Changas de delivery (arriba de una moto con caja) ----------
+const job = { active: false, offered: false };
+function startDelivery() {
+  const p = npcs.sidewalkPoint(player.x, player.z, 140, 320);
+  if (!p) return;
+  const d = Math.hypot(p.x - player.x, p.z - player.z);
+  Object.assign(job, { active: true, x: p.x, z: p.z, t: Math.round(d / 7 + 25), pay: Math.round((2500 + d * 12) / 100) * 100, street: nearestStreetName(p.x, p.z) });
+  hud.flash('CHANGA DE DELIVERY', `Llevá el pedido a ${job.street}. Pagan $${job.pay.toLocaleString('es-AR')}`, 'ok', 3);
+}
+function updateJob(dt) {
+  const v = player.vehicle;
+  if (!job.active) {
+    if (v?.model === 'delivery' && !job.offered) {
+      job.offered = true;
+      startDelivery();
+    }
+    if (!v) job.offered = false;
+    return;
+  }
+  job.t -= dt;
+  if (job.t <= 0) {
+    job.active = false;
+    hud.flash('SE ENFRIÓ EL PEDIDO', 'Llegaste tarde. Nada de propina.', 'bad', 2.6);
+    return;
+  }
+  if (Math.hypot(job.x - player.x, job.z - player.z) < 7 && (!v || Math.abs(v.speed) < 4)) {
+    const tip = Math.round(job.t * 40 / 100) * 100;
+    player.addMoney(job.pay + tip);
+    audio.plata();
+    hud.flash('¡PEDIDO ENTREGADO!', `+$${job.pay.toLocaleString('es-AR')} y $${tip.toLocaleString('es-AR')} de propina`, 'ok', 2.6);
+    player.addRespeto(1);
+    world.social('delivery', job.x, job.z);
+    job.active = false;
+    if (v?.model === 'delivery') setTimeout(startDelivery, 2500);
+  }
+}
+
+// ---------- Robar un negocio (con un fierro en la mano) ----------
+function robShop(shop) {
+  shop.cool = 240;
+  const k = npcs.spawnWalker({ x: shop.x - shop.nx * 0.4, z: shop.z - shop.nz * 0.4, heading: Math.atan2(shop.nx, shop.nz) });
+  if (k) {
+    npcs.setState(k, 'cower');
+    k.cowerT = 4;
+    k.money = 0;
+    k.say(R.pick(['¡No tirés! ¡Tomá, llevate todo!', '¡Tranquilo, tranquilo! ¡Tomá la caja!', '¡Llevate todo, pero no tirés!']), 3.5);
+  }
+  for (let i = 0; i < 3; i++) pickups.money(shop.x + R.range(-1.2, 1.2), shop.z + R.range(-1.2, 1.2), R.int(3, 9) * 1000);
+  police.crime('robo_negocio', shop.x, shop.z);
+  audio.alerta();
+  world.social('robo', shop.x, shop.z);
+  hud.flash('¡ROBO!', 'Levantá la plata y rajá antes de que llegue la cana', 'warn', 2.6);
+}
+
+// ---------- Clima ----------
+const grey = new THREE.Color(0x6f7780);
+const wetColor = new THREE.Color(0.62, 0.62, 0.64);
+const dryColor = new THREE.Color(1, 1, 1);
+const flashColor = new THREE.Color(0xdfe6ff);
+function updateWeather(dt) {
+  weather.t += dt;
+  if (weather.t > weather.next) {
+    // cada tanto se larga (o para) de llover
+    weather.target = weather.target > 0 ? 0 : R.chance(0.6) ? R.range(0.55, 1) : 0;
+    weather.next = weather.t + R.range(150, 330);
+  }
+  weather.rain += Math.sign(weather.target - weather.rain) * Math.min(Math.abs(weather.target - weather.rain), dt * 0.04);
+  const wetting = weather.rain > 0.15;
+  weather.wet += ((wetting ? 1 : 0) - weather.wet) * Math.min(1, dt * (wetting ? 0.08 : 0.02));
+  weather.slick = weather.wet > 0.4;
+  for (const m of city.wetMats) {
+    m.roughness = 0.92 - weather.wet * 0.62;
+    m.envMapIntensity = 0.5 + weather.wet * 1.1;
+    m.color.copy(dryColor).lerp(wetColor, weather.wet);
+  }
+  fx.setRain(weather.rain, camera, weather.t);
+  audio.lluvia(weather.rain);
+  // relámpagos con tormenta fuerte
+  weather.flash = Math.max(0, weather.flash - dt * 6);
+  if (weather.rain > 0.7) {
+    weather.boltT -= dt;
+    if (weather.boltT <= 0) {
+      weather.flash = 1;
+      weather.boltT = R.range(12, 35);
+      audio.trueno(R.range(0.5, 1), R.range(0.6, 2.5));
+    }
+  }
+}
+
+// ---------- Día y noche ----------
 const lampColor = new THREE.Color();
 function updateTime(dt) {
   const rate = time.night ? 2.2 : 1; // minutos de juego por segundo real
@@ -119,6 +278,7 @@ function updateTime(dt) {
   const elev = Math.sin(((h - 6.5) / 13) * Math.PI); // >0 de día
   const day = THREE.MathUtils.clamp(elev * 3 + 0.12, 0, 1);
   const dusk = THREE.MathUtils.clamp(1 - Math.abs(elev) * 3.2, 0, 1) * (h > 12 ? 1 : 0.6);
+  const rain = weather.rain;
   time.night = day < 0.15;
   const nightTop = new THREE.Color(0x050a1a);
   const nightBottom = new THREE.Color(0x1a2233);
@@ -127,18 +287,25 @@ function updateTime(dt) {
   const duskBottom = new THREE.Color(0xf59a52);
   const duskTop = new THREE.Color(0x4a5d9e);
   const U = sky.uniforms;
-  U.zenith.value.copy(nightTop).lerp(dayTop, day).lerp(duskTop, dusk * 0.6);
-  U.horizon.value.copy(nightBottom).lerp(dayBottom, day).lerp(duskBottom, dusk * 0.85);
-  U.night.value = 1 - THREE.MathUtils.clamp(day * 3, 0, 1);
+  U.zenith.value.copy(nightTop).lerp(dayTop, day).lerp(duskTop, dusk * 0.6 * (1 - rain));
+  U.horizon.value.copy(nightBottom).lerp(dayBottom, day).lerp(duskBottom, dusk * 0.85 * (1 - rain));
+  // nublado: el cielo se pone gris
+  U.zenith.value.lerp(grey.clone().multiplyScalar(0.25 + day * 0.75), rain * 0.8);
+  U.horizon.value.lerp(grey.clone().multiplyScalar(0.3 + day * 0.9), rain * 0.8);
+  if (weather.flash > 0) {
+    U.zenith.value.lerp(flashColor, weather.flash * 0.7);
+    U.horizon.value.lerp(flashColor, weather.flash * 0.7);
+  }
+  U.night.value = (1 - THREE.MathUtils.clamp(day * 3, 0, 1)) * (1 - rain * 0.9);
   U.time.value += dt;
   U.sunColor.value.setHSL(0.1 - dusk * 0.05, 0.9, 0.62 - dusk * 0.05);
   scene.fog.color.copy(U.horizon.value).lerp(U.zenith.value, 0.15);
-  scene.fog.near = 50 + day * 50;
-  scene.fog.far = 240 + day * 200;
-  sun.intensity = 0.45 + day * 2.2;
+  scene.fog.near = (50 + day * 50) * (1 - rain * 0.5);
+  scene.fog.far = (240 + day * 200) * (1 - rain * 0.45);
+  sun.intensity = (0.45 + day * 2.2) * (1 - rain * 0.7);
   sun.color.setHSL(0.09 - dusk * 0.04, 0.5 + dusk * 0.4, 0.75 - dusk * 0.1);
   if (time.night) sun.color.set(0x8fa8ff);
-  hemi.intensity = 0.75 + day * 0.55;
+  hemi.intensity = (0.75 + day * 0.55) * (1 - rain * 0.2) + weather.flash * 2.5;
   hemi.color.copy(U.zenith.value).lerp(new THREE.Color(time.night ? 0x7d8fd0 : 0xffffff), 0.55);
   hemi.groundColor.set(time.night ? 0x2e2a3a : 0x5b5646);
   const az = ((h - 6) / 24) * Math.PI * 2;
@@ -151,35 +318,29 @@ function updateTime(dt) {
   U.sunDir.value.set(Math.cos(az), Math.max(-0.2, elev * 0.9), Math.sin(az) * 0.5 - 0.33).normalize();
   sky.updateEnv(h, scene);
   post?.setMood(1 - day, dusk);
-  // faroles de sodio
-  const lampsOn = day < 0.35;
+  // faroles de sodio (con lluvia se prenden antes)
+  const lit = day - rain * 0.3;
+  const lampsOn = lit < 0.35;
   lampColor.set(lampsOn ? 0xffc46b : 0x3a3226);
   for (const m of city.lampMats) m.color.copy(lampColor);
   lightMat.color.setScalar(lampsOn ? 2.2 : 0.9);
   city.lampPools.visible = lampsOn;
-  time.glow = THREE.MathUtils.clamp((0.42 - day) * 2.6, 0, 1);
-  city.windowMat.emissiveIntensity = THREE.MathUtils.clamp((0.45 - day) * 2.2, 0, 0.85);
-  city.lampPools.material.opacity = THREE.MathUtils.clamp((0.35 - day) * 0.8, 0, 0.2);
+  time.glow = THREE.MathUtils.clamp((0.42 - lit) * 2.6, 0, 1);
+  city.windowMat.emissiveIntensity = THREE.MathUtils.clamp((0.45 - lit) * 2.2, 0, 0.85);
+  if (city.signMat) city.signMat.emissiveIntensity = THREE.MathUtils.clamp((0.5 - lit) * 2.4, 0, 1);
+  city.lampPools.material.opacity = THREE.MathUtils.clamp((0.35 - lit) * 0.8, 0, 0.2);
   renderer.toneMappingExposure = 1.0 + (1 - day) * 0.45;
 }
 
 // ---------- Objetivos ----------
-const steps = [
-  { text: 'Cruzá Av. Meeks y andá a la estación Temperley', target: () => city.spots.stationDoor, done: () => dist(city.spots.stationDoor) < 5 },
-  { text: 'Comprate un pancho en el carrito ($1.500)', target: () => city.spots.pancho, done: () => flags.pancho },
-  { text: 'Conseguí un auto: acercate y apretá F', target: () => nearestParked(), done: () => !!player.vehicle },
-  { text: 'Andá a ver qué pasa en el corte', target: () => nearestCorte(), done: () => { const c = nearestCorte(); return c && dist(c) < 32; } },
-  { text: 'Temperley es tuyo. Cuidá el celu.', target: () => null, done: () => false },
-];
-const flags = { pancho: false };
-let step = 0;
+const flags = { pancho: false, medias: false };
 function dist(p) {
   return p ? Math.hypot(p.x - player.x, p.z - player.z) : Infinity;
 }
-function nearestParked() {
+function nearestOf(list) {
   let best = null;
   let bd = Infinity;
-  for (const v of traffic.parked) {
+  for (const v of list) {
     const d = dist(v);
     if (d < bd) {
       bd = d;
@@ -188,29 +349,36 @@ function nearestParked() {
   }
   return best;
 }
+const steps = [
+  { text: 'Andá a la estación Temperley', target: () => city.spots.stationDoor, done: () => dist(city.spots.stationDoor) < 6 },
+  { text: 'Comprale medias al vendedor (E)', target: () => nearestOf(npcs.vendors.filter((n) => !n.down)), done: () => flags.medias },
+  { text: 'Comprate un pancho en el carrito ($1.500)', target: () => city.spots.pancho, done: () => flags.pancho },
+  { text: 'Agarrá el palo que quedó en la plaza', target: () => pickups.spots.palo, done: () => !!player.inv.palo },
+  { text: 'Robate una moto: acercate y apretá F', target: () => nearestOf(traffic.all().filter((v) => v.kind === 'moto' && !v.wreck)), done: () => player.vehicle?.kind === 'moto' },
+  { text: 'Andá a ver qué pasa en el corte', target: () => nearestCorte(), done: () => { const c = nearestCorte(); return c && dist(c) < 32; } },
+  { text: 'Conseguí un fierro: hay un 38 escondido en una plaza', target: () => pickups.spots.revolver, done: () => !!player.inv.revolver },
+  { text: 'Temperley es tuyo. Cuidá el celu (y no te hagas buscar).', target: () => null, done: () => false },
+];
+let step = 0;
 function nearestCorte() {
-  let best = null;
-  let bd = Infinity;
-  for (const e of events.list) {
-    if (e.type !== 'corte' || e.leaving) continue;
-    const d = dist(e);
-    if (d < bd) {
-      bd = d;
-      best = e;
-    }
-  }
-  if (!best && step === 3 && !events.firstForced) {
+  const best = nearestOf(events.list.filter((e) => e.type === 'corte' && !e.leaving));
+  if (!best && step === 5 && !events.firstForced) {
     events.firstForced = true;
-    best = events.spawnCorte(player, true);
+    return events.spawnCorte(player, true);
   }
   return best;
 }
-const praise = ['¡BIEN AHÍ!', '¡VAMOS, GASPI!', '¡DE UNA!', '¡ESO!'];
+const praise = ['¡BIEN AHÍ!', '¡VAMOS, GASPI!', '¡DE UNA!', '¡ESO!', '¡QUÉ CRACK!'];
 function updateObjective() {
+  if (job.active) {
+    hud.setObjective(`Delivery a ${job.street}: ${Math.ceil(job.t)} s`, { x: job.x, z: job.z });
+    hud.updateObjective(player);
+    return;
+  }
   const s = steps[step];
   if (s.done()) {
     if (step < steps.length - 1) {
-      hud.flash(praise[step % praise.length], step === 3 ? 'Los cortes aparecen solos: fijate en el zócalo de abajo' : '', 'ok', 2.4);
+      hud.flash(praise[step % praise.length], step === 5 ? 'Los cortes aparecen solos: fijate en el zócalo de abajo' : '', 'ok', 2.4);
       step++;
     }
   }
@@ -219,19 +387,63 @@ function updateObjective() {
   hud.updateObjective(player);
 }
 
+// GPS: camino por las calles hasta el objetivo, en violeta en el minimapa
+let gpsT = 0;
+function updateGps(dt) {
+  gpsT -= dt;
+  if (gpsT > 0) return;
+  gpsT = 1;
+  const t = hud.objective?.target;
+  if (!t || dist(t) < 35) {
+    hud.setRoute(null);
+    return;
+  }
+  const edges = nav.path(nav.nearestNode(player.x, player.z), nav.nearestNode(t.x, t.z));
+  if (!edges) {
+    hud.setRoute(null);
+    return;
+  }
+  const pts = [[player.x, player.z]];
+  if (edges.length) pts.push([edges[0].from.x, edges[0].from.z]);
+  for (const e of edges) pts.push([e.to.x, e.to.z]);
+  pts.push([t.x, t.z]);
+  hud.setRoute(pts);
+}
+
 // ---------- Acciones con E ----------
 function interactions() {
-  if (player.dead || hud.dialog) {
+  if (player.dead || hud.dialog || player.jack) {
     hud.prompt(null);
     return;
   }
   if (player.vehicle) {
-    hud.prompt(Math.abs(player.vehicle.speed) < 3 ? 'F' : null, Math.abs(player.vehicle.speed) < 3 ? 'Bajarse del auto' : null);
+    const slow = Math.abs(player.vehicle.speed) < 3;
+    hud.prompt(slow ? 'F' : null, slow ? (player.vehicle.kind === 'moto' ? 'Bajarse de la moto' : 'Bajarse') : null);
     return;
   }
   let action = null;
+  const vendor = npcs.vendors.find((n) => !n.down && n.state === 'idle' && dist(n) < 2.6);
+  if (vendor) {
+    action = {
+      text: 'Comprar medias: 3 pares $2.000',
+      run: () => {
+        if (player.money < 2000) {
+          vendor.say('¿No tenés dos lucas? Bueno, otro día', 2.5);
+          return;
+        }
+        player.addMoney(-2000);
+        player.say('Dame tres pares, maestro', 2);
+        vendor.say(R.pick(['¡Gracias, papá! Son de algodón, eh', '¡Llevás calidad, jefe!', '¡Que las disfrutes!']), 3);
+        audio.plata();
+        player.buffs.medias = 180;
+        hud.toast('Medias nuevas: corrés más rápido (3 min)', 2.6);
+        flags.medias = true;
+        world.social('medias');
+      },
+    };
+  }
   const pancho = city.spots.pancho;
-  if (dist(pancho) < 2.6) {
+  if (!action && dist(pancho) < 2.6) {
     action = {
       text: 'Comprar un pancho ($1.500)',
       run: () => {
@@ -248,7 +460,7 @@ function interactions() {
     };
   }
   if (!action) {
-    const beggar = npcs.list.find((n) => n.type === 'mendigo' && Math.hypot(n.x - player.x, n.z - player.z) < 2.6);
+    const beggar = npcs.list.find((n) => n.type === 'mendigo' && n.state === 'sit' && dist(n) < 2.6);
     if (beggar) {
       action = {
         text: 'Darle $500',
@@ -262,49 +474,75 @@ function interactions() {
       };
     }
   }
+  const w = player.ammo?.[player.weapon];
+  if (!action && w !== undefined) {
+    const shop = pickups.shops?.find((s) => s.cool <= 0 && dist(s) < 3.2);
+    if (shop) action = { text: `Robar ${shop.name ? `"${shop.name}"` : 'el negocio'}`, run: () => robShop(shop) };
+  }
   if (!action && crime.motos.some((m) => m.state !== 'down' && m.v.speed < 2.5 && Math.hypot(m.v.x - player.x, m.v.z - player.z) < 2.2)) {
     action = { text: 'Voltearles la moto', run: () => crime.tryShove(world) };
   }
-  if (!action) {
-    const n = npcs.list.find((o) => o.knockT <= 0 && o.state !== 'sit' && Math.hypot(o.x - player.x, o.z - player.z) < 1.7);
-    if (n) {
-      action = {
-        text: n.type === 'zombie' ? 'Sacártelo de encima' : 'Empujar',
-        run: () => {
-          player.punchT = 0.3;
-          npcs.knock(n, Math.sin(player.heading), Math.cos(player.heading), 2);
-          if (n.type === 'vecino') player.addRespeto(-1);
-          player.grabbed = 0;
-        },
-      };
-    }
-  }
   const car = player.nearestVehicle(world);
   if (action) hud.prompt('E', action.text);
-  else if (car) hud.prompt('F', car.ai ? 'Sacarle el auto' : car.kind === 'moto' ? 'Subirse a la moto' : 'Subir al auto');
-  else hud.prompt(null);
-  if (action && input.hit('e', 'mouse0')) action.run();
+  else if (car) {
+    let txt = car.kind === 'moto' ? (car.fallen ? 'Levantar la moto' : 'Subirse a la moto') : car.kind === 'carro' ? 'Subirse al carro' : 'Subir al auto';
+    if (car.police) txt = 'Robar el patrullero';
+    else if (car.ai || car.rider) txt = car.kind === 'moto' ? 'Bajar al de la moto' : 'Sacarle el auto';
+    hud.prompt('F', txt);
+  } else hud.prompt(null);
+  if (action && input.hit('e')) action.run();
 }
 
-// ---------- Ganchos del jugador ----------
+// ---------- Ganchos ----------
 player.say = (text, dur = 2.5) => (player.bubble = { text, t: dur });
 player.hooks.hurt = (n, msg) => {
   if (msg && n >= 15) hud.toast(msg, 2);
 };
+function screen(kind, title, sub) {
+  const el = document.getElementById('wasted');
+  el.hidden = false;
+  el.className = kind === 'busted' ? 'busted' : '';
+  document.getElementById('wasted-title').textContent = title;
+  document.getElementById('wasted-sub').textContent = sub;
+}
 player.hooks.die = (msg) => {
-  document.getElementById('wasted').hidden = false;
-  document.getElementById('wasted-title').textContent = msg === 'TE PASÓ POR ENCIMA EL ROCA' ? 'TE PASÓ EL ROCA' : 'TE BAJARON';
-  document.getElementById('wasted-sub').textContent = msg === 'TE PASÓ POR ENCIMA EL ROCA' ? 'Nunca cruces con la barrera baja' : msg;
+  radio.setOn(false);
+  if (msg === 'TE PASÓ POR ENCIMA EL ROCA') screen('dead', 'TE PASÓ EL ROCA', 'Nunca cruces con la barrera baja');
+  else if (msg === 'VOLASTE POR EL AIRE') screen('dead', 'VOLASTE', 'El auto explotó con vos adentro');
+  else screen('dead', 'TE BAJARON', msg);
 };
-player.hooks.respawn = (lost) => {
+player.hooks.respawn = (cause) => {
   document.getElementById('wasted').hidden = true;
-  hud.flash('HOSPITAL GANDULFO', `Te dieron el alta. La cuenta: $${lost.toLocaleString('es-AR')}`, 'warn', 3.5);
+  const lost = Math.round(player.money * 0.3);
+  player.addMoney(-lost);
+  police.reset(world);
+  if (cause === 'comisaria') hud.flash('LIBERADO', `La coima te salió $${lost.toLocaleString('es-AR')}. Y te sacaron los fierros.`, 'warn', 3.5);
+  else hud.flash('HOSPITAL GANDULFO', `Te dieron el alta. La cuenta: $${lost.toLocaleString('es-AR')}`, 'warn', 3.5);
 };
 player.hooks.respeto = (n) => {
   if (n > 0) hud.toast(`Respeto +${n}`, 1.6);
   if (n < 0) hud.toast(`Respeto ${n}`, 1.6);
 };
-events.onNews = (t) => hud.setTicker(events.news);
+player.hooks.enter = (v) => {
+  if (v.kind === 'car' || v.kind === 'bus') {
+    radio.setOn(true);
+    hud.showRadio(radio.station);
+  }
+};
+player.hooks.exit = () => radio.setOn(false);
+police.hooks = {
+  busted: () => {
+    screen('busted', 'TE AGARRÓ LA BONAERENSE', 'Te llevan a la comisaría');
+    radio.setOn(false);
+    if (player.vehicle) player.exitVehicle(world, true);
+    player.busted = 3.5;
+    player.attack = null;
+    player.jack = null;
+    police.reset(world);
+  },
+  wanted: () => audio.alerta(),
+};
+events.onNews = () => hud.setTicker(events.news);
 hud.setTicker(events.news);
 
 // ---------- Globos ----------
@@ -314,7 +552,7 @@ function speakers() {
     const d = Math.hypot(x - player.x, z - player.z);
     if (d < 38) out.push({ x, y, z, text, bad, d });
   };
-  for (const n of npcs.list) if (n.bubble) add(n.x, n.y + 2.35, n.z, n.bubble.text, n.type === 'trapito');
+  for (const n of npcs.list) if (n.bubble) add(n.x, n.y + 2.35, n.z, n.bubble.text, n.type === 'trapito' || n.type === 'cana' || n.state === 'fight');
   for (const m of crime.motos) if (m.bubble) add(m.v.x, 2.6, m.v.z, m.bubble.text, true);
   if (player.bubble) add(player.x, player.y + 2.4, player.z, player.bubble.text, false);
   // la gente del corte canta
@@ -333,16 +571,19 @@ let intro = 0;
 function frame(now) {
   const dt = Math.max(0, Math.min(0.05, (now - last) / 1000));
   last = now;
+  updateWeather(started ? dt : dt * 0.2);
   updateTime(started ? dt : dt * 0.2);
   if (!started) {
     // cámara dando vueltas sobre la estación
     intro += dt * 0.06;
-    camera.position.set(-20 + Math.cos(intro) * 150, 70, Math.sin(intro) * 150);
-    camera.lookAt(-15, 0, 0);
+    camera.position.set(STATION.x + Math.cos(intro) * 150, 70, STATION.z + Math.sin(intro) * 150);
+    camera.lookAt(STATION.x, 0, STATION.z);
     trains.update(dt, null);
     events.update(dt, world);
     traffic.update(dt, world);
     glows.update(world, time.glow);
+    lights.update(dt);
+    fx.update(dt);
     sky.follow(camera);
     post.render();
     requestAnimationFrame(frame);
@@ -352,9 +593,25 @@ function frame(now) {
     const muted = audio.toggleMute();
     document.getElementById('mute').textContent = muted ? 'Sin sonido' : 'Sonido';
   }
+  // radio: R cambia de estación arriba de un auto
+  if (player.vehicle && player.vehicle.kind !== 'moto' && input.hit('r')) {
+    const st = radio.cycle();
+    radio.setOn(true);
+    hud.showRadio(st);
+  }
   hud.handleKeys(input);
-  interactions();
-  player.update(dt, world);
+  if (player.busted > 0) {
+    // detenido: pantalla azul y a la comisaría
+    player.busted -= dt;
+    if (player.busted <= 0) {
+      combat.strip(player);
+      player.respawn(comisaria, 'comisaria');
+    }
+  } else {
+    interactions();
+    player.update(dt, world);
+    combat.update(dt, world);
+  }
   if (player.bubble) {
     player.bubble.t -= dt;
     if (player.bubble.t <= 0) player.bubble = null;
@@ -362,15 +619,24 @@ function frame(now) {
   traffic.update(dt, world);
   npcs.update(dt, world);
   crime.update(dt, world);
+  police.update(dt, world);
   events.update(dt, world);
   trains.update(dt, player);
+  pickups.update(dt, world);
+  for (const s of pickups.shops || []) if (s.cool > 0) s.cool -= dt;
+  updateJob(dt);
   updateObjective();
-  player.updateCamera(camera, dt, city.colliders);
+  updateGps(dt);
+  player.updateCamera(camera, dt, city.colliders, fx);
+  fx.update(dt);
+  radio.update();
   const moto = crime.nearestMoto(player.x, player.z, 80);
-  audio.update(player.vehicle?.speed ?? 0, !!player.vehicle, moto ? Math.hypot(moto.x - player.x, moto.z - player.z) : 999);
+  audio.update(player.vehicle?.speed ?? 0, !!player.vehicle, moto ? Math.hypot(moto.x - player.x, moto.z - player.z) : 999, player.vehicle?.kind === 'moto');
   hud.update(dt, world);
   hud.bubbles(camera, speakers());
   glows.update(world, time.glow);
+  lights.update(dt);
+  blobs.update(world, heightAt);
   sky.follow(camera);
   post.render();
   input.endFrame();
@@ -404,7 +670,7 @@ document.getElementById('play').addEventListener('click', () => {
   }
   started = true;
   last = performance.now();
-  hud.flash('TEMPERLEY', 'Av. Meeks 1400 · Estación del Roca', 'warn', 3);
+  hud.flash('TEMPERLEY', 'Av. Meeks · Estación del Roca', 'warn', 3);
 });
 document.getElementById('mute').addEventListener('click', () => {
   const muted = audio.toggleMute();
@@ -416,10 +682,9 @@ addEventListener('resize', () => {
   post?.setSize(innerWidth, innerHeight);
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
+  fx.setScale(innerHeight);
 });
 
 // Para pruebas desde la consola
 window.__gta = world;
 window.__renderer = renderer;
-void ISLANDS;
-void PLATFORM;

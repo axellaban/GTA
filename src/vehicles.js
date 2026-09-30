@@ -1,12 +1,14 @@
 // Autos del conurbano, colectivos, motos y formaciones del Roca.
 import * as THREE from 'three';
 import { busTexture, trainSideTexture, textTexture } from './textures.js';
+import { BoxBuilder } from './builder.js';
+import { R } from './rng.js';
 
 const M = (c, extra = {}) => new THREE.MeshLambertMaterial({ color: c, ...extra });
 const glass = M(0x1b2630);
 const tire = M(0x151515);
 const chrome = M(0xc8c8c8);
-const motoWheelGeo = new THREE.CylinderGeometry(0.32, 0.32, 0.1, 12).rotateZ(Math.PI / 2);
+const motoWheelGeo = new THREE.CylinderGeometry(0.32, 0.32, 0.1, 14).rotateZ(Math.PI / 2);
 
 function mesh(g, m, x, y, z, parent) {
   const o = new THREE.Mesh(g, m);
@@ -47,17 +49,157 @@ export function makeBus(line = 518) {
   return g;
 }
 
-export function makeMoto(color = 0x1c1c1c) {
+// Moto de calle (110/150 cc). Con `box` lleva la caja de delivery atrás.
+const motoTex = new Map();
+export function makeMoto(color = 0x1c1c1c, { box = null, label = 'DELIVERY' } = {}) {
   const g = new THREE.Group();
-  const paint = M(color);
-  mesh(new THREE.BoxGeometry(0.3, 0.35, 1.3), paint, 0, 0.62, 0, g);
-  mesh(new THREE.BoxGeometry(0.34, 0.14, 0.7), M(0x111111), 0, 0.86, -0.2, g);
-  mesh(new THREE.BoxGeometry(0.7, 0.05, 0.05), chrome, 0, 1.05, 0.55, g);
-  mesh(new THREE.BoxGeometry(0.05, 0.4, 0.05), chrome, 0, 0.85, 0.6, g);
-  const wheels = [mesh(motoWheelGeo, tire, 0, 0.32, 0.75, g), mesh(motoWheelGeo, tire, 0, 0.32, -0.7, g)];
+  g.rotation.order = 'YXZ';
+  const B = new BoxBuilder();
+  const dark = 0x151515;
+  // cuadro, tanque, asiento, cachas y guardabarros
+  B.add(new THREE.CylinderGeometry(0.035, 0.035, 1.05, 6).rotateX(Math.PI / 2 - 0.35).translate(0, 0.62, 0.05), 0x2a2a2a);
+  B.box(0.3, 0.2, 0.42, color, 0, 0.86, 0.22);
+  B.box(0.27, 0.1, 0.62, dark, 0, 0.9, -0.24);
+  B.box(0.32, 0.22, 0.5, color, 0, 0.7, -0.35);
+  B.box(0.18, 0.05, 0.4, color, 0, 0.72, 0.72);
+  B.box(0.16, 0.05, 0.36, color, 0, 0.72, -0.78);
+  // motor y caño de escape
+  B.box(0.24, 0.24, 0.3, 0x3a3a3a, 0, 0.42, 0.05);
+  B.add(new THREE.CylinderGeometry(0.035, 0.045, 0.6, 8).rotateX(Math.PI / 2).translate(0.15, 0.36, -0.45), 0x9a9a9a);
+  // horquilla, manubrio y óptica
+  for (const s of [-1, 1]) B.add(new THREE.CylinderGeometry(0.02, 0.02, 0.62, 6).rotateX(-0.35).translate(s * 0.08, 0.66, 0.68), 0xb0b0b0);
+  B.add(new THREE.CylinderGeometry(0.018, 0.018, 0.66, 6).rotateZ(Math.PI / 2).translate(0, 1.02, 0.56), 0x1a1a1a);
+  B.box(0.2, 0.18, 0.12, color, 0, 0.96, 0.66);
+  for (const s of [-1, 1]) B.box(0.04, 0.02, 0.06, 0xb0b0b0, s * 0.18, 1.12, 0.58);
+  if (box) {
+    // caja de reparto
+    B.box(0.46, 0.44, 0.44, box, 0, 1.22, -0.66);
+    B.box(0.48, 0.05, 0.46, 0x222222, 0, 1.0, -0.66);
+    B.box(0.2, 0.03, 0.4, 0x222222, 0, 0.97, -0.5);
+  }
+  const body = B.mesh(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.45, metalness: 0.35 }));
+  g.add(body);
+  if (box) {
+    if (!motoTex.has(label + box)) motoTex.set(label + box, textTexture(label, { w: 256, h: 128, bg: `#${new THREE.Color(box).getHexString()}`, fg: '#ffffff', font: 44 }));
+    const sign = new THREE.MeshBasicMaterial({ map: motoTex.get(label + box) });
+    for (const s of [-1, 1]) {
+      const pl = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.22), sign);
+      pl.position.set(s * 0.232, 1.24, -0.66);
+      pl.rotation.y = (s * Math.PI) / 2;
+      g.add(pl);
+    }
+  }
+  const wheels = [];
+  for (const z of [0.72, -0.72]) {
+    const w = new THREE.Group();
+    w.add(new THREE.Mesh(motoWheelGeo, tire));
+    const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.11, 10).rotateZ(Math.PI / 2), chrome);
+    w.add(hub);
+    w.position.set(0, 0.32, z);
+    w.traverse((o) => (o.castShadow = true));
+    g.add(w);
+    wheels.push(w);
+  }
   const head = new THREE.MeshBasicMaterial({ color: 0xfff2c0 });
-  mesh(new THREE.BoxGeometry(0.16, 0.12, 0.05), head, 0, 0.95, 0.68, g);
-  g.userData = { L: 1.9, W: 0.7, wheels, headMat: head, kind: 'moto' };
+  mesh(new THREE.BoxGeometry(0.14, 0.1, 0.05), head, 0, 0.96, 0.73, g);
+  mesh(new THREE.BoxGeometry(0.12, 0.05, 0.03), new THREE.MeshBasicMaterial({ color: 0xb01010 }), 0, 0.8, -1.0, g);
+  g.userData = { L: 1.95, W: 0.7, wheels, headMat: head, kind: 'moto', model: box ? 'delivery' : 'moto' };
+  return g;
+}
+
+// Camión de reparto: cabina + caja con cartel
+export function makeTruck(color = 0xe8e8e8, label = 'FLETES TEMPERLEY') {
+  const g = new THREE.Group();
+  const L = 7.2;
+  const W = 2.35;
+  const B = new BoxBuilder();
+  const dark = 0x1a1a1a;
+  // chasis
+  B.box(W * 0.8, 0.3, L * 0.95, dark, 0, 0.62, 0);
+  // cabina
+  B.box(W, 1.55, 1.9, color, 0, 1.55, L / 2 - 0.95);
+  B.box(W * 0.98, 0.35, 0.6, color, 0, 0.95, L / 2 - 0.1);
+  B.box(W * 0.92, 0.7, 0.05, 0x10161c, 0, 1.95, L / 2 + 0.005);
+  for (const s of [-1, 1]) B.box(0.05, 0.6, 0.9, 0x10161c, s * (W / 2 + 0.005), 1.95, L / 2 - 0.6);
+  B.box(W * 0.8, 0.25, 0.05, 0x2a2a2a, 0, 0.95, L / 2 + 0.2);
+  B.box(W + 0.05, 0.2, 0.15, dark, 0, 0.62, L / 2 + 0.12);
+  for (const s of [-1, 1]) B.box(0.08, 0.3, 0.08, dark, s * (W / 2 + 0.12), 2.05, L / 2 - 0.2);
+  // caja de carga
+  B.box(W + 0.1, 2.5, L - 2.2, 0xf2f2f2, 0, 2.05, -1.05);
+  B.box(W + 0.12, 0.12, L - 2.15, 0x9e9e9e, 0, 0.84, -1.05);
+  const body = B.mesh(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5, metalness: 0.2 }));
+  body.receiveShadow = true;
+  g.add(body);
+  const sign = new THREE.MeshLambertMaterial({ map: textTexture(label, { w: 512, h: 128, bg: '#f2f2f2', fg: '#b3261e', font: 50 }) });
+  for (const s of [-1, 1]) {
+    const pl = new THREE.Mesh(new THREE.PlaneGeometry(L - 2.6, 0.9), sign);
+    pl.position.set(s * (W / 2 + 0.07), 2.3, -1.05);
+    pl.rotation.y = (s * Math.PI) / 2;
+    g.add(pl);
+  }
+  const wheels = [];
+  for (const [x, z] of [
+    [-W / 2 + 0.2, L / 2 - 1.2],
+    [W / 2 - 0.2, L / 2 - 1.2],
+    [-W / 2 + 0.2, -L / 2 + 1.6],
+    [W / 2 - 0.2, -L / 2 + 1.6],
+    [-W / 2 + 0.2, -L / 2 + 0.6],
+    [W / 2 - 0.2, -L / 2 + 0.6],
+  ]) wheels.push(mesh(new THREE.CylinderGeometry(0.48, 0.48, 0.32, 14).rotateZ(Math.PI / 2), tire, x, 0.48, z, g));
+  const head = new THREE.MeshBasicMaterial({ color: 0xfff2c0 });
+  for (const s of [-1, 1]) mesh(new THREE.BoxGeometry(0.3, 0.2, 0.05), head, s * 0.8, 1.0, L / 2 + 0.06, g);
+  g.userData = { L, W, wheels, headMat: head, kind: 'car', model: 'camion', tall: 3.3 };
+  return g;
+}
+
+// Carro de cartonero tirado por un caballo, con el cartonero sentado adelante
+export function makeCarro(driver) {
+  const g = new THREE.Group();
+  const wood = M(0x7a5a3a);
+  const B = new BoxBuilder();
+  // carro (atrás, centrado en z = -1)
+  B.box(1.3, 0.08, 1.9, 0x7a5a3a, 0, 0.75, -1);
+  for (const s of [-1, 1]) B.box(0.06, 0.45, 1.9, 0x6a4a2a, s * 0.62, 1.0, -1);
+  B.box(1.3, 0.45, 0.06, 0x6a4a2a, 0, 1.0, -1.93);
+  // cartones y bolsas
+  B.box(0.9, 0.5, 0.7, 0xb08a58, -0.1, 1.2, -1.3);
+  B.box(0.6, 0.4, 0.5, 0xc79e66, 0.25, 1.35, -0.7);
+  B.box(0.5, 0.35, 0.45, 0xf2f2f2, -0.3, 1.15, -0.6);
+  B.box(0.7, 0.3, 0.6, 0xa07a48, 0.1, 1.6, -1.2);
+  // varas hasta el caballo
+  for (const s of [-1, 1]) B.box(0.05, 0.05, 1.6, 0x5a3a1a, s * 0.4, 0.95, 0.6);
+  // caballo
+  const coat = R.pick([0x6b4226, 0x3b2616, 0xa0785a, 0xd8d0c0]);
+  B.box(0.5, 0.62, 1.35, coat, 0, 1.3, 1.25);
+  B.add(new THREE.BoxGeometry(0.3, 0.75, 0.3).rotateX(-0.6).translate(0, 1.8, 1.9), coat);
+  B.box(0.26, 0.26, 0.55, coat, 0, 2.05, 2.25);
+  B.box(0.08, 0.5, 0.1, 0x1a1410, 0, 1.95, 1.8);
+  B.box(0.06, 0.4, 0.06, 0x1a1410, 0, 1.2, 0.5);
+  const body = B.mesh(new THREE.MeshLambertMaterial({ vertexColors: true }));
+  g.add(body);
+  const legs = [];
+  for (const [x, z] of [
+    [-0.16, 1.75],
+    [0.16, 1.75],
+    [-0.16, 0.75],
+    [0.16, 0.75],
+  ]) {
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.0, 0.12).translate(0, -0.5, 0), M(coat));
+    leg.position.set(x, 1.05, z);
+    leg.castShadow = true;
+    g.add(leg);
+    legs.push(leg);
+  }
+  const wheels = [];
+  for (const s of [-1, 1]) {
+    const w = mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.08, 14).rotateZ(Math.PI / 2), wood, s * 0.72, 0.55, -1, g);
+    wheels.push(w);
+  }
+  if (driver) {
+    driver.root.position.set(0, 0.35, -0.2);
+    g.add(driver.root);
+  }
+  g.userData = { L: 4.4, W: 1.45, wheels, legs, kind: 'carro', model: 'carro', tall: 2.2 };
   return g;
 }
 

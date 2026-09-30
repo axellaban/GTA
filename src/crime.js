@@ -13,7 +13,6 @@ export class Crime {
     this.colliders = colliders;
     this.audio = audio;
     this.motos = [];
-    this.pickups = [];
     this.timer = 38;
     this.stats = { robos: 0, recuperados: 0 };
   }
@@ -56,14 +55,15 @@ export class Crime {
     const mesh = makeMoto(R.pick([0x1c1c1c, 0xb71c1c, 0x0d47a1, 0x333333]));
     const v = new Vehicle(mesh, n.x, n.z, 0);
     this.scene.add(mesh);
-    const riders = [
-      makeHuman({ shirt: 0x222222, pants: 0x1a1a3a, helmet: R.pick([0x111111, 0xc62828, 0xf5f5f5]) }),
-      makeHuman({ shirt: R.pick([0x1565c0, 0x333333, 0xc62828]), pants: 0x2a2a2a, hood: 0x2a2a2a }),
+    const looks = [
+      { shirt: 0x222222, pants: 0x1a1a3a, helmet: R.pick([0x111111, 0xc62828, 0xf5f5f5]), longSleeves: true },
+      { shirt: R.pick([0x1565c0, 0x333333, 0xc62828]), pants: 0x2a2a2a, hood: 0x2a2a2a, longSleeves: true },
     ];
-    riders[0].root.position.set(0, 0.35, 0.1);
-    riders[1].root.position.set(0, 0.45, -0.45);
+    const riders = looks.map((l) => makeHuman(l));
+    riders[0].root.position.set(0, 0.36, -0.08);
+    riders[1].root.position.set(0, 0.46, -0.55);
     for (const r of riders) mesh.add(r.root);
-    const m = { v, riders, state: 'hunt', t: 0, node: n, target: null, loot: null, bubble: null, life: 0 };
+    const m = { v, riders, looks, state: 'hunt', t: 0, node: n, target: null, loot: null, bubble: null, life: 0 };
     this.motos.push(m);
     return m;
   }
@@ -81,6 +81,7 @@ export class Crime {
       this.timer = R.range(55, 95);
     }
     for (const m of this.motos) {
+      if (m.state === 'down') continue;
       m.t += dt;
       m.life += dt;
       if (m.bubble) {
@@ -128,18 +129,6 @@ export class Crime {
           this.remove(m);
           continue;
         }
-      } else if (m.state === 'down') {
-        vmax = 0;
-        m.downT -= dt;
-        if (m.downT < 0 && !m.ranOff) {
-          m.ranOff = true;
-          for (const r of m.riders) r.root.visible = false;
-          this.say(m, '¡Corré, corré!', 2);
-        }
-        if (m.downT < -12 && dp > 60) {
-          this.remove(m);
-          continue;
-        }
       }
       // un corte o marcha también los frena
       let blocked = null;
@@ -162,9 +151,7 @@ export class Crime {
       v.x = p.x;
       v.z = p.z;
       v.sync(dt);
-      if (m.state === 'down') v.mesh.rotation.z = 1.35;
-      for (const r of m.riders) animateHuman(r, dt, 0, m.state === 'down' ? 'knocked' : m.state === 'rob' ? 'fist' : 'ride');
-      if (m.state === 'down') for (const r of m.riders) r.root.position.y = -0.2;
+      for (const r of m.riders) animateHuman(r, dt, 0, m.state === 'rob' ? 'fist' : 'ride');
       // el auto de Gaspi los voltea
       const pv = player.vehicle;
       if (pv && m.state !== 'down' && Math.abs(pv.speed) > 3.5) {
@@ -181,7 +168,8 @@ export class Crime {
         }
       }
     }
-    this.updatePickups(dt, world);
+    const pv = player.vehicle;
+    void pv;
   }
 
   // navegación codiciosa por el grafo de calles: hacia (o lejos de) un punto
@@ -258,58 +246,38 @@ export class Crime {
   }
 
   knockDown(m, world, pushed = false) {
-    const { hud, player, audio } = world;
+    const { hud, player, audio, npcs, traffic, pickups } = world;
+    if (m.state === 'down') return;
     m.state = 'down';
-    m.downT = 4;
     m.v.speed = 0;
     audio.golpe(0.9);
     const loot = m.loot ?? { phone: false, money: 0 };
     loot.money += R.int(4, 12) * 1000;
-    this.dropPickup(m.v.x - m.v.fz * 1.8, m.v.z + m.v.fx * 1.8, loot);
+    pickups.loot(m.v.x - m.v.fz * 1.8, m.v.z + m.v.fx * 1.8, loot);
     m.loot = null;
-    this.say(m, '¡Aaah! ¡La moto!', 2.5);
+    // los dos salen volando y después se rajan corriendo
+    m.riders.forEach((r, i) => {
+      m.v.mesh.remove(r.root);
+      const s = i ? 1 : -1;
+      const n = npcs.spawnWalker({ x: m.v.x + m.v.fz * s * 1.3, z: m.v.z - m.v.fx * s * 1.3, heading: m.v.heading }, null, 0, 0, m.looks[i]);
+      if (!n) return;
+      n.money = 0;
+      n.brave = 0;
+      npcs.hurt(n, 10, m.v.fz * s, -m.v.fx * s, { knock: true, knockT: 2.5, world });
+      n.after = 'flee';
+      if (i === 0) n.say(R.pick(['¡Aaah! ¡La moto!', '¡Corré, corré!']), 2.5);
+    });
+    m.riders = [];
+    // la moto queda tirada: Gaspi se la puede llevar
+    m.v.fallen = true;
+    m.v.parked = true;
+    m.v.sync(0);
+    traffic.parked.push(m.v);
+    this.motos = this.motos.filter((o) => o !== m);
     if (!pushed) {
-      hud.flash('¡MOTOCHORROS AL PISO!', 'Agarrá lo que se les cayó', 'ok');
+      hud.flash('¡MOTOCHORROS AL PISO!', 'Agarrá lo que se les cayó. La moto es tuya (F).', 'ok');
       player.addRespeto(2);
     }
-  }
-
-  dropPickup(x, z, loot) {
-    const g = new THREE.Group();
-    const glow = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.05, 16), new THREE.MeshBasicMaterial({ color: 0x6ec3ea, transparent: true, opacity: 0.55 }));
-    glow.position.y = 0.2;
-    g.add(glow);
-    const item = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.05, 0.55), new THREE.MeshBasicMaterial({ color: loot.phone ? 0x222222 : 0x2e7d32 }));
-    item.position.y = 0.7;
-    g.add(item);
-    g.position.set(x, 0, z);
-    this.scene.add(g);
-    this.pickups.push({ g, item, x, z, loot, t: 0 });
-  }
-
-  updatePickups(dt, world) {
-    const { player, hud, audio } = world;
-    for (const p of this.pickups) {
-      p.t += dt;
-      p.item.rotation.y += dt * 2.5;
-      p.item.position.y = 0.7 + Math.sin(p.t * 3) * 0.12;
-      if (!player.vehicle && Math.hypot(player.x - p.x, player.z - p.z) < 2.3) {
-        p.taken = true;
-        this.scene.remove(p.g);
-        player.addMoney(p.loot.money);
-        audio.plata();
-        if (p.loot.phone) {
-          player.phone = true;
-          this.stats.recuperados++;
-          hud.flash('¡RECUPERASTE EL CELU!', `Y $${p.loot.money.toLocaleString('es-AR')} que tenían encima`, 'ok');
-        } else hud.flash(`+$${p.loot.money.toLocaleString('es-AR')}`, 'Lo que se les cayó a los motochorros', 'ok');
-      }
-      if (p.t > 120) {
-        p.taken = true;
-        this.scene.remove(p.g);
-      }
-    }
-    this.pickups = this.pickups.filter((p) => !p.taken);
   }
 
   // Gaspi aprieta E al lado de una moto frenada
@@ -334,7 +302,6 @@ export class Crime {
   markers() {
     const out = [];
     for (const m of this.motos) if (m.loot) out.push({ x: m.v.x, z: m.v.z, kind: 'moto' });
-    for (const p of this.pickups) out.push({ x: p.x, z: p.z, kind: 'pickup' });
     return out;
   }
 }

@@ -23,6 +23,10 @@ const MODELS = {
   pickup: { L: 4.95, W: 1.8, belt: 1.02, nose: 0.86, tail: 1.0, hood: 1.15, trunk: 2.15, roof: 1.62, glassF: 0.45, glassR: 0.1, wheelR: 0.36, bed: true },
   patrullero: { L: 4.45, W: 1.72, belt: 0.95, nose: 0.74, tail: 0.84, hood: 1.15, trunk: 0.9, roof: 1.4, glassF: 0.55, glassR: 0.45, wheelR: 0.32 },
   remis: { L: 4.3, W: 1.7, belt: 0.95, nose: 0.74, tail: 0.84, hood: 1.1, trunk: 0.88, roof: 1.4, glassF: 0.55, glassR: 0.45, wheelR: 0.31 },
+  taxi: { L: 4.3, W: 1.7, belt: 0.95, nose: 0.74, tail: 0.84, hood: 1.1, trunk: 0.88, roof: 1.4, glassF: 0.55, glassR: 0.45, wheelR: 0.31 },
+  p504: { L: 4.5, W: 1.69, belt: 0.93, nose: 0.72, tail: 0.86, hood: 1.2, trunk: 1.05, roof: 1.42, glassF: 0.5, glassR: 0.55, wheelR: 0.31 },
+  fiat600: { L: 3.3, W: 1.38, belt: 0.88, nose: 0.7, tail: 0.75, hood: 0.7, trunk: 0.7, roof: 1.38, glassF: 0.35, glassR: 0.4, wheelR: 0.27 },
+  trafic: { L: 4.65, W: 1.8, belt: 1.05, nose: 0.88, tail: 1.05, hood: 0.72, trunk: 0.04, roof: 2.0, glassF: 0.42, glassR: 0.03, wheelR: 0.33 },
 };
 
 function extrudeX(shape, width, bevel = 0.05) {
@@ -182,6 +186,17 @@ function buildModel(name) {
     D.box(0.95, 0.12, 0.28, 0xc62828, 0.25, roof + 0.09, (cab[1][0] + cab[2][0]) / 2);
   }
   if (name === 'remis') D.box(0.6, 0.18, 0.22, 0xffd600, 0, roof + 0.12, (cab[1][0] + cab[2][0]) / 2);
+  if (name === 'taxi') {
+    // taxi porteño: negro con techo amarillo y el cartel de LIBRE
+    D.box(W * 0.9, 0.05, cab[2][0] - cab[1][0] + 0.05, 0xf5c400, 0, roof + 0.05, (cab[1][0] + cab[2][0]) / 2);
+    D.box(0.5, 0.16, 0.2, 0xf5c400, 0, roof + 0.16, (cab[1][0] + cab[2][0]) / 2);
+  }
+  if (name === 'trafic') {
+    // puerta corrediza y paragolpes negros
+    for (const s of [-1, 1]) D.box(0.012, 0.9, 1.1, 0x222222, s * (W / 2 + 0.003), 1.2, -0.2);
+    D.box(W + 0.02, 0.18, 0.12, 0x1a1a1a, 0, 0.45, L / 2 + 0.02);
+    D.box(W + 0.02, 0.18, 0.12, 0x1a1a1a, 0, 0.45, -L / 2 - 0.02);
+  }
   const detailGeo = D.mesh().geometry;
 
   // luces delanteras y traseras
@@ -215,7 +230,7 @@ export function makeCar(model = 'duna', color = 0xd8d4c8, { parked = false } = {
   const M = buildModel(model);
   const { L, W, wheelR } = M.m;
   const g = new THREE.Group();
-  const paintColor = model === 'remis' ? 0x151515 : model === 'patrullero' ? 0x1d3f8c : color;
+  const paintColor = model === 'remis' || model === 'taxi' ? 0x151515 : model === 'patrullero' ? 0x1d3f8c : color;
   const body = new THREE.Mesh(M.paintGeo, paintMat(paintColor));
   const shiny = new THREE.Mesh(M.shinyGeo, shinyMat);
   const detail = new THREE.Mesh(M.detailGeo, detailMat);
@@ -244,6 +259,6 @@ export function makeCar(model = 'duna', color = 0xd8d4c8, { parked = false } = {
     g.add(w);
     wheels.push(w);
   }
-  g.userData = { L, W, wheels, kind: 'car', model, parkedBuild: parked };
+  g.userData = { L, W, wheels, kind: 'car', model, parkedBuild: parked, tall: M.m.roof + 0.1 };
   return g;
 }
