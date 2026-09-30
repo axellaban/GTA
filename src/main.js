@@ -1,7 +1,7 @@
-// GTA Conurbano · Temperley. Arma el mundo, el ciclo de día y noche, el clima y el loop del juego.
+// GTA XI · Temperley. Arma el mundo, el ciclo de día y noche, el clima y el loop del juego.
 import * as THREE from 'three';
 import './style.css';
-import { ATMO, LAMPS, buildLampMap } from './atmosphere.js';
+import { ATMO, LAMPS, NIGHT, buildLampMap } from './atmosphere.js';
 import { buildCity } from './city.js';
 import { makeGround, ROADS, project, STATION, cornerName, nearestStreetName } from './map.js';
 import { Input } from './input.js';
@@ -158,7 +158,7 @@ const comisaria = stationHouse();
 
 const time = { hour: 17.5, night: false, label: '17:30' };
 const weather = { rain: 0, target: 0, wet: 0, slick: false, next: R.range(200, 320), t: 0, boltT: R.range(10, 25), flash: 0 };
-const world = { scene, camera, city, input, audio, hud, player, traffic, npcs, crime, events, trains, time, lights, colliders: city.colliders, fx, pickups, combat, police, nav, radio, weather };
+const world = { scene, camera, city, input, audio, hud, player, traffic, npcs, crime, events, trains, time, lights, colliders: city.colliders, fx, pickups, combat, police, nav, radio, weather, night: NIGHT };
 police.world = world;
 
 // ---------- Lo que postean los vecinos ----------
@@ -329,7 +329,7 @@ function updateTime(dt) {
   sun.color.setHSL(0.085 - dusk * 0.045, 0.55 + dusk * 0.4, 0.74 - dusk * 0.12);
   if (elev <= 0) sun.color.set(0x8fa8ff);
   // cielo: relleno azulado para que las sombras tengan color
-  hemi.intensity = (0.5 + day * 0.38) * (1 - rain * 0.1) + rain * day * 0.45 + weather.flash * 2.5;
+  hemi.intensity = (0.62 + day * 0.26) * (1 - rain * 0.1) + rain * day * 0.45 + weather.flash * 2.5;
   hemi.color.copy(U.zenith.value).lerp(time.night ? nightFill : dayFill, 0.6);
   hemi.groundColor.set(time.night ? 0x2a2733 : 0x6b5e4c);
   scene.environmentIntensity = 0.55 + day * 0.35;
@@ -352,8 +352,8 @@ function updateTime(dt) {
   city.lampPools.visible = false;
   time.glow = THREE.MathUtils.clamp((0.42 - lit) * 2.6, 0, 1);
   // la luz de sodio de los faroles sobre todo lo que está cerca (y su reflejo si está mojado)
-  LAMPS.lampParams.value.w = lampsOn ? time.glow * 1.7 : 0;
-  LAMPS.lampWet.value = weather.wet;
+  LAMPS.lampParams.value.w = lampsOn ? time.glow * NIGHT.faroles : 0;
+  LAMPS.lampWet.value = weather.wet * NIGHT.reflejo;
   city.windowMat.emissiveIntensity = THREE.MathUtils.clamp((0.45 - lit) * 2.2, 0, 0.85);
   if (city.signMat) city.signMat.emissiveIntensity = THREE.MathUtils.clamp((0.5 - lit) * 2.4, 0, 1);
   city.lampPools.material.opacity = THREE.MathUtils.clamp((0.35 - lit) * 0.8, 0, 0.2);

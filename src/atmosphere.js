@@ -100,6 +100,14 @@ export const LAMPS = {
   lampWet: { value: 0 },
 };
 
+// Intensidades de la noche. Se pueden probar en vivo desde la consola: __gta.night.faroles = 3
+export const NIGHT = {
+  faroles: 2.6, // luz de los faroles sobre piso, paredes, autos y gente
+  reflejo: 1, // faroles reflejados en la calle mojada
+  haces: 1, // haces de luz de los faros de los autos
+  conos: 1, // conos de luz bajo los faroles (con bruma o lluvia)
+};
+
 THREE.ShaderChunk.lights_fragment_end += /* glsl */ `
 #ifdef USE_FOG
   if (lampParams.w > 0.001) {
@@ -108,7 +116,7 @@ THREE.ShaderChunk.lights_fragment_end += /* glsl */ `
     vec3 lampN = inverseTransformDirection(normal, viewMatrix);
     float lampH = 1.0 - smoothstep(6.5, 9.5, lampW.y);
     float lampFace = 0.5 + 0.5 * max(lampN.y, 0.0);
-    reflectedLight.indirectDiffuse += lampC * lampC * (lampParams.w * lampH * lampFace) * diffuseColor.rgb;
+    reflectedLight.indirectDiffuse += lampC * (lampParams.w * lampH * lampFace) * diffuseColor.rgb;
   }
 #endif
 `;
@@ -121,12 +129,18 @@ function lampCanvas(N, S, O, draw) {
   g.fillRect(0, 0, N, N);
   g.globalCompositeOperation = 'lighter';
   const px = (v) => ((v - O) / S) * N;
-  const blob = (x, z, r, stops) => {
+  // mancha redonda: falloff(t) de 1 en el centro a 0 en el borde, color que va de c0 a c1
+  const blob = (x, z, r, c0, c1, falloff, steps = 8) => {
     const cx = px(x);
     const cy = px(z);
     const R = (r / S) * N;
     const gr = g.createRadialGradient(cx, cy, 0, cx, cy, R);
-    for (const [t, col] of stops) gr.addColorStop(t, col);
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const k = falloff(t);
+      const col = c0.map((v, j) => Math.round((v + (c1[j] - v) * t) * k));
+      gr.addColorStop(t, `rgb(${col[0]},${col[1]},${col[2]})`);
+    }
     g.fillStyle = gr;
     g.fillRect(cx - R, cy - R, R * 2, R * 2);
   };
@@ -138,33 +152,32 @@ function lampCanvas(N, S, O, draw) {
   return t;
 }
 
+// Luz de un farol a 7,7 m de altura sobre el piso: cae con el cuadrado de la distancia y el ángulo
+// (1 + (r/h)²)^-1,5, recortada para que llegue a cero en el borde.
+function lampFalloff(r, h) {
+  const edge = (1 + (r / h) ** 2) ** -1.5;
+  return (t) => Math.max(0, ((1 + ((t * r) / h) ** 2) ** -1.5 - edge) / (1 - edge));
+}
+
 // lamps: cabezales de los faroles {x, z}; shops: frentes de negocios {x, z, nx, nz}
 export function buildLampMap(lamps, shops = []) {
   const O = LAMPS.lampParams.value.x;
   const S = LAMPS.lampParams.value.z;
   LAMPS.lampPool.value = lampCanvas(2048, S, O, (blob) => {
-    for (const l of lamps)
-      blob(l.x, l.z, 12, [
-        [0, 'rgba(255,176,96,1)'],
-        [0.3, 'rgba(230,140,70,0.6)'],
-        [1, 'rgba(0,0,0,0)'],
-      ]);
+    // sodio: amarillo abajo del farol, naranja hacia el borde de la mancha
+    const sodium = lampFalloff(17, 7.7);
+    for (const l of lamps) blob(l.x, l.z, 17, [255, 168, 88], [236, 108, 34], sodium);
     // luz blanca que sale de las vidrieras a la vereda
-    for (const s of shops)
-      blob(s.x + s.nx * 1.5, s.z + s.nz * 1.5, 6, [
-        [0, 'rgba(255,236,200,0.75)'],
-        [1, 'rgba(0,0,0,0)'],
-      ]);
+    const shop = lampFalloff(7, 2.6);
+    for (const s of shops) blob(s.x + s.nx * 1.8, s.z + s.nz * 1.8, 7, [150, 140, 120], [120, 104, 80], shop);
   });
-  // puntitos chicos: lo que se refleja en la calle mojada
+  // lo que se refleja en la calle mojada: el cabezal del farol, chico y fuerte
   LAMPS.lampSpot.value = lampCanvas(1024, S, O, (blob) => {
-    for (const l of lamps)
-      blob(l.x, l.z, 3.2, [
-        [0, 'rgba(255,190,110,1)'],
-        [0.5, 'rgba(255,150,70,0.5)'],
-        [1, 'rgba(0,0,0,0)'],
-      ]);
+    for (const l of lamps) blob(l.x, l.z, 6, [255, 200, 130], [255, 110, 30], (t) => (1 - t) ** 2);
   });
+  // sin mipmaps: vistos casi al ras, los puntitos se promediarían con el negro y desaparecerían
+  LAMPS.lampSpot.value.generateMipmaps = false;
+  LAMPS.lampSpot.value.minFilter = THREE.LinearFilter;
 }
 
 // Todos los materiales reciben los uniforms compartidos al compilarse.

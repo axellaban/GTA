@@ -1,4 +1,4 @@
-# GTA Conurbano · Temperley
+# GTA XI: Conurbano · Temperley
 
 Juego de mundo abierto en el navegador, ambientado alrededor de la estación Temperley (Línea Roca, Lomas de Zamora). Hecho con Three.js, sin motor ni assets externos: todo (casas, rejas, trenes, gente) se genera por código.
 
@@ -91,6 +91,14 @@ python3 preprocess.py ../../src/data/temperley.json  # calles, veredas, manzanas
 ```
 
 Datos del mapa: © colaboradores de OpenStreetMap (ODbL) y Overture Maps Foundation.
+
+## Noche (0.5)
+
+- Los faroles de sodio iluminan de verdad el piso, las paredes, los autos y la gente, con una mancha que cae como la de un farol real a 7,7 m de altura.
+- Luz de las vidrieras sobre la vereda y resplandor anaranjado de la ciudad en el horizonte.
+- Con lluvia, los faroles se reflejan en la calle mojada en rayas, como en el asfalto de verdad.
+- Haces de luz de los faros de los autos y conos bajo los faroles cuando hay bruma o lluvia.
+- Las intensidades se prueban en vivo desde la consola del navegador, por ejemplo `__gta.night.faroles = 3` (también `reflejo`, `haces` y `conos`). Los valores por defecto están en `NIGHT`, en `src/atmosphere.js`.
 
 ## Estructura
 

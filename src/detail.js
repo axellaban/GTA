@@ -54,17 +54,29 @@ function makeDetail(size = 256) {
 }
 
 // Reflejo de los faroles en el piso mojado: se sigue el rayo reflejado hasta la altura de los
-// cabezales y se mira el mapa de puntitos de luz ahí (con más desenfoque cuanto más lejos).
+// cabezales y se mira el mapa de puntitos de luz ahí. El agua no es un espejo: se toman varias
+// muestras abriendo el ángulo, y como al ras eso cambia mucho la distancia, la luz se estira en
+// rayas hacia la cámara, como en el asfalto mojado de verdad.
 const WET_REFLECT = /* glsl */ `
 #ifdef USE_FOG
   if (lampParams.w > 0.001 && lampWet > 0.02) {
     vec3 rw = cameraPosition + vFogRay;
-    vec3 rn = inverseTransformDirection(normal, viewMatrix);
-    vec3 rr = reflect(normalize(vFogRay), rn);
-    float rt = (7.7 - rw.y) / max(rr.y, 0.04);
-    vec2 rp = rw.xz + rr.xz * rt;
-    vec3 spot = texture2D(lampSpot, (rp - lampParams.xy) / lampParams.z, log2(1.0 + rt * 0.3)).rgb;
-    reflectedLight.indirectSpecular += spot * spot * (lampWet * lampParams.w * 2.2);
+    vec3 rv = normalize(vFogRay);
+    // el agua empareja el piso: la textura mueve el reflejo, pero poco
+    vec3 rn = normalize(mix(vec3(0.0, 1.0, 0.0), inverseTransformDirection(normal, viewMatrix), 0.12));
+    vec3 rr = reflect(rv, rn);
+    float rup = max(rr.y, 0.015);
+    float rh = max(7.7 - rw.y, 0.5);
+    vec3 spot = vec3(0.0);
+    for (int i = 0; i < 5; i++) {
+      float k = 0.55 + float(i) * 0.28;
+      float wk = 1.0 - abs(float(i) - 2.0) * 0.3;
+      vec2 rp = rw.xz + rr.xz * (rh / (rup * k));
+      spot += texture2D(lampSpot, (rp - lampParams.xy) / lampParams.z).rgb * wk;
+    }
+    // Fresnel: mirando al ras refleja mucho más que mirando hacia abajo
+    float rf = 0.04 + 0.96 * pow(1.0 - clamp(dot(-rv, rn), 0.0, 1.0), 5.0);
+    reflectedLight.indirectSpecular += spot * (lampWet * lampParams.w * rf * 1.3);
   }
 #endif`;
 
