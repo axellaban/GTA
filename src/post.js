@@ -21,12 +21,14 @@ const GradeShader = {
     sharpen: { value: 0.3 },
     grain: { value: 0.016 },
     time: { value: 0 },
+    gray: { value: 0 },
   },
   vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
   fragmentShader: /* glsl */ `
     uniform sampler2D tDiffuse;
     uniform vec2 resolution;
     uniform float saturation;
+    uniform float gray;
     uniform float contrast;
     uniform vec3 lift;
     uniform vec3 gain;
@@ -52,6 +54,7 @@ const GradeShader = {
       float l = dot(col, vec3(0.2126, 0.7152, 0.0722));
       float sat = max(col.r, max(col.g, col.b)) - min(col.r, min(col.g, col.b));
       col = mix(vec3(l), col, saturation + (1.0 - sat) * (saturation - 1.0) * 0.8);
+      col = mix(col, vec3(dot(col, vec3(0.2126, 0.7152, 0.0722))), gray);
       vec2 d = vUv - 0.5;
       col *= 1.0 - dot(d, d) * vignette * 1.6;
       float n = fract(sin(dot(gl_FragCoord.xy + fract(time * 7.13) * 91.0, vec2(12.9898, 78.233))) * 43758.5453);
@@ -123,9 +126,12 @@ export class Post {
     // día: luces cálidas y sombras apenas azules; atardecer: más naranja; noche: todo más frío
     u.gain.value.set(1.04 + dusk * 0.06 - k * 0.06, 1.0 - k * 0.02, 0.95 - dusk * 0.05 + k * 0.1);
     u.lift.value.set(-0.012 - k * 0.01, 0.0 + k * 0.004, 0.022 + k * 0.03 + rain * 0.01);
+    // al morir (o caer preso) la imagen se va a blanco y negro, como en GTA
+    const w = this.wasted || 0;
     u.saturation.value = 1.12 + dusk * 0.1 - k * 0.12 - rain * 0.15;
-    u.contrast.value = 0.28 + dusk * 0.05 - k * 0.08;
-    u.vignette.value = 0.3 + k * 0.25;
+    u.gray.value = w;
+    u.contrast.value = 0.28 + dusk * 0.05 - k * 0.08 + w * 0.18;
+    u.vignette.value = 0.3 + k * 0.25 + w * 0.5;
     u.time.value = performance.now() / 1000;
     const ao = 2.4 - k * 0.9;
     if (this.ao && Math.abs(this.ao.configuration.intensity - ao) > 0.02) this.ao.configuration.intensity = ao;

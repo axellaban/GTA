@@ -933,13 +933,22 @@ body {
   pointer-events: none;
 }
 .w-title {
+  animation: w-in 0.9s 0.7s cubic-bezier(0.2, 1.6, 0.4, 1) both;
   font-family: var(--font-display);
   font-size: clamp(2.4rem, 9vw, 6rem);
   color: var(--alerta);
   -webkit-text-stroke: 3px #000;
   paint-order: stroke fill;
 }
+@keyframes w-in {
+  from {
+    opacity: 0;
+    transform: scale(1.35);
+    letter-spacing: 0.2em;
+  }
+}
 .w-sub {
+  animation: w-in 0.6s 1.4s ease-out both;
   font-family: var(--font-ui);
   font-size: 1.4rem;
   font-weight: 700;

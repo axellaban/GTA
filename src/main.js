@@ -873,6 +873,11 @@ function frame(now) {
   }
   const real = (now - (frame.prev ?? now)) / 1000;
   frame.prev = now;
+  // muerte a lo GTA: todo en cámara lenta y la imagen se va a blanco y negro (preso: a medias)
+  const out = player.dead ? 1 : player.busted > 0 ? 0.6 : 0;
+  world.wasted = out ? Math.min(out, (world.wasted || 0) + Math.min(real, 0.1) * 0.9) : 0;
+  if (post) post.wasted = world.wasted;
+  if (player.dead) dt *= 0.35;
   dynamicResolution(real);
   showFps(real);
   updateWeather(started ? dt : dt * 0.2);

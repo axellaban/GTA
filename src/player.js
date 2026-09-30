@@ -106,7 +106,7 @@ export class Player {
   die(msg) {
     if (this.dead) return;
     this.dead = true;
-    this.deadT = 5;
+    this.deadT = 2; // en cámara lenta: unos 6 segundos de verdad
     this.health = 0;
     this.jack = null;
     this.attack = null;
