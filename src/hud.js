@@ -384,6 +384,7 @@ export class Hud {
     }
     for (const m of world.pickups.markers({ x: player.x, z: player.z }, true)) dot(m.x, m.z, m.kind === 'weapon' ? '#ffa726' : m.kind === 'health' ? '#ff5a5a' : '#5aa9ff', 6);
     for (const m of world.events.markers()) dot(m.x, m.z, '#ff7a1a', 7, 'square');
+    for (const m of world.garages || []) dot(m.x, m.z, '#3ddc84', 7, 'square');
     for (const m of world.police.markers()) dot(m.x, m.z, '#3060ff', 5, 'square');
     const o = this.objective;
     if (o?.target) dot(o.target.x, o.target.z, '#ffe14a', 9);
@@ -450,6 +451,7 @@ export class Hud {
       g.stroke();
     }
     for (const m of events.markers()) mark(m.x, m.z, m.kind === 'corte' ? '#ff7a1a' : '#ffb23e', 6, 'square');
+    for (const m of world.garages || []) mark(m.x, m.z, '#3ddc84', 6, 'square');
     for (const m of crime.markers()) mark(m.x, m.z, m.kind === 'moto' ? '#e5484d' : '#6ec3ea', 5);
     for (const m of world.pickups.markers(player)) mark(m.x, m.z, m.kind === 'weapon' ? '#ffa726' : m.kind === 'health' ? '#ff5a5a' : m.kind === 'armor' ? '#5aa9ff' : '#6ec3ea', 3.5);
     const blink = ((performance.now() / 250) | 0) % 2;

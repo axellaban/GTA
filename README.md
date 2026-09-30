@@ -117,6 +117,10 @@ Después del tutorial te llaman al celu (si los motochorros te lo robaron, no te
 
 Al cumplirlas: plata, respeto y la próxima llamada. Cuando se terminan, vuelven a empezar con otros destinos. El avance se guarda.
 
+## Chapa y pintura (0.8)
+
+Dos talleres marcados con un cuadrado verde en el radar y en el mapa. Entrás despacio con el auto y por $1.500 te lo arreglan (daño, fuego y gomas pinchadas), te lo pintan de otro color y la cana te pierde: se van todas las estrellas. Es el Pay 'n' Spray del conurbano.
+
 ## Estructura
 
 | Archivo | Qué hace |

@@ -352,6 +352,7 @@ export function makeCar(model = 'duna', color = 0xd8d4c8, { parked = false } = {
   const g = new THREE.Group();
   const paintColor = model === 'remis' || model === 'taxi' ? 0x151515 : model === 'patrullero' ? 0x1d3f8c : color;
   const body = new THREE.Mesh(M.paintGeo, paintMat(paintColor));
+  body.userData.paint = true;
   const shiny = new THREE.Mesh(M.shinyGeo, shinyMat);
   const glass = new THREE.Mesh(M.glassGeo, glassMat);
   const detail = new THREE.Mesh(M.detailGeo, detailMat);

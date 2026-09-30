@@ -13,7 +13,8 @@ import { Crime } from './crime.js';
 import { Events } from './events.js';
 import { Trains } from './trains.js';
 import { Hud } from './hud.js';
-import { lightMat } from './cars.js';
+import { lightMat, paintMat } from './cars.js';
+import { CAR_COLORS } from './vehicles.js';
 import { loadGaspiPhoto, updateHumanLod } from './human.js';
 import { Sky } from './sky.js';
 import { Post, QUALITY } from './post.js';
@@ -27,7 +28,7 @@ import { Nav } from './nav.js';
 import { Radio } from './radio.js';
 import { R } from './rng.js';
 import { setupInstall } from './install.js';
-import { Missions } from './missions.js';
+import { Missions, makeMarker } from './missions.js';
 
 setupInstall();
 
@@ -258,6 +259,53 @@ function updateJob(dt) {
     world.social('delivery', job.x, job.z);
     job.active = false;
     if (v?.model === 'delivery') setTimeout(startDelivery, 2500);
+  }
+}
+
+// ---------- Chapa y pintura: entrás con el auto, sale arreglado, de otro color y la cana te pierde ----------
+const GARAGE_COST = 1500;
+const garages = [];
+{
+  const shops = pickups.shops || [];
+  for (const s of [shops[6], shops[Math.floor(shops.length * 0.6)]]) {
+    if (!s) continue;
+    const gar = { x: s.x + s.nx * 2.4, z: s.z + s.nz * 2.4, used: false, mesh: makeMarker() };
+    gar.mesh.userData.tube.material.color.set(0x3ddc84);
+    gar.mesh.userData.ring.material.color.set(0x7dffb0);
+    gar.mesh.scale.set(2.2, 1.4, 2.2);
+    gar.mesh.position.set(gar.x, heightAt(gar.x, gar.z), gar.z);
+    scene.add(gar.mesh);
+    garages.push(gar);
+  }
+}
+world.garages = garages;
+function updateGarages() {
+  const v = player.vehicle;
+  for (const gar of garages) {
+    gar.mesh.visible = Math.hypot(gar.x - player.x, gar.z - player.z) < 180;
+    const d = v ? Math.hypot(gar.x - v.x, gar.z - v.z) : 99;
+    if (d > 7) gar.used = false;
+    if (!v || gar.used || d > 4.5 || Math.abs(v.speed) > 3) continue;
+    gar.used = true;
+    if (!police.stars && !v.damage && !v.flat) {
+      hud.flash('CHAPA Y PINTURA', 'Está impecable. Volvé cuando lo choques o te busque la cana', 'ok', 2.4);
+      continue;
+    }
+    if (player.money < GARAGE_COST) {
+      hud.flash('CHAPA Y PINTURA', `Son $${GARAGE_COST.toLocaleString('es-AR')} y no te alcanza`, 'bad', 2.4);
+      continue;
+    }
+    const wanted = police.stars > 0;
+    player.addMoney(-GARAGE_COST);
+    police.clear();
+    Object.assign(v, { damage: 0, burning: 0, flat: false, warned: false });
+    if (!['taxi', 'remis', 'patrullero'].includes(v.model)) {
+      v.mesh.traverse((o) => {
+        if (o.userData.paint) o.material = paintMat(R.pick(CAR_COLORS.filter((c) => c !== o.material.color.getHex())));
+      });
+    }
+    audio.plata();
+    hud.flash('CHAPA Y PINTURA', wanted ? 'Color nuevo: la cana ya no te reconoce' : 'Quedó como nuevo', 'ok', 2.8);
   }
 }
 
@@ -821,6 +869,7 @@ function frame(now) {
   pickups.update(dt, world);
   for (const s of pickups.shops || []) if (s.cool > 0) s.cool -= dt;
   updateJob(dt);
+  updateGarages();
   missions.update(dt, step >= steps.length - 1 && !job.active);
   updateObjective();
   updateGps(dt);

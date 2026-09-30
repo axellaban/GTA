@@ -9,7 +9,7 @@ const fmt = (n) => `$${Math.round(n).toLocaleString('es-AR')}`;
 const dist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 
 // Marcador de GTA: cilindro amarillo translúcido que late, con una luz que sube
-function makeMarker() {
+export function makeMarker() {
   const g = new THREE.Group();
   const mat = new THREE.MeshBasicMaterial({ color: 0xffd23a, transparent: true, opacity: 0.35, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending });
   const tube = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 1.6, 28, 1, true), mat);
