@@ -15,7 +15,10 @@ import {
   leafTexture,
   normalMapFrom,
   signAtlas,
+  roofTexture,
+  ROOF_M,
 } from './textures.js';
+import { addWorldDetail } from './detail.js';
 import { Colliders } from './physics.js';
 import { FastBoxes } from './builder.js';
 import { Rng } from './rng.js';
@@ -399,7 +402,16 @@ const GENERIC_SHOPS = ['KIOSCO 24 HS', 'FARMACIA', 'PIZZERÍA', 'ROTISERÍA', 'Q
 
 function addBuildings(scene, atlas, colliders, rng, city) {
   const arr = { pos: [], uvs: [], col: [], idx: [], frames: new FastBoxes() };
-  const roof = { pos: [], col: [], idx: [] };
+  // techos planos agrupados por tipo (membrana, cerámica, losa, chapa)
+  const roofs = {};
+  const roofBucket = (t) => (roofs[t] ??= { pos: [], uv: [], col: [], idx: [] });
+  const MEMBRANA = [
+    [1, 1, 1],
+    [1, 1, 1],
+    [0.96, 0.52, 0.44],
+    [0.62, 0.78, 0.62],
+    [1.12, 1.12, 1.1],
+  ];
   const det = new FastBoxes();
   const awn = { pos: [], uv: [], idx: [] };
   const gables = [];
@@ -438,7 +450,8 @@ function addBuildings(scene, atlas, colliders, rng, city) {
       if ((v + seg) % 9 === 0) return ATLAS.pintada[(v + floor) % ATLAS.pintada.length];
       return ATLAS.medianera[(v + seg + floor) % ATLAS.medianera.length];
     };
-    const plaster = new THREE.Color().setHSL(0.09, 0.15, 0.72 + ((v % 7) - 3) * 0.02);
+    // cornisa y parapeto del mismo color que la fachada
+    const plaster = new THREE.Color(front(0)?.base || '#d8cfc0');
     let bestFront = null;
     for (let k = 0; k < ring.length; k++) {
       const e = outward(ring, k);
@@ -507,13 +520,20 @@ function addBuildings(scene, atlas, colliders, rng, city) {
         city.shopSigns.push({ x: cx, z: cz, name: nm });
       }
     }
-    // techo plano (triangulado)
+    // techo plano (triangulado), con el material que le toca
+    const hv = (v * 2654435761) >>> 0;
+    const rtype = kind === 'galpon' ? 'chapa' : kind === 'estadio' ? 'losa' : kind === 'edificio' ? (hv % 2 ? 'losa' : 'membrana') : ['membrana', 'membrana', 'membrana', 'membrana', 'ceramica', 'ceramica', 'ceramica', 'losa', 'losa', 'membrana'][hv % 10];
+    const roof = roofBucket(rtype);
+    const tint = rtype === 'membrana' ? MEMBRANA[(hv >>> 4) % MEMBRANA.length] : [1, 1, 1];
+    const shadeR = 0.9 + ((hv >>> 8) % 7) * 0.03;
+    const M = ROOF_M[rtype];
+    const off = ((hv >>> 12) % 17) * 0.137;
     const tri = THREE.ShapeUtils.triangulateShape(ring.map(([x, z]) => new THREE.Vector2(x, z)), []);
-    const rc = 0.6 + ((v % 11) / 11) * 0.15;
     const base = roof.pos.length / 3;
     for (const [x, z] of ring) {
       roof.pos.push(x, h, z);
-      roof.col.push(rc, rc * 0.98, rc * 0.95);
+      roof.uv.push(x / M + off, z / M - off);
+      roof.col.push(tint[0] * shadeR, tint[1] * shadeR, tint[2] * shadeR);
     }
     for (const [i0, i1, i2] of tri) {
       const [ax, az] = ring[i0];
@@ -543,23 +563,49 @@ function addBuildings(scene, atlas, colliders, rng, city) {
   g.setAttribute('color', new THREE.Float32BufferAttribute(arr.col, 3));
   g.setIndex(arr.idx);
   g.computeVertexNormals();
-  const mat = new THREE.MeshLambertMaterial({ map: atlas.map, normalMap: atlas.normal, normalScale: new THREE.Vector2(0.9, 0.9), emissiveMap: atlas.emissive, emissive: 0xffffff, emissiveIntensity: 0, vertexColors: true });
+  // fachadas con PBR: el vidrio es liso y refleja el cielo, la chapa brilla, el revoque es áspero
+  const mat = new THREE.MeshStandardMaterial({
+    map: atlas.map,
+    normalMap: atlas.normal,
+    normalScale: new THREE.Vector2(0.9, 0.9),
+    roughnessMap: atlas.orm,
+    metalnessMap: atlas.orm,
+    roughness: 1,
+    metalness: 1,
+    emissiveMap: atlas.emissive,
+    emissive: 0xffffff,
+    emissiveIntensity: 0,
+    vertexColors: true,
+  });
+  addWorldDetail(mat);
   city.windowMat = mat;
   const mesh = new THREE.Mesh(g, mat);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   scene.add(mesh);
   scene.add(arr.frames.mesh(new THREE.MeshLambertMaterial({ vertexColors: true })));
-  scene.add(det.mesh(new THREE.MeshLambertMaterial({ vertexColors: true })));
+  const detMesh = det.mesh(addWorldDetail(new THREE.MeshLambertMaterial({ vertexColors: true }), { damp: 0 }));
+  detMesh.castShadow = true;
+  detMesh.receiveShadow = true;
+  scene.add(detMesh);
 
-  const rg = new THREE.BufferGeometry();
-  rg.setAttribute('position', new THREE.Float32BufferAttribute(roof.pos, 3));
-  rg.setAttribute('color', new THREE.Float32BufferAttribute(roof.col, 3));
-  rg.setIndex(roof.idx);
-  rg.computeVertexNormals();
-  const roofs = new THREE.Mesh(rg, new THREE.MeshLambertMaterial({ vertexColors: true }));
-  roofs.receiveShadow = true;
-  scene.add(roofs);
+  for (const [type, r] of Object.entries(roofs)) {
+    const rg = new THREE.BufferGeometry();
+    rg.setAttribute('position', new THREE.Float32BufferAttribute(r.pos, 3));
+    rg.setAttribute('uv', new THREE.Float32BufferAttribute(r.uv, 2));
+    rg.setAttribute('color', new THREE.Float32BufferAttribute(r.col, 3));
+    rg.setIndex(r.idx);
+    rg.computeVertexNormals();
+    const { map, normal } = roofTexture(type);
+    const shiny = type === 'membrana' || type === 'chapa';
+    const rm = shiny
+      ? new THREE.MeshStandardMaterial({ map, normalMap: normal, vertexColors: true, roughness: type === 'chapa' ? 0.42 : 0.55, metalness: type === 'chapa' ? 0.6 : 0.35 })
+      : new THREE.MeshLambertMaterial({ map, normalMap: normal, vertexColors: true });
+    addWorldDetail(rm, { strength: 0.22, scale: 0.6, damp: 0 });
+    const rmesh = new THREE.Mesh(rg, rm);
+    rmesh.receiveShadow = true;
+    scene.add(rmesh);
+  }
 
   // techos a dos aguas sobre el rectángulo orientado del edificio
   const tg = [];
@@ -609,8 +655,12 @@ function addBuildings(scene, atlas, colliders, rng, city) {
     tg.push(geo);
   }
   if (tg.length) {
-    const m = new THREE.Mesh(mergeGeometries(tg), new THREE.MeshLambertMaterial({ color: 0x9d4a31 }));
+    // tejas coloniales (la geometría del techo trae UV en metros)
+    const { map, normal } = roofTexture('tejas');
+    for (const t of [map, normal]) t.repeat.set(1 / ROOF_M.tejas, 1 / ROOF_M.tejas);
+    const m = new THREE.Mesh(mergeGeometries(tg), new THREE.MeshLambertMaterial({ map, normalMap: normal }));
     m.castShadow = true;
+    m.receiveShadow = true;
     scene.add(m);
   }
   if (awn.pos.length) {

@@ -66,11 +66,153 @@ export const ATLAS = {
 
 // Segundo lienzo del mismo tamaño: qué se ilumina de noche (ventanas, vidrieras, carteles)
 let EM = null;
+// Tercer lienzo: aspereza (verde) y metal (azul). El vidrio es liso y refleja el cielo.
+let OR = null;
+const SURF = { wall: 'rgb(255,236,0)', glass: 'rgb(255,14,0)', metal: 'rgb(255,110,170)', paint: 'rgb(255,175,0)', iron: 'rgb(255,120,90)' };
+function surf(kind, x, y, w, h) {
+  if (!OR) return;
+  OR.fillStyle = SURF[kind];
+  OR.fillRect(x, y, w, h);
+}
 // Aberturas dibujadas en la celda actual (para ponerles marcos 3D en la pared)
 let CUR = null;
 function record(kind, x, y, w, h) {
   if (!CUR) return;
   CUR.list.push({ kind, x0: (x - CUR.ox) / CELL_W, x1: (x + w - CUR.ox) / CELL_W, y0: (y - CUR.oy) / CELL_H, y1: (y + h - CUR.oy) / CELL_H });
+}
+// ¿El rectángulo pisa alguna abertura ya dibujada en la celda?
+function overlapsOpening(x, y, w, h) {
+  if (!CUR) return false;
+  const x0 = (x - CUR.ox) / CELL_W;
+  const x1 = (x + w - CUR.ox) / CELL_W;
+  const y0 = (y - CUR.oy) / CELL_H;
+  const y1 = (y + h - CUR.oy) / CELL_H;
+  return CUR.list.some((o) => x0 < o.x1 + 0.02 && x1 > o.x0 - 0.02 && y0 < o.y1 + 0.05 && y1 > o.y0 - 0.05);
+}
+
+// Pared de ladrillos: "visto" (el de las casas prolijas) u "hueco" (la casa sin revocar, con columnas y viga de hormigón)
+function brickWall(ctx, x, y, w, h, rng, type) {
+  if (type === 'hueco') {
+    ctx.fillStyle = '#9d948a';
+    ctx.fillRect(x, y, w, h);
+    const bw = 17;
+    const bh = 9;
+    for (let r = 0; r * bh < h; r++) {
+      const off = r % 2 ? bw / 2 : 0;
+      for (let k = -1; k * bw < w; k++) {
+        const v = rng.range(-14, 14);
+        ctx.fillStyle = `rgb(${196 + v},${104 + v * 0.6},${62 + v * 0.4})`;
+        ctx.fillRect(x + k * bw + off + 1, y + r * bh + 1, bw - 2, bh - 2);
+        // los agujeritos del ladrillo hueco en las puntas rotas
+        if (rng.chance(0.06)) {
+          ctx.fillStyle = 'rgba(60,30,20,0.55)';
+          ctx.fillRect(x + k * bw + off + 4, y + r * bh + 3, 3, 3);
+          ctx.fillRect(x + k * bw + off + 9, y + r * bh + 3, 3, 3);
+        }
+      }
+    }
+    // mezcla chorreada
+    for (let i = 0; i < 40; i++) {
+      ctx.fillStyle = `rgba(150,145,138,${rng.range(0.3, 0.7)})`;
+      ctx.fillRect(x + rng.range(0, w), y + rng.range(0, h), rng.range(2, 8), rng.range(1, 3));
+    }
+    // columnas y viga de encadenado
+    ctx.fillStyle = '#a7a39c';
+    ctx.fillRect(x, y, 12, h);
+    ctx.fillRect(x + w - 12, y, 12, h);
+    ctx.fillRect(x, y, w, 9);
+    ctx.fillStyle = 'rgba(0,0,0,0.12)';
+    ctx.fillRect(x + 12, y, 2, h);
+    ctx.fillRect(x + w - 14, y, 2, h);
+    return '#b86a45';
+  }
+  ctx.fillStyle = '#c9bca6';
+  ctx.fillRect(x, y, w, h);
+  const bw = 13;
+  const bh = 4;
+  const tone = rng.pick([
+    [168, 82, 52],
+    [182, 96, 60],
+    [150, 70, 48],
+    [190, 118, 78],
+  ]);
+  for (let r = 0; r * bh < h; r++) {
+    const off = r % 2 ? bw / 2 : 0;
+    for (let k = -1; k * bw < w; k++) {
+      const v = rng.range(-16, 16);
+      ctx.fillStyle = `rgb(${tone[0] + v},${tone[1] + v * 0.7},${tone[2] + v * 0.5})`;
+      ctx.fillRect(x + k * bw + off + 0.5, y + r * bh + 0.5, bw - 1.2, bh - 1);
+    }
+  }
+  return `rgb(${tone[0]},${tone[1]},${tone[2]})`;
+}
+
+// Revoque caído: manchones que dejan ver el ladrillo (evitando puertas y ventanas)
+function peel(ctx, x, y, w, h, rng, count) {
+  for (let i = 0; i < count; i++) {
+    const pw = rng.range(22, 70);
+    const ph = rng.range(12, 34);
+    let px = 0;
+    let py = 0;
+    let ok = false;
+    for (let t = 0; t < 8 && !ok; t++) {
+      px = x + rng.range(4, w - pw - 4);
+      py = y + rng.range(4, h - ph - 20);
+      ok = !overlapsOpening(px, py, pw, ph);
+    }
+    if (!ok) continue;
+    ctx.save();
+    ctx.beginPath();
+    const n = 9;
+    for (let k = 0; k < n; k++) {
+      const a = (k / n) * Math.PI * 2;
+      const rx = (pw / 2) * rng.range(0.65, 1);
+      const ry = (ph / 2) * rng.range(0.65, 1);
+      const px2 = px + pw / 2 + Math.cos(a) * rx;
+      const py2 = py + ph / 2 + Math.sin(a) * ry;
+      if (k === 0) ctx.moveTo(px2, py2);
+      else ctx.lineTo(px2, py2);
+    }
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(70,55,45,0.35)';
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+    ctx.stroke();
+    ctx.clip();
+    brickWall(ctx, px - 6, py - 6, pw + 12, ph + 12, rng, 'visto');
+    ctx.fillStyle = 'rgba(40,30,25,0.2)';
+    ctx.fillRect(px - 6, py - 6, pw + 12, ph + 12);
+    ctx.restore();
+  }
+}
+
+// Humedad que sube desde la vereda, con borde irregular
+function damp(ctx, x, y, w, h, rng) {
+  for (let k = 0; k < w; k += 4) {
+    const hh = 14 + Math.abs(Math.sin(k * 0.031 + rng.next() * 0.4) * 16) + rng.range(0, 5);
+    const g = ctx.createLinearGradient(0, y + h - hh, 0, y + h);
+    g.addColorStop(0, 'rgba(45,48,32,0)');
+    g.addColorStop(1, 'rgba(45,48,32,0.3)');
+    ctx.fillStyle = g;
+    ctx.fillRect(x + k, y + h - hh, 4, hh);
+  }
+}
+
+// Rajaduras finitas que salen de las esquinas de las ventanas
+function crack(ctx, x, y, len, rng) {
+  ctx.strokeStyle = 'rgba(40,32,26,0.45)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  let cx = x;
+  let cy = y;
+  const dir = rng.chance(0.5) ? 1 : -1;
+  for (let i = 0; i < 5; i++) {
+    cx += dir * rng.range(1, 6);
+    cy += len / 5 + rng.range(-2, 2);
+    ctx.lineTo(cx, cy);
+  }
+  ctx.stroke();
 }
 const LIT = ['#e0b070', '#e8c890', '#d8c8a8', '#d89a50', '#8aa6d8'];
 
@@ -86,8 +228,9 @@ function uvRect(i) {
   };
 }
 
-function drawReja(ctx, x, y, w, h, style) {
-  ctx.strokeStyle = '#1c1c1c';
+function drawReja(ctx, x, y, w, h, style, color = '#1c1c1c') {
+  if (ctx === ACTX && OR) drawReja(OR, x, y, w, h, style, SURF.iron);
+  ctx.strokeStyle = color;
   ctx.lineWidth = 2.5;
   const n = Math.max(3, Math.round(w / 9));
   for (let i = 0; i <= n; i++) {
@@ -115,7 +258,7 @@ function drawReja(ctx, x, y, w, h, style) {
   }
   if (style === 2) {
     // puntas de lanza arriba
-    ctx.fillStyle = '#1c1c1c';
+    ctx.fillStyle = color;
     for (let i = 0; i <= n; i++) {
       const xx = x + (w * i) / n;
       ctx.beginPath();
@@ -127,15 +270,47 @@ function drawReja(ctx, x, y, w, h, style) {
   }
 }
 
+const FRAMES = ['#e9e4da', '#d8d4cc', '#8a7a66', '#5a4636', '#b8bcc0'];
 function drawWindow(ctx, x, y, w, h, rng, reja = true) {
   record('window', x, y, w, h);
-  ctx.fillStyle = '#e9e4da';
+  const frame = rng.pick(FRAMES);
+  ctx.fillStyle = frame;
   ctx.fillRect(x - 3, y - 3, w + 6, h + 6);
-  const g = ctx.createLinearGradient(x, y, x + w, y + h);
-  g.addColorStop(0, '#39505e');
-  g.addColorStop(1, '#1d2830');
+  // vidrio oscuro con el cielo reflejado en diagonal
+  const g = ctx.createLinearGradient(x, y, x + w * 0.5, y + h);
+  g.addColorStop(0, '#4a6270');
+  g.addColorStop(0.45, '#27363f');
+  g.addColorStop(1, '#141b20');
   ctx.fillStyle = g;
   ctx.fillRect(x, y, w, h);
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x, y, w, h);
+  ctx.clip();
+  ctx.fillStyle = 'rgba(205,228,240,0.13)';
+  ctx.beginPath();
+  ctx.moveTo(x + w * 0.2, y);
+  ctx.lineTo(x + w * 0.5, y);
+  ctx.lineTo(x + w * 0.1, y + h);
+  ctx.lineTo(x - w * 0.2, y + h);
+  ctx.fill();
+  // cortinas
+  if (rng.chance(0.5)) {
+    const cc = rng.pick(['rgba(222,205,170,0.85)', 'rgba(190,170,210,0.8)', 'rgba(205,220,230,0.8)', 'rgba(228,190,170,0.85)', 'rgba(240,236,224,0.85)']);
+    const both = rng.chance(0.5);
+    for (const side of both ? [0, 1] : [rng.int(0, 1)]) {
+      const cw = w * rng.range(0.22, 0.4);
+      const cx = side ? x + w - cw : x;
+      ctx.fillStyle = cc;
+      ctx.fillRect(cx, y, cw, h);
+      ctx.fillStyle = 'rgba(0,0,0,0.12)';
+      for (let k = cx + 3; k < cx + cw; k += 6) ctx.fillRect(k, y, 2, h);
+    }
+  }
+  ctx.restore();
+  // hoja doble
+  ctx.fillStyle = frame;
+  ctx.fillRect(x + w / 2 - 1.5, y, 3, h);
   let ph = 0;
   if (rng.chance(0.5)) {
     // persiana de madera baja
@@ -150,6 +325,9 @@ function drawWindow(ctx, x, y, w, h, rng, reja = true) {
       ctx.stroke();
     }
   }
+  surf('paint', x - 3, y - 3, w + 6, h + 6);
+  surf('glass', x, y + ph, w, h - ph);
+  if (ctx === ACTX && rng.chance(0.3)) crack(ctx, rng.chance(0.5) ? x - 3 : x + w + 3, y + h + 3, rng.range(10, 26), rng);
   const style = rng.int(0, 2);
   if (reja) drawReja(ctx, x - 2, y - 2, w + 4, h + 4, style);
   if (EM && ph < h - 4 && rng.chance(0.42)) {
@@ -186,14 +364,24 @@ function spray(ctx, text, color, x, y, size, rng) {
   ctx.restore();
 }
 
-function drawCasa(ctx, x, y, rng) {
+function drawCasa(ctx, x, y, rng, finish = 'revoque') {
   const W = CELL_W;
   const H = CELL_H;
-  ctx.fillStyle = rng.pick(PLASTER);
-  ctx.fillRect(x, y, W, H);
-  // zócalo
-  ctx.fillStyle = rng.pick(['#8d8278', '#6f665e', '#9b8f7c', '#7a6a5a']);
-  ctx.fillRect(x, y + H - 16, W, 16);
+  if (finish === 'revoque') {
+    const base = rng.pick(PLASTER);
+    ctx.fillStyle = base;
+    ctx.fillRect(x, y, W, H);
+    if (CUR) CUR.base = base;
+  } else {
+    const base = brickWall(ctx, x, y, W, H, rng, finish);
+    if (CUR) CUR.base = finish === 'hueco' ? '#a7a39c' : base;
+  }
+  // zócalo (la casa sin revocar no tiene)
+  if (finish !== 'hueco') {
+    ctx.fillStyle = rng.pick(['#8d8278', '#6f665e', '#9b8f7c', '#7a6a5a']);
+    ctx.fillRect(x, y + H - 16, W, 16);
+    surf('paint', x, y + H - 16, W, 16);
+  }
   const hasGarage = rng.chance(0.45);
   let cursor = x + rng.range(18, 60);
   const items = [];
@@ -208,6 +396,7 @@ function drawCasa(ctx, x, y, rng) {
       ctx.fillStyle = rng.pick(['#3f4a52', '#5c4636', '#2f4f3a', '#6b6b6b', '#7a2a24']);
       ctx.fillRect(cursor, y + 22, w, H - 38);
       record('garage', cursor, y + 22, w, H - 38);
+      surf('metal', cursor, y + 22, w, H - 38);
       ctx.strokeStyle = 'rgba(0,0,0,0.35)';
       ctx.lineWidth = 2;
       for (let yy = y + 26; yy < y + H - 18; yy += 7) {
@@ -229,8 +418,10 @@ function drawCasa(ctx, x, y, rng) {
       ctx.fillStyle = rng.pick(['#4a3526', '#2e3b2e', '#3a3f45', '#6d4c33', '#1e2a38']);
       ctx.fillRect(cursor, y + 26, w, H - 42);
       record('door', cursor, y + 26, w, H - 42);
+      surf('paint', cursor, y + 26, w, H - 42);
       ctx.fillStyle = '#29343b';
       ctx.fillRect(cursor + 12, y + 34, w - 24, 26);
+      surf('glass', cursor + 12, y + 34, w - 24, 26);
       drawReja(ctx, cursor + 10, y + 32, w - 20, 30, 0);
       ctx.fillStyle = '#c9a227';
       ctx.fillRect(cursor + w - 10, y + 70, 5, 5);
@@ -251,24 +442,34 @@ function drawCasa(ctx, x, y, rng) {
   // medidor de luz y cables
   ctx.fillStyle = '#9ea4a8';
   ctx.fillRect(x + W - 40, y + 40, 18, 24);
+  surf('metal', x + W - 40, y + 40, 18, 24);
   ctx.strokeStyle = '#111';
   ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.moveTo(x + W - 31, y + 40);
   ctx.lineTo(x + W - 31, y);
   ctx.stroke();
+  if (finish === 'revoque') peel(ctx, x, y, W, H, rng, rng.chance(0.55) ? rng.int(1, 2) : 0);
+  if (finish !== 'hueco') damp(ctx, x, y, W, H, rng);
   stains(ctx, x, y, W, H, rng);
-  if (rng.chance(0.3)) {
+  if (rng.chance(finish === 'hueco' ? 0.5 : 0.3)) {
     const [t, c] = rng.pick(PINTADAS);
     spray(ctx, t, c, x + rng.range(10, 200), y + rng.range(20, 40), rng.int(16, 22), rng);
   }
 }
 
-function drawAlto(ctx, x, y, rng) {
+function drawAlto(ctx, x, y, rng, finish = 'revoque') {
   const W = CELL_W;
   const H = CELL_H;
-  ctx.fillStyle = rng.pick(PLASTER);
-  ctx.fillRect(x, y, W, H);
+  if (finish === 'revoque') {
+    const base = rng.pick(PLASTER);
+    ctx.fillStyle = base;
+    ctx.fillRect(x, y, W, H);
+    if (CUR) CUR.base = base;
+  } else {
+    brickWall(ctx, x, y, W, H, rng, finish);
+    if (CUR) CUR.base = '#a7a39c';
+  }
   const n = rng.int(1, 3);
   for (let i = 0; i < n; i++) {
     const wx = x + 40 + (i * (W - 80)) / n + rng.range(0, 20);
@@ -283,6 +484,7 @@ function drawAlto(ctx, x, y, rng) {
     // aire acondicionado
     ctx.fillStyle = '#e8e8e8';
     ctx.fillRect(x + W - 90, y + 30, 50, 30);
+    surf('metal', x + W - 90, y + 30, 50, 30);
     ctx.fillStyle = '#9e9e9e';
     ctx.beginPath();
     ctx.arc(x + W - 65, y + 45, 11, 0, Math.PI * 2);
@@ -291,6 +493,7 @@ function drawAlto(ctx, x, y, rng) {
   // parapeto de terraza
   ctx.fillStyle = 'rgba(255,255,255,0.35)';
   ctx.fillRect(x, y, W, 8);
+  if (finish === 'revoque') peel(ctx, x, y, W, H, rng, rng.chance(0.45) ? 1 : 0);
   stains(ctx, x, y, W, H, rng);
 }
 
@@ -299,8 +502,10 @@ const SIGN_COLORS = ['#c62828', '#1565c0', '#2e7d32', '#f9a825', '#6a1b9a', '#ef
 function drawLocal(ctx, x, y, rng, name) {
   const W = CELL_W;
   const H = CELL_H;
-  ctx.fillStyle = rng.pick(PLASTER);
+  const base = rng.pick(PLASTER);
+  ctx.fillStyle = base;
   ctx.fillRect(x, y, W, H);
+  if (CUR) CUR.base = base;
   // banda del cartel (el nombre va en un cartel 3D encima)
   const sc = rng.pick(SIGN_COLORS);
   ctx.fillStyle = sc;
@@ -332,6 +537,8 @@ function drawLocal(ctx, x, y, rng, name) {
   }
   ctx.fillStyle = '#8f969b';
   ctx.fillRect(vx, y + 42, vw, (H - 52) * up);
+  surf('metal', vx, y + 42, vw, (H - 52) * up);
+  surf('glass', vx, y + 42 + (H - 52) * up, vw, (H - 52) * (1 - up));
   ctx.strokeStyle = 'rgba(0,0,0,0.25)';
   ctx.lineWidth = 1;
   for (let yy = y + 45; yy < y + 42 + (H - 52) * up; yy += 5) {
@@ -353,8 +560,10 @@ function drawLocal(ctx, x, y, rng, name) {
 function drawEdificio(ctx, x, y, rng) {
   const W = CELL_W;
   const H = CELL_H;
-  ctx.fillStyle = rng.pick(['#b8b2a7', '#a39b8e', '#c9c1b3', '#9aa4a8', '#b59a86', '#d0c6b0']);
+  const base = rng.pick(['#b8b2a7', '#a39b8e', '#c9c1b3', '#9aa4a8', '#b59a86', '#d0c6b0']);
+  ctx.fillStyle = base;
   ctx.fillRect(x, y, W, H);
+  if (CUR) CUR.base = base;
   const n = 4;
   for (let i = 0; i < n; i++) {
     const wx = x + 18 + i * (W / n);
@@ -384,6 +593,7 @@ function drawEntrada(ctx, x, y, rng) {
   ctx.fillStyle = '#20262b';
   ctx.fillRect(x + 190, y + 20, 130, CELL_H - 30);
   record('door', x + 190, y + 20, 130, CELL_H - 30);
+  surf('glass', x + 190, y + 20, 130, CELL_H - 30);
   drawReja(ctx, x + 190, y + 20, 130, CELL_H - 30, 1);
   if (EM) {
     EM.fillStyle = '#c8a870';
@@ -398,8 +608,10 @@ function drawEntrada(ctx, x, y, rng) {
 function drawMedianera(ctx, x, y, rng, pintada) {
   const W = CELL_W;
   const H = CELL_H;
-  ctx.fillStyle = rng.pick(['#cfc6b6', '#bdb4a5', '#d8d0c2', '#b9ae9b', '#c8c0b4']);
+  const base = rng.pick(['#cfc6b6', '#bdb4a5', '#d8d0c2', '#b9ae9b', '#c8c0b4']);
+  ctx.fillStyle = base;
   ctx.fillRect(x, y, W, H);
+  if (CUR) CUR.base = base;
   // revoque saltado (poco, para que no parezca empapelado)
   const holes = rng.int(0, 2);
   for (let i = 0; i < holes; i++) {
@@ -486,6 +698,7 @@ function drawEstacion(ctx, x, y, rng, upper) {
     ctx.lineTo(wx + ww, bot);
     ctx.fill();
     record(upper || k % 2 ? 'window' : 'door', wx, top, ww, bot - top);
+    surf(upper || k % 2 ? 'glass' : 'paint', wx, top + ww / 2, ww, bot - top - ww / 2);
     if (EM && rng.chance(0.6)) {
       EM.fillStyle = '#d8b070';
       EM.fillRect(wx + 4, top + ww / 2, ww - 8, bot - top - ww / 2);
@@ -517,7 +730,9 @@ function drawGalpon(ctx, x, y, rng) {
   const chapa = rng.chance(0.5);
   ctx.fillStyle = chapa ? rng.pick(['#8e969b', '#7f8a8f', '#a0a4a6']) : rng.pick(['#cfc6b6', '#bdb4a5']);
   ctx.fillRect(x, y, W, H);
+  if (CUR) CUR.base = ctx.fillStyle;
   if (chapa) {
+    surf('metal', x, y, W, H);
     for (let k = 0; k < W; k += 8) {
       ctx.fillStyle = 'rgba(0,0,0,0.18)';
       ctx.fillRect(x + k, y, 3, H);
@@ -528,6 +743,7 @@ function drawGalpon(ctx, x, y, rng) {
   ctx.fillStyle = rng.pick(['#3f4a52', '#5c4636', '#2f4f3a', '#6b6b6b']);
   ctx.fillRect(px, y + 20, 180, H - 20);
   record('garage', px, y + 20, 180, H - 20);
+  surf('metal', px, y + 20, 180, H - 20);
   for (let yy = y + 26; yy < y + H; yy += 8) {
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
     ctx.fillRect(px, yy, 180, 2);
@@ -553,27 +769,72 @@ function drawEscuela(ctx, x, y, rng) {
   stains(ctx, x, y, W, H, rng);
 }
 
+// Grano fino y manchones grandes de pintura despareja sobre todo el lienzo.
+function grain(ctx, w, h, rng) {
+  const img = ctx.getImageData(0, 0, w, h);
+  const d = img.data;
+  const S = 40;
+  const gw = Math.ceil(w / S) + 2;
+  const gh = Math.ceil(h / S) + 2;
+  const lat = new Float32Array(gw * gh);
+  for (let i = 0; i < lat.length; i++) lat[i] = rng.range(-1, 1);
+  for (let y = 0; y < h; y++) {
+    const gy = y / S;
+    const y0 = Math.floor(gy);
+    let fy = gy - y0;
+    fy = fy * fy * (3 - 2 * fy);
+    for (let x = 0; x < w; x++) {
+      const gx = x / S;
+      const x0 = Math.floor(gx);
+      let fx = gx - x0;
+      fx = fx * fx * (3 - 2 * fx);
+      const a = lat[y0 * gw + x0];
+      const b = lat[y0 * gw + x0 + 1];
+      const c = lat[(y0 + 1) * gw + x0];
+      const e = lat[(y0 + 1) * gw + x0 + 1];
+      const blot = a + (b - a) * fx + (c - a) * fy + (a - b - c + e) * fx * fy;
+      const k = 1 + blot * 0.05 + (Math.random() - 0.5) * 0.07;
+      const i = (y * w + x) * 4;
+      d[i] = Math.min(255, d[i] * k);
+      d[i + 1] = Math.min(255, d[i + 1] * k);
+      d[i + 2] = Math.min(255, d[i + 2] * k);
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+let ACTX = null;
 export function buildAtlas() {
   const c = canvas(CELL_W * COLS, CELL_H * ROWS);
-  const ctx = c.getContext('2d');
+  const ctx = c.getContext('2d', { willReadFrequently: true });
+  ACTX = ctx;
   const ec = canvas(CELL_W * COLS, CELL_H * ROWS);
   EM = ec.getContext('2d');
   EM.fillStyle = '#000000';
   EM.fillRect(0, 0, ec.width, ec.height);
+  const oc = canvas(CELL_W * COLS, CELL_H * ROWS);
+  OR = oc.getContext('2d');
+  OR.fillStyle = SURF.wall;
+  OR.fillRect(0, 0, oc.width, oc.height);
   const rng = new Rng(77);
   let i = 0;
   const at = (fn) => {
     const col = i % COLS;
     const row = Math.floor(i / COLS);
-    CUR = { ox: col * CELL_W, oy: row * CELL_H, list: [] };
+    CUR = { ox: col * CELL_W, oy: row * CELL_H, list: [], base: null };
     fn(col * CELL_W, row * CELL_H);
     const r = uvRect(i++);
     r.open = CUR.list;
+    r.base = CUR.base;
     CUR = null;
     return r;
   };
+  // casas: revocadas, de ladrillo a la vista y sin revocar
   for (let k = 0; k < 16; k++) ATLAS.casa.push(at((x, y) => drawCasa(ctx, x, y, rng)));
+  for (let k = 0; k < 4; k++) ATLAS.casa.push(at((x, y) => drawCasa(ctx, x, y, rng, 'visto')));
+  for (let k = 0; k < 3; k++) ATLAS.casa.push(at((x, y) => drawCasa(ctx, x, y, rng, 'hueco')));
   for (let k = 0; k < 6; k++) ATLAS.alto.push(at((x, y) => drawAlto(ctx, x, y, rng)));
+  for (let k = 0; k < 2; k++) ATLAS.alto.push(at((x, y) => drawAlto(ctx, x, y, rng, 'hueco')));
   for (let k = 0; k < 8; k++) ATLAS.local.push(at((x, y) => drawLocal(ctx, x, y, rng, null)));
   ATLAS.estacion.push(at((x, y) => drawEstacion(ctx, x, y, rng, false)));
   ATLAS.estacion.push(at((x, y) => drawEstacion(ctx, x, y, rng, true)));
@@ -587,11 +848,19 @@ export function buildAtlas() {
   for (let k = 0; k < 4; k++) ATLAS.pintada.push(at((x, y) => drawMedianera(ctx, x, y, rng, PINTADAS[k * 2 % PINTADAS.length])));
   ATLAS.ladrillo.push(at((x, y) => drawLadrillo(ctx, x, y, rng)));
   if (i > COLS * ROWS) console.warn('Atlas lleno', i);
+  // el relieve sale del dibujo limpio; el grano va después para que no quede todo granulado
+  const normal = normalMapFrom(c, 2.2);
+  grain(ctx, c.width, c.height, rng);
   const t = tex(c);
   t.generateMipmaps = true;
   const e = tex(ec);
+  const orm = new THREE.CanvasTexture(oc);
+  orm.colorSpace = THREE.NoColorSpace;
+  orm.anisotropy = 4;
   EM = null;
-  return { map: t, emissive: e, normal: normalMapFrom(c, 2.2) };
+  OR = null;
+  ACTX = null;
+  return { map: t, emissive: e, normal, orm };
 }
 
 // Normal map a partir del brillo de un lienzo (lo oscuro se hunde): da relieve con la luz.
@@ -741,6 +1010,204 @@ export function brickTexture() {
   }
   noise(g, 256, 256, rng, 2500, 0.07);
   return tex(c, true);
+}
+
+// ---------- Techos (repetibles; cada textura cubre ROOF_M[tipo] metros) ----------
+export const ROOF_M = { membrana: 4, ceramica: 2, losa: 5, chapa: 3, tejas: 2 };
+
+// para que las manchas grandes no corten en el borde de la textura: se dibujan tres veces corridas
+function wrapBlob(g, S, fn) {
+  for (const ox of [-S, 0, S]) for (const oy of [-S, 0, S]) fn(ox, oy);
+}
+
+export function roofTexture(kind) {
+  const S = 512;
+  const c = canvas(S, S);
+  const g = c.getContext('2d');
+  const rng = new Rng(kind.length * 131 + 7);
+  let bump = 2;
+  if (kind === 'membrana') {
+    // membrana con aluminio: rollos de 1 m solapados, parches y mugre
+    g.fillStyle = '#c3c6c7';
+    g.fillRect(0, 0, S, S);
+    const roll = S / 4;
+    for (let k = 0; k < 4; k++) {
+      const v = rng.range(-10, 10);
+      g.fillStyle = `rgb(${190 + v},${193 + v},${195 + v})`;
+      g.fillRect(0, k * roll, S, roll);
+      g.fillStyle = 'rgba(0,0,0,0.28)';
+      g.fillRect(0, k * roll, S, 3);
+      g.fillStyle = 'rgba(255,255,255,0.35)';
+      g.fillRect(0, k * roll + 3, S, 2);
+      // arrugas del rollo
+      for (let i = 0; i < 18; i++) {
+        g.fillStyle = `rgba(0,0,0,${rng.range(0.04, 0.1)})`;
+        g.fillRect(rng.range(0, S), k * roll + rng.range(6, roll - 6), rng.range(20, 90), 2);
+      }
+    }
+    // un par de parches de membrana nueva (más oscura) y manchas de agua estancada
+    for (let i = 0; i < 2; i++) {
+      const x = rng.range(40, S - 160);
+      const y = rng.range(40, S - 120);
+      g.save();
+      g.translate(x, y);
+      g.rotate(rng.range(-0.3, 0.3));
+      g.fillStyle = `rgba(95,96,96,${rng.range(0.18, 0.3)})`;
+      g.fillRect(0, 0, rng.range(70, 140), rng.range(50, 100));
+      g.restore();
+    }
+    for (let i = 0; i < 7; i++) {
+      const x = rng.range(0, S);
+      const y = rng.range(0, S);
+      const r = rng.range(60, 170);
+      wrapBlob(g, S, (ox, oy) => {
+        const gr = g.createRadialGradient(x + ox, y + oy, 0, x + ox, y + oy, r);
+        gr.addColorStop(0, 'rgba(80,72,60,0.22)');
+        gr.addColorStop(1, 'rgba(80,72,60,0)');
+        g.fillStyle = gr;
+        g.fillRect(x + ox - r, y + oy - r, r * 2, r * 2);
+      });
+    }
+    bump = 1.4;
+  } else if (kind === 'ceramica') {
+    // baldosas cerámicas de 20 cm con pastina, algunas cambiadas y con verdín
+    g.fillStyle = '#b9ad9c';
+    g.fillRect(0, 0, S, S);
+    const n = 10;
+    const t = S / n;
+    for (let y = 0; y < n; y++) {
+      for (let x = 0; x < n; x++) {
+        const v = rng.range(-18, 18);
+        const odd = rng.chance(0.04);
+        g.fillStyle = odd ? `rgb(${150 + v},${120 + v},${95 + v})` : `rgb(${176 + v},${84 + v * 0.6},${56 + v * 0.4})`;
+        g.fillRect(x * t + 2, y * t + 2, t - 4, t - 4);
+        g.fillStyle = 'rgba(255,255,255,0.08)';
+        g.fillRect(x * t + 3, y * t + 3, t - 8, 3);
+      }
+    }
+    for (let i = 0; i < 7; i++) {
+      const x = rng.range(0, S);
+      const y = rng.range(0, S);
+      const r = rng.range(20, 70);
+      wrapBlob(g, S, (ox, oy) => {
+        const gr = g.createRadialGradient(x + ox, y + oy, 0, x + ox, y + oy, r);
+        gr.addColorStop(0, 'rgba(60,70,40,0.3)');
+        gr.addColorStop(1, 'rgba(60,70,40,0)');
+        g.fillStyle = gr;
+        g.fillRect(x + ox - r, y + oy - r, r * 2, r * 2);
+      });
+    }
+    bump = 2.4;
+  } else if (kind === 'losa') {
+    // losa de hormigón: manchas de agua, rajaduras y alguna reparación
+    g.fillStyle = '#a19d96';
+    g.fillRect(0, 0, S, S);
+    for (let i = 0; i < 16; i++) {
+      const x = rng.range(0, S);
+      const y = rng.range(0, S);
+      const r = rng.range(25, 120);
+      wrapBlob(g, S, (ox, oy) => {
+        const gr = g.createRadialGradient(x + ox, y + oy, r * 0.6, x + ox, y + oy, r);
+        gr.addColorStop(0, 'rgba(70,68,62,0.18)');
+        gr.addColorStop(0.9, 'rgba(50,48,44,0.28)');
+        gr.addColorStop(1, 'rgba(50,48,44,0)');
+        g.fillStyle = gr;
+        g.fillRect(x + ox - r, y + oy - r, r * 2, r * 2);
+      });
+    }
+    g.strokeStyle = 'rgba(45,40,36,0.5)';
+    g.lineWidth = 1.2;
+    for (let i = 0; i < 6; i++) {
+      let x = rng.range(0, S);
+      let y = rng.range(0, S);
+      g.beginPath();
+      g.moveTo(x, y);
+      for (let k = 0; k < 8; k++) {
+        x += rng.range(-18, 18);
+        y += rng.range(-18, 18);
+        g.lineTo(x, y);
+      }
+      g.stroke();
+    }
+    noise(g, S, S, rng, 6000, 0.06);
+    bump = 1.8;
+  } else if (kind === 'chapa') {
+    // chapa acanalada galvanizada, con óxido
+    const n = 20;
+    const t = S / n;
+    for (let k = 0; k < n; k++) {
+      const gr = g.createLinearGradient(k * t, 0, (k + 1) * t, 0);
+      gr.addColorStop(0, '#7d8589');
+      gr.addColorStop(0.5, '#c4cacc');
+      gr.addColorStop(1, '#7d8589');
+      g.fillStyle = gr;
+      g.fillRect(k * t, 0, t, S);
+    }
+    for (let i = 0; i < 9; i++) {
+      const x = rng.range(0, S);
+      const y = rng.range(0, S);
+      const r = rng.range(20, 90);
+      wrapBlob(g, S, (ox, oy) => {
+        const gr = g.createRadialGradient(x + ox, y + oy, 0, x + ox, y + oy, r);
+        gr.addColorStop(0, 'rgba(140,70,30,0.55)');
+        gr.addColorStop(1, 'rgba(140,70,30,0)');
+        g.fillStyle = gr;
+        g.fillRect(x + ox - r, y + oy - r, r * 2, r * 2);
+      });
+    }
+    // solapes de chapa y tornillos
+    g.fillStyle = 'rgba(0,0,0,0.3)';
+    g.fillRect(0, S / 2, S, 3);
+    g.fillRect(0, 0, S, 2);
+    bump = 3;
+  } else {
+    // tejas coloniales: hileras de medias cañas que se solapan
+    g.fillStyle = '#6e3322';
+    g.fillRect(0, 0, S, S);
+    const cols = 12;
+    const rows = 8;
+    const tw = S / cols;
+    const th = S / rows;
+    for (let r = 0; r < rows; r++) {
+      for (let k = 0; k < cols; k++) {
+        const v = rng.range(-20, 20);
+        const x = k * tw + (r % 2 ? tw / 2 : 0);
+        const gr = g.createLinearGradient(x, 0, x + tw, 0);
+        gr.addColorStop(0, `rgb(${120 + v},${52 + v * 0.5},${34 + v * 0.3})`);
+        gr.addColorStop(0.45, `rgb(${196 + v},${98 + v * 0.5},${62 + v * 0.3})`);
+        gr.addColorStop(1, `rgb(${110 + v},${48 + v * 0.5},${30 + v * 0.3})`);
+        g.fillStyle = gr;
+        for (const ox of [0, -S]) g.fillRect(x + ox + 1, r * th, tw - 2, th + 4);
+        g.fillStyle = 'rgba(30,10,5,0.45)';
+        for (const ox of [0, -S]) g.fillRect(x + ox + 1, r * th + th - 3, tw - 2, 5);
+      }
+    }
+    for (let i = 0; i < 8; i++) {
+      const x = rng.range(0, S);
+      const y = rng.range(0, S);
+      const r = rng.range(20, 70);
+      wrapBlob(g, S, (ox, oy) => {
+        const gr = g.createRadialGradient(x + ox, y + oy, 0, x + ox, y + oy, r);
+        gr.addColorStop(0, 'rgba(50,55,40,0.35)');
+        gr.addColorStop(1, 'rgba(50,55,40,0)');
+        g.fillStyle = gr;
+        g.fillRect(x + ox - r, y + oy - r, r * 2, r * 2);
+      });
+    }
+    bump = 3;
+  }
+  // las tejas se giran: las canaletas tienen que bajar por la pendiente (la U del techo)
+  let out = c;
+  if (kind === 'tejas') {
+    out = canvas(S, S);
+    const g2 = out.getContext('2d');
+    g2.translate(S, 0);
+    g2.rotate(Math.PI / 2);
+    g2.drawImage(c, 0, 0);
+  }
+  const map = tex(out, true);
+  map.anisotropy = 8;
+  return { map, normal: normalMapFrom(out, bump, true) };
 }
 
 // ---------- Texturas repetibles ----------
