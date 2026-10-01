@@ -459,7 +459,7 @@ export class BlobShadows {
     scene.add(this.inst);
   }
   update(world, heightAt) {
-    const { npcs, traffic, player, events } = world;
+    const { npcs, traffic, player } = world;
     let n = 0;
     const put = (x, z, sx, sz, rot, y) => {
       if (n >= this.max) return;
@@ -470,13 +470,7 @@ export class BlobShadows {
     for (const nn of npcs.list) if (nn.knockT <= 0 && nn.mesh.visible && near(nn.x, nn.z)) put(nn.x, nn.z, 1, 1, 0);
     for (const v of traffic.all()) if (near(v.x, v.z)) put(v.x, v.z, v.W + 0.9, v.L + 0.8, v.heading, 0);
     if (player.vehicle) put(player.vehicle.x, player.vehicle.z, player.vehicle.W + 0.9, player.vehicle.L + 0.8, player.vehicle.heading, 0);
-    for (const e of events.list) {
-      if (!near(e.x, e.z, 70)) continue;
-      for (const p of e.people) {
-        const wp = p.h.root.getWorldPosition(v3);
-        put(wp.x, wp.z, 1, 1, 0, 0);
-      }
-    }
+    // (los manifestantes de cortes y marchas están en npcs.list)
     this.inst.count = n;
     this.inst.instanceMatrix.needsUpdate = true;
   }

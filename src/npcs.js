@@ -439,8 +439,10 @@ export class Npcs {
     let next;
     if (n.type === 'zombie') next = 'fight';
     else if (n.type === 'trapito') next = gun ? 'flee' : R.chance(0.7) ? 'fight' : 'flee';
-    else if (n.type === 'vecino') next = !gun && R.chance(n.brave) ? 'fight' : 'flee';
+    else if (n.type === 'vecino' || n.type === 'piquetero') next = !gun && R.chance(n.brave) ? 'fight' : 'flee';
     else next = 'flee';
+    // a un manifestante no se le pega gratis: los compañeros salen a defenderlo
+    if (n.type === 'piquetero' && !gun) w?.events?.rally(n, w);
     if (n.state === 'down') n.after = next;
     else this.setState(n, next, w?.player);
     if (next === 'fight' && !n.bubble) n.say(R.pick(LINES.pelea), 2);
@@ -466,7 +468,7 @@ export class Npcs {
       if (n.down || n.type === 'cana' || n.state === 'fight') continue;
       const d = Math.hypot(n.x - x, n.z - z);
       if (d > r) continue;
-      if (n.type === 'mendigo' || n.type === 'medias' || n.type === 'trapito' || n.type === 'vecino') {
+      if (n.type === 'mendigo' || n.type === 'medias' || n.type === 'trapito' || n.type === 'vecino' || n.type === 'piquetero') {
         if (n.state === 'flee' || n.state === 'cower') {
           n.fleeT = Math.max(n.fleeT || 0, 6);
           continue;
@@ -520,7 +522,7 @@ export class Npcs {
         n.knockT -= dt;
         if (n.knockT <= 0) {
           n.getupT = 0.6;
-          n.state = n.after || (n.type === 'mendigo' ? 'sit' : n.type === 'cana' ? 'chase' : n.home ? 'idle' : 'walk');
+          n.state = n.after || (n.type === 'mendigo' ? 'sit' : n.type === 'cana' ? 'chase' : n.ev && !n.ev.leaving ? 'protest' : n.home ? 'idle' : 'walk');
           n.after = null;
           if (n.state === 'walk') this.attach(n);
           if (n.state === 'flee') this.setState(n, 'flee', player);
@@ -538,7 +540,20 @@ export class Npcs {
       }
       let pose = 'walk';
       let want = 0;
-      if (n.state === 'flee') {
+      let anim = null;
+      if (n.state === 'protest' && !n.ev) n.state = 'walk';
+      if (n.state === 'protest') {
+        // en un corte o una marcha: su lugar en el grupo (ver Events.protestBrain)
+        const r = world.events.protestBrain(n, dt);
+        want = r.want;
+        pose = r.pose;
+        anim = r.anim ?? null;
+        if (player.aiming && dp < 12 && this.inSights(player, n)) {
+          pose = 'handsup';
+          want = 0;
+          if (!n.bubble) n.say(R.pick(['¡No tirés!', '¡Estamos reclamando!', '¡Tranqui, loco!']), 2);
+        }
+      } else if (n.state === 'flee') {
         // correr lejos de la amenaza
         n.fleeT -= dt;
         const ax = n.x - n.from.x;
@@ -548,7 +563,8 @@ export class Npcs {
         want = n.type === 'mendigo' ? 3.2 : 5.2;
         pose = 'flee';
         if (n.fleeT <= 0) {
-          if (n.type === 'vecino' || n.type === 'zombie') {
+          if (n.ev && !n.ev.leaving) n.state = 'protest';
+          else if (n.type === 'vecino' || n.type === 'zombie' || n.type === 'piquetero') {
             n.state = 'walk';
             this.attach(n);
           } else if (n.type === 'mendigo') {
@@ -663,7 +679,7 @@ export class Npcs {
         }
       }
       if (want > 0 && n.target) {
-        if (dp < 40 && n.state !== 'fight' && n.type !== 'cana') this.avoidance(n, near, dt);
+        if (dp < 40 && n.state !== 'fight' && n.state !== 'protest' && n.type !== 'cana') this.avoidance(n, near, dt);
         else n.avoid = 0;
         this.steer(n, dt, want);
       } else if (n.speed > 0) {
@@ -680,7 +696,7 @@ export class Npcs {
         n.x = p.x;
         n.z = p.z;
       }
-      if (!far) animateHuman(n.h, dt, n.speed, pose, t, dp < 30 && !n.act ? this.lifeLook(n, dt, player, dp) : null);
+      if (!far) animateHuman(n.h, dt, anim ?? n.speed, pose, t, dp < 30 && !n.act ? this.lifeLook(n, dt, player, dp) : null);
       this.place(n);
     }
     this.list = this.list.filter((n) => {
@@ -778,7 +794,7 @@ export class Npcs {
     const { player } = world;
     n.fightT -= dt;
     if (n.fightT <= 0 || dp > 28 || player.dead) {
-      n.state = n.type === 'trapito' || n.type === 'medias' ? 'idle' : 'walk';
+      n.state = n.type === 'trapito' || n.type === 'medias' ? 'idle' : n.ev && !n.ev.leaving ? 'protest' : 'walk';
       if (n.state === 'walk') this.attach(n);
       return 0;
     }

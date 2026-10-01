@@ -191,7 +191,7 @@ const nav = new Nav(traffic.graph);
 const npcs = new Npcs(scene, city, traffic.graph, heightAt, audio);
 npcs.populate(player);
 const crime = new Crime(scene, traffic, city.colliders, audio);
-const events = new Events(scene, traffic, audio);
+const events = new Events(scene, traffic, audio, npcs);
 const trains = new Trains(scene, audio);
 glows = new Glows(scene, city);
 buildProps(scene, city);

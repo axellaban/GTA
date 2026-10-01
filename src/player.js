@@ -908,9 +908,16 @@ export class Player {
         }
       }
     }
-    // cortes y marchas: no se pasa
+    // cortes y marchas: despacio no se pasa (te golpean el capot); a toda velocidad se rompe el corte
     const ev = events.inside(v.x + v.fx * v.L * 0.5, v.z + v.fz * v.L * 0.5, 0.3);
-    if (ev) {
+    if (ev && (this.breakEv === ev || Math.abs(v.speed) > 9)) {
+      if (this.breakEv !== ev) {
+        this.breakEv = ev;
+        hud.flash('¡ROMPISTE EL CORTE!', `Pasaste por arriba de ${ev.type === 'marcha' ? 'la marcha' : 'el corte'} en ${ev.label}`, 'warn');
+        police.crime('atropello', v.x, v.z);
+        effects.shake += 0.3;
+      }
+    } else if (ev) {
       v.x -= v.fx * Math.max(0.5, Math.abs(v.speed) * dt * 2);
       v.z -= v.fz * Math.max(0.5, Math.abs(v.speed) * dt * 2);
       if (Math.abs(v.speed) > 1.5) {
@@ -924,6 +931,12 @@ export class Player {
       }
       v.vx = v.vz = 0;
       v.speed = 0;
+    }
+    if (!ev) this.breakEv = null;
+    // el pasacalles se cae si lo lleva puesto el auto
+    if (Math.abs(v.speed) > 2 && events.list.length) {
+      const s = Math.sign(v.speed);
+      for (const c of v.circles()) events.knock(c.x, c.z, c.r, v.fx * s, v.fz * s);
     }
     this.noPasaT = (this.noPasaT || 0) - dt;
     if (bump > 2) {
@@ -964,7 +977,8 @@ export class Player {
         const oz = n.z - v.z;
         const ahead = ox * v.fx + oz * v.fz;
         if (ahead < 2 || ahead > 16 || Math.abs(ox * v.fz - oz * v.fx) > 3) continue;
-        if (Math.random() < 0.7) {
+        // los del corte se plantan: casi ninguno se corre
+        if (Math.random() < (n.state === 'protest' ? 0.12 : 0.7)) {
           npcs.setState(n, 'flee', { x: v.x, z: v.z });
           n.fleeT = 1.6;
           const side = ox * v.fz - oz * v.fx >= 0 ? 1 : -1;

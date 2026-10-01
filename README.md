@@ -16,7 +16,7 @@ Jugás con **Gaspi** (saco, camisa blanca, corbata a rayas rojas y blancas).
 - **Motochorros**: aparecen cada un rato, te apuran y te piden el celu. Podés dárselo, resistirte (sale bien a veces) o salir corriendo. Si se lo llevan, perseguilos con un auto y volteálos para recuperarlo.
 - **Gente pidiendo** en la vereda (E para darles $500, suma respeto).
 - **Perdidos que deambulan** medio zombies: se te pegan y te frenan; de noche hay más.
-- **Cortes de calle y marchas** (lo central): cortes con gomas quemándose, pasacalles, bombos y gente que no te deja pasar con el auto. Las marchas avanzan por las avenidas. El tránsito se traba, toca bocina y pega la vuelta. Todo sale en el zócalo de noticias.
+- **Cortes de calle y marchas** (lo central): cortes con gomas quemándose, pasacalles, bombos y gente que no te deja pasar con el auto (despacio te golpean el capot; a toda velocidad rompés el corte, pisás a los que no se corren y suben las estrellas). A los manifestantes se les puede pegar y tirar como a cualquiera, y los compañeros salen a defenderlos. El pasacalles se cae si lo choca un auto, lo patean o le cae una explosión; la bandera de la marcha se viene abajo si voltean a uno de los que la llevan. Las marchas avanzan por las avenidas. El tránsito se traba, toca bocina y pega la vuelta. Todo sale en el zócalo de noticias.
 - Tránsito con IA, colectivos, perros que persiguen motos, ciclo de día y noche con faroles de sodio, minimapa, plata, salud y respeto.
 
 ## Gráficos (0.2)

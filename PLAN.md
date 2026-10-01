@@ -78,11 +78,14 @@ Marcas: ⬜ pendiente · 🔶 en curso · ✅ hecho (anotar commit). Cada ítem 
 sube a `main` apenas anda, así si se corta la sesión otra IA sigue desde acá.
 
 **R1 — Lo que reportó el dueño desde el celu (prioridad máxima)**
-- ⬜ Luces demasiado fuertes en el celu: bajar el bloom de noche/atardecer (`setMood` en
-  `src/post.js`), el brillo de los neones, los halos de faroles y faros (`src/glow.js`) y el fuego de
-  los cortes (`src/events.js`).
-- ⬜ Piqueteros y marcha: que se les pueda pegar, tirar y pisar con el auto (hoy son `ev.people`, fuera
-  de `npcs.list`); el cartel se cae si lo chocan; un auto rápido rompe el corte (y suma estrellas).
+- ✅ Luces demasiado fuertes en el celu (5053e46): menos bloom de noche (`setMood` en `src/post.js`),
+  neón, carteles, halos de faroles y faros (`src/glow.js`), exposición nocturna y fuego de los cortes.
+  Falta que el dueño confirme en el celu.
+- ✅ Piqueteros y marcha: ahora son `Npc` de tipo `piquetero` en `npcs.list` (estado `protest`, su lugar lo
+  da `Events.protestBrain`/`slot`): piñas, tiros y atropellos como cualquiera; los compañeros salen a
+  pelear (`rally`); al terminar quedan como vecinos (`release`). Pasacalles que se caen (`knock`,
+  `dropBanner`; lo llaman el auto en `drive`, `meleeHit` y `explode`). A más de 9 m/s el auto rompe el
+  corte (`breakEv` en `src/player.js`).
 
 **R2 — Gym El Kaiser en su dirección real: Rivadavia 321** (confirmada en el Instagram/Facebook
 oficiales). Punto ≈ (414, 10), vereda impar. En `src/gym.js` está `ADDRESS` + `findAddressLot`, pero

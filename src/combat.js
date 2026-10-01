@@ -214,6 +214,8 @@ export class Combat {
     return best;
   }
   meleeHit(P, world, a) {
+    // una patada o un palazo al pasacalles del corte lo tira abajo
+    world.events?.knock(P.x + Math.sin(P.heading) * 0.8, P.z + Math.cos(P.heading) * 0.8, a.reach * 0.6, Math.sin(P.heading), Math.cos(P.heading));
     const t = this.meleeTarget(P, world, a.reach + 0.35);
     if (!t || t.cos < 0.35) return;
     const fx = Math.sin(P.heading);
@@ -846,6 +848,7 @@ export class Combat {
       }
     }
     for (const m of world.crime.motos) if (m.state !== 'down' && Math.hypot(m.v.x - x, m.v.z - z) < 7) world.crime.knockDown(m, world);
+    world.events?.knock(x, z, 7);
     world.npcs.panic(x, z, 70);
     if (byPlayer) world.police.crime('explosion', x, z);
     world.social?.('boom', x, z);
