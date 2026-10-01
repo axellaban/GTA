@@ -102,7 +102,7 @@ function findLot(colliders) {
 // lo que randomCivilian sortea y pisaría la musculosa (o el cuero): camisetas, buzos, gorras
 const CLEAN = { jersey: null, hood: null, jacket: null, tie: null, police: false, longSleeves: false, cap: null, hat: null, helmet: null };
 
-const LINES = ['¡Vamos que se puede!', '¡Una más, una más!', '¿Venís a entrenar, Gaspi? La primera es gratis', '¡Esto es El Kaiser, papá!', 'Sin dolor no hay gloria', '¡Arriba ese pecho!', 'Hoy es día de pierna'];
+const LINES = ['¡Vamos, chicas, una más!', '¿Qué mirás, Gaspi? Vení a entrenar', '¡Vamos que se puede!', '¡Una más, una más!', '¿Venís a entrenar, Gaspi? La primera es gratis', '¡Esto es El Kaiser, papá!', 'Sin dolor no hay gloria', '¡Arriba ese pecho!', 'Hoy es día de pierna'];
 
 export class Gym {
   constructor(scene, colliders, npcs, heightAt) {
@@ -194,7 +194,12 @@ export class Gym {
       { lx: -3.2, lz: -1.9, ex: 'pullup', shirt: 0x151515 },
       { lx: 0, lz: -0.6, ex: 'squat', shirt: 0xc0282d, bar: true },
       { lx: 3.2, lz: -0.6, ex: 'press', shirt: 0xf2c21a, bar: true },
-      { lx: -1.8, lz: 1.8, ex: 'press', shirt: 0x222222, bar: true, female: true },
+      { lx: -1.8, lz: 1.8, ex: 'press', shirt: 0x222222, bar: true, female: true, pants: 0xd81b60, hair: 0x1a1a1a },
+      // las chicas fit del box
+      { lx: 1.6, lz: 0.9, ex: 'squat', shirt: 0xf48fb1, bar: true, female: true, pants: 0x151515, hair: 0xc9a15a, hairStyle: 'ponytail' },
+      { lx: -4.3, lz: 0.2, ex: 'press', shirt: 0x26c6da, bar: true, female: true, pants: 0x37474f, hair: 0x3b2418, hairStyle: 'bun' },
+      { lx: 4.4, lz: 1.2, ex: 'squat', shirt: 0xffffff, bar: true, female: true, pants: 0x6a1b9a, hair: 0x2b1d14, hairStyle: 'ponytail' },
+      { lx: 0, lz: -2.3, ex: 'pullup', shirt: 0x151515, female: true, pants: 0xef6c00, hair: 0x8a3a1a, hairStyle: 'ponytail' },
       { lx: 2.2, lz: 2.4, ex: null, shirt: 0x151515, kaiser: true },
       // Ciro, el profe: en cuero, el doble de grande que cualquiera y con ganas de pelear
       { lx: -0.5, lz: 3.2, ex: null, ciro: true },
@@ -208,12 +213,15 @@ export class Gym {
       ...randomCivilian(),
       ...CLEAN,
       female: !!s.female,
-      muscle: true,
+      muscle: !s.female,
+      fit: !!s.female,
       top: 'tank',
       shirt: s.shirt,
       bottom: s.female ? 'leggings' : 'shorts',
-      hairStyle: s.female ? 'ponytail' : R.pick(['buzz', 'bald', 'short']),
-      lipstick: false,
+      hairStyle: s.hairStyle ?? (s.female ? 'ponytail' : R.pick(['buzz', 'bald', 'short'])),
+      ...(s.hair ? { hair: s.hair } : {}),
+      ...(s.pants ? { pants: s.pants } : {}),
+      lipstick: !!s.female,
       glasses: false,
       scale: s.kaiser ? 1.12 : 1.04,
     };

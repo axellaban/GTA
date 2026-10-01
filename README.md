@@ -173,6 +173,8 @@ Ocho rampas amarillas con franjas negras en calles largas. Si entrás rápido (m
 
 Box de CrossFit a unos 70 m de la estación (cuadrado amarillo en el mapa): galpón negro con el portón levantado, el cartel del lobo arriba y el mismo logo en la pared del fondo, racks rojos, discos, cajones y kettlebells. Adentro entrenan los musculosos (dominadas, sentadilla y press) y El Kaiser te recibe en la puerta. Si les pegás, se defienden, y aguantan más que un vecino.
 
+**Las chicas fit**: cinco chicas entrenando entre los musculosos (sentadilla, press y dominadas), con musculosa, calzas de colores y colita o rodete.
+
 **Ciro, el profe**: en cuero, el doble de grande que cualquiera y con ganas de pelear. Si pasás cerca a pie, te encara: pega desde más lejos, fuerte, y con el gancho te tira al piso. Aguanta muchísimo (la motosierra ayuda).
 
 ## Estructura

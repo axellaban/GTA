@@ -761,7 +761,7 @@ export function makeHuman(o = {}) {
     // ---- brazos y manos (el derecho en -x: el personaje mira hacia +z) ----
     // brazos: con músculos, hombros y bíceps bien marcados
     const AK = (female ? ARM_F : ARM_M).map(([t, a, b, c]) => {
-      const k = o.muscle ? (t > 1.28 ? 1.5 : t > 1.02 ? 1.3 : 1.1) : 1;
+      const k = o.muscle ? (t > 1.28 ? 1.5 : t > 1.02 ? 1.3 : 1.1) : o.fit ? 1.08 : 1;
       return [t, a * k, b * k, c * k];
     });
     const sleeveTo = top === 'tank' || top === 'none' ? 1.62 : top === 'tshirt' || top === 'jersey' ? (female ? 1.46 : 1.38) : 1.0;
