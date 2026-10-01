@@ -154,6 +154,7 @@ En la puerta de la comisaría hay un patrullero estacionado (o robale uno a la c
 - **Filtro PS2**: como en la PlayStation 2, las luces fuertes dejan estela al moverte (sobre todo de noche), y la imagen tiene el filtro de color de Vice City: día dorado con resplandor suave, atardecer rosa, noche azul violácea.
 - **Ropa pintada**: como los personajes de la PS2, la tela trae sombra pintada en los costados, pliegues con luz y sombra, y costuras con puntadas; el jean, gastado adelante.
 - **Autos de los 80**: gomas con banda blanca en los clásicos (Falcon, 504, Fiat 600, Duna, pickup), colores pastel en el tránsito (rosa, turquesa, crema, celeste, menta, coral) y reflejos más fuertes en la pintura y los cromados.
+- **Destellos y palmeras**: faroles y faros con destello en estrella de noche (las "coronas" de Vice City), palmeras en las plazas y fachadas con pasteles (rosa, agua, amarillo, lavanda, celeste, durazno).
 - **Neón**: la mitad de los carteles de negocios tienen un marco de tubo de neón (rosa, celeste, violeta o verde) que se prende de noche.
 
 ## Radio con locutor (0.16)
@@ -189,6 +190,7 @@ Box de CrossFit a unos 70 m de la estación (cuadrado amarillo en el mapa): galp
 | `src/npcs.js` | Vecinos, trapitos, gente pidiendo, perdidos, vendedor de medias, perros |
 | `src/crime.js` | Motochorros |
 | `src/events.js` | Cortes, marchas y noticias |
+| `src/palms.js` | Palmeras de las plazas (instanciadas) |
 | `src/stunts.js` | Rampas y saltos insólitos con cámara lenta |
 | `src/gym.js` | Gym El Kaiser: galpón, cartel, racks y los musculosos entrenando |
 | `src/missions.js` | Misiones: llamadas, marcador, etapas, premio |

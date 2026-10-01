@@ -3,17 +3,33 @@
 import * as THREE from 'three';
 import { NIGHT } from './atmosphere.js';
 
+// destello en estrella como las "coronas" de Vice City: núcleo brillante y rayos finos
 function glowTexture() {
+  const S = 128;
+  const h = S / 2;
   const c = document.createElement('canvas');
-  c.width = c.height = 64;
+  c.width = c.height = S;
   const g = c.getContext('2d');
-  const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  const gr = g.createRadialGradient(h, h, 0, h, h, h);
   gr.addColorStop(0, 'rgba(255,255,255,1)');
-  gr.addColorStop(0.18, 'rgba(255,255,255,0.75)');
-  gr.addColorStop(0.45, 'rgba(255,255,255,0.18)');
+  gr.addColorStop(0.1, 'rgba(255,255,255,0.8)');
+  gr.addColorStop(0.3, 'rgba(255,255,255,0.2)');
   gr.addColorStop(1, 'rgba(255,255,255,0)');
   g.fillStyle = gr;
-  g.fillRect(0, 0, 64, 64);
+  g.fillRect(0, 0, S, S);
+  g.globalCompositeOperation = 'lighter';
+  for (const [a, len, w, al] of [[0, 1, 6, 0.95], [Math.PI / 2, 1, 6, 0.95], [Math.PI / 4, 0.6, 4, 0.5], [-Math.PI / 4, 0.6, 4, 0.5]]) {
+    g.save();
+    g.translate(h, h);
+    g.rotate(a);
+    const lg = g.createLinearGradient(-h * len, 0, h * len, 0);
+    lg.addColorStop(0, 'rgba(255,255,255,0)');
+    lg.addColorStop(0.5, `rgba(255,255,255,${al})`);
+    lg.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = lg;
+    g.fillRect(-h * len, -w / 2, 2 * h * len, w);
+    g.restore();
+  }
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
@@ -79,12 +95,12 @@ function points(n, color, size, tex) {
 export class Glows {
   constructor(scene, city) {
     const tex = glowTexture();
-    this.lamps = points(city.lamps.length, 0xffb455, 7, tex);
+    this.lamps = points(city.lamps.length, 0xffb455, 11, tex);
     const pos = this.lamps.geometry.attributes.position;
     city.lamps.forEach((l, i) => pos.setXYZ(i, l.x, 7.75, l.z));
     this.maxCars = 140;
-    this.heads = points(this.maxCars * 2, 0xfff1c8, 2.4, tex);
-    this.tails = points(this.maxCars * 2, 0xff2a18, 1.4, tex);
+    this.heads = points(this.maxCars * 2, 0xfff1c8, 3.2, tex);
+    this.tails = points(this.maxCars * 2, 0xff2a18, 1.8, tex);
     scene.add(this.lamps, this.heads, this.tails);
     // foco del auto de Gaspi (siempre en escena para no recompilar materiales)
     this.spot = new THREE.SpotLight(0xfff0cc, 0, 45, 0.55, 0.5, 1.2);

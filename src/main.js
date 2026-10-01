@@ -25,6 +25,7 @@ import { Pickups, FIGUS } from './pickups.js';
 import { WEAPONS } from './weapons.js';
 import { Gym } from './gym.js';
 import { Stunts, RAMPS } from './stunts.js';
+import { addPalms } from './palms.js';
 import { Combat } from './combat.js';
 import { Police } from './police.js';
 import { Nav } from './nav.js';
@@ -396,6 +397,7 @@ const gym = new Gym(scene, city.colliders, npcs, heightAt);
 for (const s of gym.slots) gym.spawn(s);
 world.gym = gym;
 const stunts = new Stunts(scene);
+world.palms = addPalms(scene, city.colliders, heightAt);
 world.stunts = stunts;
 
 // ---------- Armería "El Tano": entrás a pie y elegís qué comprar ----------

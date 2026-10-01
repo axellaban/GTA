@@ -34,7 +34,8 @@ export const CELL_H = 128;
 const COLS = 4;
 const ROWS = 16;
 
-export const PLASTER = ['#e6d6b0', '#d6c29c', '#c5d3cb', '#e1bd9b', '#efe4cf', '#b4c6d6', '#d6ae9f', '#ccd6a9', '#eddcbd', '#c4b39a', '#a9c2b0', '#e8c8c8'];
+// revoques del barrio más algunos pasteles a lo Vice City (rosa, agua, amarillo, lavanda, celeste, durazno)
+export const PLASTER = ['#e6d6b0', '#d6c29c', '#c5d3cb', '#e1bd9b', '#efe4cf', '#b4c6d6', '#d6ae9f', '#ccd6a9', '#eddcbd', '#c4b39a', '#a9c2b0', '#e8c8c8', '#f2b8c6', '#a8e0d8', '#f7e1a8', '#c9b8e8', '#9fd3e6', '#f6c7a5'];
 
 const PINTADAS = [
   ['TEMPERLEY', '#6ec3ea'],
