@@ -384,6 +384,7 @@ export class Hud {
     }
     for (const m of world.pickups.markers({ x: player.x, z: player.z }, true)) dot(m.x, m.z, m.kind === 'weapon' ? '#ffa726' : m.kind === 'health' ? '#ff5a5a' : m.kind === 'coima' ? '#ffd23a' : '#5aa9ff', 6);
     for (const m of world.events.markers()) dot(m.x, m.z, '#ff7a1a', 7, 'square');
+    for (const m of world.races?.markers() || []) dot(m.x, m.z, '#ff3355', 7, 'square');
     for (const m of world.garages || []) dot(m.x, m.z, '#3ddc84', 7, 'square');
     if (world.armeria) dot(world.armeria.x, world.armeria.z, '#ff5a36', 7, 'square');
     if (world.gym?.x != null) dot(world.gym.x, world.gym.z, '#f2c21a', 8, 'square');
@@ -453,6 +454,7 @@ export class Hud {
       g.stroke();
     }
     for (const m of events.markers()) mark(m.x, m.z, m.kind === 'corte' ? '#ff7a1a' : '#ffb23e', 6, 'square');
+    for (const m of world.races?.markers() || []) mark(m.x, m.z, '#ff3355', 6, 'square');
     for (const m of world.garages || []) mark(m.x, m.z, '#3ddc84', 6, 'square');
     if (world.armeria) mark(world.armeria.x, world.armeria.z, '#ff5a36', 6, 'square');
     if (world.gym?.x != null) mark(world.gym.x, world.gym.z, '#f2c21a', 7, 'square');

@@ -140,6 +140,7 @@ La gente dice en voz alta lo que aparece en los globitos: vecinos, la cana, los 
 - **Coimas**: estrellas amarillas en la calle (también en el radar). Si te busca la cana, agarrás una y se va una estrella. Reaparecen a los 4 minutos.
 - **Figuritas**: 30 escondidas por Temperley, sin luz ni marca en el mapa. A las 10: $15.000 y chaleco; a las 20: la tumbera; a las 30: $50.000 y +5 de respeto. Se guardan.
 - **Porcentaje**: en la pausa, cuánto del juego completaste (tutorial, misiones y figuritas).
+- **Picadas**: en una avenida hay una largada marcada con un aro rojo (cuadradito rojo en el mapa). Llegá en auto, frená adentro y apretá E: tres autos del barrio largan con vos, con cuenta regresiva. Hay que pasar por los aros rojos en orden; el primero en llegar cobra $5.000 ($8.000 de noche) y el segundo, una parte. Los autos rivales quedan estacionados donde frenan.
 - **Interiores**: E en la puerta de la estación te mete al hall (boletería, molinetes, bancos y el cartel de próximos trenes), con salida a la calle o a los andenes. El kiosco más cercano a la estación también se puede visitar: en el mostrador comprás un alfajor o una gaseosa que te suben la vida. Con la cana atrás no te dejan entrar.
 - **Tren y colectivo de pasajero**: con el tren parado en el andén, E te sube (SUBE $650) y viajás hasta la próxima estación; volvés en el de la vuelta media hora después y, si te buscaba la cana, te perdió el rastro. El colectivo frena en las paradas reales del mapa: E para subirte (SUBE $700) y E para bajarte cuando frena.
 - **Muerte a lo GTA**: cámara lenta, la imagen se va a blanco y negro y entra el "TE BAJARON".
@@ -236,6 +237,7 @@ Box de CrossFit a unos 70 m de la estación (cuadrado amarillo en el mapa): galp
 | `src/missions.js` | Misiones: llamadas, marcador, etapas, premio |
 | `src/transit.js` | Tren y colectivo de pasajero |
 | `src/interiors.js` | Interiores: hall de la estación y kiosco |
+| `src/races.js` | Picadas: carreras callejeras con aros y rivales |
 | `src/trains.js` | Trenes, barreras y pasos a nivel |
 | `src/radio.js`, `src/audio.js` | Radio y sonidos sintetizados |
 | `src/fx.js` | Partículas, trazas, marcas de frenada, lluvia |

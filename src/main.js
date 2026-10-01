@@ -38,6 +38,7 @@ import { R } from './rng.js';
 import { setupInstall } from './install.js';
 import { Transit } from './transit.js';
 import { Interiors } from './interiors.js';
+import { Races } from './races.js';
 import { Missions, makeMarker } from './missions.js';
 
 setupInstall();
@@ -213,6 +214,8 @@ const transit = new Transit(city, trains, traffic);
 world.transit = transit;
 const interiors = new Interiors(scene, city, city.colliders, pickups);
 world.interiors = interiors;
+const races = new Races(scene, traffic, nav, city.colliders);
+world.races = races;
 police.world = world;
 const missions = new Missions(scene, world);
 world.missions = missions;
@@ -715,6 +718,12 @@ function nearestCorte() {
 }
 const praise = ['¡BIEN AHÍ!', '¡VAMOS, GASPI!', '¡DE UNA!', '¡ESO!', '¡QUÉ CRACK!'];
 function updateObjective() {
+  const rc = races.objective();
+  if (rc) {
+    hud.setObjective(rc.text, rc.target);
+    hud.updateObjective(player);
+    return;
+  }
   if (job.active) {
     hud.setObjective(`Delivery a ${job.street}: ${Math.ceil(job.t)} s`, { x: job.x, z: job.z });
     hud.updateObjective(interiors.focus(player));
@@ -786,6 +795,13 @@ function interactions() {
     return;
   }
   if (player.vehicle) {
+    // en la largada de la picada
+    const ra = races.action(world);
+    if (ra) {
+      hud.prompt('E', ra.text);
+      if (input.hit('e')) ra.run();
+      return;
+    }
     const slow = Math.abs(player.vehicle.speed) < 3;
     hud.prompt(slow ? 'F' : null, slow ? (player.vehicle.kind === 'moto' ? 'Bajarse de la moto' : 'Bajarse') : null);
     return;
@@ -1113,6 +1129,7 @@ function frame(now) {
   traffic.update(dt, world);
   npcs.update(dt, world);
   interiors.update(dt, world);
+  races.update(dt, world);
   crime.update(dt, world);
   police.update(dt, world);
   events.update(dt, world);

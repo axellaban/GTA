@@ -133,6 +133,10 @@ Radio ≈ 550 m desde la estación (`STATION` en `src/map.js`). Hoy: 1.872 edifi
 
 ### C. Otros pendientes
 
+- ✅ Colectivos con las líneas reales de Temperley (`BUS_LINES` en `src/vehicles.js`: 160, 74, 548, 549, 318, 266, 278).
+- ✅ Picadas (`src/races.js`): largada en la avenida más larga, recorrido por `nav.path`, aros cada ~120 m,
+  rivales con frenada en curvas, destrabe y ritmo que se ajusta a Gaspi. Ideas: más largadas, apuestas.
+
 - ✅ Subirse al tren y al colectivo como pasajero (`src/transit.js`; el colectivo frena en las paradas: `busStops` en `src/traffic.js`).
 - ✅ Interiores a lo GTA clásico (`src/interiors.js`): hall de la estación y el kiosco más cercano, armados
   fuera del mapa (x≈1500) con fundido al entrar; `focus()` mantiene la calle viva alrededor de la puerta.
