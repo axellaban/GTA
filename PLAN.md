@@ -345,6 +345,11 @@ Ideas para seguir: capó que se levanta con mucho daño; semáforos y carteles q
 
 ## 6b. Última sesión (para quien siga)
 
+- ✅ 2026-10-01, Codex: carga atómica de materiales fotográficos (`usePhoto`): mantiene
+  el material dibujado si alguna descarga falla, libera las texturas incompletas y respeta
+  la rugosidad del clima. Prueba: `node --test tools/texturas.test.mjs`; build verificado.
+  Primera entrega en `codex/vice-city-graphics`; el hash se registra con la entrega de texturas.
+
 Hecho y subido a `main` (cada cosa probada en Chromium sin GPU): PLAN.md y tools/, página de
 relevamiento + importación al juego (nombres, tipos, pisos, colores de cartel y fachada, toldo,
 persiana), retarget `src/rig.js`, vecinos y cana con modelos CC0 (`src/people.js`), perros y caballo
