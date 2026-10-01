@@ -182,7 +182,8 @@ function paintGeometry(name, g, paint, brows) {
     for (let i = 0; i < col.count; i++) {
       const key = hexAt(col, i);
       const brow = brows != null && isBrow(key, pos, i);
-      const hex = brow ? brows : paint[key];
+      const pk = paint[key];
+      const hex = brow ? brows : typeof pk === 'function' ? pk(pos.getY(i)) : pk;
       // con la cara de la foto, los ojos y las cejas del modelo se meten adentro de la cabeza
       if (brows != null && (brow || EYES.has(key))) pos.setZ(i, pos.getZ(i) - 0.035);
       if (hex != null) c.setHex(hex);
@@ -299,17 +300,29 @@ function shadesMesh(source) {
 
 // Gaspi, Laban o Ciro con modelo de artista (null si todavía no cargaron los modelos)
 export function makeStar(name) {
-  const st = STARS[name];
+  return dress(STARS[name], name);
+}
+// Las chicas: 'fiesta' (las del Ferrucho de Laban, de vestido) o 'gym' (top y calzas).
+// o: { dress | shirt, pants, hair, skin }
+export function makeGirl(kind, o = {}) {
+  const skin = o.skin ?? 0xd9a07a;
+  const st =
+    kind === 'fiesta'
+      ? { file: 'qf_formal', height: 1.7, female: true, paint: { '9d6b3d': skin, '10230e': o.dress ?? 0xff4fa3, '230401': (y) => (y > 1.3 ? (o.hair ?? 0xc9a15a) : (o.shoes ?? 0xf2f2f2)), '6d3e11': 0xd4af37 } }
+      : { file: 'qf_casual', height: 1.68, female: true, paint: { '9d6b3d': skin, '422e10': o.hair ?? 0x2b1d14, '571f0a': o.pants ?? 0x151515, '757575': o.shirt ?? 0xf48fb1, '0d0d0d': 0xf2f2f2 } };
+  return dress(st, `${kind}|${skin}|${o.dress}|${o.shirt}|${o.pants}|${o.hair}|${o.shoes}`, 'chica');
+}
+function dress(st, key, star = key) {
   const s = Object.values(PEOPLE.scenes)
     .flat()
     .find((x) => x.f === st.file);
   if (!s) return null;
-  const h = rigHuman(s.scene, { height: st.height });
+  const h = rigHuman(s.scene, { height: st.height, female: !!st.female });
   h.file = st.file;
-  h.star = name;
+  h.star = star;
   h.tall = st.height + 0.5; // donde va el globito de lo que dice
   h.rig.model.traverse((o) => {
-    if (o.isMesh) o.geometry = paintGeometry(name, o.geometry, st.paint, st.brows);
+    if (o.isMesh) o.geometry = paintGeometry(key, o.geometry, st.paint, st.brows);
   });
   if (st.bulk) {
     h.rig.model.scale.x *= st.bulk;

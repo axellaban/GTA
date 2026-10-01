@@ -154,8 +154,10 @@ anteojos; Ciro mide 3,5 m y es más ancho (`bulk`). Arrancan con el cuerpo nuest
 cargan los modelos (`swapHuman` pasa armas y lo colgado de los huesos; `Npcs.reskin`,
 `Gym.upgrade`, `Laban.upgrade`). Los retoques de pose que se hacen después de `animateHuman` necesitan
 `h.rig?.apply()` (ya está para Gaspi en el loop y para Laban). `q_suit.glb` venía con una pistola en
-la mano: se sacó con `tools/models/sinarma.mjs`. Falta: chicas del Ferrucho y del gym con modelo de
-artista (`qf_*`); autos de artista.
+la mano: se sacó con `tools/models/sinarma.mjs`. ✅ Chicas del Ferrucho (`makeGirl('fiesta')`,
+vestido de `qf_formal`) y del gym (`makeGirl('gym')`, top y calzas sobre `qf_casual`), con los colores
+de su look; cambian al cargar (`Laban.upgrade`, `Gym.upgrade`). La pintura acepta una función de la
+altura (pelo y zapatos tienen el mismo color en el original). Falta: autos de artista.
 
 **R11 — Pruebas en celu real**: el dueño prueba en iPhone/Android y manda capturas; se ajusta.
 

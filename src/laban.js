@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { STATION } from './map.js';
 import { makeHuman, animateHuman, randomCivilian } from './human.js';
 import { makeFerrucho } from './cars.js';
-import { makeStar, swapHuman } from './people.js';
+import { makeStar, makeGirl, swapHuman } from './people.js';
 import { R } from './rng.js';
 
 const CLEAN = { jersey: null, hood: null, cap: null, hat: null, helmet: null, longSleeves: false };
@@ -51,9 +51,10 @@ export class Laban {
 
   // cargaron los modelos de artista: Laban pasa al suyo (traje blanco, sombrero y anteojos)
   upgrade() {
+    // y las chicas, de vestido del color de su look
     for (const r of this.riders) {
-      if (r.role !== 'driver' || r.h.star) continue;
-      const h = makeStar('laban');
+      if (r.h.star) continue;
+      const h = r.role === 'driver' ? makeStar('laban') : makeGirl('fiesta', { dress: r.look.shirt, hair: r.look.hair });
       if (h) r.h = swapHuman(r.h, h);
     }
   }

@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { STATION, TRACKS, nearestRoad, distToPolyline, GYM_LOT, GYM_SIZE } from './map.js';
 import { randomCivilian } from './human.js';
-import { makeStar } from './people.js';
+import { makeStar, makeGirl } from './people.js';
 import { R } from './rng.js';
 
 const W = GYM_SIZE.W; // ancho (frente)
@@ -228,7 +228,8 @@ export class Gym {
       glasses: false,
       scale: s.kaiser ? 1.12 : 1.04,
     };
-    const n = this.npcs.spawnWalker({ x: p.x, z: p.z, heading: this.h }, null, 0, 0, look);
+    // las chicas con modelo de artista si ya cargó (si no, upgrade() las cambia después)
+    const n = this.npcs.spawnWalker({ x: p.x, z: p.z, heading: this.h }, null, 0, 0, look, s.female ? this.girl(s) : null);
     if (!n) return;
     Object.assign(n, { vmax: 0, mission: true, brave: 1, hp: s.kaiser ? 260 : 180, exercise: s.ex, t: R.range(0, 10) });
     if (s.bar) {
@@ -250,12 +251,17 @@ export class Gym {
     s.home = p;
   }
 
-  // cargaron los modelos de artista: Ciro pasa al suyo
+  girl(s) {
+    return makeGirl('gym', { shirt: s.shirt, pants: s.pants, hair: s.hair });
+  }
+  // cargaron los modelos de artista: Ciro y las chicas pasan a los suyos
   upgrade() {
-    const n = this.slots.find((s) => s.ciro)?.n;
-    if (!n || n.dead || n.h.star) return;
-    const h = makeStar('ciro');
-    if (h) this.npcs.reskin(n, h);
+    for (const s of this.slots) {
+      const n = s.n;
+      if (!n || n.dead || n.h.star || !(s.ciro || s.female)) continue;
+      const h = s.ciro ? makeStar('ciro') : this.girl(s);
+      if (h) this.npcs.reskin(n, h);
+    }
   }
 
   spawnCiro(s) {
