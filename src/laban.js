@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { STATION } from './map.js';
 import { makeHuman, animateHuman, randomCivilian } from './human.js';
 import { makeFerrucho } from './cars.js';
+import { makeStar, swapHuman } from './people.js';
 import { R } from './rng.js';
 
 const CLEAN = { jersey: null, hood: null, cap: null, hat: null, helmet: null, longSleeves: false };
@@ -48,6 +49,15 @@ export class Laban {
     return v;
   }
 
+  // cargaron los modelos de artista: Laban pasa al suyo (traje blanco, sombrero y anteojos)
+  upgrade() {
+    for (const r of this.riders) {
+      if (r.role !== 'driver' || r.h.star) continue;
+      const h = makeStar('laban');
+      if (h) r.h = swapHuman(r.h, h);
+    }
+  }
+
   // Gaspi les roba el Ferrucho: se bajan todos. Laban se calienta, las chicas salen corriendo.
   eject(v, world) {
     const lx = -Math.cos(v.heading);
@@ -56,7 +66,8 @@ export class Laban {
       v.mesh.remove(r.h.root);
       const side = i % 2 ? -1 : 1;
       const back = i > 1 ? 1.4 : 0;
-      const n = world.npcs.spawnWalker({ x: v.x + lx * side * (v.W / 2 + 1.2) - v.fx * back, z: v.z + lz * side * (v.W / 2 + 1.2) - v.fz * back, heading: v.heading + (side * Math.PI) / 2 }, null, 0, 0, r.look);
+      // el de artista se baja tal cual; los nuestros se arman de nuevo con su look
+      const n = world.npcs.spawnWalker({ x: v.x + lx * side * (v.W / 2 + 1.2) - v.fx * back, z: v.z + lz * side * (v.W / 2 + 1.2) - v.fz * back, heading: v.heading + (side * Math.PI) / 2 }, null, 0, 0, r.look, r.h.star ? r.h : null);
       if (!n) return;
       if (r.role === 'driver') {
         world.npcs.hurt(n, 5, lx, lz, { knock: true, knockT: 1.4, world });
@@ -101,6 +112,7 @@ export class Laban {
         b.faR.rotation.x = -0.3 + Math.sin(r.t * 6 + 1) * 0.25;
         b.head.rotation.y = Math.sin(r.t * 0.7) * 0.4;
       }
+      r.h.rig?.apply();
     }
     // cerca de Gaspi: bocina y frases
     this.talkT -= dt;

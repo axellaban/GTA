@@ -30,7 +30,7 @@ import { Stunts, RAMPS } from './stunts.js';
 import { chunkScene, updateChunks } from './chunks.js';
 import { addPalms } from './palms.js';
 import { Laban } from './laban.js';
-import { loadPeople, loadAnimals } from './people.js';
+import { loadPeople, loadAnimals, makeStar, swapHuman } from './people.js';
 import { Rescue } from './rescue.js';
 import { Combat } from './combat.js';
 import { Police } from './police.js';
@@ -436,7 +436,13 @@ world.palms = addPalms(scene, city.colliders, heightAt);
 // Laban the Creator paseando en el Ferrucho amarillo por la estación
 const laban = new Laban(scene, traffic);
 // personas con modelo de artista (CC0): cargan de fondo y los NPC nuevos las van usando
-loadPeople();
+// Gaspi, Ciro y Laban pasan a su modelo de artista apenas cargan (Gaspi con la cara de la foto)
+loadPeople().then(() => {
+  const g = makeStar('gaspi');
+  if (g) player.h = swapHuman(player.h, g);
+  gym.upgrade();
+  laban.upgrade();
+});
 loadAnimals();
 // changas de paramédico y bombero (ambulancia y autobomba de Kenney, CC0)
 const rescue = new Rescue(world);
@@ -999,7 +1005,7 @@ function speakers() {
     const d = Math.hypot(x - player.x, z - player.z);
     if (d < 38) out.push({ x, y, z, text: b.text, bad, d, b, voice });
   };
-  for (const n of npcs.list) if (n.bubble) add(n.x, n.y + 2.35 * n.h.root.scale.y, n.z, n.bubble, n.type === 'trapito' || n.type === 'cana' || n.state === 'fight', { female: n.h.female, key: n.h.phase });
+  for (const n of npcs.list) if (n.bubble) add(n.x, n.y + (n.h.tall ?? 2.35 * n.h.root.scale.y), n.z, n.bubble, n.type === 'trapito' || n.type === 'cana' || n.state === 'fight', { female: n.h.female, key: n.h.phase });
   for (const m of crime.motos) if (m.bubble) add(m.v.x, 2.6, m.v.z, m.bubble, true, { key: 7 });
   if (player.bubble) add(player.x, player.y + 2.4, player.z, player.bubble, false, { key: 3 });
   if (laban.bubble && laban.v) add(laban.v.x, 2.3, laban.v.z, laban.bubble, false, { female: laban.bubble.female, key: laban.bubble.female ? 31 : 17 });
@@ -1212,6 +1218,8 @@ function frame(now) {
   if ((frame.n = (frame.n || 0) + 1) % 8 === 1) updateHumanLod(camera, Q.lodNear);
   if (frame.n % 8 === 5) updateChunks(camera.position);
   sky.follow(camera);
+  // los retoques de pose de Gaspi (agacharse, inclinarse, apuntar) llegan a su modelo de artista
+  player.h.rig?.apply();
   post.render();
   input.endFrame();
   requestAnimationFrame(frame);

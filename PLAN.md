@@ -121,8 +121,16 @@ integrar el relevamiento del dueño cuando lo cargue.
 se bajan de las carpetas de Google Drive de quaternius.com con `pip install gdown` y
 `gdown --folder <url>`), convertidas con `tools/models/quat.mjs` a `public/models/people/q_*.glb` y
 `qf_*.glb` (4.800 triángulos, una malla, colores de vértice, `_PART` para teñir ropa y piel en
-`tintParts` de `src/people.js`). Falta: Gaspi, gym y Laban con modelo de artista (Gaspi tiene la
-cara con foto: habría que pegarla en la cabeza del modelo); autos de artista.
+`tintParts` de `src/people.js`). ✅ Gaspi, Ciro y Laban con modelo de artista (`makeStar` en
+`src/people.js`, sobre `q_suit` y `q_beach`): la ropa se pinta cambiando colores de vértice (`STARS`);
+Gaspi lleva la cara de la foto pegada en la cabeza (calcomanía colgada del hueso `head`, caja `FACE`;
+la textura `src/gaspi-face.webp` se rehace con `tools/models/cara-gaspi.py`); Laban, sombrero y
+anteojos; Ciro mide 3,5 m y es más ancho (`bulk`). Arrancan con el cuerpo nuestro y cambian apenas
+cargan los modelos (`swapHuman` pasa armas y lo colgado de los huesos; `Npcs.reskin`,
+`Gym.upgrade`, `Laban.upgrade`). Los retoques de pose que se hacen después de `animateHuman` necesitan
+`h.rig?.apply()` (ya está para Gaspi en el loop y para Laban). `q_suit.glb` venía con una pistola en
+la mano: se sacó con `tools/models/sinarma.mjs`. Falta: chicas del Ferrucho y del gym con modelo de
+artista (`qf_*`); autos de artista.
 
 **R11 — Pruebas en celu real**: el dueño prueba en iPhone/Android y manda capturas; se ajusta.
 

@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { makeHuman, animateHuman, randomCivilian, SKINS, HAIRS } from './human.js';
 import { makeDog } from './animals.js';
-import { makePerson, PEOPLE, ANIMALS, makeAnimal, animalPlay } from './people.js';
+import { makePerson, PEOPLE, ANIMALS, makeAnimal, animalPlay, swapHuman } from './people.js';
 import { DATA as D } from './map.js';
 import { R } from './rng.js';
 
@@ -238,6 +238,12 @@ export class Npcs {
   }
 
   // human: un personaje ya armado (por ejemplo el motochorro que se cae de la moto)
+  // le cambia el cuerpo a alguien que ya anda por ahí (Ciro, cuando carga su modelo de artista)
+  reskin(n, h) {
+    n.h = swapHuman(n.h, h);
+    n.shade = undefined;
+  }
+
   spawnWalker(at, near, rmin = 60, rmax = 150, look = null, human = null) {
     let p = at;
     if (!p) {
