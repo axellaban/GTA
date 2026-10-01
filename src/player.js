@@ -119,6 +119,7 @@ export class Player {
     this.hooks.die?.(msg);
   }
   respawn(at = this.spawn, cause = 'hospital') {
+    this.mvx = this.mvz = 0;
     this.dead = false;
     this.health = 100;
     this.armor = 0;
@@ -236,6 +237,7 @@ export class Player {
   exitVehicle(world, forced = false) {
     const v = this.vehicle;
     if (!v) return;
+    this.mvx = this.mvz = 0;
     const lx = -Math.cos(v.heading);
     const lz = Math.sin(v.heading);
     const side = v.kind === 'moto' ? 0.8 : v.W / 2 + 0.7;
@@ -363,31 +365,51 @@ export class Player {
     const w = WEAPONS[this.weapon || 'punos'];
     const buff = this.buffs.medias ? 1.12 : 1;
     const run = (input.down('shift') || input.sprint) && !this.aiming;
-    let vx = 0;
-    let vz = 0;
+    // velocidad que pide el jugador
+    let tvx = 0;
+    let tvz = 0;
+    let wantH = null;
     if (ax.x || ax.y) {
       const fx = -Math.sin(this.camYaw);
       const fz = -Math.cos(this.camYaw);
       const rx = -fz;
       const rz = fx;
-      vx = fx * -ax.y + rx * ax.x;
-      vz = fz * -ax.y + rz * ax.x;
-      const l = Math.hypot(vx, vz);
-      vx /= l;
-      vz /= l;
+      tvx = fx * -ax.y + rx * ax.x;
+      tvz = fz * -ax.y + rz * ax.x;
+      const l = Math.hypot(tvx, tvz);
+      tvx /= l;
+      tvz /= l;
+      wantH = Math.atan2(tvx, tvz);
       const mag = Math.min(1, Math.hypot(ax.x, ax.y));
       let sp = (run ? RUN : WALK) * mag * buff * (this.grabbed > 0 ? 0.45 : 1);
       if (this.aiming) sp = Math.min(sp, 2.2);
       if (this.attack) sp *= 0.25;
-      vx *= sp;
-      vz *= sp;
-      if (!this.aiming && !this.attack) {
-        const want = Math.atan2(vx, vz);
-        let diff = want - this.heading;
-        while (diff > Math.PI) diff -= Math.PI * 2;
-        while (diff < -Math.PI) diff += Math.PI * 2;
-        this.heading += diff * Math.min(1, dt * 12);
-      }
+      tvx *= sp;
+      tvz *= sp;
+    }
+    // inercia: arrancar y frenar lleva un instante (más al correr) y pegar la vuelta en seco cuesta más
+    this.mvx ??= 0;
+    this.mvz ??= 0;
+    const cur = Math.hypot(this.mvx, this.mvz);
+    const tgt = Math.hypot(tvx, tvz);
+    const dot = cur > 0.1 && tgt > 0.1 ? (this.mvx * tvx + this.mvz * tvz) / (cur * tgt) : 1;
+    const acc = tgt > cur ? (run ? 15 : 10) : dot < -0.2 ? 24 : 14;
+    const dvx = tvx - this.mvx;
+    const dvz = tvz - this.mvz;
+    const dl = Math.hypot(dvx, dvz);
+    if (dl > 1e-4) {
+      const st = Math.min(dl, acc * dt);
+      this.mvx += (dvx / dl) * st;
+      this.mvz += (dvz / dl) * st;
+    }
+    // el cuerpo gira hacia donde va: rápido si está casi parado, más abierto corriendo
+    const h0 = this.heading;
+    if (wantH != null && !this.aiming && !this.attack) {
+      let diff = wantH - this.heading;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      const rate = 15 - Math.min(8, cur * 1.4);
+      this.heading += diff * Math.min(1, dt * rate);
     }
     // apuntando: mira hacia donde mira la cámara
     if (this.aiming) this.heading = this.camYaw + Math.PI;
@@ -398,10 +420,29 @@ export class Player {
       world.audio.whoosh(0.15);
     }
     this.grabbed = Math.max(0, this.grabbed - dt);
-    this.speed = Math.hypot(vx, vz);
-    this.x += vx * dt;
-    this.z += vz * dt;
+    const x0 = this.x;
+    const z0 = this.z;
+    this.x += this.mvx * dt;
+    this.z += this.mvz * dt;
     this.collide(world);
+    // contra una pared no sigue "patinando": la velocidad es la que de verdad avanzó
+    if (dt > 0) {
+      const rvx = (this.x - x0) / dt;
+      const rvz = (this.z - z0) / dt;
+      if (Math.hypot(rvx, rvz) < cur * 0.6) {
+        this.mvx = rvx;
+        this.mvz = rvz;
+      }
+    }
+    const prevSpeed = this.speed || 0;
+    this.speed = Math.hypot(this.mvx, this.mvz);
+    // giro y aceleración suavizados (para inclinarse en las curvas y al arrancar o frenar)
+    let dh = this.heading - h0;
+    while (dh > Math.PI) dh -= Math.PI * 2;
+    while (dh < -Math.PI) dh += Math.PI * 2;
+    const k = Math.min(1, dt * 8);
+    this.turnW = (this.turnW || 0) + ((dt > 0 ? dh / dt : 0) - (this.turnW || 0)) * k;
+    this.accF = (this.accF || 0) + ((dt > 0 ? (this.speed - prevSpeed) / dt : 0) - (this.accF || 0)) * k;
     // pose: golpe > tiro > apuntar > arma en mano > reacción > celu > caminar
     let pose = 'walk';
     let t = 0;
@@ -418,12 +459,60 @@ export class Player {
     else if (this.phoneT > 0) pose = 'phone';
     this.phoneT = (this.phoneT || 0) - dt;
     animateHuman(this.h, dt, this.speed, pose, t);
-    if (this.y > ground + 0.1) {
-      // en el aire: piernas recogidas
-      this.h.bones.thR.rotation.x = -0.9;
-      this.h.bones.shR.rotation.x = 1.2;
-      this.h.bones.thL.rotation.x = -0.4;
-      this.h.bones.shL.rotation.x = 0.9;
+    this.naturalize(dt, ground);
+  }
+
+  // Lo que hace que Gaspi se mueva como una persona y no como un muñeco: se inclina en las curvas,
+  // se tira para adelante al arrancar y para atrás al frenar, la cabeza acompaña a la cámara,
+  // recoge las piernas en el aire y amortigua al caer.
+  naturalize(dt, ground) {
+    const b = this.h.bones;
+    const free = !this.attack && !this.aiming;
+    if (free) {
+      const lean = Math.max(-0.26, Math.min(0.26, -(this.turnW || 0) * this.speed * 0.028));
+      b.spine.rotation.z += lean * 0.75;
+      b.hips.rotation.z += lean * 0.3;
+      b.spine.rotation.x += Math.max(-0.14, Math.min(0.16, (this.accF || 0) * 0.022));
+    }
+    // la cabeza mira para donde mira la cámara (menos cuanto más rápido va)
+    let look = this.camYaw + Math.PI - this.heading;
+    while (look > Math.PI) look -= Math.PI * 2;
+    while (look < -Math.PI) look += Math.PI * 2;
+    look = Math.max(-1.1, Math.min(1.1, look)) * (1 - Math.min(1, Math.max(0, (this.speed - 1) / 4)));
+    if (!free) look = 0;
+    this.headYaw = (this.headYaw || 0) + (look - (this.headYaw || 0)) * Math.min(1, dt * 5);
+    b.neck.rotation.y += this.headYaw * 0.35;
+    b.head.rotation.y += this.headYaw * 0.5;
+    // en el aire y al caer
+    const air = this.y > ground + 0.1;
+    if (air) {
+      this.airT = (this.airT || 0) + dt;
+      const a = Math.min(1, this.airT * 6);
+      b.thR.rotation.x = b.thR.rotation.x * (1 - a) - 0.9 * a;
+      b.shR.rotation.x = b.shR.rotation.x * (1 - a) + 1.2 * a;
+      b.thL.rotation.x = b.thL.rotation.x * (1 - a) - 0.35 * a;
+      b.shL.rotation.x = b.shL.rotation.x * (1 - a) + 0.8 * a;
+      b.uaR.rotation.z -= 0.35 * a;
+      b.uaL.rotation.z += 0.35 * a;
+    } else if (this.airT > 0) {
+      this.landT = Math.min(0.28, 0.12 + this.airT * 0.25);
+      this.landMax = this.landT;
+      this.airT = 0;
+    }
+    if (this.landT > 0) {
+      this.landT -= dt;
+      const k = Math.max(0, this.landT / this.landMax);
+      const q = Math.sin(k * Math.PI * 0.5);
+      b.hips.position.y -= 0.13 * q;
+      for (const [th, sh, ft] of [
+        [b.thR, b.shR, b.ftR],
+        [b.thL, b.shL, b.ftL],
+      ]) {
+        th.rotation.x -= 0.55 * q;
+        sh.rotation.x += 1.0 * q;
+        ft.rotation.x -= 0.45 * q;
+      }
+      b.spine.rotation.x += 0.18 * q;
     }
   }
 

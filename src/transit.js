@@ -141,6 +141,7 @@ export class Transit {
     const r = this.ride;
     P.h.root.visible = true;
     P.riding = false;
+    P.mvx = P.mvz = 0;
     P.zoom = r.zoom;
     P.camPitch = r.pitch;
     this.ride = null;

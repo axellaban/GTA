@@ -351,6 +351,7 @@ export class Interiors {
       }
       P.camYaw = P.heading + Math.PI;
       P.speed = 0;
+      P.mvx = P.mvz = 0;
       this.fade.style.opacity = '0';
       this.busy = false;
     }, 420);

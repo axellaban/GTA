@@ -1246,22 +1246,25 @@ function poseHuman(h, dt, speed, pose = 'walk', t = 0) {
   b.spine.rotation.x = 0.03 + run * 0.16 + amp * 0.04;
   b.head.rotation.y = -(b.hips.rotation.y + b.chest.rotation.y) * 0.85;
   b.head.rotation.x = -b.spine.rotation.x * 0.6 + Math.abs(c) * amp * 0.03;
-  // quieto: respira, pasa el peso de una pierna a la otra y mira alrededor
-  if (speed < 0.1) {
+  // quieto: respira, pasa el peso de una pierna a la otra y mira alrededor. Se mezcla de a poco
+  // con la caminata al frenar o arrancar (sin saltos de pose).
+  const idleW = 1 - smooth(0.05, 0.9, speed);
+  if (idleW > 0.001) {
     const t = h.phase;
     const sway = Math.sin(t * 0.35);
-    b.chest.rotation.x = Math.sin(t * 1.6) * 0.018;
-    b.hips.position.x = sway * 0.018;
-    b.hips.rotation.z = -sway * 0.035;
-    b.spine.rotation.z = sway * 0.025;
-    b.shR.rotation.x = 0.05 + Math.max(0, -sway) * 0.12;
-    b.shL.rotation.x = 0.05 + Math.max(0, sway) * 0.12;
-    b.thR.rotation.x = -Math.max(0, -sway) * 0.06;
-    b.thL.rotation.x = -Math.max(0, sway) * 0.06;
-    b.faR.rotation.x = -0.14 + Math.sin(t * 0.5) * 0.03;
-    b.faL.rotation.x = -0.14 + Math.sin(t * 0.5 + 1) * 0.03;
-    b.head.rotation.y = Math.sin(t * 0.13) * 0.35 * smooth(0.3, 0.9, Math.abs(Math.sin(t * 0.07)));
-    b.head.rotation.x = Math.sin(t * 0.17) * 0.05;
+    const mix = (o, k, v) => (o[k] += (v - o[k]) * idleW);
+    mix(b.chest.rotation, 'x', Math.sin(t * 1.6) * 0.018);
+    mix(b.hips.position, 'x', sway * 0.018);
+    mix(b.hips.rotation, 'z', -sway * 0.035);
+    mix(b.spine.rotation, 'z', sway * 0.025);
+    mix(b.shR.rotation, 'x', 0.05 + Math.max(0, -sway) * 0.12);
+    mix(b.shL.rotation, 'x', 0.05 + Math.max(0, sway) * 0.12);
+    mix(b.thR.rotation, 'x', -Math.max(0, -sway) * 0.06);
+    mix(b.thL.rotation, 'x', -Math.max(0, sway) * 0.06);
+    mix(b.faR.rotation, 'x', -0.14 + Math.sin(t * 0.5) * 0.03);
+    mix(b.faL.rotation, 'x', -0.14 + Math.sin(t * 0.5 + 1) * 0.03);
+    mix(b.head.rotation, 'y', Math.sin(t * 0.13) * 0.35 * smooth(0.3, 0.9, Math.abs(Math.sin(t * 0.07))));
+    mix(b.head.rotation, 'x', Math.sin(t * 0.17) * 0.05);
   }
 
   if (pose === 'zombie') {
