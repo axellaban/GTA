@@ -1090,7 +1090,9 @@ export function animateHuman(h, dt, speed, pose = 'walk', t = 0, post = null) {
   h.rig?.apply();
 }
 function poseHuman(h, dt, speed, pose = 'walk', t = 0) {
-  h.phase += dt * (speed < 0.1 ? 1 : 2 + speed * 2.4);
+  // ritmo del paso medido para que el pie apoyado no patine: caminando ~0,8 zancadas por segundo,
+  // corriendo a fondo ~1,6 (como una persona de verdad)
+  h.phase += dt * (speed < 0.1 ? 1 : speed < 1 ? 2 + speed * 2.85 : 4.6 + speed * 0.25 + Math.max(0, speed - 3) * 1.35);
   const s = Math.sin(h.phase);
   const c = Math.cos(h.phase);
   const amp = Math.min(0.85, speed * 0.26);

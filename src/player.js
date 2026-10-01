@@ -463,16 +463,41 @@ export class Player {
     } else if (w.gun) pose = 'holdGun';
     else if (this.phoneT > 0) pose = 'phone';
     this.phoneT = (this.phoneT || 0) - dt;
-    animateHuman(this.h, dt, this.speed, pose, t);
-    this.naturalize(dt, ground);
+    // girando en el lugar da pasitos (si no, gira como una estatua)
+    const stepIn = this.speed < 0.6 ? Math.min(1.1, Math.abs(this.turnW || 0) * 0.3) : 0;
+    animateHuman(this.h, dt, Math.max(this.speed, stepIn), pose, t);
+    this.naturalize(dt, ground, pose === 'walk');
   }
 
   // Lo que hace que Gaspi se mueva como una persona y no como un muñeco: se inclina en las curvas,
   // se tira para adelante al arrancar y para atrás al frenar, la cabeza acompaña a la cámara,
   // recoge las piernas en el aire y amortigua al caer.
-  naturalize(dt, ground) {
+  naturalize(dt, ground, calm = false) {
     const b = this.h.bones;
     const free = !this.attack && !this.aiming;
+    const still = 1 - Math.min(1, this.speed / 0.6);
+    // después de correr un buen rato queda agitado: se dobla un poco y respira fuerte
+    this.fatigue = Math.max(0, Math.min(1, (this.fatigue || 0) + (this.speed > 4.5 ? dt * 0.07 : this.speed < 0.5 ? -dt * 0.09 : -dt * 0.02)));
+    const tired = this.fatigue * still * (free ? 1 : 0.3);
+    if (tired > 0.01) {
+      this.breathT = (this.breathT || 0) + dt * (2.4 + this.fatigue * 2.6);
+      const br = Math.sin(this.breathT);
+      b.spine.rotation.x += 0.2 * tired + br * 0.025 * tired;
+      b.chest.rotation.x += br * 0.05 * tired;
+      b.neck.rotation.x -= 0.12 * tired;
+      b.head.rotation.x -= 0.06 * tired - br * 0.03 * tired;
+      b.hips.position.y -= 0.035 * tired;
+      for (const [th, sh] of [
+        [b.thR, b.shR],
+        [b.thL, b.shL],
+      ]) {
+        th.rotation.x -= 0.16 * tired;
+        sh.rotation.x += 0.3 * tired;
+      }
+      b.uaR.rotation.x -= br * 0.04 * tired;
+      b.uaL.rotation.x -= br * 0.04 * tired;
+    }
+    this.fidget(dt, calm && this.speed < 0.15 && this.fatigue < 0.2);
     if (free) {
       const lean = Math.max(-0.26, Math.min(0.26, -(this.turnW || 0) * this.speed * 0.028));
       b.spine.rotation.z += lean * 0.75;
@@ -518,6 +543,58 @@ export class Player {
         ft.rotation.x -= 0.45 * q;
       }
       b.spine.rotation.x += 0.18 * q;
+    }
+  }
+
+  // quieto un rato: mira el reloj, se acomoda la corbata o estira el cuello
+  fidget(dt, calm) {
+    if (!calm) {
+      this.idleT = 0;
+      this.fid = null;
+      return;
+    }
+    this.idleT = (this.idleT || 0) + dt;
+    if (!this.fid && this.idleT > 8 && Math.random() < dt * 0.12) {
+      this.fid = { kind: R.pick(['reloj', 'corbata', 'cuello']), t: 0, dur: R.range(1.8, 2.6) };
+      this.idleT = 0;
+    }
+    const f = this.fid;
+    if (!f) return;
+    f.t += dt;
+    if (f.t >= f.dur) {
+      this.fid = null;
+      return;
+    }
+    // entra y sale suave
+    const e = Math.min(1, Math.min(f.t, f.dur - f.t) / 0.4);
+    const k = e * e * (3 - 2 * e);
+    const b = this.h.bones;
+    const to = (o, ax, v) => (o.rotation[ax] += (v - o.rotation[ax]) * k);
+    const wig = Math.sin(f.t * 11) * 0.08 * k;
+    if (f.kind === 'reloj') {
+      // el brazo gira hacia adentro y el antebrazo cruza el cuerpo con la muñeca a la vista
+      to(b.uaL, 'x', -0.55);
+      to(b.uaL, 'y', -1.25);
+      to(b.uaL, 'z', -0.12);
+      to(b.faL, 'x', -1.65);
+      b.head.rotation.x += 0.42 * k;
+      b.head.rotation.y += 0.12 * k;
+      b.neck.rotation.x += 0.12 * k;
+    } else if (f.kind === 'corbata') {
+      // la mano sube al nudo de la corbata y lo acomoda
+      to(b.uaR, 'x', -0.4);
+      to(b.uaR, 'y', 0.7);
+      to(b.uaR, 'z', 0.22);
+      to(b.faR, 'x', -2.2 + wig);
+      b.head.rotation.x -= 0.2 * k;
+      b.head.rotation.z += 0.06 * k;
+    } else {
+      // estira el cuello: inclina la cabeza a un lado y al otro, con los hombros sueltos
+      const side = Math.sin((f.t / f.dur) * Math.PI * 2);
+      b.neck.rotation.z += side * 0.28 * k;
+      b.head.rotation.z += side * 0.22 * k;
+      b.head.rotation.x += 0.1 * k;
+      b.chest.rotation.x -= 0.04 * k;
     }
   }
 
