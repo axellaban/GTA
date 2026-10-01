@@ -39,7 +39,7 @@ Jugás con **Gaspi** (saco, camisa blanca, corbata a rayas rojas y blancas).
 ## Estilo GTA (0.4)
 
 - **Piñas**: combo de jab, directo, gancho y patada, con apuntado automático al más cercano. La gente se defiende, sale corriendo o queda nocaut (y se le cae la plata).
-- **Armas**: palo, revólver 38, pistola 9 mm y tumbera. Clic derecho apunta sobre el hombro; sin apuntar, apunta solo. Fogonazo, trazas, chispas en las paredes, gente que se tira al piso o levanta las manos. Casquillos que rebotan en el piso, recarga animada y la mira que salta con cada tiro.
+- **Armas**: palo, revólver 38, pistola 9 mm y tumbera. Clic derecho apunta sobre el hombro; sin apuntar, apunta solo. Fogonazo, trazas, chispas en las paredes, gente que se tira al piso o levanta las manos. Casquillos que rebotan en el piso, recarga animada, la mira que salta con cada tiro, agujeros de bala que quedan en paredes y veredas y astillas de revoque.
 - **La Bonaerense**: estrellas de búsqueda según lo que hagas y quién te vea. Patrulleros con balizas y sirena que te persiguen por las calles (con GPS), canas a pie que te esposan o, desde dos estrellas, te tiran. Con cuatro estrellas aparece el helicóptero con reflector. Si te pierden de vista un rato, zafaste; si te agarran, comisaría, coima y te sacan los fierros.
 - **Robar autos**: Gaspi va hasta la puerta, saca al conductor (que después se enoja o se raja) y arranca. Se pueden robar patrulleros.
 - **Motos**: 20 motos en el tránsito (muchas de delivery con su caja). Se manejan con inclinación en las curvas, willy con Shift y, si chocás fuerte, volás.
@@ -241,7 +241,7 @@ Box de CrossFit a unos 70 m de la estación (cuadrado amarillo en el mapa): galp
 | `src/races.js` | Picadas: carreras callejeras con aros y rivales |
 | `src/trains.js` | Trenes, barreras y pasos a nivel |
 | `src/radio.js`, `src/audio.js` | Radio y sonidos sintetizados |
-| `src/fx.js` | Partículas, trazas, marcas de frenada, casquillos, restos de choque, lluvia |
+| `src/fx.js` | Partículas, trazas, marcas de frenada, casquillos, agujeros de bala, restos de choque, lluvia y salpicaduras |
 | `src/carfx.js` | Escape, petardeos y rocío de los autos andando |
 | `src/hud.js`, `src/style.css` | Tarjeta SUBE, estrellas, minimapa, mapa grande, zócalo, diálogos |
 | `src/sky.js`, `src/atmosphere.js`, `src/post.js`, `src/glow.js` | Cielo, bruma con altura y sol, oclusión ambiental (N8AO), gradeo de color y luces de noche |

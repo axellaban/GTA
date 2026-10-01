@@ -117,6 +117,25 @@ export class Colliders {
     return hit;
   }
   // ¿Hay algo alto entre a y b? Devuelve la fracción del camino libre (1 = libre)
+  // como blocked, pero devuelve también la pared: {t, nx, nz, kind} (normal hacia el que mira) o null
+  blockedHit(ax, az, bx, bz, minH = 2.5) {
+    let best = null;
+    const r = Math.hypot(bx - ax, bz - az) / 2 + 1;
+    for (const s of this.query((ax + bx) / 2, (az + bz) / 2, r)) {
+      if (!s.s || s.h < minH) continue;
+      const t = segT(ax, az, bx, bz, s.ax, s.az, s.bx, s.bz);
+      if (t === null || (best && t >= best.t)) continue;
+      const l = Math.hypot(s.bx - s.ax, s.bz - s.az) || 1;
+      let nx = -(s.bz - s.az) / l;
+      let nz = (s.bx - s.ax) / l;
+      if (nx * (bx - ax) + nz * (bz - az) > 0) {
+        nx = -nx;
+        nz = -nz;
+      }
+      best = { t, nx, nz, kind: s.kind, h: s.h };
+    }
+    return best;
+  }
   blocked(ax, az, bx, bz, minH = 2.5) {
     let tmin = 1;
     const r = Math.hypot(bx - ax, bz - az) / 2 + 1;

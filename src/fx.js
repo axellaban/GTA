@@ -149,6 +149,48 @@ function splatTexture() {
   return t;
 }
 
+// agujero de bala: centro negro, borde de revoque saltado y grietas finas
+function holeTexture() {
+  const N = 64;
+  const c = document.createElement('canvas');
+  c.width = c.height = N;
+  const g = c.getContext('2d');
+  const h = N / 2;
+  const chip = g.createRadialGradient(h, h, 2, h, h, h * 0.95);
+  chip.addColorStop(0, 'rgba(70,64,58,0.95)');
+  chip.addColorStop(0.35, 'rgba(120,112,102,0.7)');
+  chip.addColorStop(0.7, 'rgba(150,142,130,0.25)');
+  chip.addColorStop(1, 'rgba(150,142,130,0)');
+  g.fillStyle = chip;
+  g.beginPath();
+  for (let i = 0; i <= 14; i++) {
+    const a = (i / 14) * Math.PI * 2;
+    const r = h * (0.62 + Math.random() * 0.33);
+    g.lineTo(h + Math.cos(a) * r, h + Math.sin(a) * r);
+  }
+  g.fill();
+  g.strokeStyle = 'rgba(40,36,32,0.55)';
+  g.lineWidth = 1;
+  for (let i = 0; i < 5; i++) {
+    const a = Math.random() * Math.PI * 2;
+    g.beginPath();
+    g.moveTo(h, h);
+    g.lineTo(h + Math.cos(a) * h * 0.8, h + Math.sin(a) * h * 0.8);
+    g.stroke();
+  }
+  const core = g.createRadialGradient(h, h, 0, h, h, h * 0.22);
+  core.addColorStop(0, 'rgba(8,8,8,1)');
+  core.addColorStop(0.7, 'rgba(20,18,16,1)');
+  core.addColorStop(1, 'rgba(30,28,25,0)');
+  g.fillStyle = core;
+  g.beginPath();
+  g.arc(h, h, h * 0.22, 0, Math.PI * 2);
+  g.fill();
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
 export class Fx {
   constructor(scene) {
     this.scene = scene;
@@ -193,6 +235,15 @@ export class Fx {
     this.casingList = [];
     this.casingCap = CS;
     scene.add(this.casings);
+    // agujeros de bala en paredes y veredas (los más viejos se van reciclando)
+    const HO = 160;
+    this.holes = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshLambertMaterial({ map: holeTexture(), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }), HO);
+    this.holes.count = 0;
+    this.holes.frustumCulled = false;
+    this.holes.receiveShadow = true;
+    this.holeI = 0;
+    scene.add(this.holes);
+    this.splashT = 0;
     // luces para fogonazos y explosiones (fijas en la escena: agregarlas después recompila todo)
     this.flashLight = new THREE.PointLight(0xffc070, 0, 14, 2);
     this.boomLight = new THREE.PointLight(0xff8a3a, 0, 40, 1.6);
@@ -203,6 +254,8 @@ export class Fx {
     this.v = new THREE.Vector3();
     this.s = new THREE.Vector3();
     this.e = new THREE.Euler();
+    this.q2 = new THREE.Quaternion();
+    this.zAxis = new THREE.Vector3(0, 0, 1);
     this.rain = null;
   }
 
@@ -253,6 +306,28 @@ export class Fx {
     if (this.casingList.length >= this.casingCap) this.casingList.shift();
     const side = rnd(1.4, 2.4);
     this.casingList.push({ x, y, z, vx: -hz * side - hx * 0.4, vy: rnd(1.8, 2.8), vz: hx * side - hz * 0.4, rx: rnd(0, 6), ry: rnd(0, 6), spin: rnd(15, 30), life: 0, rest: false, shell, bounces: 0 });
+  }
+  // agujero de bala: (nx, ny, nz) es la normal de la superficie
+  bulletHole(x, y, z, nx, ny, nz) {
+    this.v.set(nx, ny, nz).normalize();
+    this.q.setFromUnitVectors(this.zAxis, this.v);
+    // un giro al azar sobre la normal para que no sean todos iguales
+    this.q2.setFromAxisAngle(this.zAxis, Math.random() * Math.PI * 2);
+    this.q.multiply(this.q2);
+    const sz = rnd(0.07, 0.11);
+    this.m4.compose(this.v.set(x, y, z), this.q, this.s.set(sz, sz, 1));
+    this.holes.setMatrixAt(this.holeI, this.m4);
+    this.holeI = (this.holeI + 1) % this.holes.instanceMatrix.count;
+    this.holes.count = Math.max(this.holes.count, this.holeI);
+    this.holes.instanceMatrix.needsUpdate = true;
+  }
+  // astillas que saltan de la pared (o del piso si la normal es 0)
+  chips(x, y, z, nx, nz, color, n = 4) {
+    for (let i = 0; i < n; i++) {
+      const sp = rnd(1.5, 3.5);
+      const g = rnd(0.8, 1.2);
+      this.alpha.add({ x, y, z, vx: nx * sp + rnd(-1.2, 1.2), vy: rnd(0.5, 2.5), vz: nz * sp + rnd(-1.2, 1.2), grav: -9.8, drag: 0.6, life: 0, max: rnd(0.5, 1), s0: rnd(0.04, 0.08), s1: 0.03, c0: [color[0] * g, color[1] * g, color[2] * g], a: 1 });
+    }
   }
   // choque de autos: escamas de pintura y vidrio picado que rebotan en el asfalto
   debris(x, y, z, color, n = 6, glass = 0) {
@@ -405,7 +480,21 @@ export class Fx {
     this.scene.add(lines);
     this.rain = { lines, mat };
   }
-  setRain(amount, camera, t) {
+  setRain(amount, camera, t, dt = 1 / 60) {
+    // gotas que pegan en el piso cerca de la cámara: un anillito que salta
+    if (amount > 0.05 && camera.position.y < 30) {
+      this.splashT += dt * amount * 70;
+      while (this.splashT >= 1) {
+        this.splashT -= 1;
+        const a = Math.random() * Math.PI * 2;
+        const r = rnd(1.5, 14);
+        const x = camera.position.x + Math.cos(a) * r;
+        const z = camera.position.z + Math.sin(a) * r;
+        const y = this.ground(x, z) + 0.04;
+        this.alpha.add({ x, y, z, vx: 0, vy: 0.4, vz: 0, grav: 0, drag: 4, life: 0, max: rnd(0.12, 0.22), s0: 0.03, s1: 0.16, c0: [0.75, 0.8, 0.86], a: 0.45 });
+        if (Math.random() < 0.5) this.alpha.add({ x, y, z, vx: rnd(-0.6, 0.6), vy: rnd(0.8, 1.5), vz: rnd(-0.6, 0.6), grav: -9.8, drag: 0, life: 0, max: rnd(0.15, 0.3), s0: 0.025, s1: 0.02, c0: [0.8, 0.85, 0.9], a: 0.6 });
+      }
+    }
     if (amount <= 0.001 && !this.rain) return;
     if (!this.rain) this.makeRain();
     this.rain.lines.visible = amount > 0.01;

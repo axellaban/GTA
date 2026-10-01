@@ -552,7 +552,7 @@ function updateWeather(dt) {
     m.envMapIntensity = 0.5 + weather.wet * 1.1;
     m.color.copy(dryColor).lerp(wetColor, weather.wet);
   }
-  fx.setRain(world.inside ? 0 : weather.rain, camera, weather.t);
+  fx.setRain(world.inside ? 0 : weather.rain, camera, weather.t, dt);
   audio.lluvia(weather.rain);
   // relámpagos con tormenta fuerte
   weather.flash = Math.max(0, weather.flash - dt * 6);

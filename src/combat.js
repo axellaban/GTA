@@ -324,8 +324,8 @@ export class Combat {
   trace(world, o, d, range, shooter) {
     let best = { t: range, type: null };
     const P = world.player;
-    const f = world.colliders.blocked(o.x, o.z, o.x + d.x * range, o.z + d.z * range, 1.2);
-    if (f < 1) best = { t: f * range, type: 'wall' };
+    const wall = world.colliders.blockedHit(o.x, o.z, o.x + d.x * range, o.z + d.z * range, 1.2);
+    if (wall) best = { t: wall.t * range, type: 'wall', nx: wall.nx, nz: wall.nz, kind: wall.kind, h: wall.h };
     if (d.y < -1e-4) {
       const t = -o.y / d.y;
       if (t < best.t) best = { t, type: 'ground' };
@@ -468,10 +468,18 @@ export class Combat {
       world.player.hitReact?.(o.x, o.z);
       this.fx.blood(hit.x, hit.y, hit.z, fx, fz, 8, 3);
     } else if (hit.type === 'wall') {
-      this.fx.sparks(hit.x, hit.y, hit.z, 4, 3);
-      this.fx.dust(hit.x, hit.y, hit.z, 3, [0.7, 0.66, 0.6], 0.5);
+      // revoque: chispa, polvo, astillas que saltan para afuera y el agujero que queda
+      const fence = hit.kind === 'fence';
+      this.fx.sparks(hit.x, hit.y, hit.z, fence ? 6 : 3, 3);
+      if (!fence) {
+        this.fx.dust(hit.x + hit.nx * 0.05, hit.y, hit.z + hit.nz * 0.05, 3, [0.7, 0.66, 0.6], 0.5);
+        this.fx.chips(hit.x, hit.y, hit.z, hit.nx, hit.nz, [0.62, 0.58, 0.52], 4);
+        if (hit.y > 0.1 && hit.y < hit.h) this.fx.bulletHole(hit.x + hit.nx * 0.012, hit.y, hit.z + hit.nz * 0.012, hit.nx, 0, hit.nz);
+      }
     } else if (hit.type === 'ground') {
       this.fx.dust(hit.x, 0.1, hit.z, 3, [0.5, 0.48, 0.44], 0.5);
+      this.fx.chips(hit.x, this.fx.ground(hit.x, hit.z) + 0.03, hit.z, 0, 0, [0.35, 0.34, 0.33], 3);
+      this.fx.bulletHole(hit.x, this.fx.ground(hit.x, hit.z) + 0.03, hit.z, 0, 1, 0);
     }
     return hit;
   }
