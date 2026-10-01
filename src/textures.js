@@ -1553,29 +1553,40 @@ export function busTexture(line, bg = '#c0392b') {
 // size: cuántos metros cubre la foto; perTile: cuántos metros cubre una vuelta de UV en esa malla.
 // (textures/list.json dice cuáles hay, así no se piden archivos que no existen)
 let photoList = null;
-export function usePhoto(mat, name, { size = 3, perTile = 1, rough = true } = {}) {
+export async function usePhoto(mat, name, { size = 3, perTile = 1, rough = true } = {}) {
   photoList ??= fetch('textures/list.json')
     .then((r) => (r.ok ? r.json() : []))
     .catch(() => []);
+  const list = await photoList;
+  // El color y su relieve se cambian juntos: si falta una descarga, queda el material
+  // dibujado completo. No mezclar una normal nueva con las baldosas viejas.
+  if (!Array.isArray(list) || !list.includes(`${name}_color.jpg`)) return false;
   const L = new THREE.TextureLoader();
   const k = perTile / size;
-  const swap = (key, file, srgb) =>
-    photoList.then((list) => Array.isArray(list) && list.includes(`${name}_${file}.jpg`) && L.load(
-      `textures/${name}_${file}.jpg`,
-      (t) => {
-        t.wrapS = t.wrapT = THREE.RepeatWrapping;
-        t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace;
-        t.anisotropy = 8;
-        t.repeat.set(k, k);
-        mat[key]?.dispose?.();
-        mat[key] = t;
-        if (key === 'roughnessMap') mat.roughness = 1;
-        mat.needsUpdate = true;
-      },
-      undefined,
-      () => {},
-    ));
-  swap('map', 'color', true);
-  swap('normalMap', 'normal', false);
-  if (rough && 'roughnessMap' in mat) swap('roughnessMap', 'rough', false);
+  const maps = [['map', 'color'], ['normalMap', 'normal']];
+  if (rough && 'roughnessMap' in mat) maps.push(['roughnessMap', 'rough']);
+  const wanted = maps.filter(([, file]) => list.includes(`${name}_${file}.jpg`));
+  const loaded = await Promise.allSettled(wanted.map(([, file]) => L.loadAsync(`textures/${name}_${file}.jpg`)));
+  if (loaded.some((r) => r.status === 'rejected')) {
+    for (const r of loaded) if (r.status === 'fulfilled') r.value.dispose();
+    return false;
+  }
+  // Sin normal fotográfica, quitar la normal dibujada que ya no coincide con el color.
+  for (const [key] of maps) {
+    mat[key]?.dispose();
+    mat[key] = null;
+  }
+  loaded.forEach((r, i) => {
+    const t = r.value;
+    const [key] = wanted[i];
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.colorSpace = key === 'map' ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+    t.anisotropy = 8;
+    t.repeat.set(k, k);
+    mat[key] = t;
+  });
+  // La rugosidad base sigue bajo el control del clima, incluso si terminó de llover
+  // mientras se descargaban las texturas.
+  mat.needsUpdate = true;
+  return true;
 }
