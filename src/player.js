@@ -79,6 +79,7 @@ export class Player {
     this.hooks.respeto?.(n);
   }
   hurt(n, msg) {
+    if (this.ufo) return;
     if (this.dead) return;
     // el chaleco se come la mayor parte
     if (this.armor > 0) {
@@ -372,6 +373,12 @@ export class Player {
     this.camPitch = Math.max(-0.35, Math.min(1.1, this.camPitch + input.look.dy * sens));
     if (input.wheel) this.zoom = Math.max(0.45, Math.min(1.8, (this.zoom ?? 1) * (1 + input.wheel * 0.001)));
 
+    // a bordo del plato volador: lo maneja src/ufo.js
+    if (this.ufo) {
+      this.ufo.fly(dt, world);
+      this.place();
+      return;
+    }
     if (input.hit('f') && !this.jack && !this.exitAnim && this.downT <= 0 && this.getupT <= 0) {
       if (this.vehicle) {
         if (Math.abs(this.vehicle.speed) < 3 || this.vehicle.burning > 0) this.exitVehicle(world);
@@ -1008,6 +1015,10 @@ export class Player {
   }
 
   place() {
+    if (this.ufo) {
+      this.h.root.visible = false;
+      return;
+    }
     if (this.vehicle?.kind === 'moto') {
       this.y = 0;
       return;
@@ -1040,10 +1051,11 @@ export class Player {
       this.camYaw += diff * Math.min(1, dt * 2.5);
     }
     const vk = this.vehicle?.kind;
-    const base = inCar ? (vk === 'bus' ? 14 : vk === 'moto' ? 5.5 : this.vehicle.model === 'camion' ? 12 : 8.5) : 5;
+    const ufo = !!this.ufo;
+    const base = ufo ? 17 : inCar ? (vk === 'bus' ? 14 : vk === 'moto' ? 5.5 : this.vehicle.model === 'camion' ? 12 : 8.5) : 5;
     const sp = inCar ? Math.abs(this.vehicle.speed) : 0;
     const dist = (base + sp * 0.06) * (this.zoom ?? 1) * (1 - this.aimK * 0.55);
-    const hgt = inCar ? (vk === 'moto' ? 1.8 : 2.2) : 1.7;
+    const hgt = ufo ? 3.2 : inCar ? (vk === 'moto' ? 1.8 : 2.2) : 1.7;
     const pitch = this.camPitch * (1 - this.aimK * 0.5);
     // hombro derecho
     const sx = Math.cos(this.camYaw) * 0.6 * this.aimK;
@@ -1075,7 +1087,7 @@ export class Player {
     // al apuntar se mira más lejos: la mira queda en el centro de la pantalla
     const lx = this.x + sx - Math.sin(this.camYaw) * this.aimK * 6;
     const lz = this.z + sz - Math.cos(this.camYaw) * this.aimK * 6;
-    const ly = this.y + (inCar ? 1.4 : 1.55) + this.aimK * (0.2 - pitch * 2.5);
+    const ly = this.y + (ufo ? 1.6 : inCar ? 1.4 : 1.55) + this.aimK * (0.2 - pitch * 2.5);
     camera.lookAt(lx, ly, lz);
     // campo visual: más abierto a alta velocidad, más cerrado al apuntar
     const fov = 62 + Math.min(12, sp * 0.35) - this.aimK * 14;

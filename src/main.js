@@ -9,6 +9,7 @@ import { Audio } from './audio.js';
 import { Player } from './player.js';
 import { Traffic, Vehicle } from './traffic.js';
 import { Smash } from './smash.js';
+import { Ufo } from './ufo.js';
 import { Npcs } from './npcs.js';
 import { Crime } from './crime.js';
 import { Events } from './events.js';
@@ -235,6 +236,8 @@ world.races = races;
 police.world = world;
 const missions = new Missions(scene, world);
 world.missions = missions;
+const ufo = new Ufo(scene, world);
+world.ufo = ufo;
 
 // ---------- Lo que postean los vecinos ----------
 const HANDLES = ['vecinosdetemperley', 'temperleyalerta', 'lomasnoticias', 'lachusma_tmp', 'rocaaldia', 'lavecinadelabarrera', 'turco_del_kiosco'];
@@ -248,6 +251,8 @@ const POSTS = {
   willy: (c) => [`Un loco haciendo willy por ${c}. Así estamos`, `Pasó uno en una sola rueda por ${c}, casi se mata`],
   robo: (c) => [`Asaltaron un negocio en ${c}. Estamos a la deriva`, `Robo en ${c}: se llevó toda la caja`],
   medias: () => ['Llegó el de las medias a la estación: tres pares dos lucas, de algodón', 'Compré medias en la estación y son buenísimas, recomiendo'],
+  ovni: (c) => [`¡UN PLATO VOLADOR EN ${c.toUpperCase()}! No es joda, miren el video`, `Bajó un OVNI al lado del carrito de panchos de ${c}. El marciano pidió uno con todo`, `¿Alguien más vio las luces en ${c}? Era una nave, lo juro`],
+  ovni_robo: (c) => [`¡El de traje se robó el plato volador del marciano en ${c}!`, `Le choreó la nave al extraterrestre mientras comía un pancho. Temperley, la capital del bardo`, `El marciano quedó a pie en ${c}. Ni los de otro planeta se salvan`],
   delivery: (c) => [`Un delivery de traje llegó volando a ${c}. Cinco estrellas`, `Me trajo el pedido un pibe de traje y corbata, re atento`],
 };
 const socialT = {};
@@ -482,6 +487,13 @@ const ARMERIA = [
 // truco a lo GTA: escribir FIERROS en cualquier momento da todo el arsenal
 const ARSENAL = ['revolver', 'pistola', 'metra', 'ametralladora', 'escopeta', 'molotov', 'bazuca', 'baston'];
 function checkCheats() {
+  // OVNI: llama al plato volador ya mismo
+  if (input.typed?.endsWith('ovni')) {
+    input.typed = '';
+    if (ufo.state === 'away') ufo.nextT = 0;
+    hud.toast('Algo se acerca desde el cielo...', 2.4);
+    return;
+  }
   if (!input.typed?.endsWith('fierros')) return;
   input.typed = '';
   for (const id of ARSENAL) {
@@ -826,6 +838,12 @@ function interactions() {
     hud.prompt(null);
     return;
   }
+  // a bordo del plato volador el cartel lo pone src/ufo.js
+  if (player.ufo) return;
+  if (ufo.canSteal && !player.vehicle) {
+    hud.prompt('F', ufo.state === 'parked' ? 'Subir al plato volador' : 'Robar el plato volador');
+    return;
+  }
   if (player.vehicle) {
     // en la largada de la picada
     const ra = races.action(world);
@@ -1150,6 +1168,7 @@ function frame(now) {
       player.respawn(comisaria, 'comisaria');
     }
   } else if (!transit.update(dt, world)) {
+    ufo.update(dt, world);
     interactions();
     player.update(dt, world);
     combat.update(dt, world);

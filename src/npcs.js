@@ -496,7 +496,12 @@ export class Npcs {
       const dp = Math.hypot(player.x - n.x, player.z - n.z);
       const far = dp > 190;
       n.mesh.visible = !far;
-      if (n.fly) this.flyStep(n, dt);
+      // colgando del rayo tractor: patalea en el aire (la nave lo mueve)
+      if (n.lifted) {
+        if (!far) animateHuman(n.h, dt, 3, n.killed ? 'dead' : 'flee', n.deadPose);
+        continue;
+      }
+      if (n.fly) this.flyStep(n, dt, world);
       if (n.fallT > 0) {
         // cayéndose: de parado al piso
         n.fallT -= dt;
@@ -574,6 +579,10 @@ export class Npcs {
           pose = 'handsup';
           if (!n.bubble) n.say(R.pick(['¡No tirés!', '¡Tranqui, tranqui!']), 2);
         }
+      } else if (n.type === 'alien') {
+        const r = world.ufo?.alienBrain(n, dt, world, dp) ?? { want: 0, pose: 'walk' };
+        want = r.want;
+        pose = r.pose;
       } else if (n.type === 'vecino') {
         want = n.vmax;
         pose = n.phone ? 'phone' : 'walk';
@@ -854,7 +863,7 @@ export class Npcs {
     n.mesh.rotation.set(n.fly ? n.fly.spin : 0, n.heading, 0);
   }
   // volando por una explosión: parábola dando vueltas; al caer queda tirado
-  flyStep(n, dt) {
+  flyStep(n, dt, world) {
     const f = n.fly;
     f.vy -= 9.8 * dt;
     f.y += f.vy * dt;
@@ -871,6 +880,8 @@ export class Npcs {
     if (f.y <= 0 && f.vy < 0) {
       n.fly = null;
       this.audio.golpe(0.4);
+      // soltado desde arriba: el golpe contra el piso
+      if (f.land > 8) this.hurt(n, f.land, 0, 0, { knock: true, knockT: 3, world, byPlayer: true });
     }
   }
 

@@ -390,7 +390,8 @@ export class Combat {
     let best = { t: range, type: null };
     const P = world.player;
     const wall = world.colliders.blockedHit(o.x, o.z, o.x + d.x * range, o.z + d.z * range, 1.2);
-    if (wall) best = { t: wall.t * range, type: 'wall', nx: wall.nx, nz: wall.nz, kind: wall.kind, h: wall.h };
+    // la pared frena el tiro solo si pasa por debajo de su altura (desde arriba se tira por encima)
+    if (wall && o.y + d.y * wall.t * range <= wall.h + 0.1) best = { t: wall.t * range, type: 'wall', nx: wall.nx, nz: wall.nz, kind: wall.kind, h: wall.h };
     if (d.y < -1e-4) {
       const t = -o.y / d.y;
       if (t < best.t) best = { t, type: 'ground' };
@@ -654,6 +655,11 @@ export class Combat {
         if (vis && v.wreckT < 14 && Math.random() < dt * 10) this.fx.fire(v.x + R.range(-0.8, 0.8), 0.8 + (v.tilt?.y || 0), v.z + R.range(-0.8, 0.8), 1, 0.4);
         continue;
       }
+      // soltado por el rayo tractor: cae y se hace pelota según la altura
+      if (v.blast) {
+        this.blastStep(v, dt, world);
+        continue;
+      }
       if (v.shove) this.shoveStep(v, dt);
       if (vis && v.damage > 55 && Math.random() < dt * (v.damage - 50) * 0.15) this.fx.smoke(hx, 1.1, hz, 1, { black: v.damage > 82, s0: 0.5, s1: 2.5, vx: -v.fx * v.speed * 0.3, vz: -v.fz * v.speed * 0.3 });
       if (v.burning > 0) {
@@ -707,6 +713,29 @@ export class Combat {
     v.x += b.vx * dt;
     v.z += b.vz * dt;
     const rest = b.flip ? (v.tall ?? 1.4) - 0.1 : 0;
+    if (t.y <= rest && b.vy < 0 && b.drop) {
+      // cayó desde el rayo tractor: más alto, peor
+      const h = b.drop;
+      b.drop = 0;
+      this.fx.dust(v.x, 0.2, v.z, 12, [0.45, 0.42, 0.38], 1.8);
+      this.fx.sparks(v.x, 0.3, v.z, 14, 6);
+      this.audio.golpe(1);
+      this.fx.shake += Math.min(0.6, h / 20);
+      if (!v.wreck) {
+        if (h > 9) {
+          v.damage = 100;
+          v.lastHitByPlayer = true;
+          this.explodeVehicle(world, v);
+          return;
+        }
+        this.damageVehicle(world, v, h * 9, true, v.x + v.fx * 1.5, v.z + v.fz * 1.5);
+        // dado vuelta se prende fuego
+        if (b.flip) {
+          v.damage = 100;
+          v.burning = Math.min(v.burning > 0 ? v.burning : 99, R.range(3, 5));
+        }
+      }
+    }
     if (t.y <= rest && b.vy < 0) {
       if (b.vy < -4 && !b.bounced) {
         b.bounced = true;
@@ -723,6 +752,7 @@ export class Combat {
         t.z = b.flip ? Math.PI : 0;
         v.blast = null;
         this.audio.metal(0.6);
+        if (!v.wreck && !b.flip) v.tilt = null;
       }
     }
     v.sync(0);

@@ -189,6 +189,12 @@ Hecho (cada ronda probada sin GPU y subida a `main`):
   empujado y girando, postes de luz que se voltean y se apagan (`src/smash.js`, colisionadores
   `lamp` en `addLamps`).
 
+- ✅ Plato volador (`src/ufo.js`): llega cada 7–10 min (la primera a los 2,5) al lado del carrito
+  de panchos; el marciano (`makeAlien`, cara `alien` con celda propia en el atlas, pose `eat`) compra y
+  come; se roba con F mientras come; vuelo relativo a la cámara, rayo (`shoot`, usa `combat.trace`, que
+  ahora deja pasar tiros por encima de las paredes) y tractor (`tractor`/`updateHeld`/`dropAll`: los autos
+  caen con `blastStep` y `b.drop`, la gente con `fly.land`). Botones táctiles `on-ufo`. Truco OVNI.
+
 Ideas para seguir: capó que se levanta con mucho daño; semáforos y carteles que se caen; reacción al ver un auto que se acerca rápido
 (ya se tiran a un costado); reflejos de luces en los charcos de noche más marcados.
 

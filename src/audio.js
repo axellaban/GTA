@@ -281,6 +281,21 @@ export class Audio {
       this.burst(0.4, 900, 'lowpass', 0.1 * v, 0.04);
     }
   }
+  // rayo del plato volador: barrido agudo que cae, con un chasquido
+  zap() {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const o = this.ctx.createOscillator();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(2400, t);
+    o.frequency.exponentialRampToValueAtTime(180, t + 0.25);
+    const g = this.ctx.createGain();
+    this.env(g, t, 0.003, 0.35, 0.28);
+    o.connect(g).connect(this.master);
+    o.start(t);
+    o.stop(t + 0.32);
+    this.burst(0.06, 5000, 'highpass', 0.4);
+  }
   click() {
     this.burst(0.03, 4000, 'highpass', 0.3);
   }

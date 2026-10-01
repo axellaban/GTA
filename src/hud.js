@@ -75,7 +75,7 @@ export class Hud {
     $('w-ammo').textContent = w.gun ? (player.reloadT > 0 ? 'recargando' : `${a?.mag ?? 0} / ${a?.res ?? 0}`) : w.throw ? `${a?.mag ?? 0}` : '';
     // controles táctiles: a pie, en auto o en moto; el botón de ataque dice qué hace
     const v = player.vehicle;
-    const mode = v ? (v.kind === 'moto' ? 'car moto' : 'car') : 'foot';
+    const mode = player.ufo ? 'ufo' : v ? (v.kind === 'moto' ? 'car moto' : 'car') : 'foot';
     const touch = $('touch');
     if (touch.className !== mode) touch.className = mode;
     const verb = w.gun || w.throw ? 'Tirar' : w.verb || 'Pegar';
@@ -83,8 +83,8 @@ export class Hud {
     if (atk.textContent !== verb) atk.textContent = verb;
     // mira: círculo al apuntar, punto si tiene un arma de fuego en la mano
     const ch = $('crosshair');
-    ch.hidden = !(w.gun && !player.vehicle && !player.dead);
-    ch.className = player.aiming ? '' : 'dot';
+    ch.hidden = !((w.gun && !player.vehicle && !player.dead) || player.ufo);
+    ch.className = player.aiming || player.ufo ? '' : 'dot';
     $('hitmark').hidden = !(player.hitMarker > 0);
     if (this.radioT > 0) {
       this.radioT -= dt;
@@ -385,6 +385,7 @@ export class Hud {
     for (const m of world.pickups.markers({ x: player.x, z: player.z }, true)) dot(m.x, m.z, m.kind === 'weapon' ? '#ffa726' : m.kind === 'health' ? '#ff5a5a' : m.kind === 'coima' ? '#ffd23a' : '#5aa9ff', 6);
     for (const m of world.events.markers()) dot(m.x, m.z, '#ff7a1a', 7, 'square');
     for (const m of world.races?.markers() || []) dot(m.x, m.z, '#ff3355', 7, 'square');
+    if (world.ufo && world.ufo.state !== 'away' && world.ufo.state !== 'player') dot(world.ufo.x, world.ufo.z, '#3dff6a', 9);
     for (const m of world.garages || []) dot(m.x, m.z, '#3ddc84', 7, 'square');
     if (world.armeria) dot(world.armeria.x, world.armeria.z, '#ff5a36', 7, 'square');
     if (world.gym?.x != null) dot(world.gym.x, world.gym.z, '#f2c21a', 8, 'square');
@@ -455,6 +456,9 @@ export class Hud {
     }
     for (const m of events.markers()) mark(m.x, m.z, m.kind === 'corte' ? '#ff7a1a' : '#ffb23e', 6, 'square');
     for (const m of world.races?.markers() || []) mark(m.x, m.z, '#ff3355', 6, 'square');
+    // el plato volador: verde, grande, titilando
+    const u = world.ufo;
+    if (u && u.state !== 'away' && u.state !== 'player' && ((performance.now() / 300) | 0) % 2) mark(u.x, u.z, '#3dff6a', 7);
     for (const m of world.garages || []) mark(m.x, m.z, '#3ddc84', 6, 'square');
     if (world.armeria) mark(world.armeria.x, world.armeria.z, '#ff5a36', 6, 'square');
     if (world.gym?.x != null) mark(world.gym.x, world.gym.z, '#f2c21a', 7, 'square');

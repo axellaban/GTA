@@ -8,7 +8,7 @@ import { R } from './rng.js';
 import { radialTexture } from './city.js';
 import { carEffects } from './carfx.js';
 
-const HEAT = { choque: 0.15, robo_negocio: 1.7, pina: 0.1, ko: 0.45, herido: 0.45, muerte: 0.9, tiros: 0.2, cana: 1.2, robo_auto: 0.6, atropello: 0.4, explosion: 1.1 };
+const HEAT = { ovni: 2.2, choque: 0.15, robo_negocio: 1.7, pina: 0.1, ko: 0.45, herido: 0.45, muerte: 0.9, tiros: 0.2, cana: 1.2, robo_auto: 0.6, atropello: 0.4, explosion: 1.1 };
 const beaconMat = (c) => new THREE.MeshBasicMaterial({ color: c });
 
 export class Police {
@@ -429,7 +429,7 @@ export class Police {
       return !v.gone;
     });
     // ---- esposas ----
-    if (this.stars > 0 && !P.dead) {
+    if (this.stars > 0 && !P.dead && !P.ufo) {
       let adj = false;
       for (const n of npcs.list) if (n.type === 'cana' && !n.down && Math.hypot(n.x - P.x, n.z - P.z) < 1.5) adj = true;
       const still = P.vehicle ? Math.abs(P.vehicle.speed) < 1 : P.speed < 1.2 && !P.attack;

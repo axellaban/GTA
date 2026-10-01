@@ -277,6 +277,7 @@ function drawJersey(r, team) {
 // ny de 1 (arriba) a -1 (mentón). Ver headPoint en body.js.
 // Gaspi tiene su cara en un bloque de 2×2 celdas (el doble de resolución), al final del atlas.
 const GASPI_CELLS = [54, 55, 62, 63];
+const ALIEN_CELL = 53;
 const GASPI_RECT = (() => {
   const r = cellRect(54);
   const r2 = cellRect(63);
@@ -327,7 +328,8 @@ function drawHead(r, o) {
   blob(0, 0.45, 0.5, 0.22, 'rgba(255,244,232,0.12)');
   blob(0, -0.05, 0.035, 0.16, 'rgba(255,244,232,0.12)');
   blob(0, -0.24, 0.05, 0.04, 'rgba(255,244,232,0.14)');
-  for (const s of [-1, 1]) {
+  // (al extraterrestre no se le ponen sombras ni rubor de piel humana: sobre verde quedan marrones)
+  for (const s of o.alien ? [] : [-1, 1]) {
     blob(0.33 * s, 0.13, 0.17, 0.09, 'rgba(70,35,25,0.24)');
     blob(0.43 * s, -0.12, 0.18, 0.1, 'rgba(255,238,224,0.1)');
     blob(0.1 * s, -0.16, 0.05, 0.1, 'rgba(90,45,35,0.1)');
@@ -335,9 +337,15 @@ function drawHead(r, o) {
     blob(0.22 * s, -0.43, 0.05, 0.12, o.female ? 'rgba(90,45,35,0.04)' : 'rgba(90,45,35,0.09)');
     blob(0.47 * s, -0.22, 0.2, 0.15, o.female ? 'rgba(215,95,95,0.17)' : 'rgba(200,95,85,0.08)');
   }
-  blob(0, -0.31, 0.09, 0.035, 'rgba(70,30,25,0.2)');
-  blob(0, -0.63, 0.13, 0.045, 'rgba(70,35,25,0.17)');
-  blob(0, -0.98, 0.7, 0.14, 'rgba(60,30,20,0.35)');
+  if (o.alien) {
+    // boquita fina y dos agujeritos de nariz, en verde oscuro
+    blob(0, -0.48, 0.12, 0.018, 'rgba(20,60,15,0.55)');
+    for (const s of [-1, 1]) blob(0.05 * s, -0.2, 0.018, 0.012, 'rgba(20,60,15,0.6)');
+  } else {
+    blob(0, -0.31, 0.09, 0.035, 'rgba(70,30,25,0.2)');
+    blob(0, -0.63, 0.13, 0.045, 'rgba(70,35,25,0.17)');
+    blob(0, -0.98, 0.7, 0.14, 'rgba(60,30,20,0.35)');
+  }
   // barba de dos días (sombra pareja con puntitos finos) o barba
   if (!o.female && (o.stubble || o.beard)) {
     // la barba afeitada deja una sombra gris azulada, no marrón
@@ -360,9 +368,33 @@ function drawHead(r, o) {
     g.ellipse(FX(0), FY(-0.43), FX(0.16) - FX(0), (FY(-0.47) - FY(-0.41)) / 2, 0, 0, Math.PI * 2);
     g.fill();
   }
+  // extraterrestre: dos ojos negros enormes, rasgados hacia arriba, con brillo
+  if (o.alien) {
+    for (const s of [-1, 1]) {
+      const cx = FX(0.3 * s);
+      const cy = FY(0.12);
+      const w = (FX(0.5) - FX(0.08)) / 2;
+      const h = w * 0.62;
+      g.save();
+      g.translate(cx, cy);
+      g.rotate(s * -0.42);
+      const eg = g.createRadialGradient(0, 0, w * 0.1, 0, 0, w);
+      eg.addColorStop(0, '#1b1f1d');
+      eg.addColorStop(1, '#050605');
+      g.fillStyle = eg;
+      g.beginPath();
+      g.ellipse(0, 0, w, h, 0, 0, Math.PI * 2);
+      g.fill();
+      g.fillStyle = 'rgba(255,255,255,0.75)';
+      g.beginPath();
+      g.ellipse(-s * w * 0.35, -h * 0.35, w * 0.16, h * 0.18, 0, 0, Math.PI * 2);
+      g.fill();
+      g.restore();
+    }
+  }
   // ojos: almendra con sombra del párpado, iris con degradé, pupila y brillo
   const iris = new THREE.Color(o.eyes ?? '#4a3222');
-  for (const s of [-1, 1]) {
+  for (const s of o.alien ? [] : [-1, 1]) {
     const cx = FX(0.33 * s);
     const cy = FY(0.1);
     const w = (FX(0.45) - FX(0.21)) / 2;
@@ -444,6 +476,8 @@ function drawHead(r, o) {
       g.stroke();
     }
   }
+  // nariz y boca humanas (el extraterrestre tiene las suyas, más arriba)
+  if (!o.alien) {
   // nariz: fosas suaves
   for (const s of [-1, 1]) {
     g.fillStyle = 'rgba(60,25,20,0.45)';
@@ -479,6 +513,7 @@ function drawHead(r, o) {
   g.quadraticCurveTo(FX(0), FY(my - 0.014), FX(0.21), FY(my + smirk + 0.004));
   g.stroke();
   for (const s of [-1, 1]) blob(0.21 * s, my, 0.025, 0.02, 'rgba(60,20,20,0.25)');
+  }
   if (o.glasses) {
     g.strokeStyle = '#141414';
     g.lineWidth = 2.5 * k;
@@ -516,9 +551,16 @@ function headCell(o) {
     }
     return GASPI_RECT;
   }
-  const key = [o.skin, o.hair, o.hairStyle, o.beard, o.stubble, o.mustache, o.glasses, o.tired, o.female, o.lipstick, o.eyes].join('|');
+  const key = [o.skin, o.hair, o.hairStyle, o.beard, o.stubble, o.mustache, o.glasses, o.tired, o.female, o.lipstick, o.eyes, o.alien].join('|');
   if (cellCache.has(key)) return cellCache.get(key);
-  if (nextCell >= GASPI_CELLS[0]) {
+  // el extraterrestre tiene su celda reservada (si el atlas se llena, no le toca la cara de otro)
+  if (o.alien) {
+    const r = cellRect(ALIEN_CELL);
+    cellCache.set(key, r);
+    drawHead(r, o);
+    return r;
+  }
+  if (nextCell >= ALIEN_CELL) {
     // atlas lleno: reusar una cabeza cualquiera
     const any = [...cellCache.values()][Math.floor(Math.random() * cellCache.size)];
     return any;
@@ -1271,7 +1313,16 @@ function poseHuman(h, dt, speed, pose = 'walk', t = 0) {
     mix(b.head.rotation, 'x', Math.sin(t * 0.17) * 0.05);
   }
 
-  if (pose === 'talk') {
+  if (pose === 'eat') {
+    // comiendo un pancho: la mano va a la boca, mastica, vuelve
+    const g = h.phase;
+    const bite = Math.max(0, Math.sin(g * 1.2)) ** 3;
+    b.uaR.rotation.set(-0.55 - 0.55 * bite, 0.45, 0.25 + 0.1 * bite);
+    b.faR.rotation.x = -1.45 - 0.6 * bite;
+    b.uaL.rotation.set(-0.25, -0.2, -0.12);
+    b.faL.rotation.x = -0.9;
+    b.head.rotation.set(-0.08 * bite + Math.sin(g * 6) * 0.02 * (1 - bite), Math.sin(g * 0.5) * 0.15, 0);
+  } else if (pose === 'talk') {
     // hablando: la mano derecha acompaña lo que dice, a veces las dos; cabeza y hombros se mueven
     const g = h.phase;
     const beat = 0.5 + 0.5 * Math.sin(g * 2.3);

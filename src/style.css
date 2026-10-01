@@ -1175,8 +1175,31 @@ body {
   #touch.foot .on-car,
   #touch.foot .on-moto,
   #touch.car .on-foot,
-  #touch.car:not(.moto) .on-moto {
+  #touch.car:not(.moto) .on-moto,
+  #touch:not(.ufo) .on-ufo,
+  #touch.ufo .on-foot,
+  #touch.ufo .on-car,
+  #touch.ufo .on-moto {
     display: none;
+  }
+  /* plato volador: rayo grande abajo, tractor al lado y subir/bajar en columna */
+  #btn-laser {
+    right: calc(24px + env(safe-area-inset-right, 0px));
+    bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+    background: rgba(61, 255, 106, 0.55);
+  }
+  #btn-beam {
+    right: calc(128px + env(safe-area-inset-right, 0px));
+    bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+    background: rgba(157, 255, 200, 0.4);
+  }
+  #btn-up {
+    right: calc(222px + env(safe-area-inset-right, 0px));
+    bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  }
+  #btn-down {
+    right: calc(222px + env(safe-area-inset-right, 0px));
+    bottom: calc(28px + env(safe-area-inset-bottom, 0px));
   }
   #btn-attack,
   #btn-brake {
