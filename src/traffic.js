@@ -470,6 +470,11 @@ export class Traffic {
     this.recycleI = ((this.recycleI || 0) + 1) % 30;
     for (let i = this.recycleI; i < this.cars.length; i += 30) this.recycle(this.cars[i], world.interiors?.focus(player) ?? player);
     const police = world.police?.cars || [];
+    // cosas tiradas en la calle: el plato volador apoyado y los postes de luz caídos
+    const obs = this.obs || (this.obs = []);
+    obs.length = 0;
+    if (world.ufo?.block) obs.push(world.ufo.block);
+    if (world.smash) for (const o of world.smash.obstacles) obs.push(o);
     // grillas de obstáculos (vehículos y peatones) para no comparar todos contra todos
     const CELL = 24;
     const cell = (x, z) => (Math.floor(x / CELL) + 200) * 1000 + Math.floor(z / CELL) + 200;
@@ -593,6 +598,20 @@ export class Traffic {
           if (d < block) {
             block = d;
             reason = p === player ? 'player' : 'ped';
+          }
+        }
+      }
+      // el OVNI o un poste en el medio: frena, toca bocina y si no se va, pega la vuelta (como en un corte)
+      for (const o of obs) {
+        const ox = o.x - v.x;
+        const oz = o.z - v.z;
+        const ahead = ox * fx + oz * fz;
+        if (ahead <= 0 || ahead > 24 + o.r) continue;
+        if (Math.abs(ox * fz - oz * fx) < v.W / 2 + o.r + 0.3) {
+          const d = ahead - v.L / 2 - o.r;
+          if (d < block) {
+            block = d;
+            reason = 'corte';
           }
         }
       }

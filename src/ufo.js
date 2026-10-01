@@ -207,6 +207,7 @@ export class Ufo {
     // el piloto del marciano se ve en la cúpula si está adentro
     this.pilot.visible = this.state !== 'player' && this.state !== 'parked' && !(this.alien && !this.alien.aboard);
     if (this.state !== 'away') this.animate(dt, world);
+    this.groundBlock(world);
     this.updateHeld(dt, world);
     this.updateLaser(dt);
     this.hum(world);
@@ -292,6 +293,20 @@ export class Ufo {
     if (this.canSteal && world.input.hit('f')) {
       world.input.pressed.delete('f');
       this.board(world);
+    }
+  }
+  // apoyada en el piso, la nave es un obstáculo: Gaspi y la gente la rodean (colisionador) y el
+  // tránsito frena y pega la vuelta (`block`, lo lee Traffic)
+  groundBlock(world) {
+    const on = this.state === 'landed' || this.state === 'parked';
+    if (on && !this.col) {
+      this.col = world.colliders.addCircle(this.x, this.z, RADIUS - 1.1, 1.6, 'ufo');
+      this.block = { x: this.x, z: this.z, r: RADIUS };
+    } else if (!on && this.col) {
+      // (la grilla no borra: el colisionador se va lejos, como los postes caídos)
+      this.col.x = this.col.z = 1e6;
+      this.col = null;
+      this.block = null;
     }
   }
   rampEnd() {

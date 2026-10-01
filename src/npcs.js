@@ -54,6 +54,7 @@ const LINES = {
 };
 export const lines = (t) => LINES[t];
 const WEAPON_OUT = (p) => !!p.weapon && p.weapon !== 'punos';
+const notUfo = (b) => b.kind !== 'ufo';
 
 export class Npcs {
   constructor(scene, city, graph, heightAt, audio) {
@@ -692,7 +693,8 @@ export class Npcs {
       // choque contra casas y rejas
       if (n.type !== 'mendigo' || n.state !== 'sit') {
         const p = { x: n.x, z: n.z };
-        this.colliders.resolveCircle(p, n.r);
+        // el marciano baja por la rampa de su propia nave
+        this.colliders.resolveCircle(p, n.r, n.type === 'alien' ? notUfo : undefined);
         n.x = p.x;
         n.z = p.z;
       }

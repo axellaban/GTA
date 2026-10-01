@@ -98,12 +98,15 @@ bazuca (desarmadero del Turco), persecución del OVNI con la cana.
 (y al OVNI robado).
 
 **R5 — Más destrucción**: semáforos y carteles que se caen (copiar `src/smash.js`); capó que se levanta
-con mucho daño; el tránsito esquiva el OVNI estacionado y los postes caídos.
+con mucho daño. ✅ El tránsito frena ante el OVNI apoyado y los postes caídos, toca bocina y pega la
+vuelta (`obs` en `Traffic.update`, `ufo.block`, `smash.obstacles`); la nave apoyada tiene colisionador
+(`groundBlock` en `src/ufo.js`).
 
 **R6 — Lugares**: lavadero de autos (cambia color y saca estrellas, como chapa y pintura), bar y
 pizzería con interior (`src/interiors.js`).
 
-**R7 — Guardado**: que el guardado incluya metra, bazuca, munición y estadísticas nuevas.
+**R7 — ✅ Guardado**: `saveGame` en `src/main.js` guarda `inv` y `ammo` enteros, así que ya incluye
+ametralladora, bazuca y su munición.
 
 **R8 — Look**: reflejos de neón en los charcos; suavizar la mancha de luna; fachadas con rejas y foto
 del relevamiento.

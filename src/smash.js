@@ -10,6 +10,8 @@ export class Smash {
     this.audio = audio;
     this.falling = [];
     this.down = new Set();
+    // postes tirados en la calle: el tránsito los esquiva (círculos a lo largo del poste)
+    this.obstacles = [];
     this.onLampOff = null;
     this.m4 = new THREE.Matrix4();
     this.m2 = new THREE.Matrix4();
@@ -62,6 +64,8 @@ export class Smash {
           this.fx.dust(f.x + f.dx * 4, 0.3, f.z + f.dz * 4, 10, [0.5, 0.48, 0.44], 1.4);
           this.audio.metal(1);
           this.fx.shake += 0.15;
+          const reach = 8.5 * Math.sin(f.a);
+          for (let s = 1.2; s < reach; s += 1.6) this.obstacles.push({ x: f.x + f.dx * s, z: f.z + f.dz * s, r: 0.5 });
         }
       }
       // giro alrededor de la base, hacia donde iba el auto
