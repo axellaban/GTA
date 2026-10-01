@@ -70,6 +70,7 @@ export class Vehicle {
     this.wheelSpin += this.speed * dt * 3;
     const u = this.mesh.userData;
     if (u.chassis) this.suspend(dt, u);
+    if (u.door) this.swingDoor(dt, u);
     if (u.wheels) {
       u.wheels.forEach((w, i) => {
         w.rotation.x = this.wheelSpin * (u.spinSign ?? 1);
@@ -147,6 +148,31 @@ export class Vehicle {
       const brake = driven && (this.brakeIn ?? (s.aLong < -2.2 || sp < 0.25));
       u.tail.material = brake ? brakeMat : tailMat;
     }
+  }
+  // puerta del conductor: se abre al subir o bajar y se cierra de un portazo
+  openDoor(t = 0.8, stay = false) {
+    this.doorOpenT = Math.max(this.doorOpenT || 0, t);
+    if (stay) this.doorStay = true;
+  }
+  get doorBusy() {
+    return (this.doorA || 0) > 0.001 || (this.doorOpenT || 0) > 0;
+  }
+  swingDoor(dt, u) {
+    if (dt <= 0) return;
+    this.doorOpenT = Math.max(0, (this.doorOpenT || 0) - dt);
+    const want = this.doorOpenT > 0 || this.doorStay ? 1 : 0;
+    const a0 = this.doorA || 0;
+    // abre rápido y con un rebote al tope; cierra acelerando
+    this.doorV = (this.doorV || 0) + ((want - a0) * (want ? 90 : 140) - (this.doorV || 0) * (want ? 11 : 9)) * dt;
+    let a = a0 + this.doorV * dt;
+    if (a < 0) {
+      a = 0;
+      if (this.doorV < -1.5) Vehicle.onSlam?.(this, Math.min(1, -this.doorV / 6));
+      this.doorV = 0;
+    }
+    this.doorA = Math.min(1.08, a);
+    u.door.rotation.y = this.doorA * 1.1;
+    u.door.visible = u.doorway.visible = this.doorA > 0.005;
   }
   // estacionado: la carrocería queda quieta y las luces de freno se apagan
   settle() {
@@ -429,7 +455,11 @@ export class Traffic {
     const { player, events, trains, npcs } = world;
     const pv = player.vehicle;
     // lo que queda detrás de la niebla no se dibuja
-    for (const v of this.parked) v.mesh.visible = Math.abs(v.x - player.x) < 240 && Math.abs(v.z - player.z) < 240;
+    for (const v of this.parked) {
+      v.mesh.visible = Math.abs(v.x - player.x) < 240 && Math.abs(v.z - player.z) < 240;
+      // estacionado con la puerta moviéndose (Gaspi se acaba de bajar)
+      if (v.doorBusy && v.mesh.visible) v.sync(dt);
+    }
     for (const v of this.cars) v.mesh.visible = Math.abs(v.x - player.x) < 280 && Math.abs(v.z - player.z) < 280;
     this.recycleI = ((this.recycleI || 0) + 1) % 30;
     for (let i = this.recycleI; i < this.cars.length; i += 30) this.recycle(this.cars[i], world.interiors?.focus(player) ?? player);

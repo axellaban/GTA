@@ -168,8 +168,11 @@ Hecho (cada ronda probada sin GPU y subida a `main`):
 - ✅ Lluvia: salpicaduras en el piso alrededor de la cámara (`fx.setRain`).
 - Rendimiento medido: los sistemas de CPU suman ~2,5 ms por frame, igual que antes de estas rondas.
 
-Ideas para seguir: puertas de auto que se abren al subir/bajar; capó y paragolpes que se caen con
-mucho daño; gente que charla en grupos y gesticula; reacción al ver un auto que se acerca rápido
+- ✅ Puerta del conductor que se abre al subir y bajar, con portazo (`openDoor`/`swingDoor` en
+  `src/traffic.js`, pieza en `buildModel` de `src/cars.js`); paragolpes que se cae con golpes
+  acumulados (`dropBumper` + `fx.part`).
+
+Ideas para seguir: capó que se levanta con mucho daño; gente que charla en grupos y gesticula; reacción al ver un auto que se acerca rápido
 (ya se tiran a un costado); reflejos de luces en los charcos de noche más marcados.
 
 ## 6. Estado (actualizar al avanzar)

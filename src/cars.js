@@ -353,7 +353,31 @@ function buildModel(name) {
   // del lado de adentro, un disco oscuro (se ve por la llanta)
   Wb.add(new THREE.CylinderGeometry(wr * 0.6, wr * 0.6, 0.02, 14).rotateZ(-Math.PI / 2).translate(-0.06, 0, 0), 0x202020);
   const wheelGeo = Wb.mesh().geometry;
-  const out = { m, paintGeo, shinyGeo, glassGeo, detailGeo, lightGeo, tailGeo, wheelGeo };
+  // puerta del conductor (del lado por donde sube Gaspi, x negativa): pieza aparte con la bisagra
+  // adelante. Cerrada no se ve (la carrocería ya la tiene dibujada); al abrirse aparece con el hueco
+  // oscuro de la cabina detrás.
+  let door = null;
+  if (name !== 'trafic') {
+    const zf = cab[3][0] - 0.05;
+    const zm = (cab[0][0] + cab[3][0]) / 2 - 0.1;
+    const len = zf - zm;
+    const lo = 0.46;
+    const winH = Math.max(0.2, roof - 0.1 - belt);
+    const panel = clean(new THREE.BoxGeometry(0.05, belt - lo, len).translate(-0.025, (belt + lo) / 2, -len / 2));
+    // marco de la ventanilla: arriba y atrás
+    const frameTop = clean(new THREE.BoxGeometry(0.035, 0.05, len - 0.08).translate(-0.02, belt + winH, -len / 2 - 0.04));
+    const frameBack = clean(new THREE.BoxGeometry(0.035, winH, 0.05).translate(-0.02, belt + winH / 2, -len + 0.025));
+    const doorPaint = mergeGeometries([panel, frameTop, frameBack]);
+    doorPaint.computeVertexNormals();
+    const doorGlass = new THREE.BoxGeometry(0.015, winH - 0.03, len - 0.14).translate(-0.02, belt + winH / 2, -len / 2 - 0.02);
+    const doorHandle = colorize(clean(new THREE.BoxGeometry(0.03, 0.03, 0.14).translate(-0.06, belt - 0.12, -len + 0.25)), 0xcfcfcf);
+    // adentro: tapizado oscuro y el borde del asiento
+    const Hb = new BoxBuilder();
+    Hb.box(0.01, belt - lo + winH * 0.5, len - 0.04, 0x161616, 0, (lo + belt + winH * 0.5) / 2, -len / 2);
+    Hb.box(0.012, 0.14, len * 0.55, 0x3b2f28, 0.004, belt - 0.32, -len * 0.62);
+    door = { zf, len, paint: doorPaint, glass: doorGlass, handle: doorHandle, hole: Hb.mesh().geometry };
+  }
+  const out = { m, paintGeo, shinyGeo, glassGeo, detailGeo, lightGeo, tailGeo, wheelGeo, door };
   geoCache.set(name, out);
   return out;
 }
@@ -399,7 +423,22 @@ export function makeCar(model = 'duna', color = 0xd8d4c8, { parked = false } = {
     g.add(w);
     wheels.push(w);
   }
-  g.userData = { L, W, wheels, kind: 'car', model, parkedBuild: parked, tall: M.m.roof + 0.1, body, shiny, glass, chassis, tail };
+  let door = null;
+  let doorway = null;
+  if (M.door) {
+    door = new THREE.Group();
+    const dp = new THREE.Mesh(M.door.paint, body.material);
+    dp.userData.paint = true;
+    dp.castShadow = true;
+    door.add(dp, new THREE.Mesh(M.door.glass, glassMat), new THREE.Mesh(M.door.handle, shinyMat));
+    door.position.set(-W / 2 - 0.01, 0, M.door.zf);
+    door.visible = false;
+    doorway = new THREE.Mesh(M.door.hole, detailMat);
+    doorway.position.set(-W / 2 - 0.004, 0, M.door.zf);
+    doorway.visible = false;
+    chassis.add(door, doorway);
+  }
+  g.userData = { L, W, wheels, kind: 'car', model, parkedBuild: parked, tall: M.m.roof + 0.1, body, shiny, glass, chassis, tail, door, doorway };
   return g;
 }
 
@@ -479,6 +518,51 @@ export function dentCar(v, wx, wz, amount) {
   // con mucho daño se rompen los vidrios
   if (v.damage > 45 && u.glass.material !== crackedGlass) u.glass.material = crackedGlass;
 }
+// Con muchos golpes de un lado se cae el paragolpes (como en Vice City): se borran sus triángulos
+// del cromado propio del auto y devuelve dónde estaba (en el auto) para tirar uno suelto.
+const BUMPER = new THREE.Color(0xd8d8d8);
+export function dropBumper(v, front) {
+  const u = v.mesh.userData;
+  if (u.kind !== 'car' || !u.shiny || u[front ? 'lostF' : 'lostR']) return null;
+  ownGeometry(u);
+  const g = u.shiny.geometry;
+  const pos = g.attributes.position;
+  const col = g.attributes.color;
+  if (!col) return null;
+  let n = 0;
+  let cx = 0;
+  let cy = 0;
+  let cz = 0;
+  for (let t = 0; t < pos.count; t += 3) {
+    let ok = true;
+    for (let j = 0; j < 3 && ok; j++) {
+      const i = t + j;
+      if (Math.abs(col.getX(i) - BUMPER.r) > 0.01 || Math.abs(col.getY(i) - BUMPER.g) > 0.01) ok = false;
+      if (front ? pos.getZ(i) < 0 : pos.getZ(i) > 0) ok = false;
+    }
+    if (!ok) continue;
+    for (let j = 0; j < 3; j++) {
+      cx += pos.getX(t + j);
+      cy += pos.getY(t + j);
+      cz += pos.getZ(t + j);
+    }
+    n += 3;
+    // triángulo degenerado: no se dibuja
+    for (let j = 1; j < 3; j++) pos.setXYZ(t + j, pos.getX(t), pos.getY(t), pos.getZ(t));
+  }
+  if (!n) return null;
+  pos.needsUpdate = true;
+  u[front ? 'lostF' : 'lostR'] = true;
+  return { x: cx / n, y: cy / n, z: cz / n, w: u.W - 0.12 };
+}
+const looseMat = new THREE.MeshStandardMaterial({ color: 0xd8d8d8, metalness: 1, roughness: 0.2, envMapIntensity: 1.6 });
+const looseGeo = new THREE.BoxGeometry(1, 0.13, 0.1);
+export function looseBumper(w) {
+  const m = new THREE.Mesh(looseGeo, looseMat);
+  m.scale.x = w;
+  m.castShadow = true;
+  return m;
+}
 // chapa y pintura (o el auto vuelve al tránsito): como nuevo
 export function repairCar(v) {
   const u = v.mesh.userData;
@@ -492,4 +576,6 @@ export function repairCar(v) {
   u.shiny.geometry = u.geo0.shiny;
   u.glass.material = glassMat;
   u.dented = false;
+  u.lostF = u.lostR = false;
+  u.hitF = u.hitR = 0;
 }

@@ -7,7 +7,7 @@ import { makeGround, ROADS, project, STATION, cornerName, nearestStreetName, nea
 import { Input } from './input.js';
 import { Audio } from './audio.js';
 import { Player } from './player.js';
-import { Traffic } from './traffic.js';
+import { Traffic, Vehicle } from './traffic.js';
 import { Npcs } from './npcs.js';
 import { Crime } from './crime.js';
 import { Events } from './events.js';
@@ -210,6 +210,11 @@ const comisaria = stationHouse();
 const time = { hour: 17.5, night: false, label: '17:30' };
 const weather = { rain: 0, target: 0, wet: 0, slick: false, next: R.range(200, 320), t: 0, boltT: R.range(10, 25), flash: 0 };
 const world = { scene, camera, city, input, audio, hud, player, traffic, npcs, crime, events, trains, time, lights, colliders: city.colliders, fx, pickups, combat, police, nav, radio, weather, night: NIGHT, heightAt };
+// portazo: se oye si Gaspi está cerca
+Vehicle.onSlam = (v, k) => {
+  const d = Math.hypot(v.x - player.x, v.z - player.z);
+  if (d < 25) audio.golpe(0.4 * k * (1 - d / 25));
+};
 const transit = new Transit(city, trains, traffic);
 world.transit = transit;
 const interiors = new Interiors(scene, city, city.colliders, pickups);

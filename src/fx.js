@@ -244,6 +244,8 @@ export class Fx {
     this.holeI = 0;
     scene.add(this.holes);
     this.splashT = 0;
+    // piezas sueltas (paragolpes caídos): rebotan y quedan un rato en el piso
+    this.parts = [];
     // luces para fogonazos y explosiones (fijas en la escena: agregarlas después recompila todo)
     this.flashLight = new THREE.PointLight(0xffc070, 0, 14, 2);
     this.boomLight = new THREE.PointLight(0xff8a3a, 0, 40, 1.6);
@@ -328,6 +330,47 @@ export class Fx {
       const g = rnd(0.8, 1.2);
       this.alpha.add({ x, y, z, vx: nx * sp + rnd(-1.2, 1.2), vy: rnd(0.5, 2.5), vz: nz * sp + rnd(-1.2, 1.2), grav: -9.8, drag: 0.6, life: 0, max: rnd(0.5, 1), s0: rnd(0.04, 0.08), s1: 0.03, c0: [color[0] * g, color[1] * g, color[2] * g], a: 1 });
     }
+  }
+  // pieza suelta con física simple: cae girando, rebota y queda tirada (90 s)
+  part(mesh, x, y, z, vx, vy, vz, half = 0.06) {
+    mesh.position.set(x, y, z);
+    this.scene.add(mesh);
+    this.parts.push({ mesh, vx, vy, vz, wx: rnd(-4, 4), wy: rnd(-3, 3), wz: rnd(-6, 6), half, life: 0, rest: false });
+    if (this.parts.length > 12) {
+      const old = this.parts.shift();
+      this.scene.remove(old.mesh);
+    }
+  }
+  updateParts(dt) {
+    for (const p of this.parts) {
+      p.life += dt;
+      if (p.rest) continue;
+      const m = p.mesh;
+      p.vy -= 9.8 * dt;
+      m.position.x += p.vx * dt;
+      m.position.y += p.vy * dt;
+      m.position.z += p.vz * dt;
+      m.rotation.x += p.wx * dt;
+      m.rotation.y += p.wy * dt;
+      m.rotation.z += p.wz * dt;
+      const g = this.ground(m.position.x, m.position.z) + p.half;
+      if (m.position.y < g) {
+        m.position.y = g;
+        if (Math.abs(p.vy) > 1.2) {
+          p.vy *= -0.3;
+          p.vx *= 0.6;
+          p.vz *= 0.6;
+          p.wx *= 0.4;
+          p.wz *= 0.4;
+        } else {
+          // queda acostada sobre el lado más plano
+          p.rest = true;
+          m.rotation.x = Math.round(m.rotation.x / Math.PI) * Math.PI;
+          m.rotation.z = Math.round(m.rotation.z / Math.PI) * Math.PI;
+        }
+      }
+    }
+    if (this.parts.length && this.parts[0].life > 90) this.scene.remove(this.parts.shift().mesh);
   }
   // choque de autos: escamas de pintura y vidrio picado que rebotan en el asfalto
   debris(x, y, z, color, n = 6, glass = 0) {
@@ -544,6 +587,7 @@ export class Fx {
     this.alpha.update(dt);
     this.add.update(dt);
     this.updateCasings(dt);
+    this.updateParts(dt);
     for (const p of this.pools) {
       if (p.r >= p.max) continue;
       p.r = Math.min(p.max, p.r + dt * 0.06);

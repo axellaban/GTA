@@ -2,7 +2,7 @@
 // balas de la cana, autos que se prenden fuego y explotan.
 import * as THREE from 'three';
 import { WEAPONS, ORDER, handWeapon } from './weapons.js';
-import { dentCar } from './cars.js';
+import { dentCar, dropBumper, looseBumper } from './cars.js';
 import { R } from './rng.js';
 import { TOUCH } from './input.js';
 
@@ -512,6 +512,17 @@ export class Combat {
     if (hx != null) {
       dentCar(v, hx, hz, dmg);
       v.kick?.(hx, hz, bullet ? dmg * 0.15 : dmg);
+      // golpes acumulados adelante o atrás: se cae el paragolpes
+      if (!bullet && v.kind === 'car') {
+        const u = v.mesh.userData;
+        const lz = (hx - v.x) * v.fx + (hz - v.z) * v.fz;
+        const front = lz > 0;
+        if (Math.abs(lz) > v.L / 2 - 0.7) {
+          const key = front ? 'hitF' : 'hitR';
+          u[key] = (u[key] || 0) + dmg;
+          if (u[key] > 30) this.loseBumper(v, front);
+        }
+      }
       // choque: saltan pedazos de pintura y, si pega fuerte, vidrio
       if (!bullet && dmg > 4 && v.kind !== 'moto') {
         const c = v.mesh.userData.body?.material.color;
@@ -524,6 +535,21 @@ export class Combat {
     if (!v.ai && !v.driver && v.kind === 'car' && !v.police) v.alarmT = 12;
     if (v.damage >= 100 && !(v.burning > 0)) v.burning = R.range(4.5, 7);
     if (v.ai && byPlayer) v.ai.panic = 10;
+  }
+  loseBumper(v, front) {
+    const b = dropBumper(v, front);
+    if (!b) return;
+    // de coordenadas del auto al mundo (contando la suspensión no: la diferencia es de centímetros)
+    const c = Math.cos(v.heading);
+    const s = Math.sin(v.heading);
+    const wx = v.x + b.x * c + b.z * s;
+    const wz = v.z - b.x * s + b.z * c;
+    const m = looseBumper(b.w);
+    m.rotation.y = v.heading;
+    const sp = v.speed || 0;
+    const out = front ? 1 : -1;
+    this.fx.part(m, wx, b.y, wz, v.fx * (sp * 0.6 + out * 1.5), 1.8, v.fz * (sp * 0.6 + out * 1.5), 0.05);
+    this.audio.metal(0.7);
   }
   updateVehicles(dt, world) {
     const P = world.player;

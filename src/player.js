@@ -174,6 +174,7 @@ export class Player {
       }
       return;
     }
+    if (j.phase !== 'go') v.openDoor?.(0.7);
     if (j.phase === 'pull') {
       // abre la puerta y saca al que maneja
       animateHuman(this.h, dt, 0, j.t < 0.35 ? 'swing' : 'cross', Math.min(1, j.t / 0.6));
@@ -208,6 +209,9 @@ export class Player {
     world.police.dropCar(v);
     this.vehicle = v;
     v.driver = this;
+    // se sienta y cierra la puerta
+    v.doorStay = false;
+    v.openDoor?.(0.35);
     v.vx = v.fx * v.speed;
     v.vz = v.fz * v.speed;
     if (v.fallen) {
@@ -256,6 +260,8 @@ export class Player {
     v.parked = true;
     v.steer = 0;
     v.settle?.();
+    // al bajarse abre la puerta y la cierra; si salió volando, queda abierta
+    v.openDoor?.(0.75, forced && v.kind === 'car');
     this.h.root.visible = true;
     if (world) {
       if (!world.traffic.parked.includes(v)) world.traffic.parked.push(v);
