@@ -49,6 +49,7 @@ const LINES = {
   pelea: ['¿Qué te pasa, gil?', '¡Vení, vení!', '¡Te voy a dar!', '¡A mí no me tocás!', '¿Querés cobrar?'],
   duele: ['¡Ay!', '¡Pará, animal!', '¡Eh! ¡Qué hacés!', '¡Me mataste, loco!', '¡Uuuf!'],
   medias: ['¡Medias, medias! Tres pares dos mil', '¡Llevá medias, jefe! De algodón', '¡Soquetes, medias, tres por dos mil!', '¡Medias de toalla para el invierno!'],
+  charla: ['¿Viste lo del Celeste?', 'Y bueno, qué le vas a hacer...', '¡Jajaja, no te puedo creer!', 'No, pará, escuchá...', 'El sábado hay asado en lo de Rubén', 'Está todo carísimo, loco', '¿Y tu vieja cómo anda?', 'Le dije: "así no se puede"', '¡Noooo! ¿En serio?', 'El Roca otra vez parado...'],
   cana: ['¡Alto, policía!', '¡Quieto ahí!', '¡Al piso, al piso!', '¡Las manos donde las vea!', '¡No te hagás el vivo!'],
 };
 export const lines = (t) => LINES[t];
@@ -63,6 +64,7 @@ export class Npcs {
     this.audio = audio;
     this.list = [];
     this.dogs = [];
+    this.groups = []; // grupitos charlando en la vereda
     this.graph = graph;
     this.recycleT = 0;
     for (const n of graph.nodes) n.maxW = Math.max(...n.out.map((e) => e.street.w), 6);
@@ -174,6 +176,7 @@ export class Npcs {
 
   populate(center) {
     for (let i = 0; i < 44; i++) this.spawnWalker(null, center, 8, 150);
+    for (let i = 0; i < 3; i++) this.spawnGroup(center, i ? 30 : 12, i ? 120 : 40);
     for (const s of this.city.spots.trapitos) {
       const h = makeHuman({ ...randomCivilian(), vest: 0xc6ff00, cap: R.chance(0.5) ? 0x1a237e : null, franela: true });
       const n = this.add(new Npc('trapito', h, s.x, s.z));
@@ -253,6 +256,60 @@ export class Npcs {
     return n;
   }
 
+  // dos o tres vecinos parados charlando en ronda; se turnan para hablar y después se van cada uno
+  spawnGroup(near, rmin = 40, rmax = 130) {
+    const p = this.sidewalkPoint(near.x, near.z, rmin, rmax);
+    if (!p) return null;
+    const k = R.chance(0.6) ? 2 : 3;
+    const g = { x: p.x, z: p.z, members: [], speaker: null, t: 0, nextT: 0, endT: R.range(50, 110) };
+    const a0 = R.range(0, Math.PI * 2);
+    for (let i = 0; i < k; i++) {
+      const a = a0 + (i / k) * Math.PI * 2 + R.range(-0.3, 0.3);
+      const r = R.range(0.6, 0.8);
+      const x = p.x + Math.sin(a) * r;
+      const z = p.z + Math.cos(a) * r;
+      const n = this.spawnWalker({ x, z, heading: Math.atan2(p.x - x, p.z - z) }, near);
+      if (!n) continue;
+      n.state = 'chat';
+      n.phone = false;
+      n.group = g;
+      n.h.phase = R.range(0, 20);
+      g.members.push(n);
+    }
+    if (g.members.length < 2) {
+      for (const n of g.members) {
+        n.state = 'walk';
+        n.group = null;
+      }
+      return null;
+    }
+    this.groups.push(g);
+    return g;
+  }
+  updateGroups(dt, player) {
+    for (const g of this.groups) {
+      g.t += dt;
+      const live = g.members.filter((n) => n.state === 'chat' && !n.dead);
+      if (live.length < 2 || g.t > g.endT) {
+        // se despiden y cada uno sigue para su lado
+        for (const n of live) {
+          n.state = 'walk';
+          n.group = null;
+          this.attach(n);
+        }
+        g.done = true;
+        continue;
+      }
+      if (g.t >= g.nextT || !live.includes(g.speaker)) {
+        const others = live.filter((n) => n !== g.speaker);
+        g.speaker = R.pick(others.length ? others : live);
+        g.nextT = g.t + R.range(2.5, 6);
+        const dp = Math.hypot(player.x - g.x, player.z - g.z);
+        if (dp < 14 && R.chance(0.5)) g.speaker.say(dp < 5 && R.chance(0.3) ? 'Ese es Gaspi, ¿no?' : R.pick(LINES.charla), 2.6);
+      }
+    }
+    this.groups = this.groups.filter((g) => !g.done);
+  }
   spawnZombie(near) {
     const p = this.sidewalkPoint(near.x, near.z, 40, 140);
     if (!p) return null;
@@ -500,6 +557,20 @@ export class Npcs {
       } else if (n.state === 'fight') {
         want = this.updateFight(n, dt, world, dp);
         pose = 'guard';
+      } else if (n.state === 'chat') {
+        // charlando: mira al centro de la ronda; el que habla gesticula
+        const g = n.group;
+        pose = g?.speaker === n ? 'talk' : 'listen';
+        if (g) {
+          let d = Math.atan2(g.x - n.x, g.z - n.z) - n.heading;
+          while (d > Math.PI) d -= Math.PI * 2;
+          while (d < -Math.PI) d += Math.PI * 2;
+          n.heading += d * Math.min(1, dt * 3);
+        }
+        if (player.aiming && dp < 12 && this.inSights(player, n)) {
+          pose = 'handsup';
+          if (!n.bubble) n.say(R.pick(['¡No tirés!', '¡Tranqui, tranqui!']), 2);
+        }
       } else if (n.type === 'vecino') {
         want = n.vmax;
         pose = n.phone ? 'phone' : 'walk';
@@ -604,6 +675,7 @@ export class Npcs {
       if (n.dead) this.scene.remove(n.mesh);
       return !n.dead;
     });
+    this.updateGroups(dt, player);
     this.recycle(dt, world);
     this.updateDogs(dt, world);
   }
@@ -668,7 +740,7 @@ export class Npcs {
   // retoques sobre la pose: la cabeza sigue a Gaspi si pasa cerca, y el cuerpo se inclina al doblar corriendo
   lifeLook(n, dt, player, dp) {
     let look = 0;
-    const calm = n.state === 'walk' || n.state === 'idle' || n.state === 'sit' || n.state === 'approach';
+    const calm = n.state === 'walk' || n.state === 'idle' || n.state === 'sit' || n.state === 'approach' || n.state === 'chat';
     if (calm && dp < 9 && !player.dead && n.type !== 'zombie') {
       let rel = Math.atan2(player.x - n.x, player.z - n.z) - n.heading;
       while (rel > Math.PI) rel -= Math.PI * 2;
@@ -750,7 +822,7 @@ export class Npcs {
     for (const n of this.list) {
       const d = Math.hypot(n.x - player.x, n.z - player.z);
       if (n.type === 'vecino' && !n.down) {
-        if (d > 175 && n.state === 'walk' && !n.mission) {
+        if (d > 175 && (n.state === 'walk' || n.state === 'chat') && !n.mission) {
           n.dead = true;
           continue;
         }
@@ -759,6 +831,7 @@ export class Npcs {
       if (n.type === 'zombie' && d > 190 && this.count('zombie') > wantZombies) n.dead = true;
     }
     for (let i = walkers; i < wantWalkers && i < walkers + 3; i++) this.spawnWalker(null, player, 70, 150);
+    if (this.groups.length < (time.night ? 1 : 3) && R.chance(0.2)) this.spawnGroup(player, 70, 140);
     if (this.count('zombie') < wantZombies && R.chance(0.3)) this.spawnZombie(player);
     for (const d of this.dogs) {
       if (Math.hypot(d.x - player.x, d.z - player.z) > 190) {

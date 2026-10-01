@@ -1271,7 +1271,35 @@ function poseHuman(h, dt, speed, pose = 'walk', t = 0) {
     mix(b.head.rotation, 'x', Math.sin(t * 0.17) * 0.05);
   }
 
-  if (pose === 'zombie') {
+  if (pose === 'talk') {
+    // hablando: la mano derecha acompaña lo que dice, a veces las dos; cabeza y hombros se mueven
+    const g = h.phase;
+    const beat = 0.5 + 0.5 * Math.sin(g * 2.3);
+    const both = Math.max(0, Math.sin(g * 0.6));
+    b.uaR.rotation.set(-0.3 - 0.35 * beat, 0.3, 0.12 + 0.1 * beat);
+    b.faR.rotation.x = -1.15 + Math.sin(g * 4.2) * 0.32;
+    b.uaL.rotation.set(-0.12 - 0.4 * both, -0.25 * both, -0.08 - 0.08 * both);
+    b.faL.rotation.x = -0.18 - 1.0 * both + Math.sin(g * 3.6 + 1) * 0.2 * both;
+    b.chest.rotation.y = Math.sin(g * 0.9) * 0.08;
+    b.head.rotation.set(Math.sin(g * 3.1) * 0.06, Math.sin(g * 0.8) * 0.12, Math.sin(g * 1.3) * 0.07);
+  } else if (pose === 'listen') {
+    // escuchando: el peso en una pierna, las manos juntas adelante o en los bolsillos, y asiente
+    const g = h.phase;
+    const nod = Math.max(0, Math.sin(g * 1.7)) ** 6;
+    const pockets = Math.sin(h.phase * 0.05 + 2) > 0;
+    if (pockets) {
+      b.uaR.rotation.set(0.12, 0, -0.22);
+      b.uaL.rotation.set(0.12, 0, 0.22);
+      b.faR.rotation.x = -0.35;
+      b.faL.rotation.x = -0.35;
+    } else {
+      b.uaR.rotation.set(-0.15, 0.35, 0.25);
+      b.uaL.rotation.set(-0.15, -0.35, -0.25);
+      b.faR.rotation.x = -0.95;
+      b.faL.rotation.x = -0.95;
+    }
+    b.head.rotation.set(0.05 + nod * 0.18, Math.sin(g * 0.4) * 0.1, Math.sin(g * 0.5) * 0.05);
+  } else if (pose === 'zombie') {
     b.uaR.rotation.x = -1.2 + Math.sin(h.phase * 0.5) * 0.2;
     b.uaL.rotation.x = -1.0 + Math.cos(h.phase * 0.4) * 0.25;
     b.faR.rotation.x = -0.2;

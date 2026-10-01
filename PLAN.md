@@ -172,7 +172,10 @@ Hecho (cada ronda probada sin GPU y subida a `main`):
   `src/traffic.js`, pieza en `buildModel` de `src/cars.js`); paragolpes que se cae con golpes
   acumulados (`dropBumper` + `fx.part`).
 
-Ideas para seguir: capó que se levanta con mucho daño; gente que charla en grupos y gesticula; reacción al ver un auto que se acerca rápido
+- ✅ Grupitos charlando (`spawnGroup`/`updateGroups` en `src/npcs.js`, poses `talk`/`listen` en
+  `src/human.js`): se turnan para hablar, con tiros se dispersan y al rato se despiden.
+
+Ideas para seguir: capó que se levanta con mucho daño; reacción al ver un auto que se acerca rápido
 (ya se tiran a un costado); reflejos de luces en los charcos de noche más marcados.
 
 ## 6. Estado (actualizar al avanzar)

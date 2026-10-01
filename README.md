@@ -34,7 +34,7 @@ Jugás con **Gaspi** (saco, camisa blanca, corbata a rayas rojas y blancas).
 - **Mapa real** de 1,2 km alrededor de la estación, sacado de Overture Maps (datos de OpenStreetMap y huellas de edificios): calles con su nombre y ancho, vías, andenes, la playa de maniobras, casi 3.000 edificios con su forma real, plazas, canchas, árboles, faroles y semáforos.
 - Los negocios reales tienen su cartel; sobre Av. Meeks, Almirante Brown y alrededor de la estación la planta baja es comercial.
 - **Gaspi se mueve como una persona**: el ritmo del paso está medido para que el pie apoyado no patine, se inclina en las curvas, da pasitos al girar en el lugar, queda agitado después de correr y, si está quieto un rato, mira el reloj, se acomoda la corbata o estira el cuello.
-- La gente camina por las veredas reales, cruza en las esquinas y el tránsito sigue las calles de verdad. Arrancan y frenan de a poco, se esquivan entre ellos (y a Gaspi), a veces se paran en la esquina o a mirar el celu, y giran la cabeza para mirar a Gaspi cuando pasa cerca.
+- La gente camina por las veredas reales, cruza en las esquinas y el tránsito sigue las calles de verdad. Arrancan y frenan de a poco, se esquivan entre ellos (y a Gaspi), a veces se paran en la esquina o a mirar el celu, y giran la cabeza para mirar a Gaspi cuando pasa cerca. Hay grupitos charlando en la vereda: se turnan para hablar, gesticulan, asienten, y con los tiros se dispersan.
 
 ## Estilo GTA (0.4)
 
