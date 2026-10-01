@@ -5,3 +5,5 @@ dist/
 scripts/map/*.json
 scripts/map/__pycache__/
 tools/models/node_modules
+public/test/
+/rigtest.html

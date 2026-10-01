@@ -139,7 +139,11 @@ Radio ≈ 550 m desde la estación (`STATION` en `src/map.js`). Hoy: 1.872 edifi
 - ✅ B2 página de relevamiento: `public/relevamiento.html` (en el sitio: `/relevamiento.html`), base
   generada con `node scripts/relevamiento-base.mjs` (edificios, plazas/escuelas/canchas y calles a 600 m).
   Tipos: negocio, casa, edificio, colegio, iglesia, plaza/club, otro. Falta que el dueño cargue datos.
-- ⏳ A1 retarget: ver commit / notas en `src/rig.js`.
+- ✅ A1 retarget: `src/rig.js` → `rigHuman(gltf.scene, { height, female })` devuelve un `h` que
+  `animateHuman` mueve igual que a los nuestros (probado con Xbot y Michelle de three.js: caminar,
+  piñas, sentarse, sentadilla, muerto). La mano real para colgar armas: `h.rig.map.handR`.
+  Prueba: `tools/rigtest.html`. Siguiente: pool de modelos en `public/models/people/*.glb` y que
+  `npcs.spawnWalker` use `rigHuman` cuando haya modelos (A4).
 - ⛔ A2 / B1: esperan red o archivos del dueño.
 
 ## 7. Preguntas abiertas para el dueño

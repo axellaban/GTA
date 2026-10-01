@@ -1083,6 +1083,11 @@ function reset(h) {
 
 // Anima caminata y poses. `speed` en m/s. `t` (0..1) es el avance de un golpe.
 export function animateHuman(h, dt, speed, pose = 'walk', t = 0) {
+  poseHuman(h, dt, speed, pose, t);
+  // personajes de modelo externo (src/rig.js): copiar la pose al esqueleto real
+  h.rig?.apply();
+}
+function poseHuman(h, dt, speed, pose = 'walk', t = 0) {
   h.phase += dt * (speed < 0.1 ? 1 : 2 + speed * 2.4);
   const s = Math.sin(h.phase);
   const c = Math.cos(h.phase);
