@@ -2,7 +2,7 @@
 // suelo, calles, pintura vial, edificios con sus frentes, rejas, estación, andenes, faroles y árboles.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { DATA as D, HALF, ROADS, TRACKS, CORNERS, pointAt, STATION, project } from './map.js';
+import { DATA as D, HALF, ROADS, TRACKS, CORNERS, pointAt, STATION, project, SIGN_COLORS_REAL } from './map.js';
 import {
   ATLAS,
   buildAtlas,
@@ -428,8 +428,9 @@ function addBuildings(scene, atlas, colliders, rng, city) {
   const tanks = [];
   // carteles: nombres reales primero, después genéricos
   const real = [...new Set(D.buildings.filter((b) => b.k === 'local' && b.n).map((b) => b.n))];
-  const names = real.slice(0, 128 - GENERIC_SHOPS.length).concat(GENERIC_SHOPS);
-  const signs = signAtlas(names);
+  // todos los nombres reales (el atlas crece según cuántos haya) y los genéricos para el resto
+  const names = real.concat(GENERIC_SHOPS);
+  const signs = signAtlas(names, SIGN_COLORS_REAL);
   const signQ = new Quads();
   city.buildingList = [];
   for (const b of D.buildings) {

@@ -2,6 +2,27 @@
 // Overture Maps (datos de OpenStreetMap + huellas de edificios), procesados por
 // scripts/map/preprocess.py. Coordenadas en metros: x al este, z al sur, origen en la estación.
 import D from './data/temperley.json';
+import REL from './data/relevamiento.json';
+
+// Lo cargado a mano en /relevamiento.html (exportado a src/data/relevamiento.json) pisa lo que trae
+// Overture: nombre real, tipo, pisos y colores del cartel. Ver PLAN.md, parte B.
+const TIPO = { local: 'local', casa: 'casa', edificio: 'edificio', colegio: 'escuela', iglesia: 'iglesia' };
+export const SIGN_COLORS_REAL = new Map();
+for (const e of REL.negocios || []) {
+  const id = String(e.id);
+  if (id.startsWith('p')) {
+    const p = D.parks[+id.slice(1)];
+    if (p && e.nombre) p.n = e.nombre;
+    continue;
+  }
+  const b = D.buildings[+id];
+  if (!b) continue;
+  if (e.nombre) b.n = e.nombre;
+  if (TIPO[e.tipo]) b.k = TIPO[e.tipo];
+  if (e.pisos) b.f = e.pisos;
+  if (e.nombre && e.cartel) SIGN_COLORS_REAL.set(e.nombre, { bg: e.cartel, fg: e.letras || '#ffffff' });
+  b.rel = { fachada: e.fachada, persiana: !!e.persiana, toldo: !!e.toldo, rejas: !!e.rejas, rubro: e.rubro };
+}
 
 export const DATA = D;
 export const HALF = D.half;

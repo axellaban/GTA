@@ -913,28 +913,33 @@ export function normalMapFrom(src, strength = 2, repeat = false) {
 }
 
 // Carteles de comercios (nombres reales de la zona): celdas de 512x64 en un lienzo de 2048x2048
-export function signAtlas(names) {
-  const c = canvas(2048, 2048);
+// carteles de los comercios: 4 por fila de 512×64; el alto crece con la cantidad (tope 4096 = 256
+// carteles). colors: nombre → { bg, fg } con los colores reales cargados en el relevamiento.
+export function signAtlas(names, colors = new Map()) {
+  const list = names.slice(0, 256);
+  const H = Math.min(4096, Math.max(512, Math.ceil(list.length / 4) * 64));
+  const c = canvas(2048, H);
   const g = c.getContext('2d');
   const map = new Map();
   const rng = new Rng(9090);
-  names.slice(0, 128).forEach((n, i) => {
+  list.forEach((n, i) => {
     const col = i % 4;
     const row = Math.floor(i / 4);
     const x = col * 512;
     const y = row * 64;
-    const bg = rng.pick(SIGN_COLORS);
+    const real = colors.get(n);
+    const bg = real?.bg ?? rng.pick(SIGN_COLORS);
     g.fillStyle = bg;
     g.fillRect(x + 2, y + 2, 508, 60);
     g.strokeStyle = 'rgba(255,255,255,0.7)';
     g.lineWidth = 3;
     g.strokeRect(x + 6, y + 6, 500, 52);
-    g.fillStyle = bg === '#f9a825' ? '#1a1a1a' : '#ffffff';
+    g.fillStyle = real?.fg ?? (bg === '#f9a825' ? '#1a1a1a' : '#ffffff');
     g.font = `34px ${FONT}`;
     g.textAlign = 'center';
     g.textBaseline = 'middle';
     g.fillText(n.toUpperCase(), x + 256, y + 34, 480);
-    map.set(n, { u0: x / 2048, u1: (x + 512) / 2048, v0: 1 - (y + 64) / 2048, v1: 1 - y / 2048 });
+    map.set(n, { u0: x / 2048, u1: (x + 512) / 2048, v0: 1 - (y + 64) / H, v1: 1 - y / H });
   });
   const t = tex(c);
   t.anisotropy = 8;

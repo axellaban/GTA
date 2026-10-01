@@ -108,7 +108,10 @@ Radio ≈ 550 m desde la estación (`STATION` en `src/map.js`). Hoy: 1.872 edifi
   `/relevamiento.html`): mapa de los edificios del radio; tocás uno y cargás nombre, rubro, color
   del cartel, persiana/toldo, pisos, notas y una foto propia del frente. Se guarda en el celu y se
   exporta a JSON. El JSON exportado se sube a `src/data/relevamiento.json`.
-- **B3 — Construcción**: `city.js` lee `relevamiento.json` y, por cada local, arma el frente con
+- **B3a — Importación (hecho)**: `src/map.js` lee `src/data/relevamiento.json` y pisa nombre, tipo,
+  pisos y colores del cartel (`SIGN_COLORS_REAL`); los carteles ya no tienen tope de 104 nombres
+  (atlas de hasta 256). Guarda el resto en `b.rel` (fachada, persiana, toldo, rejas, rubro).
+- **B3 — Construcción (falta)**: usar `b.rel` en `city.js` y, por cada local, arma el frente con
   piezas (vidriera, persiana, puerta, toldo, cartel con el nombre real; foto como textura si hay),
   con los pisos reales. Prioridad: la cuadra de la estación sobre Av. Meeks y el centro comercial.
 - **B4 — El gym El Kaiser a su dirección real** (falta que el dueño pase calle y número; hoy está
