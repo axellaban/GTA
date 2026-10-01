@@ -249,7 +249,7 @@ export function makeCarro(driver) {
     driver.root.position.set(0, 0.35, -0.2);
     g.add(driver.root);
   }
-  g.userData = { L: 4.4, W: 1.45, wheels, legs, kind: 'carro', model: 'carro', tall: 2.2 };
+  g.userData = { L: 4.4, W: 1.45, wheels, legs, horse: horse.g, kind: 'carro', model: 'carro', tall: 2.2 };
   return g;
 }
 

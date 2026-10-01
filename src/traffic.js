@@ -1,6 +1,7 @@
 // Grafo de calles, autos con IA, colectivos y autos estacionados.
 import { ROADS, HALF } from './map.js';
 import { makeCar, makeBus, makeMoto, makeTruck, makeCarro, CAR_COLORS } from './vehicles.js';
+import { ANIMALS, makeAnimal, animalPlay } from './people.js';
 import { makeHuman, animateHuman, randomCivilian } from './human.js';
 import { R } from './rng.js';
 
@@ -61,6 +62,23 @@ export class Vehicle {
         w.rotation.x = this.wheelSpin * (u.spinSign ?? 1);
         if (i < 2 && !moto && this.kind !== 'carro') w.rotation.y = this.steer * 0.5;
       });
+    }
+    // caballo del carro: cuando cargó el modelo CC0, reemplaza al hecho por código
+    if (u.horse && !u.horseAnim && ANIMALS.horse) {
+      const a = makeAnimal('horse', { length: 2.7 });
+      if (a) {
+        a.g.position.copy(u.horse.position);
+        a.g.rotation.copy(u.horse.rotation);
+        u.horse.parent?.remove(u.horse);
+        this.mesh.add(a.g);
+        u.horseAnim = a;
+        u.legs = null;
+      }
+    }
+    if (u.horseAnim) {
+      const sp = Math.abs(this.speed);
+      animalPlay(u.horseAnim, sp > 0.3 ? 'walk' : 'idle', sp > 0.3 ? Math.max(0.5, sp / 1.6) : 1);
+      u.horseAnim.mixer.update(dt);
     }
     // patas del caballo
     if (u.legs) {

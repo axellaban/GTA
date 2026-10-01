@@ -180,7 +180,7 @@ Por las calles de la estación pasea **Laban the Creator** en una Ferrari amaril
 
 Los vecinos (3 de cada 4) y la policía ahora son modelos low-poly con textura pintada, al estilo de Vice City: 11 personas CC0 de elbolilloduro (varones, mujeres, médico, policía hombre y mujer), sacadas de [Mesh2Motion](https://github.com/scottpetrovic/mesh2motion-app). Se animan con las mismas poses de siempre (caminar, piñas, celular, sentarse, caerse) gracias a `src/rig.js`, que traduce nuestro esqueleto a cualquier esqueleto humanoide estándar. Las armas de la cana se cuelgan de su mano.
 
-Los perros también son un modelo CC0 de Mesh2Motion, con animaciones de verdad (quieto, caminar, correr, ladrar) y distintos tonos de pelo.
+Los perros también son un modelo CC0 de Mesh2Motion, con animaciones de verdad (quieto, caminar, correr, ladrar) y distintos tonos de pelo, y el caballo del carro del cartonero también.
 
 ## Gym El Kaiser (0.13)
 
