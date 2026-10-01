@@ -16,6 +16,8 @@ export class Input {
     addEventListener('keydown', (e) => {
       if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
       const k = e.key.toLowerCase();
+      // últimas letras tecleadas (para los trucos, como en los GTA de antes)
+      if (k.length === 1 && /[a-zñ]/.test(k)) this.typed = ((this.typed || '') + k).slice(-16);
       if (!this.keys.has(k)) this.pressed.add(k);
       this.keys.add(k);
       if ([' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'tab'].includes(k)) e.preventDefault();

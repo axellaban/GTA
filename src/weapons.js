@@ -13,8 +13,12 @@ export const WEAPONS = {
   metra: { id: 'metra', name: 'Metra', gun: true, dmg: 20, rate: 0.085, mag: 30, reload: 1.9, range: 55, spread: 0.035, pellets: 1, pose: 'aim', ammoPickup: 60, sound: 'metra', auto: true },
   molotov: { id: 'molotov', name: 'Molotov', throw: true, ammoPickup: 3 },
   escopeta: { id: 'escopeta', name: 'Tumbera', gun: true, dmg: 17, rate: 0.95, mag: 2, reload: 2.6, range: 28, spread: 0.1, pellets: 7, pose: 'aimLong', knock: true, ammoPickup: 12, sound: 'escopeta' },
+  // ametralladora con cinta: tira sin parar, patea fuerte y voltea a la gente
+  ametralladora: { id: 'ametralladora', name: 'Ametralladora', gun: true, heavy: true, dmg: 36, rate: 0.068, mag: 100, reload: 3.6, range: 85, spread: 0.03, pellets: 1, pose: 'aimLong', knock: true, ammoPickup: 200, sound: 'ametralladora', auto: true },
+  // bazuca: un cohete por vez, con estela de humo, que explota donde pega
+  bazuca: { id: 'bazuca', name: 'Bazuca', gun: true, rocket: true, heavy: true, dmg: 0, rate: 1.1, mag: 1, reload: 2.4, range: 160, spread: 0.004, pellets: 1, pose: 'aimLong', ammoPickup: 5, sound: 'bazuca' },
 };
-export const ORDER = ['punos', 'motosierra', 'baston', 'palo', 'revolver', 'pistola', 'metra', 'escopeta', 'molotov'];
+export const ORDER = ['punos', 'motosierra', 'baston', 'palo', 'revolver', 'pistola', 'metra', 'ametralladora', 'escopeta', 'molotov', 'bazuca'];
 
 const metal = 0x2a2c30;
 const wood = 0x7a4a26;
@@ -69,8 +73,52 @@ function gunGeo(id) {
     B.box(0.04, 0.09, 0.32, wood, 0, 0.0, -0.14);
     B.box(0.045, 0.02, 0.02, 0x9a8a60, 0, 0.04, 0.12);
     B.box(0.045, 0.02, 0.02, 0x9a8a60, 0, 0.04, -0.04);
+  } else if (id === 'ametralladora') {
+    // cajón del mecanismo, caño largo con camisa agujereada, culata, cinta de balas y bípode plegado
+    B.box(0.06, 0.1, 0.34, 0x1c1d1f, 0, 0.04, 0.06);
+    B.add(new THREE.CylinderGeometry(0.03, 0.03, 0.42, 10).rotateX(Math.PI / 2).translate(0, 0.055, 0.44), 0x2a2b2e);
+    for (let i = 0; i < 5; i++) B.box(0.064, 0.012, 0.03, 0x111111, 0, 0.086, 0.3 + i * 0.07);
+    B.add(new THREE.CylinderGeometry(0.014, 0.014, 0.16, 8).rotateX(Math.PI / 2).translate(0, 0.055, 0.72), 0x3a3b3e);
+    B.add(new THREE.CylinderGeometry(0.022, 0.028, 0.05, 8).rotateX(Math.PI / 2).translate(0, 0.055, 0.81), 0x1a1a1a);
+    B.box(0.045, 0.12, 0.28, 0x3b2a1c, 0, -0.01, -0.26);
+    B.box(0.035, 0.12, 0.05, 0x1c1d1f, 0, -0.06, 0.0);
+    B.box(0.09, 0.09, 0.1, 0x3d4a2a, -0.075, 0.0, 0.08);
+    for (let i = 0; i < 4; i++) B.box(0.03, 0.012, 0.016, 0xc9a227, -0.03 - i * 0.012, 0.06 - i * 0.03, 0.06);
+    B.box(0.012, 0.012, 0.2, 0x222222, 0.02, 0.02, 0.55);
+    B.box(0.012, 0.012, 0.2, 0x222222, -0.02, 0.02, 0.55);
+    B.box(0.012, 0.05, 0.012, 0x111111, 0, 0.115, 0.6);
+  } else if (id === 'bazuca') {
+    // tubo verde oliva sobre el hombro: boca acampanada atrás, mira, empuñadura y el cohete asomando
+    B.add(new THREE.CylinderGeometry(0.06, 0.06, 1.15, 14).rotateX(Math.PI / 2).translate(0, 0.1, 0.05), 0x4a5a34);
+    B.add(new THREE.CylinderGeometry(0.085, 0.065, 0.14, 14).rotateX(Math.PI / 2).translate(0, 0.1, -0.56), 0x3e4c2b);
+    B.add(new THREE.CylinderGeometry(0.068, 0.068, 0.05, 14).rotateX(Math.PI / 2).translate(0, 0.1, 0.62), 0x2e3820);
+    B.add(new THREE.ConeGeometry(0.05, 0.16, 12).rotateX(Math.PI / 2).translate(0, 0.1, 0.71), 0x6b6f4a);
+    B.box(0.012, 0.016, 0.9, 0xd9c36a, 0, 0.165, 0.05);
+    B.box(0.04, 0.06, 0.05, 0x1c1c1c, -0.07, 0.17, 0.2);
+    B.box(0.035, 0.11, 0.045, 0x222222, 0, 0.0, 0.0);
+    B.box(0.035, 0.1, 0.045, 0x222222, 0, 0.01, 0.3);
   }
   return B.geometry();
+}
+
+// cohete en vuelo: ojiva, cuerpo y aletas (la estela la pone el combate)
+let rocketGeo = null;
+export function rocketMesh() {
+  if (rocketGeo) {
+    const m = new THREE.Mesh(rocketGeo, mat);
+    m.castShadow = true;
+    return m;
+  }
+  const B = new BoxBuilder();
+  B.add(new THREE.CylinderGeometry(0.045, 0.045, 0.42, 10).rotateX(Math.PI / 2), 0x5b6340);
+  B.add(new THREE.ConeGeometry(0.048, 0.16, 10).rotateX(Math.PI / 2).translate(0, 0, 0.29), 0x7a7d58);
+  for (let i = 0; i < 4; i++) {
+    const f = new THREE.BoxGeometry(0.008, 0.07, 0.1).translate(0, 0.07, -0.17);
+    f.rotateZ((i / 4) * Math.PI * 2);
+    B.add(f, 0x2a2a2a);
+  }
+  rocketGeo = B.geometry();
+  return rocketMesh();
 }
 
 const mat = new THREE.MeshStandardMaterial({ vertexColors: true, metalness: 0.5, roughness: 0.45 });
@@ -92,6 +140,6 @@ export function handWeapon(id) {
 // Objeto que gira en el piso
 export function pickupWeapon(id) {
   const m = new THREE.Mesh(geoFor(id), mat);
-  m.scale.setScalar(['palo', 'baston', 'motosierra'].includes(id) ? 1.2 : 2.2);
+  m.scale.setScalar(['palo', 'baston', 'motosierra'].includes(id) ? 1.2 : ['ametralladora', 'bazuca'].includes(id) ? 1.3 : 2.2);
   return m;
 }

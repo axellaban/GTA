@@ -260,6 +260,17 @@ export class Audio {
       this.burst(0.5, 1200, 'lowpass', 1.1 * v);
       this.thump(120, 38, 0.35, 0.9 * v);
       this.burst(0.9, 500, 'lowpass', 0.25 * v, 0.06);
+    } else if (kind === 'ametralladora') {
+      // calibre grueso: golpe grave y seco, con eco corto
+      this.burst(0.2, 1800, 'lowpass', 1.0 * v);
+      this.thump(150, 42, 0.18, 0.85 * v);
+      this.burst(0.35, 600, 'lowpass', 0.18 * v, 0.03);
+    } else if (kind === 'bazuca') {
+      // disparo del cohete: estampido sordo y el siseo del motor que se aleja
+      this.thump(90, 30, 0.5, 1.1 * v);
+      this.burst(0.35, 900, 'lowpass', 0.9 * v);
+      const f = this.burst(1.4, 2600, 'bandpass', 0.35 * v, 0.05, 1.2);
+      if (f) f.frequency.exponentialRampToValueAtTime(700, this.ctx.currentTime + 1.4);
     } else if (kind === 'revolver') {
       this.burst(0.28, 2400, 'lowpass', 0.95 * v);
       this.thump(180, 50, 0.22, 0.7 * v);

@@ -1,7 +1,7 @@
 // Combate: combos de piñas y patada, palazos, tiros con mira o apuntado automático,
 // balas de la cana, autos que se prenden fuego y explotan.
 import * as THREE from 'three';
-import { WEAPONS, ORDER, handWeapon } from './weapons.js';
+import { WEAPONS, ORDER, handWeapon, rocketMesh } from './weapons.js';
 import { dentCar, dropBumper, looseBumper } from './cars.js';
 import { R } from './rng.js';
 import { TOUCH } from './input.js';
@@ -38,6 +38,7 @@ export class Combat {
     this.audio = audio;
     this.fireCd = 0;
     this.flying = []; // molotovs en el aire
+    this.rockets = []; // cohetes de la bazuca
     this.fires = []; // fuego en el piso
   }
 
@@ -114,6 +115,7 @@ export class Combat {
     }
     this.updateVehicles(dt, world);
     this.updateMolotovs(dt, world);
+    this.updateRockets(dt, world);
   }
 
   playerCombat(dt, world) {
@@ -121,9 +123,10 @@ export class Combat {
     if (input.hit('q', 'weapon')) this.cycle(P, 1);
     if (!hud.dialog) {
       for (let i = 0; i < ORDER.length; i++) {
-        if (input.hit(String(i + 1)) && P.inv[ORDER[i]]) {
+        if (input.hit(String(i + 1)) && P.inv[ORDER[i]] && P.weapon !== ORDER[i]) {
           P.weapon = ORDER[i];
           P.attack = null;
+          P.reloadT = 0;
           this.syncHand(P);
         }
       }
@@ -314,6 +317,68 @@ export class Combat {
     this.fires = this.fires.filter((f) => f.t > 0);
   }
 
+  // ---------- Bazuca ----------
+  fireRocket(world, o, d, shooter) {
+    const m = rocketMesh();
+    m.position.set(o.x, o.y, o.z);
+    m.lookAt(o.x + d.x, o.y + d.y, o.z + d.z);
+    this.scene.add(m);
+    this.rockets.push({ m, x: o.x, y: o.y, z: o.z, dx: d.x, dy: d.y, dz: d.z, speed: 30, life: 0, shooter, trail: 0 });
+  }
+  updateRockets(dt, world) {
+    for (const r of this.rockets) {
+      r.life += dt;
+      // el motor lo va acelerando; tiembla un poquito en el aire
+      r.speed = Math.min(55, r.speed + dt * 40);
+      const step = r.speed * dt;
+      const hit = this.trace(world, { x: r.x, y: r.y, z: r.z }, { x: r.dx, y: r.dy, z: r.dz }, step, r.shooter);
+      if (hit.type || r.life > 4 || r.y < -1) {
+        this.rocketHit(world, r, hit.type ? hit : { x: r.x + r.dx * step, y: r.y + r.dy * step, z: r.z + r.dz * step });
+        r.done = true;
+        continue;
+      }
+      const px = r.x;
+      const py = r.y;
+      const pz = r.z;
+      r.x += r.dx * step;
+      r.y += r.dy * step;
+      r.z += r.dz * step;
+      r.m.position.set(r.x + R.range(-0.02, 0.02), r.y + R.range(-0.02, 0.02), r.z);
+      r.m.lookAt(r.x + r.dx, r.y + r.dy, r.z + r.dz);
+      r.m.rotateZ(r.life * 18);
+      // estela: bocanadas de humo cada 40 cm y la llama del motor atrás
+      r.trail += step;
+      while (r.trail >= 0.4) {
+        r.trail -= 0.4;
+        const k = r.trail / step;
+        const sx = r.x + (px - r.x) * k - r.dx * 0.3;
+        const sy = r.y + (py - r.y) * k - r.dy * 0.3;
+        const sz = r.z + (pz - r.z) * k - r.dz * 0.3;
+        this.fx.alpha.add({ x: sx, y: sy, z: sz, vx: R.range(-0.3, 0.3), vy: R.range(0.1, 0.5), vz: R.range(-0.3, 0.3), grav: 0, drag: 1.2, life: 0, max: R.range(1.6, 2.6), s0: 0.35, s1: 2.2, c0: [0.78, 0.77, 0.75], a: 0.42, fadeIn: 0.05 });
+      }
+      this.fx.add.add({ x: r.x - r.dx * 0.32, y: r.y - r.dy * 0.32, z: r.z - r.dz * 0.32, vx: -r.dx * 3, vy: 0, vz: -r.dz * 3, grav: 0, drag: 6, life: 0, max: 0.09, s0: 0.75, s1: 0.2, c0: [1, 0.85, 0.5], c1: [1, 0.4, 0.1], a: 1 });
+    }
+    for (const r of this.rockets) if (r.done) this.scene.remove(r.m);
+    this.rockets = this.rockets.filter((r) => !r.done);
+  }
+  rocketHit(world, r, hit) {
+    const byPlayer = r.shooter === world.player;
+    // pegó en un auto: vuela por el aire en el acto
+    if (hit.type === 'veh' && !hit.obj.wreck) {
+      const v = hit.obj;
+      v.lastHitByPlayer = v.lastHitByPlayer || byPlayer;
+      v.damage = 100;
+      this.explodeVehicle(world, v);
+      return;
+    }
+    if (hit.type === 'moto' && hit.obj.state !== 'down') world.crime.knockDown(hit.obj, world);
+    if (hit.type === 'wall') {
+      this.fx.chips(hit.x, hit.y, hit.z, hit.nx, hit.nz, [0.62, 0.58, 0.52], 14);
+      this.fx.dust(hit.x + hit.nx * 0.3, hit.y, hit.z + hit.nz * 0.3, 10, [0.6, 0.56, 0.5], 1.6);
+    }
+    this.explode(world, hit.x, hit.z, 1.3, byPlayer, hit.y);
+  }
+
   // ---------- Tiros ----------
   vehicles(world) {
     const list = world.traffic.cars.concat(world.traffic.parked, world.police.cars);
@@ -357,7 +422,7 @@ export class Combat {
   }
 
   // el mejor blanco en el cono de la mirada (apuntado automático)
-  autoTarget(world, P, fx, fz, range) {
+  autoTarget(world, P, fx, fz, range, cars = false) {
     let best = null;
     let bs = Infinity;
     const consider = (x, y, z, hostile) => {
@@ -376,6 +441,8 @@ export class Combat {
     };
     for (const n of world.npcs.list) if (!n.down) consider(n.x, n.y + 1.25, n.z, n.state === 'fight' || n.type === 'cana' || n.type === 'zombie');
     for (const m of world.crime.motos) if (m.state !== 'down') consider(m.v.x, 1.2, m.v.z, true);
+    // con la bazuca también los autos (al medio de la carrocería); los patrulleros primero
+    if (cars) for (const v of this.vehicles(world)) if (!v.wreck && v !== P.vehicle && v.kind !== 'moto') consider(v.x, 0.75, v.z, !!v.police);
     return best;
   }
 
@@ -407,15 +474,23 @@ export class Combat {
       const moving = P.speed > 0.5;
       const hx = moving ? Math.sin(P.heading) : fx;
       const hz = moving ? Math.cos(P.heading) : fz;
-      aim = this.autoTarget(world, P, hx, hz, w.range) ?? { x: P.x + hx * 30, y: P.y + 1.3, z: P.z + hz * 30 };
+      aim = this.autoTarget(world, P, hx, hz, Math.min(w.range, 70), !!w.rocket) ?? { x: P.x + hx * 30, y: P.y + (w.rocket ? 0.9 : 1.3), z: P.z + hz * 30 };
     }
     P.heading = Math.atan2(aim.x - P.x, aim.z - P.z);
     const hx = Math.sin(P.heading);
     const hz = Math.cos(P.heading);
     const o = { x: P.x + hx * 0.55 - hz * 0.12, y: P.y + 1.42, z: P.z + hz * 0.55 + hx * 0.12 };
     const base = new THREE.Vector3(aim.x - o.x, aim.y - o.y, aim.z - o.z).normalize();
-    const moveSpread = P.speed > 3 ? 2 : 1;
-    for (let i = 0; i < w.pellets; i++) {
+    const moveSpread = (P.speed > 3 ? 2 : 1) * (w.heavy && P.speed > 1 ? 1.5 : 1);
+    if (w.rocket) {
+      // el cohete sale de la boca del tubo, sobre el hombro
+      const ro = { x: o.x + hx * 0.5, y: o.y + 0.12, z: o.z + hz * 0.5 };
+      this.fireRocket(world, ro, base, P);
+      // contragolpe del tubo: humo y fogonazo para atrás
+      this.fx.smoke(o.x - hx * 1.2, o.y, o.z - hz * 1.2, 6, { s0: 0.6, s1: 2.6, vx: -hx * 3, vz: -hz * 3, life: 0.8 });
+      this.fx.muzzle(o.x - hx * 0.9, o.y + 0.1, o.z - hz * 0.9, -hx, -hz, true);
+    }
+    for (let i = 0; i < (w.rocket ? 0 : w.pellets); i++) {
       const d = base.clone();
       d.x += R.range(-1, 1) * w.spread * moveSpread;
       d.y += R.range(-1, 1) * w.spread * 0.6 * moveSpread;
@@ -423,14 +498,18 @@ export class Combat {
       d.normalize();
       this.shot(world, o, d, w, P, w.dmg);
     }
-    this.fx.muzzle(o.x, o.y, o.z, hx, hz, w.id === 'escopeta');
-    // la pistola y la metra escupen el casquillo (el revólver lo guarda; la tumbera, al recargar)
-    if (w.id === 'pistola' || w.id === 'metra') this.fx.casing(o.x - hx * 0.25, o.y + 0.05, o.z - hz * 0.25, hx, hz);
+    const long = w.pose === 'aimLong';
+    const mz = { x: o.x + hx * (long ? 0.55 : 0), y: o.y, z: o.z + hz * (long ? 0.55 : 0) };
+    if (!w.rocket) this.fx.muzzle(mz.x, mz.y, mz.z, hx, hz, w.id === 'escopeta' || w.id === 'ametralladora');
+    // la pistola, la metra y la ametralladora escupen el casquillo (el revólver lo guarda; la tumbera, al recargar)
+    if (w.id === 'pistola' || w.id === 'metra' || w.id === 'ametralladora') this.fx.casing(o.x - hx * 0.25, o.y + 0.05, o.z - hz * 0.25, hx, hz, w.id === 'ametralladora');
     this.audio.disparo(w.sound, 1);
-    this.fx.shake += w.id === 'escopeta' ? 0.3 : w.id === 'revolver' ? 0.16 : 0.08;
-    P.recoil = w.id === 'escopeta' ? 1 : 0.5;
-    // la mira sube con el golpe del tiro
-    P.camPitch = Math.max(-0.35, P.camPitch - (w.id === 'escopeta' ? 0.05 : w.id === 'revolver' ? 0.032 : w.id === 'metra' ? 0.008 : 0.014));
+    const kick = { escopeta: [0.3, 1, 0.05], revolver: [0.16, 0.5, 0.032], metra: [0.08, 0.5, 0.008], ametralladora: [0.13, 0.7, 0.012], bazuca: [0.55, 1, 0.07] }[w.id] ?? [0.08, 0.5, 0.014];
+    this.fx.shake += kick[0];
+    P.recoil = kick[1];
+    // la mira sube con el golpe del tiro (y la ametralladora tiembla para los costados)
+    P.camPitch = Math.max(-0.35, P.camPitch - kick[2]);
+    if (w.id === 'ametralladora') P.camYaw += R.range(-0.006, 0.006);
     world.npcs.panic(o.x, o.z, 45, P);
     world.police.crime('tiros', o.x, o.z);
     if (a.mag === 0 && a.res > 0) setTimeout(() => this.reload(P), 250);
@@ -609,7 +688,7 @@ export class Combat {
     }
     this.explode(world, v.x, v.z, 1, v.lastHitByPlayer);
   }
-  explode(world, x, z, power = 1, byPlayer = false) {
+  explode(world, x, z, power = 1, byPlayer = false, y = 0) {
     const P = world.player;
     this.fx.explosion(x, z, power);
     const d = Math.hypot(P.x - x, P.z - z);

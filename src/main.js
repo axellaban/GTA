@@ -465,7 +465,21 @@ const ARMERIA = [
     for (const [id, a] of Object.entries(player.ammo)) if (WEAPONS[id]?.gun) a.res += WEAPONS[id].ammoPickup;
   } },
   { label: 'Bastón presidencial · $9.000', cost: 9000, give: () => combat.give(player, 'baston') },
+  { label: 'Ametralladora · $14.000', cost: 14000, give: () => combat.give(player, 'ametralladora') },
+  { label: 'Bazuca · $25.000', cost: 25000, give: () => combat.give(player, 'bazuca') },
 ];
+// truco a lo GTA: escribir FIERROS en cualquier momento da todo el arsenal
+const ARSENAL = ['revolver', 'pistola', 'metra', 'ametralladora', 'escopeta', 'molotov', 'bazuca', 'baston'];
+function checkCheats() {
+  if (!input.typed?.endsWith('fierros')) return;
+  input.typed = '';
+  for (const id of ARSENAL) {
+    combat.give(player, id);
+    combat.give(player, id);
+  }
+  hud.flash('FIERROS', 'Arsenal completo. La cana ya se enteró.', 'ok', 2.6);
+  audio.plata();
+}
 function updateArmeria() {
   const a = armeria;
   if (!a) return;
@@ -1146,6 +1160,7 @@ function frame(now) {
   updateJob(dt);
   updateGarages();
   updateArmeria();
+  checkCheats();
   gym.update(dt, world);
   stunts.update(dt, world);
   laban.update(dt, world);

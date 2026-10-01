@@ -153,6 +153,9 @@ export class Pickups {
     spots.baston = put(where(3, 60, 160, 0.5), 'weapon', { id: 'baston' });
     put(curb(350, 520, 0.6), 'weapon', { id: 'metra' });
     put(curb(150, 280, 0.9), 'weapon', { id: 'molotov' });
+    // las pesadas, lejos y escondidas
+    put(curb(420, 600, 0.15), 'weapon', { id: 'ametralladora' });
+    put(where(5, 480, 700, 0.85), 'weapon', { id: 'bazuca' });
     // la tumbera, escondida en la playa de vías
     const yard = D.yard[0]?.[0];
     if (yard) {
