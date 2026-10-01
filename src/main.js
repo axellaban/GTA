@@ -37,6 +37,7 @@ import { Radio } from './radio.js';
 import { R } from './rng.js';
 import { setupInstall } from './install.js';
 import { Transit } from './transit.js';
+import { Interiors } from './interiors.js';
 import { Missions, makeMarker } from './missions.js';
 
 setupInstall();
@@ -210,6 +211,8 @@ const weather = { rain: 0, target: 0, wet: 0, slick: false, next: R.range(200, 3
 const world = { scene, camera, city, input, audio, hud, player, traffic, npcs, crime, events, trains, time, lights, colliders: city.colliders, fx, pickups, combat, police, nav, radio, weather, night: NIGHT, heightAt };
 const transit = new Transit(city, trains, traffic);
 world.transit = transit;
+const interiors = new Interiors(scene, city, city.colliders, pickups);
+world.interiors = interiors;
 police.world = world;
 const missions = new Missions(scene, world);
 world.missions = missions;
@@ -546,7 +549,7 @@ function updateWeather(dt) {
     m.envMapIntensity = 0.5 + weather.wet * 1.1;
     m.color.copy(dryColor).lerp(wetColor, weather.wet);
   }
-  fx.setRain(weather.rain, camera, weather.t);
+  fx.setRain(world.inside ? 0 : weather.rain, camera, weather.t);
   audio.lluvia(weather.rain);
   // relámpagos con tormenta fuerte
   weather.flash = Math.max(0, weather.flash - dt * 6);
@@ -714,31 +717,31 @@ const praise = ['¡BIEN AHÍ!', '¡VAMOS, GASPI!', '¡DE UNA!', '¡ESO!', '¡QU�
 function updateObjective() {
   if (job.active) {
     hud.setObjective(`Delivery a ${job.street}: ${Math.ceil(job.t)} s`, { x: job.x, z: job.z });
-    hud.updateObjective(player);
+    hud.updateObjective(interiors.focus(player));
     return;
   }
   const ro = rescue.objective();
   if (ro) {
     hud.setObjective(ro.text, ro.target);
-    hud.updateObjective(player);
+    hud.updateObjective(interiors.focus(player));
     return;
   }
   if (cop.active) {
     hud.setObjective(`Bajá a los motochorros: ${Math.ceil(cop.t)} s`, cop.m.v);
-    hud.updateObjective(player);
+    hud.updateObjective(interiors.focus(player));
     return;
   }
   if (fare.active) {
     const pick = fare.x == null;
     hud.setObjective(pick ? `Buscá al pasajero: ${Math.ceil(fare.t)} s` : `Llevá al pasajero a ${fare.street}: ${Math.ceil(fare.t)} s`, pick ? fare.n : { x: fare.x, z: fare.z });
-    hud.updateObjective(player);
+    hud.updateObjective(interiors.focus(player));
     return;
   }
   // misiones (después del tutorial)
   const mo = step >= steps.length - 1 ? missions.objective() : null;
   if (mo) {
     hud.setObjective(mo.text, mo.target);
-    hud.updateObjective(player);
+    hud.updateObjective(interiors.focus(player));
     return;
   }
   const s = steps[step];
@@ -750,7 +753,7 @@ function updateObjective() {
   }
   const cur = steps[step];
   hud.setObjective(cur.text, cur.target());
-  hud.updateObjective(player);
+  hud.updateObjective(interiors.focus(player));
 }
 
 // GPS: camino por las calles hasta el objetivo, en violeta en el minimapa
@@ -848,6 +851,7 @@ function interactions() {
   if (!action && crime.motos.some((m) => m.state !== 'down' && m.v.speed < 2.5 && Math.hypot(m.v.x - player.x, m.v.z - player.z) < 2.2)) {
     action = { text: 'Voltearles la moto', run: () => crime.tryShove(world) };
   }
+  if (!action) action = interiors.action(world);
   if (!action) action = transit.action(world);
   const car = player.nearestVehicle(world);
   if (action) hud.prompt('E', action.text);
@@ -1108,6 +1112,7 @@ function frame(now) {
   }
   traffic.update(dt, world);
   npcs.update(dt, world);
+  interiors.update(dt, world);
   crime.update(dt, world);
   police.update(dt, world);
   events.update(dt, world);

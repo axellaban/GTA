@@ -134,7 +134,9 @@ Radio ≈ 550 m desde la estación (`STATION` en `src/map.js`). Hoy: 1.872 edifi
 ### C. Otros pendientes
 
 - ✅ Subirse al tren y al colectivo como pasajero (`src/transit.js`; el colectivo frena en las paradas: `busStops` en `src/traffic.js`).
-- Interiores (kiosco, estación, el gym por dentro ya es visible desde la puerta).
+- ✅ Interiores a lo GTA clásico (`src/interiors.js`): hall de la estación y el kiosco más cercano, armados
+  fuera del mapa (x≈1500) con fundido al entrar; `focus()` mantiene la calle viva alrededor de la puerta.
+  Para sumar otro: un `build...` con su `doors.push({ outside, inside, label, exit })`.
 - ✅ Más misiones encadenadas: hay 6 en `src/missions.js` (`DEFS`; se prueban sin el llamado con
   `world.missions.defs`, `offer` y `begin()`).
 - ✅ Policía: retenes (`roadblock` en `src/police.js`) con tira de clavos (`addSpikes`/`updateSpikes`) y 6 estrellas con Gendarmería.
@@ -190,7 +192,7 @@ CC0 con animaciones, autos que se abollan (`dentCar`), changas de paramédico y 
    `src/player.js`; chapa y pintura las cambia).
 4. ✅ Tren y colectivo de pasajero (`src/transit.js`): E con el tren parado en el andén o el colectivo
    frenado; el tren lleva hasta la próxima estación (fundido, media hora después, la cana pierde el
-   rastro) y el colectivo frena en las paradas reales (`busStops` en `src/traffic.js`). Falta: interiores.
+   rastro) y el colectivo frena en las paradas reales (`busStops` en `src/traffic.js`).
 5. ✅ Tres misiones más (`src/missions.js`): la recaudación del Turco (motochorros), el Roca de las seis
    (escaparse de la cana en tren) y la proteína de Ciro (ida y vuelta a una dietética; `ciroPeace`
    evita que Ciro pelee mientras dura).

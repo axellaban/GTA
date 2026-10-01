@@ -352,7 +352,7 @@ export class Traffic {
     for (const v of this.parked) v.mesh.visible = Math.abs(v.x - player.x) < 240 && Math.abs(v.z - player.z) < 240;
     for (const v of this.cars) v.mesh.visible = Math.abs(v.x - player.x) < 280 && Math.abs(v.z - player.z) < 280;
     this.recycleI = ((this.recycleI || 0) + 1) % 30;
-    for (let i = this.recycleI; i < this.cars.length; i += 30) this.recycle(this.cars[i], player);
+    for (let i = this.recycleI; i < this.cars.length; i += 30) this.recycle(this.cars[i], world.interiors?.focus(player) ?? player);
     const police = world.police?.cars || [];
     // grillas de obstáculos (vehículos y peatones) para no comparar todos contra todos
     const CELL = 24;

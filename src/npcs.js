@@ -670,7 +670,9 @@ export class Npcs {
     this.recycleT -= dt;
     if (this.recycleT > 0) return;
     this.recycleT = 0.5;
-    const { player, time } = world;
+    const { time } = world;
+    // si Gaspi está adentro de algún lugar, la calle se mantiene alrededor de la puerta
+    const player = world.interiors?.focus(world.player) ?? world.player;
     const wantWalkers = time.night ? 22 : 44;
     const wantZombies = time.night ? 16 : 6;
     let walkers = 0;
