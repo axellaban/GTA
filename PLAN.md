@@ -147,7 +147,9 @@ Radio ≈ 550 m desde la estación (`STATION` en `src/map.js`). Hoy: 1.872 edifi
   Mesh2Motion: github.com/scottpetrovic/mesh2motion-app, `static/models-variation/human`) en
   `public/models/people/`. Vecinos (75 %) y cana (85 %) los usan; armas en la mano vía el esqueleto
   fantasma. Falta: motochorros (`crime.js`), gym, Laban, Gaspi; más variedad (tintes por material);
-  perros/caballo (Mesh2Motion trae `fox-animations.glb` y `horse-animations.glb`, revisar licencias);
+  ✅ perros: `dog.glb` (CC0) + animaciones del zorro recortadas (`public/models/animals/quadruped-anims.glb`,
+  `tools/models/anims.mjs`), con AnimationMixer (`makeAnimal`/`animalPlay` en `src/people.js`). Falta el
+  caballo del carro (`horse.glb` ya está en `public/models/animals/`, mismo esqueleto);
   en Mesh2Motion hay más modelos (killer_*, hazmat_*, swat) y otros con CC-BY/CC-SA (no usados).
 - ⛔ A2 / B1: esperan red o archivos del dueño.
 

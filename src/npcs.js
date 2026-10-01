@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { makeHuman, animateHuman, randomCivilian, SKINS, HAIRS } from './human.js';
 import { makeDog } from './animals.js';
-import { makePerson, PEOPLE } from './people.js';
+import { makePerson, PEOPLE, ANIMALS, makeAnimal, animalPlay } from './people.js';
 import { DATA as D } from './map.js';
 import { R } from './rng.js';
 
@@ -280,7 +280,9 @@ export class Npcs {
     const { g, legs, tail } = makeDog(col);
     g.traverse((o) => (o.castShadow = true));
     const p = this.sidewalkPoint(near.x, near.z, 20, 140) ?? { x: near.x, z: near.z };
-    const dog = { g, legs, tail, x: p.x, z: p.z, heading: 0, speed: 0, t: R.range(0, 5), barkT: 0, phase: 0 };
+    // tinte para el modelo de perro (manto más claro o más oscuro)
+    const tint = R.pick([0xffffff, 0xffffff, 0xe8d8c0, 0x9a8070, 0x6a5a50]);
+    const dog = { g, legs, tail, tint, x: p.x, z: p.z, heading: 0, speed: 0, t: R.range(0, 5), barkT: 0, phase: 0 };
     this.attach(dog);
     this.scene.add(g);
     this.dogs.push(dog);
@@ -817,15 +819,32 @@ export class Npcs {
       const vis = Math.abs(d.x - player.x) < 190 && Math.abs(d.z - player.z) < 190;
       d.g.visible = vis;
       if (!vis) continue;
-      d.phase += dt * (4 + d.speed * 3);
-      // patas: la rodilla se dobla cuando la pata va hacia adelante
-      const amp = Math.min(0.8, d.speed * 0.25);
-      d.legs.forEach((l, i) => {
-        const w = Math.sin(d.phase + (i % 2 ? Math.PI : 0) + (i > 1 ? Math.PI / 2 : 0));
-        l.rotation.x = w * amp;
-        l.userData.lower.rotation.x = (i > 1 ? -1 : 1) * Math.max(0, i > 1 ? w : -w) * amp * 1.4;
-      });
-      d.tail.rotation.y = Math.sin(d.t * 12) * 0.6;
+      // cuando cargó el modelo de perro (CC0), se cambia el perro hecho por código
+      if (!d.anim && ANIMALS.dog) {
+        const a = makeAnimal('dog', { length: R.range(0.8, 1.05), tint: d.tint });
+        if (a) {
+          this.scene.remove(d.g);
+          d.g = a.g;
+          d.anim = a;
+          this.scene.add(d.g);
+        }
+      }
+      if (d.anim) {
+        // quieto, caminando o corriendo según la velocidad (y ladra cuando persigue)
+        const name = d.speed > 3 ? 'run' : d.speed > 0.2 ? 'walk' : d.chasing && d.barkT > 0.4 ? 'bark' : 'idle';
+        animalPlay(d.anim, name, name === 'walk' ? Math.max(0.6, d.speed / 1.2) : name === 'run' ? Math.max(0.7, d.speed / 6) : 1);
+        d.anim.mixer.update(dt);
+      } else {
+        d.phase += dt * (4 + d.speed * 3);
+        // patas: la rodilla se dobla cuando la pata va hacia adelante
+        const amp = Math.min(0.8, d.speed * 0.25);
+        d.legs.forEach((l, i) => {
+          const w = Math.sin(d.phase + (i % 2 ? Math.PI : 0) + (i > 1 ? Math.PI / 2 : 0));
+          l.rotation.x = w * amp;
+          l.userData.lower.rotation.x = (i > 1 ? -1 : 1) * Math.max(0, i > 1 ? w : -w) * amp * 1.4;
+        });
+        d.tail.rotation.y = Math.sin(d.t * 12) * 0.6;
+      }
       d.g.position.set(d.x, this.heightAt(d.x, d.z), d.z);
       d.g.rotation.y = d.heading;
     }
