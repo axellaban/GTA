@@ -2,6 +2,7 @@
 // balas de la cana, autos que se prenden fuego y explotan.
 import * as THREE from 'three';
 import { WEAPONS, ORDER, handWeapon } from './weapons.js';
+import { dentCar } from './cars.js';
 import { R } from './rng.js';
 import { TOUCH } from './input.js';
 
@@ -450,7 +451,7 @@ export class Combat {
       this.fx.sparks(hit.x, hit.y, hit.z, 6, 5);
       this.audio.metal(0.5);
       if (v.kind === 'moto' && v.rider) world.traffic.ejectRider(v, world, fx, fz);
-      this.damageVehicle(world, v, dmg * 0.45, byPlayer);
+      this.damageVehicle(world, v, dmg * 0.45, byPlayer, hit.x, hit.z);
       if (v === world.player.vehicle && !byPlayer) world.player.hurt(dmg * 0.12, 'Te balearon el auto');
     } else if (hit.type === 'player') {
       world.player.hurt(dmg, 'Te dieron un tiro');
@@ -484,9 +485,11 @@ export class Combat {
   }
 
   // ---------- Autos: humo, fuego y explosión ----------
-  damageVehicle(world, v, dmg, byPlayer) {
+  // hx, hz: dónde pegó (si se sabe), para abollar ahí
+  damageVehicle(world, v, dmg, byPlayer, hx = null, hz = null) {
     if (v.wreck) return;
     v.damage = Math.min(100, (v.damage || 0) + dmg);
+    if (hx != null) dentCar(v, hx, hz, dmg);
     if (byPlayer) v.lastHitByPlayer = true;
     // auto estacionado: salta la alarma
     if (!v.ai && !v.driver && v.kind === 'car' && !v.police) v.alarmT = 12;
@@ -573,7 +576,7 @@ export class Combat {
     for (const v of this.vehicles(world)) {
       if (v.wreck) continue;
       const dd = Math.hypot(v.x - x, v.z - z);
-      if (dd < 7) this.damageVehicle(world, v, (1 - dd / 7) * 75, byPlayer);
+      if (dd < 7) this.damageVehicle(world, v, (1 - dd / 7) * 75, byPlayer, x, z);
     }
     for (const m of world.crime.motos) if (m.state !== 'down' && Math.hypot(m.v.x - x, m.v.z - z) < 7) world.crime.knockDown(m, world);
     world.npcs.panic(x, z, 70);

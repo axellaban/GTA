@@ -176,6 +176,10 @@ Ocho rampas amarillas con franjas negras en calles largas. Si entrás rápido (m
 
 Por las calles de la estación pasea **Laban the Creator** en una Ferrari amarilla descapotable: traje y sombrero blancos (estilo Alan Faena) y anteojos, con tres chicas fit arriba (una de acompañante y dos sentadas en la cola, saludando). Va despacio tirando facha, toca bocina y grita cosas cuando pasa cerca de Gaspi. Se la podés robar: Laban cae al piso gritando "¡Mi Ferrari! ¡Esto lo creé yo!" y las chicas salen corriendo.
 
+## Autos que se abollan (0.21)
+
+Como en Vice City, la chapa se hunde donde pega el golpe (choques, tiros, explosiones) y queda arrugada; con mucho daño se rompen los vidrios, sale humo del motor y al final se prende fuego. Chapa y pintura (o que el auto vuelva al tránsito) lo deja como nuevo.
+
 ## Personas con modelo de artista (0.20)
 
 Los vecinos (3 de cada 4) y la policía ahora son modelos low-poly con textura pintada, al estilo de Vice City: 11 personas CC0 de elbolilloduro (varones, mujeres, médico, policía hombre y mujer), sacadas de [Mesh2Motion](https://github.com/scottpetrovic/mesh2motion-app). Se animan con las mismas poses de siempre (caminar, piñas, celular, sentarse, caerse) gracias a `src/rig.js`, que traduce nuestro esqueleto a cualquier esqueleto humanoide estándar. Las armas de la cana se cuelgan de su mano.

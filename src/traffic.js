@@ -2,6 +2,7 @@
 import { ROADS, HALF } from './map.js';
 import { makeCar, makeBus, makeMoto, makeTruck, makeCarro, CAR_COLORS } from './vehicles.js';
 import { ANIMALS, makeAnimal, animalPlay } from './people.js';
+import { repairCar } from './cars.js';
 import { makeHuman, animateHuman, randomCivilian } from './human.js';
 import { R } from './rng.js';
 
@@ -331,6 +332,11 @@ export class Traffic {
     v.x = x;
     v.z = z;
     v.heading = Math.atan2(e.dx, e.dz);
+    // vuelve como un auto nuevo
+    if (v.damage) {
+      v.damage = 0;
+      repairCar(v);
+    }
     v.ai.edge = e;
     v.ai.stage = 'run';
     v.ai.stuck = 0;

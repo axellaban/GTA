@@ -134,7 +134,7 @@ Radio ≈ 550 m desde la estación (`STATION` en `src/map.js`). Hoy: 1.872 edifi
 - Interiores (kiosco, estación, el gym por dentro ya es visible desde la puerta).
 - Más misiones encadenadas con historia (hoy hay 3 en `src/missions.js`).
 - Policía: retenes, clavos en la calle, 6 estrellas.
-- Autos que se abollan (hoy el daño no se ve hasta el fuego).
+- ✅ Autos que se abollan (`dentCar`/`repairCar` en `src/cars.js`; punto del golpe en `damageVehicle`).
 
 ## 6. Estado (actualizar al avanzar)
 

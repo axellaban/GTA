@@ -546,6 +546,7 @@ export class Player {
 
     // choques con casas
     let bump = 0;
+    let hitAt = null; // dónde fue el golpe más fuerte (para abollar ahí)
     for (const c of v.circles()) {
       const p = { x: c.x, z: c.z };
       const hit = colliders.resolveCircle(p, c.r);
@@ -554,6 +555,7 @@ export class Player {
         v.z += p.z - c.z;
         const into = v.vx * hit.nx + v.vz * hit.nz;
         if (into < 0) {
+          if (-into > bump) hitAt = { x: c.x - hit.nx * c.r, z: c.z - hit.nz * c.r };
           bump = Math.max(bump, -into);
           v.vx -= hit.nx * into * 1.25;
           v.vz -= hit.nz * into * 1.25;
@@ -582,13 +584,15 @@ export class Player {
             const ovz = o.fz * (o.speed || 0);
             const rel = (v.vx - ovx) * nx + (v.vz - ovz) * nz;
             if (rel < 0) {
+              const at = { x: a.x - nx * a.r, z: a.z - nz * a.r };
+              if (-rel * 0.8 > bump) hitAt = at;
               bump = Math.max(bump, -rel * 0.8);
               v.vx -= nx * rel * 0.8;
               v.vz -= nz * rel * 0.8;
               // el otro sale empujado
               o.speed = (o.speed || 0) * 0.5;
               if (o.kind === 'moto' && o.rider && -rel > 5) traffic.ejectRider(o, world, -nx, -nz);
-              if (-rel > 7) combat.damageVehicle(world, o, -rel * 0.9, true);
+              if (-rel > 7) combat.damageVehicle(world, o, -rel * 0.9, true, at.x, at.z);
               if (o.police && -rel > 4) police.crime('pina', o.x, o.z);
             }
           }
@@ -615,7 +619,7 @@ export class Player {
     this.noPasaT = (this.noPasaT || 0) - dt;
     if (bump > 2) {
       if (bump > 6) {
-        combat.damageVehicle(world, v, bump * (moto ? 0.3 : 0.55), false);
+        combat.damageVehicle(world, v, bump * (moto ? 0.3 : 0.55), false, hitAt?.x, hitAt?.z);
         audio.golpe(Math.min(1, bump / 15));
         effects.shake += Math.min(0.6, bump / 25);
         if (bump > 11) hud.toast(R.pick(['¡Qué palo!', '¡Uh, la chapa!', '¡Pará, loco!']));

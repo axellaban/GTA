@@ -385,6 +385,97 @@ export function makeCar(model = 'duna', color = 0xd8d4c8, { parked = false } = {
     g.add(w);
     wheels.push(w);
   }
-  g.userData = { L, W, wheels, kind: 'car', model, parkedBuild: parked, tall: M.m.roof + 0.1 };
+  g.userData = { L, W, wheels, kind: 'car', model, parkedBuild: parked, tall: M.m.roof + 0.1, body, shiny, glass };
   return g;
+}
+
+// ---------- Abolladuras (como en Vice City): la chapa se hunde donde pegó ----------
+// La primera vez que un auto se golpea pasa a tener su propia copia de la chapa (las geometrías
+// son compartidas por modelo). Los triángulos aplastados quedan facetados, como metal arrugado.
+const crackedGlass = new THREE.MeshStandardMaterial({ color: 0x8e979e, roughness: 0.55, metalness: 0.1, transparent: true, opacity: 0.85 });
+function ownGeometry(u) {
+  if (u.dented) return;
+  u.dented = true;
+  u.geo0 = { body: u.body.geometry, shiny: u.shiny.geometry };
+  u.body.geometry = u.body.geometry.clone();
+  u.shiny.geometry = u.shiny.geometry.clone();
+}
+function crumple(geo, lx, lz, r, depth, nx, nz) {
+  const pos = geo.attributes.position;
+  const nor = geo.attributes.normal;
+  const hit = new Set();
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i);
+    const y = pos.getY(i);
+    const z = pos.getZ(i);
+    const d = Math.hypot(x - lx, (y - 0.6) * 0.8, z - lz);
+    if (d >= r) continue;
+    const k = (1 - d / r) ** 2;
+    // ruido fijo por vértice para que no quede liso
+    const jit = 0.7 + 0.3 * Math.abs(Math.sin(i * 12.9898) * 43758.5453 % 1);
+    const p = depth * k * jit;
+    pos.setXYZ(i, x + nx * p, y - p * 0.25, z + nz * p);
+    hit.add(geo.index ? i : Math.floor(i / 3));
+  }
+  if (!hit.size) return;
+  pos.needsUpdate = true;
+  if (geo.index || !nor) {
+    geo.computeVertexNormals();
+    return;
+  }
+  // normales planas solo en los triángulos tocados (el resto queda suave)
+  const a = new THREE.Vector3();
+  const b = new THREE.Vector3();
+  const c = new THREE.Vector3();
+  const o = new THREE.Vector3();
+  for (const t of hit) {
+    a.fromBufferAttribute(pos, t * 3);
+    b.fromBufferAttribute(pos, t * 3 + 1);
+    c.fromBufferAttribute(pos, t * 3 + 2);
+    b.sub(a);
+    c.sub(a);
+    b.cross(c).normalize();
+    // que mire para el mismo lado que la normal original (no todas las caras giran igual)
+    o.set(0, 0, 0);
+    for (let j = 0; j < 3; j++) o.x += nor.getX(t * 3 + j), o.y += nor.getY(t * 3 + j), o.z += nor.getZ(t * 3 + j);
+    if (b.dot(o) < 0) b.negate();
+    for (let j = 0; j < 3; j++) nor.setXYZ(t * 3 + j, b.x, b.y, b.z);
+  }
+  nor.needsUpdate = true;
+}
+// wx, wz: punto del golpe en el mundo; amount: daño de ese golpe
+export function dentCar(v, wx, wz, amount) {
+  const u = v.mesh.userData;
+  if (u.kind !== 'car' || !u.body || amount < 3) return;
+  ownGeometry(u);
+  const dx = wx - v.x;
+  const dz = wz - v.z;
+  const c = Math.cos(v.heading);
+  const s = Math.sin(v.heading);
+  const lx = dx * c - dz * s;
+  const lz = dx * s + dz * c;
+  const l = Math.hypot(lx, lz) || 1;
+  // hacia adentro del auto, desde el golpe
+  const nx = -lx / l;
+  const nz = -lz / l;
+  const r = Math.min(1.1, 0.5 + amount * 0.025);
+  const depth = Math.min(0.16, amount * 0.006);
+  crumple(u.body.geometry, lx, lz, r, depth, nx, nz);
+  crumple(u.shiny.geometry, lx, lz, r, depth, nx, nz);
+  // con mucho daño se rompen los vidrios
+  if (v.damage > 45 && u.glass.material !== crackedGlass) u.glass.material = crackedGlass;
+}
+// chapa y pintura (o el auto vuelve al tránsito): como nuevo
+export function repairCar(v) {
+  const u = v.mesh.userData;
+  if (!u.dented) {
+    if (u.glass && u.glass.material === crackedGlass) u.glass.material = glassMat;
+    return;
+  }
+  u.body.geometry.dispose();
+  u.shiny.geometry.dispose();
+  u.body.geometry = u.geo0.body;
+  u.shiny.geometry = u.geo0.shiny;
+  u.glass.material = glassMat;
+  u.dented = false;
 }

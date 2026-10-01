@@ -13,7 +13,7 @@ import { Crime } from './crime.js';
 import { Events } from './events.js';
 import { Trains } from './trains.js';
 import { Hud } from './hud.js';
-import { lightMat, paintMat } from './cars.js';
+import { lightMat, paintMat, repairCar } from './cars.js';
 import { CAR_COLORS, makeCar } from './vehicles.js';
 import { loadGaspiPhoto, updateHumanLod } from './human.js';
 import { Sky } from './sky.js';
@@ -490,6 +490,7 @@ function updateGarages() {
     player.addMoney(-GARAGE_COST);
     police.clear();
     Object.assign(v, { damage: 0, burning: 0, flat: false, warned: false });
+    repairCar(v);
     if (!['taxi', 'remis', 'patrullero'].includes(v.model)) {
       v.mesh.traverse((o) => {
         if (o.userData.paint) o.material = paintMat(R.pick(CAR_COLORS.filter((c) => c !== o.material.color.getHex())));
