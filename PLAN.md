@@ -117,7 +117,12 @@ lugares; `src/map.js` los asigna a las huellas): 129 locales con cartel real (an
 overpass-api.de suele cortar; el script prueba también maps.mail.ru y overpass.kumi.systems. Falta:
 integrar el relevamiento del dueño cuando lo cargue.
 
-**R10 — Modelos de artista (A2)**: personajes y animales Quaternius CC0 cuando se habilite la red.
+**R10 — Modelos de artista (A2)**: ✅ 13 personas de Quaternius (Ultimate Modular Men/Women, CC0;
+se bajan de las carpetas de Google Drive de quaternius.com con `pip install gdown` y
+`gdown --folder <url>`), convertidas con `tools/models/quat.mjs` a `public/models/people/q_*.glb` y
+`qf_*.glb` (4.800 triángulos, una malla, colores de vértice, `_PART` para teñir ropa y piel en
+`tintParts` de `src/people.js`). Falta: Gaspi, gym y Laban con modelo de artista (Gaspi tiene la
+cara con foto: habría que pegarla en la cabeza del modelo); autos de artista.
 
 **R11 — Pruebas en celu real**: el dueño prueba en iPhone/Android y manda capturas; se ajusta.
 

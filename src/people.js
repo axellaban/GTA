@@ -1,6 +1,8 @@
 // Personas con modelo de artista (CC0): low-poly con textura pintada, como Vice City.
 // Vienen de Mesh2Motion (github.com/scottpetrovic/mesh2motion-app, carpeta models-variation/human):
 // autores elbolilloduro (varones, mujeres, policías, médico), todos CC0.
+// Los "q_" son de Quaternius (Ultimate Modular Men y Women, CC0): low-poly facetado con colores
+// lisos, pasados por tools/models/quat.mjs (colores de vértice, una malla, ≤ 4.800 triángulos).
 // Se cargan una vez; cada persona es un clon animado con nuestras poses (src/rig.js).
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -9,8 +11,8 @@ import { rigHuman } from './rig.js';
 import { R } from './rng.js';
 
 const SETS = {
-  male: ['male_5', 'male_6', 'male_10', 'male_15', 'male_32', 'doctor_m'],
-  female: ['female_8', 'female_9', 'female_31'],
+  male: ['male_5', 'male_6', 'male_10', 'male_15', 'male_32', 'doctor_m', 'q_casual', 'q_hoodie', 'q_punk', 'q_worker', 'q_suit', 'q_beach', 'q_farmer'],
+  female: ['female_8', 'female_9', 'female_31', 'qf_casual', 'qf_worker', 'qf_formal', 'qf_suit', 'qf_punk', 'qf_adventurer'],
   police: ['police_male', 'police_female'],
   swat: ['swat_male'],
 };
@@ -31,14 +33,15 @@ vec3 tintRgb(vec3 c) {
 }`;
 function tintClothes(material, hue, sat, val) {
   const m = material.clone();
+  const at = '#include <map_fragment>';
   m.onBeforeCompile = (shader) => {
     THREE.Material.prototype.onBeforeCompile.call(m, shader);
     shader.uniforms.uTint = { value: new THREE.Vector3(hue, sat, val) };
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', '#include <common>\nuniform vec3 uTint;\n' + TINT_GLSL)
       .replace(
-        '#include <map_fragment>',
-        `#include <map_fragment>
+        at,
+        `${at}
         {
           vec3 cs = pow(max(diffuseColor.rgb, 0.0), vec3(0.4545));
           vec3 hsv = tintHsv(cs);
@@ -55,6 +58,38 @@ function tintClothes(material, hue, sat, val) {
   return m;
 }
 
+// Quaternius: cada vértice dice qué es (atributo _part: 2 ropa, 1 piel, 0 pelo y ojos). La ropa
+// cambia de color como en tintClothes y la piel toma otro tono (en el original todos son iguales).
+const SKIN_TONES = [[1, 1, 1], [0.96, 0.9, 0.84], [0.86, 0.74, 0.62], [0.74, 0.58, 0.45], [0.6, 0.44, 0.33], [0.9, 0.8, 0.7]];
+function tintParts(material, hue, sat, val, skin) {
+  const m = material.clone();
+  m.onBeforeCompile = (shader) => {
+    THREE.Material.prototype.onBeforeCompile.call(m, shader);
+    shader.uniforms.uTint = { value: new THREE.Vector3(hue, sat, val) };
+    shader.uniforms.uSkin = { value: new THREE.Vector3(...skin) };
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nattribute float _part;\nvarying float vPart;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvPart = _part;');
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nuniform vec3 uTint;\nuniform vec3 uSkin;\nvarying float vPart;\n' + TINT_GLSL)
+      .replace(
+        '#include <color_fragment>',
+        `#include <color_fragment>
+        {
+          float cloth = step(1.5, vPart);
+          float skin = step(0.5, vPart) - cloth;
+          vec3 hsv = tintHsv(pow(max(diffuseColor.rgb, 0.0), vec3(0.4545)));
+          hsv.x = fract(hsv.x + uTint.x * cloth);
+          hsv.y = clamp(hsv.y * mix(1.0, uTint.y, cloth), 0.0, 1.0);
+          hsv.z *= mix(1.0, uTint.z, cloth);
+          diffuseColor.rgb = pow(tintRgb(hsv), vec3(2.2)) * mix(vec3(1.0), uSkin, skin);
+        }`,
+      );
+  };
+  m.customProgramCacheKey = () => 'ropa-partes';
+  return m;
+}
+
 export const PEOPLE = { ready: false, scenes: {} };
 
 export function loadPeople() {
@@ -65,7 +100,17 @@ export function loadPeople() {
       jobs.push(
         loader
           .loadAsync(`models/people/${f}.glb`)
-          .then((g) => (PEOPLE.scenes[kind] ??= []).push({ f, scene: g.scene }))
+          .then((g) => {
+            // Quaternius: sin normales, se dibuja facetado como el original
+            g.scene.traverse((o) => {
+              if (o.isMesh && !o.geometry.attributes.normal) {
+                o.material.flatShading = true;
+                o.material.vertexColors = true;
+                o.material.needsUpdate = true;
+              }
+            });
+            (PEOPLE.scenes[kind] ??= []).push({ f, scene: g.scene });
+          })
           .catch((e) => console.warn('No cargó', f, e)),
       );
     }
@@ -80,13 +125,16 @@ export function makePerson(kind) {
   const s = R.pick(list);
   const female = kind === 'female' || /female/.test(s.f);
   const h = rigHuman(s.scene, { female, height: female ? R.range(1.6, 1.7) : R.range(1.7, 1.84) });
+  h.file = s.f; // qué modelo es (para pruebas)
   // los vecinos con ropa de otro color (los uniformes quedan como son)
   if (kind === 'male' || kind === 'female') {
     const hue = R.chance(0.25) ? 0 : Math.random();
     const sat = R.range(0.75, 1.3);
     const val = R.range(0.72, 1.18);
     h.rig.model.traverse((o) => {
-      if (o.isMesh && o.material?.map) o.material = tintClothes(o.material, hue, sat, val);
+      if (!o.isMesh) return;
+      if (o.geometry.attributes._part) o.material = tintParts(o.material, hue, sat, val, R.pick(SKIN_TONES));
+      else if (o.material?.map) o.material = tintClothes(o.material, hue, sat, val);
     });
   }
   return h;

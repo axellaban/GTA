@@ -205,6 +205,8 @@ Como en Vice City, la chapa se hunde donde pega el golpe (choques, tiros, explos
 
 Los vecinos (3 de cada 4) y la policía ahora son modelos low-poly con textura pintada, al estilo de Vice City: 11 personas CC0 de elbolilloduro (varones, mujeres, médico, policía hombre y mujer), sacadas de [Mesh2Motion](https://github.com/scottpetrovic/mesh2motion-app). Se animan con las mismas poses de siempre (caminar, piñas, celular, sentarse, caerse) gracias a `src/rig.js`, que traduce nuestro esqueleto a cualquier esqueleto humanoide estándar. Las armas de la cana se cuelgan de su mano.
 
+Además hay 13 vecinos y vecinas de [Quaternius](https://quaternius.com) (Ultimate Modular Men y Women, CC0): low-poly facetado con colores lisos (casual, buzo, punk, obrero, traje, playa, overol; ellas con remera, obrera, vestido, traje, punk y aventurera). `tools/models/quat.mjs` los deja en una sola malla con un material (colores de vértice), sin animaciones y con 4.800 triángulos; cada vértice lleva `_PART` (ropa, piel u otra cosa) para que el juego les cambie el color de la ropa y el tono de piel sin tocar el pelo ni los ojos.
+
 Los perros también son un modelo CC0 de Mesh2Motion, con animaciones de verdad (quieto, caminar, correr, ladrar) y distintos tonos de pelo, y el caballo del carro del cartonero también.
 
 ## Gym El Kaiser (0.13)
