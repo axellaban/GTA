@@ -170,7 +170,8 @@ Hecho (cada ronda probada sin GPU y subida a `main`):
 
 - ✅ Puerta del conductor que se abre al subir y bajar, con portazo (`openDoor`/`swingDoor` en
   `src/traffic.js`, pieza en `buildModel` de `src/cars.js`); paragolpes que se cae con golpes
-  acumulados (`dropBumper` + `fx.part`).
+  acumulados (`dropBumper` + `fx.part`). Gaspi se agacha y se mete al asiento (fase `enter` de
+  `updateJack`) y sale por la puerta (`exitAnim`/`updateExit`, `duck` en `src/player.js`).
 
 - ✅ Grupitos charlando (`spawnGroup`/`updateGroups` en `src/npcs.js`, poses `talk`/`listen` en
   `src/human.js`): se turnan para hablar, con tiros se dispersan y al rato se despiden.

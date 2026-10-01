@@ -121,6 +121,9 @@ export class Player {
   }
   respawn(at = this.spawn, cause = 'hospital') {
     this.mvx = this.mvz = 0;
+    this.exitAnim = null;
+    this.jack = null;
+    this.yOff = 0;
     this.dead = false;
     this.health = 100;
     this.armor = 0;
@@ -194,14 +197,62 @@ export class Player {
       return;
     }
     if (j.phase === 'enter') {
-      animateHuman(this.h, dt, 0, 'walk');
-      if (j.t > 0.25) {
+      if (v.kind === 'moto') {
+        animateHuman(this.h, dt, 0, 'walk');
+        if (j.t > 0.25) {
+          this.jack = null;
+          this.enterVehicle(v, world);
+        }
+        return;
+      }
+      // se da vuelta de espaldas al asiento, se agacha y se mete
+      j.from ??= { x: this.x, z: this.z, h: this.heading };
+      const dur = 0.6;
+      const k = Math.min(1, j.t / dur);
+      const seat = this.seatPoint(v);
+      const e = k * k * (3 - 2 * k);
+      this.x = j.from.x + (seat.x - j.from.x) * e;
+      this.z = j.from.z + (seat.z - j.from.z) * e;
+      let dh = v.heading - j.from.h;
+      while (dh > Math.PI) dh -= Math.PI * 2;
+      while (dh < -Math.PI) dh += Math.PI * 2;
+      this.heading = j.from.h + dh * Math.min(1, k * 2);
+      animateHuman(this.h, dt, k < 0.4 ? 1 : 0, 'walk');
+      this.duck(Math.max(0, (k - 0.25) / 0.75));
+      if (j.t > dur) {
         this.jack = null;
+        this.yOff = 0;
         this.enterVehicle(v, world);
       }
     }
   }
 
+  // asiento del conductor (del lado de la puerta)
+  seatPoint(v) {
+    const lx = -Math.cos(v.heading);
+    const lz = Math.sin(v.heading);
+    const f = v.L * 0.08 - 0.15;
+    return { x: v.x + lx * (v.W / 2 - 0.45) + v.fx * f, z: v.z + lz * (v.W / 2 - 0.45) + v.fz * f };
+  }
+  // agachado para entrar o salir del auto: cabeza gacha, rodillas dobladas, se hunde en el asiento
+  duck(k) {
+    const b = this.h.bones;
+    const q = Math.sin(Math.min(1, k) * Math.PI * 0.5);
+    b.spine.rotation.x += 0.55 * q;
+    b.neck.rotation.x += 0.25 * q;
+    b.hips.position.y -= 0.32 * q;
+    for (const [th, sh, ft] of [
+      [b.thR, b.shR, b.ftR],
+      [b.thL, b.shL, b.ftL],
+    ]) {
+      th.rotation.x -= 1.0 * q;
+      sh.rotation.x += 1.25 * q;
+      ft.rotation.x -= 0.25 * q;
+    }
+    b.uaR.rotation.x -= 0.35 * q;
+    b.uaL.rotation.x -= 0.25 * q;
+    this.yOff = 0.12 * q;
+  }
   enterVehicle(v, world) {
     const { traffic, hud } = world;
     if (v.rider) traffic.ejectRider(v, world, -Math.cos(v.heading), Math.sin(v.heading));
@@ -255,6 +306,13 @@ export class Player {
     this.x = v.x + lx * side;
     this.z = v.z + lz * side;
     this.heading = v.heading;
+    // bajando tranquilo: arranca sentado y sale por la puerta
+    if (!forced && v.kind === 'car') {
+      const seat = this.seatPoint(v);
+      this.exitAnim = { t: 0, dur: 0.55, from: seat, to: { x: this.x, z: this.z }, h: v.heading };
+      this.x = seat.x;
+      this.z = seat.z;
+    } else this.exitAnim = null;
     this.vehicle = null;
     v.driver = null;
     v.parked = true;
@@ -314,7 +372,7 @@ export class Player {
     this.camPitch = Math.max(-0.35, Math.min(1.1, this.camPitch + input.look.dy * sens));
     if (input.wheel) this.zoom = Math.max(0.45, Math.min(1.8, (this.zoom ?? 1) * (1 + input.wheel * 0.001)));
 
-    if (input.hit('f') && !this.jack && this.downT <= 0 && this.getupT <= 0) {
+    if (input.hit('f') && !this.jack && !this.exitAnim && this.downT <= 0 && this.getupT <= 0) {
       if (this.vehicle) {
         if (Math.abs(this.vehicle.speed) < 3 || this.vehicle.burning > 0) this.exitVehicle(world);
       } else {
@@ -324,6 +382,7 @@ export class Player {
     }
 
     if (this.jack) this.updateJack(dt, world);
+    else if (this.exitAnim) this.updateExit(dt);
     else if (this.vehicle) this.drive(dt, world);
     else this.walk(dt, world);
 
@@ -342,6 +401,23 @@ export class Player {
     this.place();
   }
 
+  updateExit(dt) {
+    const a = this.exitAnim;
+    a.t += dt;
+    const k = Math.min(1, a.t / a.dur);
+    const e = k * k * (3 - 2 * k);
+    this.x = a.from.x + (a.to.x - a.from.x) * e;
+    this.z = a.from.z + (a.to.z - a.from.z) * e;
+    // gira hacia afuera mientras sale y después vuelve a mirar para adelante
+    this.heading = a.h - Math.sin(k * Math.PI) * 1.1;
+    this.speed = 0;
+    animateHuman(this.h, dt, k > 0.5 ? 1 : 0, 'walk');
+    this.duck(1 - k);
+    if (k >= 1) {
+      this.exitAnim = null;
+      this.yOff = 0;
+    }
+  }
   walk(dt, world) {
     const { input } = world;
     const ax = input.axis();
@@ -901,7 +977,7 @@ export class Player {
         this.vy = 0;
       }
     } else this.y += (ground - this.y) * 0.35;
-    this.h.root.position.set(this.x, this.y, this.z);
+    this.h.root.position.set(this.x, this.y - (this.yOff || 0), this.z);
     this.h.root.rotation.set(0, this.heading, 0);
   }
 
