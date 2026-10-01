@@ -1,4 +1,4 @@
-// GTA XI · Temperley. Arma el mundo, el ciclo de día y noche, el clima y el loop del juego.
+// GTA VI Conurba · Temperley. Arma el mundo, el ciclo de día y noche, el clima y el loop del juego.
 import * as THREE from 'three';
 import './style.css';
 import { ATMO, LAMPS, NIGHT, buildLampMap } from './atmosphere.js';
@@ -15,7 +15,7 @@ import { Crime } from './crime.js';
 import { Events } from './events.js';
 import { Trains } from './trains.js';
 import { Hud } from './hud.js';
-import { lightMat, tailMat, brakeMat, paintMat, repairCar } from './cars.js';
+import { lightMat, tailMat, brakeMat, paintMat, repairCar, makeFerrucho } from './cars.js';
 import { CAR_COLORS, makeCar } from './vehicles.js';
 import { loadGaspiPhoto, updateHumanLod } from './human.js';
 import { Sky } from './sky.js';
@@ -28,7 +28,6 @@ import { WEAPONS } from './weapons.js';
 import { Gym } from './gym.js';
 import { Stunts, RAMPS } from './stunts.js';
 import { addPalms } from './palms.js';
-import { loadFerrari } from './models.js';
 import { Laban } from './laban.js';
 import { loadPeople, loadAnimals } from './people.js';
 import { Rescue } from './rescue.js';
@@ -47,7 +46,6 @@ setupInstall();
 
 const canvas = document.getElementById('game');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-renderer.localClippingEnabled = true; // el techo cortado de la Ferrari descapotable
 renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -434,7 +432,7 @@ for (const s of gym.slots) gym.spawn(s);
 world.gym = gym;
 const stunts = new Stunts(scene);
 world.palms = addPalms(scene, city.colliders, heightAt);
-// Laban the Creator paseando en la Ferrari amarilla por la estación
+// Laban the Creator paseando en el Ferrucho amarillo por la estación
 const laban = new Laban(scene, traffic);
 // personas con modelo de artista (CC0): cargan de fondo y los NPC nuevos las van usando
 loadPeople();
@@ -443,22 +441,18 @@ loadAnimals();
 const rescue = new Rescue(world);
 world.rescue = rescue;
 world.laban = laban;
-// la Ferrari de Ciro, estacionada frente al gym (modelo bajado de internet)
+// el Ferrucho rojo de Ciro, estacionado frente al gym (el auto más rápido del juego)
 if (gym.x != null) {
-  loadFerrari()
-    .then((mesh) => {
-      const p = gym.world(2.8, gym.edge + 1.3);
-      const v = traffic.addParked(mesh, p.x, p.z, gym.h + Math.PI / 2);
-      world.ferrari = v;
-      // si había otro auto estacionado en el lugar, se va
-      for (const o of traffic.parked.slice()) {
-        if (o !== v && Math.hypot(o.x - v.x, o.z - v.z) < 5.5) {
-          scene.remove(o.mesh);
-          traffic.parked.splice(traffic.parked.indexOf(o), 1);
-        }
-      }
-    })
-    .catch((e) => console.warn('No cargó la Ferrari', e));
+  const p = gym.world(2.8, gym.edge + 1.3);
+  const v = traffic.addParked(makeFerrucho(0xc8102e), p.x, p.z, gym.h + Math.PI / 2);
+  world.ferrucho = v;
+  // si había otro auto estacionado en el lugar, se va
+  for (const o of traffic.parked.slice()) {
+    if (o !== v && Math.hypot(o.x - v.x, o.z - v.z) < 5.5) {
+      scene.remove(o.mesh);
+      traffic.parked.splice(traffic.parked.indexOf(o), 1);
+    }
+  }
 }
 world.stunts = stunts;
 

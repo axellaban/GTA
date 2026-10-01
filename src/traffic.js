@@ -360,7 +360,7 @@ export class Traffic {
   pickNext(e, v) {
     const opts = e.to.out.filter((o) => o !== e.rev);
     if (!opts.length) return e.rev;
-    // los que pasean por un lugar (la Ferrari de Laban) no se alejan: eligen calles que vuelven
+    // los que pasean por un lugar (el Ferrucho de Laban) no se alejan: eligen calles que vuelven
     if (v?.home) {
       const d = (o) => Math.hypot(o.to.x - v.home.x, o.to.z - v.home.z);
       const near = opts.filter((o) => d(o) < v.homeR && o.street.w >= 6);

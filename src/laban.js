@@ -1,10 +1,10 @@
-// "Laban the Creator": pasea por la estación en una Ferrari amarilla descapotable, de traje y
+// "Laban the Creator": pasea por la estación en un Ferrucho amarillo descapotable, de traje y
 // sombrero blancos (estilo Alan Faena), con tres chicas fit arriba tirando facha.
-// La Ferrari va con el tránsito pero no se aleja de la estación ni desaparece.
+// El Ferrucho va con el tránsito pero no se aleja de la estación ni desaparece.
 import * as THREE from 'three';
 import { STATION } from './map.js';
 import { makeHuman, animateHuman, randomCivilian } from './human.js';
-import { loadFerrari } from './models.js';
+import { makeFerrucho } from './cars.js';
 import { R } from './rng.js';
 
 const CLEAN = { jersey: null, hood: null, cap: null, hat: null, helmet: null, longSleeves: false };
@@ -18,11 +18,11 @@ export class Laban {
     this.riders = [];
     this.talkT = 4;
     this.bubble = null;
-    this.ready = this.init(scene).catch((e) => console.warn('No cargó la Ferrari de Laban', e));
+    this.ready = this.init(scene).catch((e) => console.warn('No salió el Ferrucho de Laban', e));
   }
 
   async init() {
-    const mesh = await loadFerrari(0xffd60a, { convertible: true });
+    const mesh = makeFerrucho(0xffd60a, { convertible: true });
     // Laban al volante (en Argentina se maneja a la izquierda: +x), una chica de acompañante
     // y dos sentadas en la cola, saludando
     const seat = (look, x, y, z, role) => {
@@ -48,7 +48,7 @@ export class Laban {
     return v;
   }
 
-  // Gaspi les roba la Ferrari: se bajan todos. Laban se calienta, las chicas salen corriendo.
+  // Gaspi les roba el Ferrucho: se bajan todos. Laban se calienta, las chicas salen corriendo.
   eject(v, world) {
     const lx = -Math.cos(v.heading);
     const lz = Math.sin(v.heading);
@@ -61,10 +61,10 @@ export class Laban {
       if (r.role === 'driver') {
         world.npcs.hurt(n, 5, lx, lz, { knock: true, knockT: 1.4, world });
         n.after = 'fight';
-        n.say('¡Mi Ferrari! ¡Esto lo creé yo!', 3);
+        n.say('¡Mi Ferrucho! ¡Esto lo creé yo!', 3);
       } else {
         world.npcs.setState(n, 'flee', world.player);
-        n.say(R.pick(['¡Aaah! ¡Laban, hacé algo!', '¡Qué hacés, loco!', '¡Nos robaron la Ferrari!']), 2.5);
+        n.say(R.pick(['¡Aaah! ¡Laban, hacé algo!', '¡Qué hacés, loco!', '¡Nos robaron el Ferrucho!']), 2.5);
       }
     });
     this.riders = [];
@@ -76,9 +76,6 @@ export class Laban {
   update(dt, world) {
     const v = this.v;
     if (!v) return;
-    // el corte del techo sigue al auto (también si la maneja Gaspi y salta)
-    const clip = v.mesh.userData.clip;
-    if (clip) clip.constant = v.mesh.position.y + 0.95;
     // si la robaron, explotó o salió del tránsito, ya no hay paseo
     const gone = this.stolen || v.wreck || !this.traffic.cars.includes(v);
     for (const r of this.riders) r.h.root.visible = !gone;

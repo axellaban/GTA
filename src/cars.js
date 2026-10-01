@@ -42,6 +42,10 @@ const MODELS = {
   p504: { L: 4.5, W: 1.69, belt: 0.93, nose: 0.72, tail: 0.86, hood: 1.2, trunk: 1.05, roof: 1.42, glassF: 0.5, glassR: 0.55, wheelR: 0.31 },
   fiat600: { L: 3.3, W: 1.38, belt: 0.88, nose: 0.7, tail: 0.75, hood: 0.7, trunk: 0.7, roof: 1.38, glassF: 0.35, glassR: 0.4, wheelR: 0.27 },
   trafic: { L: 4.65, W: 1.8, belt: 1.05, nose: 0.88, tail: 1.05, hood: 0.72, trunk: 0.04, roof: 2.0, glassF: 0.42, glassR: 0.03, wheelR: 0.33 },
+  // Ferrucho: superdeportivo italiano de los 80 (parodia, como los autos de los GTA): cuña baja y
+  // ancha, trompa afilada, cola alta y plana con rejilla, tomas laterales en las puertas
+  ferrucho: { L: 4.5, W: 1.98, belt: 0.8, nose: 0.58, tail: 0.86, hood: 1.55, trunk: 1.2, roof: 1.17, glassF: 0.82, glassR: 0.55, wheelR: 0.34, sport: true },
+  ferrucho_open: { L: 4.5, W: 1.98, belt: 0.8, nose: 0.58, tail: 0.86, hood: 1.55, trunk: 1.2, roof: 1.17, glassF: 0.82, glassR: 0.55, wheelR: 0.34, sport: true, open: true },
 };
 
 function extrudeX(shape, width, bevel = 0.05, round = false) {
@@ -208,8 +212,9 @@ function buildModel(name) {
     [cab[2][0], roof + 0.03],
     [cab[1][0], roof + 0.03],
   ];
-  paint.push(tumblehome(clean(extrudeX(polyShape(roofPts), W * 0.9, 0.05, true)), belt, roof));
-  for (const s of [-1, 1]) {
+  // descapotable: sin techo ni marcos de ventanillas
+  if (!m.open) paint.push(tumblehome(clean(extrudeX(polyShape(roofPts), W * 0.9, 0.05, true)), belt, roof));
+  for (const s of m.open ? [] : [-1, 1]) {
     const frame = polyShape(cab);
     const inner = inset(cab, 0.07);
     const mid = (inner[0][0] + inner[3][0]) / 2 - 0.1;
@@ -234,7 +239,11 @@ function buildModel(name) {
   paintGeo.computeVertexNormals();
 
   // vidrios polarizados
-  const glassGeo = tumblehome(clean(extrudeX(polyShape(inset(cab, 0.01)), W * 0.86, 0.04, true)), belt, roof);
+  // el descapotable tiene solo el parabrisas
+  const ws = (roof - belt) * 0.62;
+  const glassGeo = m.open
+    ? tumblehome(clean(extrudeX(polyShape([[cab[3][0], belt], [cab[3][0] - m.glassF * 0.6, belt + ws], [cab[3][0] - m.glassF * 0.6 - 0.06, belt + ws], [cab[3][0] - 0.07, belt]]), W * 0.86, 0.02, true)), belt, roof)
+    : tumblehome(clean(extrudeX(polyShape(inset(cab, 0.01)), W * 0.86, 0.04, true)), belt, roof);
   // cromados
   const shiny = [];
   // paragolpes cromados: un poco más angostos que la carrocería (que tiene las esquinas redondas)
@@ -287,6 +296,25 @@ function buildModel(name) {
     for (const s of [-1, 1]) D.box(0.012, 0.9, 1.1, 0x222222, s * (W / 2 + 0.003), 1.2, -0.2);
     D.box(W + 0.02, 0.18, 0.12, 0x1a1a1a, 0, 0.45, L / 2 + 0.02);
     D.box(W + 0.02, 0.18, 0.12, 0x1a1a1a, 0, 0.45, -L / 2 - 0.02);
+  }
+  if (m.sport) {
+    // tomas laterales con aletas (de la puerta a la rueda de atrás) y rejilla negra en la cola
+    for (const s of [-1, 1]) {
+      for (let i = 0; i < 5; i++) D.box(0.02, 0.025, 1.5, 0x111111, s * (W / 2 + 0.003), 0.5 + i * 0.065, -0.55);
+    }
+    D.box(W * 0.84, 0.2, 0.03, 0x0d0d0d, 0, m.tail - 0.16, -L / 2 - 0.012);
+    for (let i = 0; i < 4; i++) D.box(W * 0.84, 0.012, 0.035, 0x5a5a5a, 0, m.tail - 0.24 + i * 0.05, -L / 2 - 0.014);
+    // faros escamoteables (las tapas cerradas sobre la trompa)
+    for (const s of [-1, 1]) D.box(0.34, 0.035, 0.26, 0x222222, s * (W / 2 - 0.36), m.nose + 0.04, L / 2 - 0.38);
+  }
+  if (m.open) {
+    // adentro: piso, tablero y dos butacas de cuero
+    D.box(W * 0.84, 0.05, 1.7, 0x1a1a1a, 0, 0.5, -0.1);
+    D.box(W * 0.8, 0.18, 0.22, 0x151515, 0, belt - 0.02, cab[3][0] - 0.2);
+    for (const s of [-1, 1]) {
+      D.box(0.5, 0.14, 0.5, 0x7a2a1c, s * 0.42, 0.6, -0.25);
+      D.box(0.5, 0.55, 0.12, 0x7a2a1c, s * 0.42, 0.85, -0.52);
+    }
   }
   // luces de retroceso: el vidrio blanco al lado de las traseras
   for (const s of [-1, 1]) D.box(0.08, 0.1, 0.035, 0xd8d8d2, s * (W / 2 - 0.5), m.tail - 0.14, -L / 2 - 0.004);
@@ -362,14 +390,14 @@ function buildModel(name) {
     const zm = (cab[0][0] + cab[3][0]) / 2 - 0.1;
     const len = zf - zm;
     const lo = 0.46;
-    const winH = Math.max(0.2, roof - 0.1 - belt);
+    const winH = m.open ? 0.02 : Math.max(0.2, roof - 0.1 - belt);
     const panel = clean(new THREE.BoxGeometry(0.05, belt - lo, len).translate(-0.025, (belt + lo) / 2, -len / 2));
     // marco de la ventanilla: arriba y atrás
     const frameTop = clean(new THREE.BoxGeometry(0.035, 0.05, len - 0.08).translate(-0.02, belt + winH, -len / 2 - 0.04));
     const frameBack = clean(new THREE.BoxGeometry(0.035, winH, 0.05).translate(-0.02, belt + winH / 2, -len + 0.025));
-    const doorPaint = mergeGeometries([panel, frameTop, frameBack]);
+    const doorPaint = mergeGeometries(m.open ? [panel] : [panel, frameTop, frameBack]);
     doorPaint.computeVertexNormals();
-    const doorGlass = new THREE.BoxGeometry(0.015, winH - 0.03, len - 0.14).translate(-0.02, belt + winH / 2, -len / 2 - 0.02);
+    const doorGlass = m.open ? new THREE.BufferGeometry() : new THREE.BoxGeometry(0.015, winH - 0.03, len - 0.14).translate(-0.02, belt + winH / 2, -len / 2 - 0.02);
     const doorHandle = colorize(clean(new THREE.BoxGeometry(0.03, 0.03, 0.14).translate(-0.06, belt - 0.12, -len + 0.25)), 0xcfcfcf);
     // adentro: tapizado oscuro y el borde del asiento
     const Hb = new BoxBuilder();
@@ -440,6 +468,11 @@ export function makeCar(model = 'duna', color = 0xd8d4c8, { parked = false } = {
   }
   g.userData = { L, W, wheels, kind: 'car', model, parkedBuild: parked, tall: M.m.roof + 0.1, body, shiny, glass, chassis, tail, door, doorway };
   return g;
+}
+
+// el Ferrucho (descapotable o no), rojo por defecto
+export function makeFerrucho(color = 0xc8102e, { convertible = false } = {}) {
+  return makeCar(convertible ? 'ferrucho_open' : 'ferrucho', color);
 }
 
 // ---------- Abolladuras (como en Vice City): la chapa se hunde donde pegó ----------

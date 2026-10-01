@@ -179,11 +179,11 @@ Ocho rampas amarillas con franjas negras en calles largas. Si entrás rápido (m
 
 ## Modelos de internet (0.18)
 
-- **La Ferrari de Ciro**: Ferrari 458 Italia estacionada frente al gym El Kaiser, el auto más rápido del juego. Modelo de [vicent091036](https://sketchfab.com/models/57bf6cc56931426e87494f554df1dab6) en Sketchfab, tomado del ejemplo de autos de three.js. El original (359.000 triángulos, con Draco) colgaba Safari en el iPhone por memoria: se simplificó una vez con glTF-Transform a ~50.000 triángulos sin compresión, y las dos Ferrari comparten esa geometría.
+- **El Ferrucho de Ciro**: superdeportivo italiano de los 80 (parodia, como los autos de los GTA), rojo, estacionado frente al gym El Kaiser: el auto más rápido del juego. Hecho por código como el resto de los autos (cuña baja, tomas laterales, cola con rejilla). Reemplazó a una Ferrari bajada de internet cuya licencia no se podía confirmar.
 
 ## Laban the Creator (0.19)
 
-Por las calles de la estación pasea **Laban the Creator** en una Ferrari amarilla descapotable: traje y sombrero blancos (estilo Alan Faena) y anteojos, con tres chicas fit arriba (una de acompañante y dos sentadas en la cola, saludando). Va despacio tirando facha, toca bocina y grita cosas cuando pasa cerca de Gaspi. Se la podés robar: Laban cae al piso gritando "¡Mi Ferrari! ¡Esto lo creé yo!" y las chicas salen corriendo.
+Por las calles de la estación pasea **Laban the Creator** en un Ferrucho amarillo descapotable: traje y sombrero blancos (estilo Alan Faena) y anteojos, con tres chicas fit arriba (una de acompañante y dos sentadas en la cola, saludando). Va despacio tirando facha, toca bocina y grita cosas cuando pasa cerca de Gaspi. Se la podés robar: Laban cae al piso gritando "¡Mi Ferrucho! ¡Esto lo creé yo!" y las chicas salen corriendo.
 
 ## Policía que escala (0.23)
 
@@ -232,8 +232,8 @@ Box de CrossFit a unos 70 m de la estación (cuadrado amarillo en el mapa): galp
 | `src/events.js` | Cortes, marchas y noticias |
 | `src/rig.js`, `src/people.js` | Retarget a esqueletos estándar y personas con modelo CC0 |
 | `src/rescue.js` | Changas de paramédico y bombero (ambulancia y autobomba) |
-| `src/laban.js` | Laban the Creator y su Ferrari descapotable |
-| `src/models.js` | Modelos bajados de internet (la Ferrari) |
+| `src/laban.js` | Laban the Creator y su Ferrucho descapotable |
+| `src/models.js` | Modelos bajados de internet (ambulancia y autobomba de Kenney, CC0) |
 | `src/palms.js` | Palmeras de las plazas (instanciadas) |
 | `src/stunts.js` | Rampas y saltos insólitos con cámara lenta |
 | `src/gym.js` | Gym El Kaiser: galpón, cartel, racks y los musculosos entrenando |
