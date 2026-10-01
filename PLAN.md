@@ -99,11 +99,14 @@ ciudad y saca las huellas de Overture, cercos y árboles que lo pisaban; `src/gy
   `thugsFight`); se la traés y te bajás cerca del carrito. Después se la lleva (`Ufo.parked`).
 - `desarmadero`: el Turco te da la bazuca con 6 cohetes; tres autos en el cordón (`yardSpots`) y dos
   pibes; volarlos y perder a la cana.
-Falta: persecución del OVNI robado con helicóptero (ver R4).
+✅ Persecución del OVNI robado con helicóptero (ver R4).
 
 **R4 — Policía más dura**: ✅ con 5 estrellas la cana tira con metra y los gendarmes (6) con
 ametralladora, en ráfagas (`arm`/`copBrain` en `src/police.js`, `enemyShoot(..., wid)`); el gendarme
-muerto suelta la ametralladora. Falta: helicóptero que persiga al OVNI robado.
+muerto suelta la ametralladora. ✅ Con el OVNI robado sale el helicóptero con cualquier estrella
+(`updateHeli` en `src/police.js`): lo persigue a su altura y le tira ráfagas (`heliShoot` → `Ufo.hit`);
+con la nave tocada humea y con 0 se cae (`Ufo.crash`). El rayo de la nave baja al helicóptero
+(`Police.downHeli`, `heliFall`; vuelve otro a los 35 s). Arriba de la nave la barra de vida es la de la nave.
 
 **R5 — Más destrucción**: ✅ semáforos que se caen (`TrafficLights` en `src/props.js`: cada cabezal es
 una instancia de `posts` con colisionador `signal`; `knock` lo voltea, se apaga, deja obstáculos y

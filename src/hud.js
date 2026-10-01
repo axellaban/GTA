@@ -102,8 +102,10 @@ export class Hud {
   // ---------- Estado ----------
   update(dt, world) {
     const { player, time } = world;
-    $('health').style.width = `${Math.max(0, player.health)}%`;
-    $('health').style.backgroundColor = player.health < 35 ? 'var(--alerta)' : player.health < 65 ? 'var(--sodio)' : 'var(--pasto)';
+    // arriba del plato volador la barra muestra cómo está la nave (la baleó el helicóptero)
+    const hp = player.ufo ? (player.ufo.hp ?? 100) : player.health;
+    $('health').style.width = `${Math.max(0, hp)}%`;
+    $('health').style.backgroundColor = player.ufo ? (hp < 35 ? 'var(--alerta)' : '#7dffb0') : hp < 35 ? 'var(--alerta)' : hp < 65 ? 'var(--sodio)' : 'var(--pasto)';
     $('respeto').textContent = player.respeto > 0 ? `+${player.respeto}` : String(player.respeto);
     const ph = $('phone');
     ph.textContent = player.phone ? 'Con celu' : 'Sin celu';

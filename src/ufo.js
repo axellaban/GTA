@@ -460,10 +460,47 @@ export class Ufo {
     return { want: 0, pose: 'walk' };
   }
 
+  // ---------- Daño (la ametralladora del helicóptero) ----------
+  hit(dmg, world) {
+    if (this.state !== 'player' || this.crashing) return;
+    this.hp -= dmg;
+    world.fx.sparks(this.x, this.y - 0.4, this.z, 6, 5);
+    world.audio.metal(0.35);
+    if (this.hp < 45 && !this.warned) {
+      this.warned = true;
+      world.hud.flash('¡TE ESTÁN BAJANDO!', 'Bajá al helicóptero con el rayo o escapate', 'bad', 2.4);
+    }
+    if (this.hp <= 0) {
+      this.crashing = true;
+      this.vy = -4;
+      world.hud.flash('¡SE CAE EL PLATO!', '', 'bad', 2);
+    }
+  }
+  // tocado: se viene abajo largando humo; al pegar contra el piso explota y Gaspi sale volando
+  crash(dt, world) {
+    this.vy -= 14 * dt;
+    this.y += this.vy * dt;
+    this.x += this.vx * dt * 0.6;
+    this.z += this.vz * dt * 0.6;
+    this.spin += dt * 4;
+    const gy = world.heightAt(this.x, this.z);
+    if (this.y > gy + 1.95) return;
+    this.y = gy + 1.95;
+    this.crashing = false;
+    this.vx = this.vz = 0;
+    world.combat.explode(world, this.x, this.z, 1.2, false, gy);
+    this.leaveShip(world);
+    world.player.hurt(45, 'TE BAJARON EL PLATO VOLADOR');
+    world.player.knockDown?.(2, 1, 0);
+    this.hp = 100;
+  }
+
   // ---------- Gaspi a bordo ----------
   board(world) {
     const P = world.player;
     this.state = 'player';
+    this.hp = 100;
+    this.warned = false;
     P.ufo = this;
     P.h.root.visible = false;
     P.mvx = P.mvz = 0;
@@ -487,6 +524,15 @@ export class Ufo {
   // lo maneja Gaspi: se mueve hacia donde mira la cámara
   fly(dt, world) {
     const { input, player: P, colliders, heightAt } = world;
+    // humo cuando está tocado; si se cae, ya no se maneja
+    if (this.hp < 50 && Math.random() < dt * (60 - this.hp) * 0.4) world.fx.smoke(this.x, this.y + 0.3, this.z, 1, { black: this.hp < 25, s0: 0.8, s1: 3 });
+    if (this.crashing) {
+      this.crash(dt, world);
+      P.x = this.x;
+      P.z = this.z;
+      P.y = this.y - 1.2;
+      return;
+    }
     const ax = input.axis();
     const c = P.camYaw;
     const fx = -Math.sin(c);
@@ -567,6 +613,20 @@ export class Ufo {
     const dir = new THREE.Vector3();
     camera.getWorldDirection(dir);
     const hit = combat.trace(world, camera.position, dir, 260, P);
+    // ¿pasó cerca del helicóptero de la cana (y antes de pegar en otra cosa)?
+    const h = world.police.heli;
+    if (h && !h.falling) {
+      const rel = new THREE.Vector3(h.x, h.y, h.z).sub(camera.position);
+      const along = rel.dot(dir);
+      const hd = Math.hypot(hit.x - camera.position.x, hit.y - camera.position.y, hit.z - camera.position.z);
+      if (along > 0 && along < hd + 2 && rel.addScaledVector(dir, -along).length() < 4) {
+        world.police.downHeli(world);
+        hit.x = h.x;
+        hit.y = h.y;
+        hit.z = h.z;
+        hit.type = null;
+      }
+    }
     const o = new THREE.Vector3(this.x, this.y - 0.7, this.z);
     const end = new THREE.Vector3(hit.x, hit.y, hit.z);
     this.laser.position.copy(o);

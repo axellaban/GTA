@@ -515,13 +515,20 @@ export class Police {
   }
 
   // ---------- Helicóptero ----------
+  // Sale con 4 estrellas, o con cualquiera si Gaspi anda en el plato volador robado: entonces lo
+  // persigue a su altura y le tira con la ametralladora en ráfagas (Ufo.hit). El rayo de la nave lo baja.
   updateHeli(dt, world) {
     const P = world.player;
-    if (this.stars >= 4 && !this.heli) this.makeHeli(P);
+    const ufo = world.ufo?.state === 'player' ? world.ufo : null;
+    this.heliCool = Math.max(0, (this.heliCool || 0) - dt);
+    if ((this.stars >= 4 || (ufo && this.stars >= 1)) && !this.heli && this.heliCool <= 0) this.makeHeli(ufo ?? P);
     const h = this.heli;
     if (!h) return;
     h.t += dt;
-    const leaving = this.stars < 4;
+    if (h.falling) return this.heliFall(h, dt, world);
+    const leaving = (this.stars < 4 && !ufo) || this.stars === 0;
+    // a quién sigue: al plato volador (a su altura) o a Gaspi
+    const tgt = ufo ? { x: ufo.x, y: ufo.y, z: ufo.z } : { x: P.x, y: 0, z: P.z };
     if (leaving) {
       h.y += dt * 8;
       h.x += dt * 20;
@@ -532,6 +539,20 @@ export class Police {
         this.heli = null;
         return;
       }
+    } else if (ufo) {
+      // atrás y a un costado del plato, un poco más arriba; si se aleja, acelera (hasta 46 m/s)
+      const a = h.t * 0.35;
+      const tx = tgt.x + Math.cos(a) * 30;
+      const tz = tgt.z + Math.sin(a) * 30;
+      const ty = Math.max(25, tgt.y + 7);
+      const dx = tx - h.x;
+      const dz = tz - h.z;
+      const d = Math.hypot(dx, dz) || 1;
+      const sp = Math.min(46, d * 1.1);
+      h.x += (dx / d) * Math.min(d, sp * dt);
+      h.z += (dz / d) * Math.min(d, sp * dt);
+      h.y += (ty - h.y) * Math.min(1, dt * 1.2);
+      this.heliShoot(h, dt, world, ufo);
     } else {
       const a = h.t * 0.25;
       const tx = P.x + Math.cos(a) * 28;
@@ -541,7 +562,7 @@ export class Police {
       h.y += (42 - h.y) * Math.min(1, dt * 0.5);
     }
     h.g.position.set(h.x, h.y, h.z);
-    h.g.rotation.y = Math.atan2(P.x - h.x, P.z - h.z);
+    h.g.rotation.y = Math.atan2(tgt.x - h.x, tgt.z - h.z);
     h.g.rotation.z = Math.sin(h.t * 0.7) * 0.05;
     h.rotor.rotation.y += dt * 30;
     h.tail.rotation.x += dt * 40;
@@ -549,14 +570,74 @@ export class Police {
     const night = world.time.night || world.time.glow > 0.3;
     h.cone.visible = h.spot.visible = night && !leaving;
     if (h.cone.visible) {
-      const dx = P.x - h.x;
-      const dy = -h.y;
-      const dz = P.z - h.z;
+      // (al plato lo alumbra en el aire: el círculo del piso queda abajo de la nave)
+      const dx = tgt.x - h.x;
+      const dy = tgt.y - h.y;
+      const dz = tgt.z - h.z;
       const len = Math.hypot(dx, dy, dz);
-      h.cone.position.set((h.x + P.x) / 2, h.y / 2, (h.z + P.z) / 2);
+      h.cone.position.set((h.x + tgt.x) / 2, (h.y + tgt.y) / 2, (h.z + tgt.z) / 2);
       h.cone.scale.set(1, len, 1);
       h.cone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(-dx / len, -dy / len, -dz / len));
-      h.spot.position.set(P.x, 0.2, P.z);
+      h.spot.position.set(tgt.x, (world.heightAt?.(tgt.x, tgt.z) ?? 0) + 0.2, tgt.z);
+    }
+  }
+  // ráfagas de ametralladora contra el plato volador
+  heliShoot(h, dt, world, ufo) {
+    const d = Math.hypot(ufo.x - h.x, ufo.y - h.y, ufo.z - h.z);
+    h.fireT = (h.fireT ?? 3) - dt;
+    if (h.fireT > 0 || d > 90) return;
+    h.shotT = (h.shotT ?? 0) - dt;
+    if (h.shotT > 0) return;
+    h.shotT = 0.11;
+    h.burst = (h.burst ?? 0) + 1;
+    if (h.burst >= 9) {
+      h.burst = 0;
+      h.fireT = 1.6 + Math.random() * 1.4;
+    }
+    const fx = world.fx;
+    const ox = h.x + Math.sin(h.g.rotation.y) * 1.8;
+    const oz = h.z + Math.cos(h.g.rotation.y) * 1.8;
+    const oy = h.y - 0.9;
+    // le pega más cuanto más cerca y más lento va la nave
+    const hit = Math.random() < Math.max(0.12, 0.55 - d / 200 - Math.hypot(ufo.vx, ufo.vz) / 120);
+    const miss = hit ? 0 : 3 + Math.random() * 5;
+    const a = Math.random() * Math.PI * 2;
+    fx.muzzle(ox, oy, oz, (ufo.x - h.x) / d, (ufo.z - h.z) / d, true);
+    fx.tracer(ox, oy, oz, ufo.x + Math.cos(a) * miss, ufo.y + (Math.random() - 0.5) * miss, ufo.z + Math.sin(a) * miss);
+    this.audio.disparo('ametralladora', Math.max(0.15, 1 - Math.hypot(world.player.x - h.x, world.player.z - h.z) / 140));
+    if (hit) ufo.hit(4, world);
+  }
+  // el rayo del plato lo tocó: se viene abajo dando vueltas y explota contra el piso
+  downHeli(world) {
+    const h = this.heli;
+    if (!h || h.falling) return false;
+    h.falling = true;
+    h.vy = 0;
+    h.cone.visible = h.spot.visible = false;
+    world.fx.explosion(h.x, h.z, 0.6, h.y);
+    world.hud.flash('¡BAJASTE AL HELICÓPTERO!', 'La cana no se va a quedar quieta', 'warn', 2.6);
+    this.crime('explosion', h.x, h.z);
+    world.player.addRespeto?.(3);
+    return true;
+  }
+  heliFall(h, dt, world) {
+    h.vy -= 9.8 * dt;
+    h.y += h.vy * dt;
+    h.x += Math.sin(h.t * 3) * dt * 4;
+    h.g.rotation.y += dt * 6;
+    h.g.rotation.z = Math.min(0.6, h.g.rotation.z + dt * 0.4);
+    h.rotor.rotation.y += dt * 8;
+    h.g.position.set(h.x, h.y, h.z);
+    if (Math.random() < dt * 30) world.fx.smoke(h.x, h.y, h.z, 1, { black: true, s0: 1, s1: 4 });
+    if (Math.random() < dt * 20) world.fx.fire(h.x, h.y, h.z, 1, 0.6);
+    const gy = world.heightAt?.(h.x, h.z) ?? 0;
+    if (h.y <= gy + 1.2) {
+      world.combat.explode(world, h.x, h.z, 1.6, true, gy);
+      this.scene.remove(h.g);
+      this.scene.remove(h.cone);
+      this.scene.remove(h.spot);
+      this.heli = null;
+      this.heliCool = 35;
     }
   }
   makeHeli(P) {
