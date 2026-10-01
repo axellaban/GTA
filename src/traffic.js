@@ -67,6 +67,12 @@ export class Vehicle {
       if (this.wheelie) this.mesh.position.y += Math.sin(this.wheelie) * 0.72 - (1 - Math.cos(this.wheelie)) * 0.3;
       if (this.fallen) this.mesh.position.y = 0.15;
     } else this.mesh.rotation.z = this.flat ? 0.04 : 0;
+    // chatarra que voló por una explosión: girada en el aire o dada vuelta en el piso
+    if (this.tilt) {
+      this.mesh.rotation.x = this.tilt.x;
+      this.mesh.rotation.z = this.tilt.z;
+      this.mesh.position.y += this.tilt.y;
+    }
     this.wheelSpin += this.speed * dt * 3;
     const u = this.mesh.userData;
     if (u.chassis) this.suspend(dt, u);

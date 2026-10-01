@@ -357,6 +357,8 @@ export class Npcs {
   // fx, fz: dirección del golpe. Devuelve 'ko' si lo dejó fuera de combate y 'muerte' si lo mató.
   hurt(n, dmg, fx, fz, o = {}) {
     const w = o.world;
+    // una explosión los tira por el aire (vivos o no)
+    if (o.blast && !n.fly) n.fly = { vx: fx * o.blast, vy: 2.5 + o.blast * 0.45, vz: fz * o.blast, y: 0, spin: 0, ws: (Math.random() < 0.5 ? -1 : 1) * (4 + o.blast) };
     if (n.killed) return null;
     if (n.state === 'ko') {
       // pegarle o tirarle a alguien que está tirado lo termina de matar
@@ -494,6 +496,7 @@ export class Npcs {
       const dp = Math.hypot(player.x - n.x, player.z - n.z);
       const far = dp > 190;
       n.mesh.visible = !far;
+      if (n.fly) this.flyStep(n, dt);
       if (n.fallT > 0) {
         // cayéndose: de parado al piso
         n.fallT -= dt;
@@ -847,8 +850,28 @@ export class Npcs {
   place(n) {
     const y = this.heightAt(n.x, n.z);
     n.y += (y - n.y) * 0.3;
-    n.mesh.position.set(n.x, n.y, n.z);
-    n.mesh.rotation.y = n.heading;
+    n.mesh.position.set(n.x, n.y + (n.fly ? n.fly.y : 0), n.z);
+    n.mesh.rotation.set(n.fly ? n.fly.spin : 0, n.heading, 0);
+  }
+  // volando por una explosión: parábola dando vueltas; al caer queda tirado
+  flyStep(n, dt) {
+    const f = n.fly;
+    f.vy -= 9.8 * dt;
+    f.y += f.vy * dt;
+    n.x += f.vx * dt;
+    n.z += f.vz * dt;
+    f.spin += f.ws * dt;
+    const p = { x: n.x, z: n.z };
+    if (this.colliders.resolveCircle(p, n.r)) {
+      f.vx *= -0.3;
+      f.vz *= -0.3;
+    }
+    n.x = p.x;
+    n.z = p.z;
+    if (f.y <= 0 && f.vy < 0) {
+      n.fly = null;
+      this.audio.golpe(0.4);
+    }
   }
 
   updateTrapito(n, dt, world, dp) {

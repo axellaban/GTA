@@ -648,9 +648,13 @@ export class Combat {
       }
       if (v.wreck) {
         v.wreckT = (v.wreckT || 0) + dt;
-        if (vis && v.wreckT < 40 && Math.random() < dt * 4) this.fx.smoke(v.x, 1.4, v.z, 1, { black: true, s0: 1.2, s1: 5 });
+        if (v.blast) this.blastStep(v, dt, world);
+        if (vis && v.wreckT < 40 && Math.random() < dt * 4) this.fx.smoke(v.x, 1.4 + (v.tilt?.y || 0), v.z, 1, { black: true, s0: 1.2, s1: 5 });
+        // sigue ardiendo un rato después de explotar
+        if (vis && v.wreckT < 14 && Math.random() < dt * 10) this.fx.fire(v.x + R.range(-0.8, 0.8), 0.8 + (v.tilt?.y || 0), v.z + R.range(-0.8, 0.8), 1, 0.4);
         continue;
       }
+      if (v.shove) this.shoveStep(v, dt);
       if (vis && v.damage > 55 && Math.random() < dt * (v.damage - 50) * 0.15) this.fx.smoke(hx, 1.1, hz, 1, { black: v.damage > 82, s0: 0.5, s1: 2.5, vx: -v.fx * v.speed * 0.3, vz: -v.fz * v.speed * 0.3 });
       if (v.burning > 0) {
         v.burning -= dt;
@@ -673,7 +677,11 @@ export class Combat {
     v.mesh.traverse((o) => {
       if (o.isMesh) o.material = charred;
     });
-    v.mesh.rotation.z = R.range(-0.05, 0.05);
+    // salta por el aire dando vueltas; a veces cae dado vuelta
+    const flip = v.kind === 'car' && R.chance(0.3);
+    v.tilt = { x: 0, y: 0, z: 0 };
+    v.blast = { vy: R.range(6, 9) * (v.kind === 'bus' ? 0.4 : 1), wx: R.range(-2, 2), wz: (flip ? 1 : R.range(-0.4, 0.4)) * R.range(4, 7) * (R.chance(0.5) ? 1 : -1), flip, vx: R.range(-1.5, 1.5), vz: R.range(-1.5, 1.5) };
+    this.flyParts(world, v);
     const P = world.player;
     if (v.rider) world.traffic.ejectRider(v, world, 0, 0);
     if (P.vehicle === v) {
@@ -688,9 +696,89 @@ export class Combat {
     }
     this.explode(world, v.x, v.z, 1, v.lastHitByPlayer);
   }
+  // el auto que explotó vuela, gira y cae (derecho o dado vuelta); rebota una vez
+  blastStep(v, dt, world) {
+    const b = v.blast;
+    const t = v.tilt;
+    b.vy -= 9.8 * dt;
+    t.y += b.vy * dt;
+    t.x += b.wx * dt;
+    t.z += b.wz * dt;
+    v.x += b.vx * dt;
+    v.z += b.vz * dt;
+    const rest = b.flip ? (v.tall ?? 1.4) - 0.1 : 0;
+    if (t.y <= rest && b.vy < 0) {
+      if (b.vy < -4 && !b.bounced) {
+        b.bounced = true;
+        b.vy *= -0.3;
+        b.wx *= 0.4;
+        b.wz *= 0.4;
+        this.fx.sparks(v.x, 0.3, v.z, 16, 6);
+        this.fx.dust(v.x, 0.2, v.z, 8, [0.4, 0.38, 0.35], 1.4);
+        this.audio.golpe(0.7);
+      } else {
+        // se acomoda: derecho o con el techo en el piso
+        t.y = rest;
+        t.x = 0;
+        t.z = b.flip ? Math.PI : 0;
+        v.blast = null;
+        this.audio.metal(0.6);
+      }
+    }
+    v.sync(0);
+  }
+  // empujón de una explosión cercana: se corre, salta un poco y se sacude
+  shoveStep(v, dt) {
+    const s = v.shove;
+    s.t += dt;
+    v.x += s.vx * dt;
+    v.z += s.vz * dt;
+    s.vx *= Math.exp(-dt * 3);
+    s.vz *= Math.exp(-dt * 3);
+    s.vy -= 9.8 * dt;
+    v.lift = Math.max(0, (v.lift || 0) + s.vy * dt);
+    if (v.lift <= 0 && s.vy < 0) s.vy = 0;
+    if (s.t > 1.2) {
+      v.shove = null;
+      v.lift = 0;
+    }
+    if (!v.ai && !v.driver) v.sync(dt);
+  }
+  // al explotar salen volando una rueda, la puerta y el capó (encendidos)
+  flyParts(world, v) {
+    const u = v.mesh.userData;
+    if (v.kind !== 'car') return;
+    const out = (lx, lz) => ({ x: v.x + lx * Math.cos(v.heading) + lz * Math.sin(v.heading), z: v.z - lx * Math.sin(v.heading) + lz * Math.cos(v.heading) });
+    const toss = (mesh, lx, lz, y, half) => {
+      const p = out(lx, lz);
+      const dx = p.x - v.x;
+      const dz = p.z - v.z;
+      const l = Math.hypot(dx, dz) || 1;
+      const sp = R.range(4, 8);
+      mesh.rotation.y = v.heading;
+      this.fx.part(mesh, p.x, y, p.z, (dx / l) * sp, R.range(6, 10), (dz / l) * sp, half, { smoke: true, life: 60 });
+    };
+    // una rueda (se esconde la del auto)
+    const w = u.wheels?.[Math.floor(Math.random() * 4)];
+    if (w && w.visible) {
+      w.visible = false;
+      const m = new THREE.Mesh(w.geometry, charred);
+      m.castShadow = true;
+      toss(m, w.position.x * 2, w.position.z, 0.5, 0.11);
+    }
+    // la puerta del conductor y el capó, como chapas quemadas
+    const door = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.6, 1.0), charred);
+    door.castShadow = true;
+    toss(door, -v.W / 2 - 0.4, 0.3, 0.9, 0.03);
+    if (R.chance(0.6)) {
+      const hood = new THREE.Mesh(new THREE.BoxGeometry(v.W * 0.85, 0.04, 1.0), charred);
+      hood.castShadow = true;
+      toss(hood, 0, v.L / 2 - 0.6, 1.0, 0.03);
+    }
+  }
   explode(world, x, z, power = 1, byPlayer = false, y = 0) {
     const P = world.player;
-    this.fx.explosion(x, z, power);
+    this.fx.explosion(x, z, power, y);
     const d = Math.hypot(P.x - x, P.z - z);
     this.audio.explosion(Math.max(0.15, 1 - d / 160));
     this.fx.shake += Math.max(0, 1.2 - d / 35);
@@ -698,7 +786,7 @@ export class Combat {
       const dd = Math.hypot(n.x - x, n.z - z);
       if (dd > 8 || n.state === 'ko') continue;
       const l = dd || 1;
-      world.npcs.hurt(n, (1 - dd / 8) * 130, (n.x - x) / l, (n.z - z) / l, { knock: true, knockT: 3.5, world, byPlayer });
+      world.npcs.hurt(n, (1 - dd / 8) * 130, (n.x - x) / l, (n.z - z) / l, { knock: true, knockT: 3.5, world, byPlayer, blast: (1 - dd / 8) * 9 * power });
     }
     if (!P.dead && d < 8) {
       if (P.vehicle) this.damageVehicle(world, P.vehicle, (1 - d / 8) * 40, false);
@@ -710,7 +798,22 @@ export class Combat {
     for (const v of this.vehicles(world)) {
       if (v.wreck) continue;
       const dd = Math.hypot(v.x - x, v.z - z);
-      if (dd < 7) this.damageVehicle(world, v, (1 - dd / 7) * 75, byPlayer, x, z);
+      if (dd < 7) {
+        this.damageVehicle(world, v, (1 - dd / 7) * 75 * power, byPlayer, x, z);
+        // explosión en cadena: el de al lado se prende fuego y revienta a los pocos segundos
+        const near = dd < 4 || (dd < 6.5 && R.chance(0.55));
+        if (near && v.kind !== 'moto' && (v !== P.vehicle || dd < 4)) {
+          v.damage = 100;
+          v.burning = Math.min(v.burning > 0 ? v.burning : 99, R.range(1.2, 3.5));
+          v.lastHitByPlayer = v.lastHitByPlayer || byPlayer;
+        } else if (v.damage >= 100 && v.burning > 1.6) v.burning = R.range(0.5, 1.4);
+      }
+      if (dd < 10 && v.kind !== 'bus') {
+        const l = dd || 1;
+        const k = (1 - dd / 10) * power;
+        v.shove = { t: 0, vx: ((v.x - x) / l) * 6 * k, vz: ((v.z - z) / l) * 6 * k, vy: 3.5 * k };
+        if (v.ai) v.speed *= 0.3;
+      }
     }
     for (const m of world.crime.motos) if (m.state !== 'down' && Math.hypot(m.v.x - x, m.v.z - z) < 7) world.crime.knockDown(m, world);
     world.npcs.panic(x, z, 70);

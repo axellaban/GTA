@@ -191,6 +191,37 @@ function holeTexture() {
   return t;
 }
 
+// quemadura de explosión: hollín negro con borde irregular y vetas que salen del centro
+function scorchTexture() {
+  const N = 128;
+  const c = document.createElement('canvas');
+  c.width = c.height = N;
+  const g = c.getContext('2d');
+  const h = N / 2;
+  for (let i = 0; i < 26; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const d = Math.random() * h * 0.45;
+    const r = h * (0.18 + Math.random() * 0.3);
+    const gr = g.createRadialGradient(h + Math.cos(a) * d, h + Math.sin(a) * d, 0, h + Math.cos(a) * d, h + Math.sin(a) * d, r);
+    gr.addColorStop(0, 'rgba(8,7,6,0.55)');
+    gr.addColorStop(1, 'rgba(8,7,6,0)');
+    g.fillStyle = gr;
+    g.fillRect(0, 0, N, N);
+  }
+  g.strokeStyle = 'rgba(10,9,8,0.5)';
+  for (let i = 0; i < 18; i++) {
+    const a = Math.random() * Math.PI * 2;
+    g.lineWidth = 1 + Math.random() * 2;
+    g.beginPath();
+    g.moveTo(h, h);
+    g.lineTo(h + Math.cos(a) * h * (0.6 + Math.random() * 0.35), h + Math.sin(a) * h * (0.6 + Math.random() * 0.35));
+    g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
 export class Fx {
   constructor(scene) {
     this.scene = scene;
@@ -244,6 +275,19 @@ export class Fx {
     this.holeI = 0;
     scene.add(this.holes);
     this.splashT = 0;
+    // quemaduras de las explosiones en el piso
+    const SC = 24;
+    this.scorch = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ map: scorchTexture(), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }), SC);
+    this.scorch.count = 0;
+    this.scorch.frustumCulled = false;
+    this.scorch.receiveShadow = true;
+    this.scorchI = 0;
+    scene.add(this.scorch);
+    // onda expansiva: anillo que se abre a ras del piso
+    this.rings = [];
+    this.ringGeo = new THREE.RingGeometry(0.8, 1, 48).rotateX(-Math.PI / 2);
+    this.chunkGeo = new THREE.DodecahedronGeometry(0.16, 0);
+    this.chunkMat = new THREE.MeshStandardMaterial({ color: 0x2a2622, roughness: 0.9 });
     // piezas sueltas (paragolpes caídos): rebotan y quedan un rato en el piso
     this.parts = [];
     // luces para fogonazos y explosiones (fijas en la escena: agregarlas después recompila todo)
@@ -332,11 +376,11 @@ export class Fx {
     }
   }
   // pieza suelta con física simple: cae girando, rebota y queda tirada (90 s)
-  part(mesh, x, y, z, vx, vy, vz, half = 0.06) {
+  part(mesh, x, y, z, vx, vy, vz, half = 0.06, o = {}) {
     mesh.position.set(x, y, z);
     this.scene.add(mesh);
-    this.parts.push({ mesh, vx, vy, vz, wx: rnd(-4, 4), wy: rnd(-3, 3), wz: rnd(-6, 6), half, life: 0, rest: false });
-    if (this.parts.length > 12) {
+    this.parts.push({ mesh, vx, vy, vz, wx: rnd(-4, 4), wy: rnd(-3, 3), wz: rnd(-6, 6), half, life: 0, rest: false, smoke: o.smoke ? rnd(2, 5) : 0, max: o.life ?? 90 });
+    if (this.parts.length > 30) {
       const old = this.parts.shift();
       this.scene.remove(old.mesh);
     }
@@ -344,6 +388,12 @@ export class Fx {
   updateParts(dt) {
     for (const p of this.parts) {
       p.life += dt;
+      // pedazo encendido: larga humo mientras vuela y un rato en el piso
+      if (p.smoke > 0) {
+        p.smoke -= dt;
+        if (Math.random() < dt * 14) this.smoke(p.mesh.position.x, p.mesh.position.y + 0.1, p.mesh.position.z, 1, { black: true, s0: 0.3, s1: 1.6, life: 0.6, a: 0.5 });
+        if (Math.random() < dt * 8) this.fire(p.mesh.position.x, p.mesh.position.y, p.mesh.position.z, 1, 0.05);
+      }
       if (p.rest) continue;
       const m = p.mesh;
       p.vy -= 9.8 * dt;
@@ -370,7 +420,20 @@ export class Fx {
         }
       }
     }
-    if (this.parts.length && this.parts[0].life > 90) this.scene.remove(this.parts.shift().mesh);
+    for (const p of this.parts) if (p.life > p.max) this.scene.remove(p.mesh);
+    this.parts = this.parts.filter((p) => p.life <= p.max);
+    // ondas expansivas
+    for (const r of this.rings) {
+      r.t += dt;
+      const k = r.t / 0.45;
+      r.m.scale.setScalar(0.5 + k * 13 * r.power);
+      r.m.material.opacity = 0.6 * Math.max(0, 1 - k);
+      if (k >= 1) {
+        this.scene.remove(r.m);
+        r.m.material.dispose();
+      }
+    }
+    this.rings = this.rings.filter((r) => r.t < 0.45);
   }
   // choque de autos: escamas de pintura y vidrio picado que rebotan en el asfalto
   debris(x, y, z, color, n = 6, glass = 0) {
@@ -409,16 +472,53 @@ export class Fx {
   spray(x, z, vx, vz, k = 1) {
     this.alpha.add({ x: x + rnd(-0.15, 0.15), y: 0.2, z: z + rnd(-0.15, 0.15), vx: vx + rnd(-0.6, 0.6), vy: rnd(0.6, 1.6), vz: vz + rnd(-0.6, 0.6), grav: -2, drag: 1.6, life: 0, max: rnd(0.4, 0.8), s0: 0.25, s1: 1.3 * k, c0: [0.72, 0.76, 0.8], a: 0.16 * k, fadeIn: 0.04 });
   }
-  explosion(x, z, power = 1) {
-    for (let i = 0; i < 40 * power; i++) {
+  explosion(x, z, power = 1, y0 = 0) {
+    const gy = this.ground(x, z);
+    const by = Math.max(gy, y0);
+    // fogonazo: núcleo blanco que se infla y la bola de fuego que sube y se oscurece
+    for (let i = 0; i < 4; i++) this.add.add({ x, y: by + 1, z, vx: 0, vy: 0, vz: 0, grav: 0, drag: 0, life: 0, max: 0.12, s0: 9 * power, s1: 14 * power, c0: [1, 0.95, 0.8], a: 1 });
+    for (let i = 0; i < 55 * power; i++) {
       const a = Math.random() * Math.PI * 2;
       const r = rnd(0, 3) * power;
-      this.add.add({ x: x + Math.cos(a) * r * 0.3, y: rnd(0.5, 2), z: z + Math.sin(a) * r * 0.3, vx: Math.cos(a) * r * 2.5, vy: rnd(2, 8), vz: Math.sin(a) * r * 2.5, grav: -3, drag: 2.2, life: 0, max: rnd(0.5, 1.1), s0: rnd(2.5, 4.5) * power, s1: 1, c0: [1, 0.9, 0.55], c1: [0.8, 0.15, 0.02], a: 1 });
+      this.add.add({ x: x + Math.cos(a) * r * 0.3, y: by + rnd(0.5, 2), z: z + Math.sin(a) * r * 0.3, vx: Math.cos(a) * r * 2.5, vy: rnd(2, 9), vz: Math.sin(a) * r * 2.5, grav: -3, drag: 2.2, life: 0, max: rnd(0.5, 1.2), s0: rnd(2.5, 5) * power, s1: 1, c0: [1, 0.9, 0.55], c1: [0.8, 0.15, 0.02], a: 1 });
     }
-    this.smoke(x, 1.5, z, 18 * power, { black: true, s0: 2, s1: 7, life: 1.6, rise: 2, a: 0.7 });
-    this.sparks(x, 1, z, 30, 14);
-    this.boomLight.position.set(x, 3, z);
-    this.boomLight.intensity = 260 * power;
+    // hongo de humo negro que sube despacio y queda un rato
+    this.smoke(x, by + 1.5, z, 18 * power, { black: true, s0: 2, s1: 7, life: 1.6, rise: 2, a: 0.7 });
+    this.smoke(x, by + 3, z, 10 * power, { black: true, s0: 3, s1: 10, life: 3.2, rise: 1.4, a: 0.5 });
+    // polvo que corre a ras del piso
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * Math.PI * 2;
+      this.alpha.add({ x, y: gy + 0.3, z, vx: Math.cos(a) * 9 * power, vy: 0.3, vz: Math.sin(a) * 9 * power, grav: 0, drag: 2.5, life: 0, max: rnd(1, 1.6), s0: 1, s1: 4, c0: [0.45, 0.42, 0.38], a: 0.35 });
+    }
+    this.sparks(x, by + 1, z, 30, 14);
+    // brasas que vuelan alto y caen despacio
+    for (let i = 0; i < 18 * power; i++) this.add.add({ x, y: by + 1, z, vx: rnd(-6, 6), vy: rnd(5, 13), vz: rnd(-6, 6), grav: -5, drag: 0.8, life: 0, max: rnd(1.2, 2.4), s0: 0.16, s1: 0.06, c0: [1, 0.6, 0.2], a: 1 });
+    // escombros que salen volando humeando
+    for (let i = 0; i < Math.round(4 * power); i++) {
+      const m = new THREE.Mesh(this.chunkGeo, this.chunkMat);
+      m.scale.setScalar(rnd(0.6, 1.6));
+      m.castShadow = true;
+      const a = Math.random() * Math.PI * 2;
+      const sp = rnd(4, 9);
+      this.part(m, x, by + 0.8, z, Math.cos(a) * sp, rnd(5, 10), Math.sin(a) * sp, 0.1, { smoke: true, life: 25 });
+    }
+    // onda expansiva y quemadura en el piso
+    const ring = new THREE.Mesh(this.ringGeo, new THREE.MeshBasicMaterial({ color: 0xffe2b0, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+    ring.position.set(x, gy + 0.08, z);
+    this.scene.add(ring);
+    this.rings.push({ m: ring, t: 0, power });
+    this.burn(x, z, rnd(3.5, 5) * power);
+    this.boomLight.position.set(x, by + 3, z);
+    this.boomLight.intensity = 320 * power;
+    this.shake += 0.2 * power;
+  }
+  burn(x, z, size) {
+    this.q.setFromAxisAngle(this.v.set(0, 1, 0), Math.random() * Math.PI * 2);
+    this.m4.compose(this.v.set(x, this.ground(x, z) + 0.03, z), this.q, this.s.set(size, 1, size));
+    this.scorch.setMatrixAt(this.scorchI, this.m4);
+    this.scorchI = (this.scorchI + 1) % this.scorch.instanceMatrix.count;
+    this.scorch.count = Math.max(this.scorch.count, this.scorchI);
+    this.scorch.instanceMatrix.needsUpdate = true;
   }
   hit(x, y, z) {
     // golpe o bala en algo que no sangra: polvo

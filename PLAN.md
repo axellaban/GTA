@@ -179,6 +179,12 @@ Hecho (cada ronda probada sin GPU y subida a `main`):
 - ✅ Noche mojada: faros y luces de freno reflejados como rayas en el asfalto (`updateStreaks` en
   `src/glow.js`); el reflejo de los faroles ya no hace bandas (muestras con jitter en `src/detail.js`).
 
+- ✅ Ametralladora y bazuca (`src/weapons.js`; cohetes en `fireRocket`/`updateRockets`/`rocketHit` de
+  `src/combat.js`; truco FIERROS en `checkCheats` de `src/main.js`).
+- ✅ Explosiones: `fx.explosion` (bola de fuego, onda, brasas, escombros con humo, quemadura `fx.burn`);
+  autos que vuelan (`blastStep`, `v.tilt` en `Vehicle.sync`), piezas sueltas (`flyParts`), empujón
+  (`shoveStep`) y cadena de fuego en `explode`; gente que vuela (`flyStep` en `src/npcs.js`).
+
 Ideas para seguir: capó que se levanta con mucho daño; reacción al ver un auto que se acerca rápido
 (ya se tiran a un costado); reflejos de luces en los charcos de noche más marcados.
 
