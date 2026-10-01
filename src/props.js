@@ -22,13 +22,28 @@ function place(inst, i, x, y, z, rot = 0, sx = 1, sy = 1, sz = 1) {
 }
 
 // ---------- Semáforos ----------
+// Cada cabezal (caño, caja y viseras) es una instancia de la misma pieza: un auto rápido lo voltea
+// como a los postes de luz (src/smash.js), se apaga y el tránsito de ese lado ya no frena.
 const CYCLE = 36;
+const POST_H = 3.4;
 const nk = (x, z) => `${Math.round(x * 2) / 2},${Math.round(z * 2) / 2}`;
+// la pieza, mirando a +z con la base en el origen
+function signalHead() {
+  const F = new FastBoxes();
+  F.box(0.14, POST_H, 0.14, 0x2d3236, 0, POST_H / 2, 0);
+  F.rbox(0.36, 0.95, 0.3, 0x1c1f22, 0, 3.05, 0, 0);
+  for (let k = 0; k < 3; k++) F.rbox(0.3, 0.03, 0.14, 0x111111, 0, 3.35 - k * 0.28 + 0.12, 0.2, 0);
+  return F.mesh();
+}
 export class TrafficLights {
-  constructor(scene) {
+  constructor(scene, { colliders, fx, audio } = {}) {
     this.list = [];
     this.byNode = new Map();
-    const F = new FastBoxes();
+    this.fx = fx;
+    this.audio = audio;
+    this.heads = [];
+    this.falling = [];
+    this.obstacles = []; // cabezales tirados en la calle (el tránsito los esquiva)
     const lamps = [];
     const used = new Set();
     for (const [sx, sz] of D.signals) {
@@ -57,29 +72,33 @@ export class TrafficLights {
         const px = best.x + arm.dx * (wo / 2 + 1.5) + rx * (w / 2 + 0.9);
         const pz = best.z + arm.dz * (wo / 2 + 1.5) + rz * (w / 2 + 0.9);
         const face = Math.atan2(arm.dx, arm.dz);
-        F.box(0.14, 3.4, 0.14, 0x2d3236, px, 1.7, pz);
-        F.rbox(0.36, 0.95, 0.3, 0x1c1f22, px, 3.05, pz, face);
-        const fx = Math.sin(face);
-        const fz = Math.cos(face);
-        const head = { group, lampIndex: lamps.length };
-        for (let k = 0; k < 3; k++) {
-          const y = 3.35 - k * 0.28;
-          F.rbox(0.3, 0.03, 0.14, 0x111111, px + fx * 0.2, y + 0.12, pz + fz * 0.2, face);
-          lamps.push({ x: px + fx * 0.155, y, z: pz + fz * 0.155, face });
-        }
+        const head = { group, lampIndex: lamps.length, x: px, z: pz, face, i: this.heads.length, arm: L.arms.get(arm.road.id) };
+        for (let k = 0; k < 3; k++) lamps.push(3.35 - k * 0.28);
+        if (colliders) colliders.addCircle(px, pz, 0.12, POST_H, 'signal').signal = head.i;
+        this.heads.push(head);
         L.heads.push(head);
       }
       this.list.push(L);
       this.byNode.set(nk(best.x, best.z), L);
     }
-    scene.add(F.mesh());
+    const piece = signalHead();
+    this.posts = new THREE.InstancedMesh(piece.geometry, piece.material, Math.max(1, this.heads.length));
+    this.posts.castShadow = true;
+    this.posts.count = this.heads.length;
+    scene.add(this.posts);
     const lg = new THREE.CylinderGeometry(0.1, 0.1, 0.05, 12).rotateX(Math.PI / 2);
     this.lamps = new THREE.InstancedMesh(lg, new THREE.MeshBasicMaterial({ color: 0xffffff }), Math.max(1, lamps.length));
-    lamps.forEach((l, i) => place(this.lamps, i, l.x, l.y, l.z, l.face));
+    this.lampY = lamps;
     this.lamps.count = lamps.length;
+    this.m4 = new THREE.Matrix4();
+    this.m5 = new THREE.Matrix4();
+    this.q = new THREE.Quaternion();
+    this.axis = new THREE.Vector3();
+    for (const h of this.heads) this.pose(h, 0, 0, 0);
     this.colors = {
       on: [new THREE.Color(3.2, 0.25, 0.15), new THREE.Color(3.0, 1.9, 0.2), new THREE.Color(0.2, 2.8, 0.9)],
       off: [new THREE.Color(0.22, 0.05, 0.04), new THREE.Color(0.22, 0.16, 0.04), new THREE.Color(0.04, 0.18, 0.08)],
+      dead: new THREE.Color(0.05, 0.05, 0.05),
     };
     scene.add(this.lamps);
     this.t = 0;
@@ -93,10 +112,56 @@ export class TrafficLights {
     return group === 0 ? a : b;
   }
 
+  // ubica el cabezal: parado, o volcado `a` radianes hacia (dx, dz) girando sobre la base
+  pose(h, a, dx, dz) {
+    const base = this.m4.makeRotationY(h.face);
+    if (a) base.premultiply(this.m5.makeRotationFromQuaternion(this.q.setFromAxisAngle(this.axis.set(dz, 0, -dx), a)));
+    base.premultiply(this.m5.makeTranslation(h.x, 0, h.z));
+    this.posts.setMatrixAt(h.i, base);
+    for (let k = 0; k < 3; k++) this.lamps.setMatrixAt(h.lampIndex + k, this.m5.makeTranslation(0, this.lampY[h.lampIndex + k], 0.155).premultiply(base));
+    this.posts.instanceMatrix.needsUpdate = true;
+    this.lamps.instanceMatrix.needsUpdate = true;
+  }
+
+  // un auto se lo llevó puesto (box: su colisionador; vx, vz: la velocidad del auto)
+  knock(box, vx, vz) {
+    const h = this.heads[box.signal];
+    if (!h || h.down) return false;
+    h.down = true;
+    if (h.arm) h.arm.down = true;
+    box.x = box.z = 1e6;
+    const sp = Math.hypot(vx, vz) || 1;
+    this.falling.push({ h, dx: vx / sp, dz: vz / sp, a: 0.15, w: Math.min(2.6, sp * 0.1), landed: false });
+    this.fx?.sparks(h.x, 0.5, h.z, 10, 5);
+    this.audio?.metal(0.8);
+    this.audio?.golpe(0.5);
+    // se apaga
+    for (let k = 0; k < 3; k++) this.lamps.setColorAt(h.lampIndex + k, this.colors.dead);
+    return true;
+  }
+
   update(dt) {
     this.t += dt;
+    for (const f of this.falling) {
+      if (f.landed) continue;
+      f.w += ((3 * 9.8) / (2 * POST_H)) * Math.sin(f.a) * dt;
+      f.a += f.w * dt;
+      if (f.a >= Math.PI / 2) {
+        f.a = Math.PI / 2;
+        f.landed = true;
+        const hx = f.h.x + f.dx * 3;
+        const hz = f.h.z + f.dz * 3;
+        this.fx?.sparks(hx, 0.3, hz, 18, 6);
+        this.fx?.dust(hx, 0.2, hz, 6, [0.5, 0.48, 0.44], 1);
+        this.audio?.metal(0.9);
+        this.obstacles.push({ x: f.h.x + f.dx * 1.6, z: f.h.z + f.dz * 1.6, r: 0.5 }, { x: hx, z: hz, r: 0.5 });
+      }
+      this.pose(f.h, f.a, f.dx, f.dz);
+    }
+    if (this.falling.length && this.falling.every((f) => f.landed)) this.falling.length = 0;
     for (const L of this.list) {
       for (const h of L.heads) {
+        if (h.down) continue;
         const st = this.phase(L, h.group);
         const on = st === 'red' ? 0 : st === 'yellow' ? 1 : 2;
         for (let k = 0; k < 3; k++) this.lamps.setColorAt(h.lampIndex + k, k === on ? this.colors.on[k] : this.colors.off[k]);
@@ -112,7 +177,8 @@ export class TrafficLights {
     const L = this.byNode.get(nk(e.to.x, e.to.z));
     if (!L) return null;
     const arm = L.arms.get(e.street.id);
-    if (!arm) return null;
+    // sin semáforo (lo voltearon): se pasa
+    if (!arm || arm.down) return null;
     const st = this.phase(L, arm.group);
     if (st === 'green') return null;
     const lx = e.to.x - e.dx * (arm.wo / 2 + 3.9);

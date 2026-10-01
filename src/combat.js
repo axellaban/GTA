@@ -651,6 +651,17 @@ export class Combat {
           if (d < 90) this.audio.tone([v.beepHi ? 1450 : 1050], 0.3, 'square', 0.12 * (1 - d / 90));
         }
       }
+      // capó: con mucho daño se levanta y, andando, flamea con el viento
+      const hd = v.mesh.userData.hood;
+      if (hd && vis && (hd.k > 0.001 || v.damage > 70)) {
+        v.hoodT = (v.hoodT || 0) + dt;
+        const sp = Math.abs(v.speed || 0);
+        const want = v.damage > 70 ? 0.42 + Math.min(0.5, sp * 0.03) + Math.sin(v.hoodT * 19) * Math.min(0.1, sp * 0.006) : 0;
+        if (want > 0 && hd.k < 0.05) this.audio.metal(0.4);
+        hd.k += (want - hd.k) * Math.min(1, dt * (want > hd.k ? 9 : 4));
+        hd.pivot.rotation.x = -hd.k;
+        hd.bay.visible = hd.k > 0.03;
+      }
       if (v.wreck) {
         v.wreckT = (v.wreckT || 0) + dt;
         if (v.blast) this.blastStep(v, dt, world);

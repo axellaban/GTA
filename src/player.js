@@ -823,7 +823,9 @@ export class Player {
       if (hit) {
         // un poste de luz a velocidad: lo voltea y sigue (frenado)
         const vel = Math.hypot(v.vx, v.vz);
-        if (hit.box.kind === 'lamp' && vel > 5 && !moto && world.smash?.knock(hit.box, v.vx, v.vz)) {
+        // (y un semáforo también)
+        const knocked = vel > 5 && !moto && ((hit.box.kind === 'lamp' && world.smash?.knock(hit.box, v.vx, v.vz)) || (hit.box.kind === 'signal' && world.lights?.knock(hit.box, v.vx, v.vz)));
+        if (knocked) {
           v.vx *= 0.62;
           v.vz *= 0.62;
           effects.shake += 0.35;

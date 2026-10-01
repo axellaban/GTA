@@ -410,6 +410,43 @@ function buildModel(name) {
   return out;
 }
 
+// Capó aparte (bisagra del lado del parabrisas): con mucho daño salta la traba, se levanta y flamea
+// con el viento (lo mueve Combat.updateVehicles). Abajo, el motor: solo se ve con el capó abierto.
+const bayMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1c, roughness: 0.7, metalness: 0.3 });
+const engineMat = new THREE.MeshStandardMaterial({ color: 0x55585c, roughness: 0.5, metalness: 0.6 });
+const hoodCache = new Map();
+function makeHood(m, paint) {
+  const key = `${m.L}|${m.W}|${m.hood}|${m.nose}|${m.belt}`;
+  if (!hoodCache.has(key)) {
+    const f = m.L / 2;
+    const z0 = f - m.hood + 0.04;
+    const z1 = f - 0.17;
+    // la misma pendiente que la carrocería (bodyLoft: top)
+    const top = (z) => m.belt + ((z - (f - m.hood)) / (m.hood - 0.15)) * (m.nose + 0.05 - m.belt);
+    const y0 = top(z0) + 0.014;
+    const y1 = top(z1) + 0.014;
+    const len = Math.hypot(z1 - z0, y1 - y0);
+    const w = m.W * 0.8;
+    const panel = new THREE.BoxGeometry(w, 0.025, len).translate(0, 0, len / 2).rotateX(-Math.atan2(y1 - y0, z1 - z0));
+    // motor: chapa negra y un block con tapa de cilindros, sobre la pendiente del capó
+    const bay = [new THREE.BoxGeometry(w * 0.98, 0.012, len * 0.96).translate(0, 0, len / 2)];
+    const block = new THREE.BoxGeometry(w * 0.45, 0.14, len * 0.5).translate(0, 0.07, len * 0.45);
+    const bayGeo = mergeGeometries(bay).rotateX(-Math.atan2(y1 - y0, z1 - z0)).translate(0, y0 - 0.008, z0);
+    const blockGeo = block.rotateX(-Math.atan2(y1 - y0, z1 - z0)).translate(0, y0 - 0.008, z0);
+    hoodCache.set(key, { panel, bayGeo, blockGeo, y0, z0 });
+  }
+  const H = hoodCache.get(key);
+  const pivot = new THREE.Group();
+  pivot.position.set(0, H.y0, H.z0);
+  const lid = new THREE.Mesh(H.panel, paint);
+  lid.userData.paint = true; // (la sombra ya la tira la carrocería, que tiene la misma forma)
+  pivot.add(lid);
+  const bay = new THREE.Group();
+  bay.add(new THREE.Mesh(H.bayGeo, bayMat), new THREE.Mesh(H.blockGeo, engineMat));
+  bay.visible = false;
+  return { pivot, bay, k: 0 };
+}
+
 export function makeCar(model = 'duna', color = 0xd8d4c8, { parked = false } = {}) {
   const M = buildModel(model);
   const { L, W, wheelR } = M.m;
@@ -451,6 +488,8 @@ export function makeCar(model = 'duna', color = 0xd8d4c8, { parked = false } = {
     g.add(w);
     wheels.push(w);
   }
+  const hood = makeHood(M.m, body.material);
+  chassis.add(hood.pivot, hood.bay);
   let door = null;
   let doorway = null;
   if (M.door) {
@@ -466,7 +505,7 @@ export function makeCar(model = 'duna', color = 0xd8d4c8, { parked = false } = {
     doorway.visible = false;
     chassis.add(door, doorway);
   }
-  g.userData = { L, W, wheels, kind: 'car', model, parkedBuild: parked, tall: M.m.roof + 0.1, body, shiny, glass, chassis, tail, door, doorway, lodParts: [shiny, detail] };
+  g.userData = { L, W, wheels, kind: 'car', model, parkedBuild: parked, tall: M.m.roof + 0.1, body, shiny, glass, chassis, tail, door, doorway, hood, lodParts: [shiny, detail, hood.pivot] };
   return g;
 }
 

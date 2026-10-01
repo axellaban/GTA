@@ -196,7 +196,7 @@ const events = new Events(scene, traffic, audio, npcs);
 const trains = new Trains(scene, audio);
 glows = new Glows(scene, city);
 buildProps(scene, city);
-const lights = new TrafficLights(scene);
+const lights = new TrafficLights(scene, { colliders: city.colliders, fx, audio });
 const blobs = new BlobShadows(scene);
 fx.ground = heightAt;
 const pickups = new Pickups(scene, audio);
@@ -549,8 +549,10 @@ function updateGarages() {
     Object.assign(v, { damage: 0, burning: 0, flat: false, warned: false });
     repairCar(v);
     if (!['taxi', 'remis', 'patrullero'].includes(v.model)) {
+      // un solo color para todo lo pintado (carrocería, puerta, capó)
+      let mat = null;
       v.mesh.traverse((o) => {
-        if (o.userData.paint) o.material = paintMat(R.pick(CAR_COLORS.filter((c) => c !== o.material.color.getHex())));
+        if (o.userData.paint) o.material = mat ??= paintMat(R.pick(CAR_COLORS.filter((c) => c !== o.material.color.getHex())));
       });
     }
     audio.plata();

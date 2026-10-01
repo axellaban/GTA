@@ -105,8 +105,12 @@ Falta: persecución del OVNI robado con helicóptero (ver R4).
 ametralladora, en ráfagas (`arm`/`copBrain` en `src/police.js`, `enemyShoot(..., wid)`); el gendarme
 muerto suelta la ametralladora. Falta: helicóptero que persiga al OVNI robado.
 
-**R5 — Más destrucción**: semáforos y carteles que se caen (copiar `src/smash.js`); capó que se levanta
-con mucho daño. ✅ El tránsito frena ante el OVNI apoyado y los postes caídos, toca bocina y pega la
+**R5 — Más destrucción**: ✅ semáforos que se caen (`TrafficLights` en `src/props.js`: cada cabezal es
+una instancia de `posts` con colisionador `signal`; `knock` lo voltea, se apaga, deja obstáculos y
+`stopAhead` ignora ese lado; el choque está en `drive` de `src/player.js`, junto al de los postes).
+✅ Capó que se levanta con daño > 70 y flamea con la velocidad (`makeHood` en `src/cars.js`, lo mueve
+`Combat.updateVehicles`; abajo se ve el motor). Chapa y pintura pinta todo de un solo color.
+Falta: carteles con el nombre de la calle que se caen. ✅ El tránsito frena ante el OVNI apoyado y los postes caídos, toca bocina y pega la
 vuelta (`obs` en `Traffic.update`, `ufo.block`, `smash.obstacles`); la nave apoyada tiene colisionador
 (`groundBlock` en `src/ufo.js`).
 

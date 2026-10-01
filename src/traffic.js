@@ -482,6 +482,7 @@ export class Traffic {
     obs.length = 0;
     if (world.ufo?.block) obs.push(world.ufo.block);
     if (world.smash) for (const o of world.smash.obstacles) obs.push(o);
+    if (world.lights) for (const o of world.lights.obstacles) obs.push(o);
     // grillas de obstáculos (vehículos y peatones) para no comparar todos contra todos
     const CELL = 24;
     const cell = (x, z) => (Math.floor(x / CELL) + 200) * 1000 + Math.floor(z / CELL) + 200;
