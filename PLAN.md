@@ -146,6 +146,32 @@ Radio ≈ 550 m desde la estación (`STATION` en `src/map.js`). Hoy: 1.872 edifi
 - ✅ Policía: retenes (`roadblock` en `src/police.js`) con tira de clavos (`addSpikes`/`updateSpikes`) y 6 estrellas con Gendarmería.
 - ✅ Autos que se abollan (`dentCar`/`repairCar` en `src/cars.js`; punto del golpe en `damageVehicle`).
 
+### D. Rondas "nivel Vice City" (movimiento, armas, autos, efectos)
+
+Hecho (cada ronda probada sin GPU y subida a `main`):
+- ✅ Gaspi: inercia al arrancar y frenar, inclinación en curvas, cabeza que sigue a la cámara, piernas
+  recogidas en el aire y amortiguación al caer (`walk`/`naturalize` en `src/player.js`); pasitos al
+  girar en el lugar, agitado después de correr (`fatigue`) y gestos quieto (`fidget`: reloj,
+  corbata, cuello). El ritmo del paso de todos (`poseHuman` en `src/human.js`) está medido para que
+  el pie apoyado no patine (<6 % a cualquier velocidad; antes 60–80 % corriendo).
+- ✅ Radio ochentosa original: Flash Conurbano 89.3 (`synth` en `src/radio.js`). Nada de temas de GTA
+  (regla 1).
+- ✅ Armas: casquillos que rebotan (`fx.casing`), recarga animada (pose `reload`), retroceso en la
+  mira, agujeros de bala en paredes y veredas (`fx.bulletHole`; la traza usa `colliders.blockedHit`
+  para saber la normal) y astillas (`fx.chips`).
+- ✅ Autos: la carrocería va en `userData.chassis` sobre una suspensión (`Vehicle.suspend` en
+  `src/traffic.js`: cabeceo, rolido, rebote, `kick` en los choques, `settle` al bajarse); luces de
+  freno (`tailMat`/`brakeMat` en `src/cars.js`); escape, petardeo y rocío con la calle mojada
+  (`src/carfx.js`); pedazos de chapa y vidrio en los choques (`fx.debris`).
+- ✅ Gente: arrancan y frenan de a poco, se esquivan entre ellos y a Gaspi (`avoidance`), se paran en
+  las esquinas, miran a Gaspi cuando pasa cerca (`lifeLook`; `animateHuman` acepta un `post`).
+- ✅ Lluvia: salpicaduras en el piso alrededor de la cámara (`fx.setRain`).
+- Rendimiento medido: los sistemas de CPU suman ~2,5 ms por frame, igual que antes de estas rondas.
+
+Ideas para seguir: puertas de auto que se abren al subir/bajar; capó y paragolpes que se caen con
+mucho daño; gente que charla en grupos y gesticula; reacción al ver un auto que se acerca rápido
+(ya se tiran a un costado); reflejos de luces en los charcos de noche más marcados.
+
 ## 6. Estado (actualizar al avanzar)
 
 - ✅ Look Vice City: filtro PS2 (estelas + color por hora), atardecer rosa, neón, destellos en
