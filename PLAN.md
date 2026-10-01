@@ -220,7 +220,9 @@ Radio ≈ 550 m desde la estación (`STATION` en `src/map.js`). Hoy: 1.872 edifi
   (atlas de hasta 256). Guarda el resto en `b.rel` (fachada, persiana, toldo, rejas, rubro).
 - **B3b — Fachadas (hecho)**: `city.js` usa `b.rel`: color de fachada (tiñe el frente y la cornisa),
   toldo solo si está marcado, caja de persiana; si un local no tenía frente, elige la pared que da a
-  la calle. Falta: rejas, foto como textura, puerta/vidriera según datos.
+  la calle. ✅ Rejas en las ventanas de planta baja (`windowGrilleTexture`, `arr.grilles` en
+  `addFrames`): lo que diga `rel.rejas`; si no hay dato, 2 de cada 3 casas. Falta: foto como textura,
+  puerta/vidriera según datos.
 - **B3 — Construcción (resto)**: por cada local, arma el frente con
   piezas (vidriera, persiana, puerta, toldo, cartel con el nombre real; foto como textura si hay),
   con los pisos reales. Prioridad: la cuadra de la estación sobre Av. Meeks y el centro comercial.

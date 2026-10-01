@@ -380,13 +380,13 @@ function wall(arr, ax, az, bx, bz, y0, y1, pickUv, shade, tint = null) {
       const partial = yy - y < FLOOR_H * 0.6;
       const uv = partial ? ATLAS.medianera[(s + floor) % ATLAS.medianera.length] : pickUv(floor, s);
       pushQuad(arr, [x0, y, z0], [x1, y, z1], [x1, yy, z1], [x0, yy, z0], uv, shade, floor === 0 ? shade * 0.6 : shade * 0.97, partial ? null : tint);
-      if (!partial && arr.frames && uv.open && uv.open.length && (x1 - x0) ** 2 + (z1 - z0) ** 2 > 16) addFrames(arr.frames, x0, z0, x1, z1, y, y + FLOOR_H, uv.open);
+      if (!partial && arr.frames && uv.open && uv.open.length && (x1 - x0) ** 2 + (z1 - z0) ** 2 > 16) addFrames(arr.frames, x0, z0, x1, z1, y, y + FLOOR_H, uv.open, floor === 0 && arr.rejas ? arr.grilles : null);
     }
   }
 }
 
 const FRAME_COLORS = [0xe9e4d8, 0xd9d2c4, 0xc9c0b0, 0xf2eee6];
-function addFrames(F, x0, z0, x1, z1, y, yy, open) {
+function addFrames(F, x0, z0, x1, z1, y, yy, open, grilles = null) {
   const len = Math.hypot(x1 - x0, z1 - z0);
   const dx = (x1 - x0) / len;
   const dz = (z1 - z0) / len;
@@ -406,6 +406,11 @@ function addFrames(F, x0, z0, x1, z1, y, yy, open) {
     const top = yy - o.y0 * H;
     const bot = yy - o.y1 * H;
     if (o.kind === 'window') {
+      // reja de planta baja, un poco adelante del vidrio
+      if (grilles) {
+        const off = 0.13;
+        grilles.vert(x0 + dx * (ta - 0.04) + nx * off, z0 + dz * (ta - 0.04) + nz * off, x0 + dx * (tb + 0.04) + nx * off, z0 + dz * (tb + 0.04) + nz * off, bot, top, { u0: 0, v0: 0, u1: Math.max(1, Math.round((w + 0.08) / 0.75)), v1: 1 });
+      }
       put(tc, bot - 0.035, w + 0.2, 0.07, 0.17);
       put(tc, top + 0.05, w + 0.12, 0.1, 0.09);
       put(ta - 0.03, (top + bot) / 2, 0.06, top - bot, 0.05);
@@ -426,7 +431,7 @@ function addFrames(F, x0, z0, x1, z1, y, yy, open) {
 const GENERIC_SHOPS = ['KIOSCO 24 HS', 'FARMACIA', 'PIZZERÍA', 'ROTISERÍA', 'QUINIELA', 'FERRETERÍA', 'VERDULERÍA', 'CELULARES', 'EMPANADAS', 'CARNICERÍA', 'PANADERÍA', 'COTILLÓN', 'LAVADERO', 'CERRAJERÍA', 'FIAMBRERÍA', 'AUTOSERVICIO', 'LIBRERÍA', 'HELADERÍA', 'PELUQUERÍA', 'ÓPTICA', 'MERCERÍA', 'ZAPATERÍA', 'DIETÉTICA', 'VETERINARIA'];
 
 function addBuildings(scene, atlas, colliders, rng, city) {
-  const arr = { pos: [], uvs: [], col: [], idx: [], frames: new FastBoxes() };
+  const arr = { pos: [], uvs: [], col: [], idx: [], frames: new FastBoxes(), grilles: new Quads(), rejas: false };
   // techos planos agrupados por tipo (membrana, cerámica, losa, chapa)
   const roofs = {};
   const roofBucket = (t) => (roofs[t] ??= { pos: [], uv: [], col: [], idx: [] });
@@ -513,6 +518,8 @@ function addBuildings(scene, atlas, colliders, rng, city) {
       const c = [e.bx, e.bz];
       const [p0, p1] = (c[0] - a[0]) * rx + (c[1] - a[1]) * rz > 0 ? [a, c] : [c, a];
       const isFront = fronts.has(k) || kind === 'estacion';
+      // rejas en las ventanas de planta baja: lo que diga el relevamiento; si no, casi todas las casas
+      arr.rejas = isFront && (rel?.rejas ?? ((kind === 'casa' && v % 3 !== 0) || (kind === 'alto' && v % 5 < 2)));
       wall(arr, p0[0], p0[1], p1[0], p1[1], 0, h, isFront ? front : side, isFront ? shade : shade * 0.9, isFront ? wallTint : null);
       const mx = (a[0] + c[0]) / 2;
       const mz = (a[1] + c[1]) / 2;
@@ -636,6 +643,9 @@ function addBuildings(scene, atlas, colliders, rng, city) {
   mesh.receiveShadow = true;
   scene.add(mesh);
   scene.add(arr.frames.mesh(new THREE.MeshLambertMaterial({ vertexColors: true })));
+  const grilleMesh = new THREE.Mesh(arr.grilles.geometry(), new THREE.MeshLambertMaterial({ map: windowGrilleTexture(), alphaTest: 0.5, side: THREE.DoubleSide }));
+  grilleMesh.castShadow = true;
+  scene.add(grilleMesh);
   const detMesh = det.mesh(addWorldDetail(new THREE.MeshLambertMaterial({ vertexColors: true }), { damp: 0 }));
   detMesh.castShadow = true;
   detMesh.receiveShadow = true;
@@ -775,6 +785,35 @@ function addBuildings(scene, atlas, colliders, rng, city) {
 }
 
 // ---------- Rejas ----------
+// reja de ventana de casa del conurbano: barrotes, dos travesaños y una greca de rulos arriba
+function windowGrilleTexture() {
+  const c = document.createElement('canvas');
+  c.width = 128;
+  c.height = 256;
+  const g = c.getContext('2d');
+  g.fillStyle = '#1b1c1e';
+  g.strokeStyle = '#1b1c1e';
+  for (let x = 6; x < 128; x += 21) g.fillRect(x, 0, 5, 256);
+  g.fillRect(0, 0, 128, 7);
+  g.fillRect(0, 249, 128, 7);
+  g.fillRect(0, 60, 128, 5);
+  g.fillRect(0, 190, 128, 5);
+  g.lineWidth = 4;
+  for (let x = 16; x < 128; x += 42) {
+    g.beginPath();
+    g.arc(x, 34, 11, 0, Math.PI * 2);
+    g.stroke();
+    g.beginPath();
+    g.arc(x + 21, 34, 6, 0, Math.PI * 2);
+    g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = THREE.RepeatWrapping;
+  t.anisotropy = 4;
+  return t;
+}
+
 function rejaTexture() {
   const c = document.createElement('canvas');
   c.width = 256;
