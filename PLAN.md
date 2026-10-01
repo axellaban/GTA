@@ -125,6 +125,14 @@ ametralladora, bazuca y su munición.
 
 **R8 — Look**: reflejos de neón en los charcos; suavizar la mancha de luna; fachadas con rejas y foto
 del relevamiento.
+- 🔶 Texturas de foto CC0 (Poly Haven / ambientCG) para calles y veredas: listo el camino, faltan las
+  fotos. `node scripts/texturas.mjs` las baja de la API de Poly Haven a `public/textures/` (color,
+  normal y rugosidad de 1K) y escribe `list.json`; `usePhoto` (src/textures.js, llamado en city.js para
+  `asfalto` y `vereda`) las usa si están y si no deja las dibujadas. Desde la nube de Claude esos
+  dominios están bloqueados (api.polyhaven.com, dl.polyhaven.org, ambientcg.com): el dueño tiene que
+  habilitarlos en Network access del entorno. El script no se probó contra la API real: revisar las
+  fotos elegidas, ajustar `size` (metros que cubre la foto), poner el crédito en la pausa y el README.
+  Para fachadas falta decidir cómo mezclar la foto con el atlas dibujado (`buildAtlas`).
 
 **R9 — Mapa real (B1)**: ✅ negocios de OSM (`scripts/map/osm_pois.py` -> `src/data/osm.json`, 117
 lugares; `src/map.js` los asigna a las huellas): 129 locales con cartel real (antes 60). Overpass:

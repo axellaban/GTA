@@ -1546,3 +1546,36 @@ export function busTexture(line, bg = '#c0392b') {
   ctx.fillText(`LÍNEA ${line}`, 800, 26);
   return tex(c);
 }
+
+// ---------- Texturas de foto (CC0) ----------
+// Si están en public/textures/<nombre>_color.jpg (y _normal, _rough), las bajó scripts/texturas.mjs de
+// Poly Haven o ambientCG: reemplazan a las dibujadas en el material. Si no están, no pasa nada.
+// size: cuántos metros cubre la foto; perTile: cuántos metros cubre una vuelta de UV en esa malla.
+// (textures/list.json dice cuáles hay, así no se piden archivos que no existen)
+let photoList = null;
+export function usePhoto(mat, name, { size = 3, perTile = 1, rough = true } = {}) {
+  photoList ??= fetch('textures/list.json')
+    .then((r) => (r.ok ? r.json() : []))
+    .catch(() => []);
+  const L = new THREE.TextureLoader();
+  const k = perTile / size;
+  const swap = (key, file, srgb) =>
+    photoList.then((list) => Array.isArray(list) && list.includes(`${name}_${file}.jpg`) && L.load(
+      `textures/${name}_${file}.jpg`,
+      (t) => {
+        t.wrapS = t.wrapT = THREE.RepeatWrapping;
+        t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+        t.anisotropy = 8;
+        t.repeat.set(k, k);
+        mat[key]?.dispose?.();
+        mat[key] = t;
+        if (key === 'roughnessMap') mat.roughness = 1;
+        mat.needsUpdate = true;
+      },
+      undefined,
+      () => {},
+    ));
+  swap('map', 'color', true);
+  swap('normalMap', 'normal', false);
+  if (rough && 'roughnessMap' in mat) swap('roughnessMap', 'rough', false);
+}

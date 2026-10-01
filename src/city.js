@@ -19,6 +19,7 @@ import {
   ROOF_M,
   cazuelaTexture,
   grassTexture,
+  usePhoto,
 } from './textures.js';
 import { addWorldDetail } from './detail.js';
 import { addWind } from './atmosphere.js';
@@ -198,6 +199,9 @@ function addGround(scene, city) {
   scene.add(road);
   // con lluvia se mojan: menos rugosos y más oscuros
   city.wetMats = [road.material, walk.material];
+  // fotos CC0 de asfalto y baldosas si se bajaron (scripts/texturas.mjs); si no, quedan las dibujadas
+  usePhoto(roadMat, 'asfalto', { size: 3, perTile: 9 });
+  usePhoto(walkMat, 'vereda', { size: 2, perTile: 3.2 });
 
   // senderos de las plazas
   const q = new Quads();
