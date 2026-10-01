@@ -80,6 +80,17 @@ const WET_REFLECT = /* glsl */ `
     // Fresnel: mirando al ras refleja mucho más que mirando hacia abajo
     float rf = 0.04 + 0.96 * pow(1.0 - clamp(dot(-rv, rn), 0.0, 1.0), 5.0);
     reflectedLight.indirectSpecular += spot * (lampWet * lampParams.w * rf * 1.3);
+    // el neón de los carteles (más bajo, a 3,4 m): rayas rosas, celestes y violetas en el agua
+    if (neonOn > 0.01) {
+      float nh = max(3.4 - rw.y, 0.3);
+      vec3 ns = vec3(0.0);
+      for (int i = 0; i < 4; i++) {
+        float k = 0.6 + (float(i) + jit - 0.5) * 0.3;
+        vec2 np = rw.xz + rr.xz * (nh / (rup * k));
+        ns += texture2D(neonSpot, (np - lampParams.xy) / lampParams.z).rgb;
+      }
+      reflectedLight.indirectSpecular += ns * (lampWet * neonOn * rf * 0.65);
+    }
   }
 #endif`;
 

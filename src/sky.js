@@ -48,9 +48,17 @@ void main() {
   col += sunColor * (pow(sd, 6.0) * 0.25 + pow(sd, 40.0) * 0.5) * day;
   // disco
   col += sunColor * smoothstep(0.9975, 0.999, sd) * 6.0 * day;
-  // luna
-  float md = max(dot(d, normalize(-sunDir + vec3(0.0, 0.6, 0.0))), 0.0);
-  col += vec3(0.9, 0.92, 1.0) * smoothstep(0.9992, 0.9996, md) * 2.0 * night;
+  // luna: disco de borde suave con manchas (mares) y un halo tenue alrededor; sin el borde
+  // duro de antes, que con el bloom se veía como una mancha que titilaba
+  vec3 mdir = normalize(-sunDir + vec3(0.0, 0.6, 0.0));
+  float md = max(dot(d, mdir), 0.0);
+  float mdisc = smoothstep(0.99905, 0.99945, md);
+  vec3 mside = normalize(cross(mdir, vec3(0.0, 1.0, 0.0)));
+  vec2 muv = vec2(dot(d - mdir, mside), dot(d - mdir, cross(mside, mdir))) * 60.0;
+  float mares = smoothstep(0.45, 0.75, fbm(muv * 1.7 + 3.1));
+  vec3 mcol = vec3(0.86, 0.88, 0.95) * (1.0 - 0.28 * mares);
+  float mhalo = pow(md, 900.0) * 0.18 + pow(md, 90.0) * 0.05;
+  col += (mcol * mdisc * 1.25 + vec3(0.55, 0.62, 0.8) * mhalo) * night;
   if (h > 0.0) {
     vec2 uv = d.xz / (h + 0.18) * 1.4;
     uv += vec2(time * 0.006, time * 0.003);

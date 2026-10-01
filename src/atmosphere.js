@@ -58,6 +58,8 @@ THREE.ShaderChunk.fog_pars_fragment = /* glsl */ `
   uniform sampler2D lampSpot;
   uniform vec4 lampParams;
   uniform float lampWet;
+  uniform sampler2D neonSpot;
+  uniform float neonOn;
   varying vec3 vFogRay;
   #ifdef FOG_EXP2
     uniform float fogDensity;
@@ -98,6 +100,9 @@ export const LAMPS = {
   lampParams: { value: new THREE.Vector4(-620, -620, 1240, 0) },
   // qué tan mojada está la calle (para los reflejos)
   lampWet: { value: 0 },
+  // los carteles de neón vistos desde arriba (a 3,4 m) y cuánto brillan
+  neonSpot: { value: null },
+  neonOn: { value: 0 },
 };
 
 // Intensidades de la noche. Se pueden probar en vivo desde la consola: __gta.night.faroles = 3
@@ -159,8 +164,9 @@ function lampFalloff(r, h) {
   return (t) => Math.max(0, ((1 + ((t * r) / h) ** 2) ** -1.5 - edge) / (1 - edge));
 }
 
-// lamps: cabezales de los faroles {x, z}; shops: frentes de negocios {x, z, nx, nz}
-export function buildLampMap(lamps, shops = []) {
+// lamps: cabezales de los faroles {x, z}; shops: frentes de negocios {x, z, nx, nz};
+// neon: carteles con tubos {cx, cz, ux, uz, sw, color} (para que se reflejen en la calle mojada)
+export function buildLampMap(lamps, shops = [], neon = null) {
   const O = LAMPS.lampParams.value.x;
   const S = LAMPS.lampParams.value.z;
   LAMPS.lampPool.value = lampCanvas(2048, S, O, (blob) => {
@@ -178,6 +184,21 @@ export function buildLampMap(lamps, shops = []) {
   // sin mipmaps: vistos casi al ras, los puntitos se promediarían con el negro y desaparecerían
   LAMPS.lampSpot.value.generateMipmaps = false;
   LAMPS.lampSpot.value.minFilter = THREE.LinearFilter;
+  if (neon && !LAMPS.neonSpot.value) {
+    // cada cartel, una raya de su color a lo ancho (los tubos de arriba y de abajo juntos)
+    LAMPS.neonSpot.value = lampCanvas(1024, S, O, (blob) => {
+      for (const s of neon) {
+        const c = [(s.color >> 16) & 255, (s.color >> 8) & 255, s.color & 255];
+        const n = Math.max(2, Math.round(s.sw / 1.2));
+        for (let i = 0; i <= n; i++) {
+          const t = i / n - 0.5;
+          blob(s.cx + s.ux * s.sw * t, s.cz + s.uz * s.sw * t, 1.3, c, c, (k) => (1 - k) ** 2);
+        }
+      }
+    });
+    LAMPS.neonSpot.value.generateMipmaps = false;
+    LAMPS.neonSpot.value.minFilter = THREE.LinearFilter;
+  }
 }
 
 // Todos los materiales reciben los uniforms compartidos al compilarse.
@@ -189,4 +210,6 @@ THREE.Material.prototype.onBeforeCompile = function (shader) {
   shader.uniforms.lampSpot = LAMPS.lampSpot;
   shader.uniforms.lampParams = LAMPS.lampParams;
   shader.uniforms.lampWet = LAMPS.lampWet;
+  shader.uniforms.neonSpot = LAMPS.neonSpot;
+  shader.uniforms.neonOn = LAMPS.neonOn;
 };

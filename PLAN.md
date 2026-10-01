@@ -126,8 +126,9 @@ el local real con cartel de bar/café o pizzería más cerca de la estación; se
 **R7 — ✅ Guardado**: `saveGame` en `src/main.js` guarda `inv` y `ammo` enteros, así que ya incluye
 ametralladora, bazuca y su munición.
 
-**R8 — Look**: reflejos de neón en los charcos; suavizar la mancha de luna; fachadas con rejas y foto
-del relevamiento.
+**R8 — Look**: ✅ reflejos de neón en la calle mojada (`LAMPS.neonSpot`: mapa de los carteles visto
+desde arriba, muestreado a 3,4 m en `WET_REFLECT` de `src/detail.js`); ✅ luna de borde suave con mares y
+halo (`src/sky.js`); ✅ rejas. Falta: foto del relevamiento en las fachadas.
 - 🔶 Texturas de foto CC0 (Poly Haven / ambientCG) para calles y veredas: listo el camino, faltan las
   fotos. `node scripts/texturas.mjs` las baja de la API de Poly Haven a `public/textures/` (color,
   normal y rugosidad de 1K) y escribe `list.json`; `usePhoto` (src/textures.js, llamado en city.js para

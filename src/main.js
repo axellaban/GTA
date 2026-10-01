@@ -202,7 +202,7 @@ const blobs = new BlobShadows(scene);
 fx.ground = heightAt;
 const pickups = new Pickups(scene, audio);
 pickups.placeWorld(city, heightAt);
-buildLampMap(city.lamps, pickups.shops);
+buildLampMap(city.lamps, pickups.shops, city.neon);
 // postes que se caen al chocarlos: se apaga el halo y la luz que tiraban al piso
 const smash = new Smash(city, fx, audio);
 smash.onLampOff = (i) => {
@@ -708,6 +708,8 @@ function updateTime(dt) {
     const on = THREE.MathUtils.clamp((0.45 - lit) * 3, 0, 0.85);
     city.neonMesh.visible = on > 0.01;
     city.neonMesh.material.opacity = on;
+    // y su reflejo en la calle mojada
+    LAMPS.neonOn.value = on * NIGHT.reflejo;
   }
   city.lampPools.material.opacity = THREE.MathUtils.clamp((0.35 - lit) * 0.8, 0, 0.2);
   renderer.toneMappingExposure = 0.95 + (1 - day) * 0.35;
