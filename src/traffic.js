@@ -263,6 +263,7 @@ export class Traffic {
 
   // Sacar al que maneja un auto: cae al piso y después se enoja o se raja
   ejectDriver(v, world) {
+    if (v.laban) return v.laban.eject(v, world);
     const lx = -Math.cos(v.heading);
     const lz = Math.sin(v.heading);
     const d = world.npcs.spawnWalker({ x: v.x + lx * (v.W / 2 + 1.3), z: v.z + lz * (v.W / 2 + 1.3), heading: v.heading + Math.PI / 2 });

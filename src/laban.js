@@ -26,10 +26,11 @@ export class Laban {
     // Laban al volante (en Argentina se maneja a la izquierda: +x), una chica de acompañante
     // y dos sentadas en la cola, saludando
     const seat = (look, x, y, z, role) => {
-      const h = makeHuman({ ...randomCivilian(), ...CLEAN, ...look });
+      const full = { ...randomCivilian(), ...CLEAN, ...look };
+      const h = makeHuman(full);
       h.root.position.set(x, y, z);
       mesh.add(h.root);
-      this.riders.push({ h, role, t: R.range(0, 6) });
+      this.riders.push({ h, role, look: full, t: R.range(0, 6) });
     };
     seat({ female: false, top: 'jacket', jacket: 0xf4f2ec, shirt: 0xffffff, pants: 0xf4f2ec, bottom: 'pants', shoes: 0xf2efe8, fedora: 0xf4f2ec, glasses: true, stubble: true, hairStyle: 'short', hair: 0x2b1d14, scale: 1 }, 0.35, -0.12, -0.2, 'driver');
     const girl = (shirt, hair, hairStyle) => ({ female: true, fit: true, top: 'tank', shirt, bottom: 'shorts', hair, hairStyle, lipstick: true, glasses: R.chance(0.5), scale: 0.98 });
@@ -43,21 +44,46 @@ export class Laban {
     const v = t.spawnOn(mesh, e, Math.min(8, e.len / 2));
     Object.assign(v, { keep: true, home: { x: STATION.x, z: STATION.z }, homeR: 150, laban: this });
     v.ai.vmax = 7.5;
-    v.driver = this; // no se la pueden robar con ellos arriba
     this.v = v;
     return v;
+  }
+
+  // Gaspi les roba la Ferrari: se bajan todos. Laban se calienta, las chicas salen corriendo.
+  eject(v, world) {
+    const lx = -Math.cos(v.heading);
+    const lz = Math.sin(v.heading);
+    this.riders.forEach((r, i) => {
+      v.mesh.remove(r.h.root);
+      const side = i % 2 ? -1 : 1;
+      const back = i > 1 ? 1.4 : 0;
+      const n = world.npcs.spawnWalker({ x: v.x + lx * side * (v.W / 2 + 1.2) - v.fx * back, z: v.z + lz * side * (v.W / 2 + 1.2) - v.fz * back, heading: v.heading + (side * Math.PI) / 2 }, null, 0, 0, r.look);
+      if (!n) return;
+      if (r.role === 'driver') {
+        world.npcs.hurt(n, 5, lx, lz, { knock: true, knockT: 1.4, world });
+        n.after = 'fight';
+        n.say('¡Mi Ferrari! ¡Esto lo creé yo!', 3);
+      } else {
+        world.npcs.setState(n, 'flee', world.player);
+        n.say(R.pick(['¡Aaah! ¡Laban, hacé algo!', '¡Qué hacés, loco!', '¡Nos robaron la Ferrari!']), 2.5);
+      }
+    });
+    this.riders = [];
+    this.stolen = true;
+    this.bubble = null;
+    world.audio.alerta();
   }
 
   update(dt, world) {
     const v = this.v;
     if (!v) return;
-    // si explotó o la sacaron del tránsito, se bajan todos
-    const gone = v.wreck || !this.traffic.cars.includes(v);
+    // el corte del techo sigue al auto (también si la maneja Gaspi y salta)
+    const clip = v.mesh.userData.clip;
+    if (clip) clip.constant = v.mesh.position.y + 0.95;
+    // si la robaron, explotó o salió del tránsito, ya no hay paseo
+    const gone = this.stolen || v.wreck || !this.traffic.cars.includes(v);
     for (const r of this.riders) r.h.root.visible = !gone;
     if (gone) return;
     v.ai.vmax = 7.5;
-    const clip = v.mesh.userData.clip;
-    if (clip) clip.constant = v.mesh.position.y + 0.95;
     const P = world.player;
     const d = Math.hypot(P.x - v.x, P.z - v.z);
     if (d > 160) return;

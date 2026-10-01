@@ -2,6 +2,7 @@
 // vicent091036 (Sketchfab), la del ejemplo de autos de three.js. Se maneja como cualquier auto.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { glassMat } from './cars.js';
 
 // El modelo original tiene 359.000 triángulos y viene con Draco: en el iPhone se quedaba sin
@@ -12,7 +13,8 @@ let base = null;
 function ferrariBase() {
   base ??= new GLTFLoader().loadAsync('models/ferrari.glb').then((gltf) => {
     gltf.scene.traverse((o) => {
-      if (o.isMesh && !o.geometry.attributes.normal) o.geometry.computeVertexNormals();
+      // normales con pliegue: no promedia caras opuestas (la chapa tiene cara de afuera y de adentro)
+      if (o.isMesh && !o.geometry.attributes.normal) o.geometry = toCreasedNormals(o.geometry, Math.PI / 4);
     });
     return gltf.scene;
   });
@@ -43,7 +45,6 @@ export async function loadFerrari(color = 0xc8102e, { convertible = false } = {}
         o.material = o.material.clone(); // propio: el corte no tiene que tocar a la otra Ferrari
         o.material.clippingPlanes = [clip];
         o.material.clipShadows = true;
-        o.material.side = THREE.DoubleSide;
       }
     }
   }
