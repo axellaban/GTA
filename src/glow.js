@@ -122,12 +122,12 @@ function streakTexture() {
 export class Glows {
   constructor(scene, city) {
     const tex = glowTexture();
-    this.lamps = points(city.lamps.length, 0xffb455, 11, tex);
+    this.lamps = points(city.lamps.length, 0xffb455, 7, tex);
     const pos = this.lamps.geometry.attributes.position;
     city.lamps.forEach((l, i) => pos.setXYZ(i, l.x, 7.75, l.z));
     this.maxCars = 140;
-    this.heads = points(this.maxCars * 2, 0xfff1c8, 3.2, tex);
-    this.tails = points(this.maxCars * 2, 0xff2a18, 1.8, tex);
+    this.heads = points(this.maxCars * 2, 0xfff1c8, 2.2, tex);
+    this.tails = points(this.maxCars * 2, 0xff2a18, 1.3, tex);
     scene.add(this.lamps, this.heads, this.tails);
     // foco del auto de Gaspi (siempre en escena para no recompilar materiales)
     this.spot = new THREE.SpotLight(0xfff0cc, 0, 45, 0.55, 0.5, 1.2);
@@ -165,7 +165,7 @@ export class Glows {
     const on = k > 0.02;
     for (const p of [this.lamps, this.heads, this.tails]) {
       p.visible = on;
-      p.material.opacity = Math.min(1, k * 1.2);
+      p.material.opacity = Math.min(0.75, k * 0.9);
     }
     const rain = world.weather?.rain ?? 0;
     // en calidad baja no hay conos ni haces (son transparentes y pesan en el celu)
@@ -217,7 +217,7 @@ export class Glows {
     tp.needsUpdate = true;
     const v = player.vehicle;
     if (v) {
-      this.spot.intensity = 60 * k;
+      this.spot.intensity = 45 * k;
       this.spot.position.set(v.x + v.fx * (v.L / 2), 1.1, v.z + v.fz * (v.L / 2));
       this.spot.target.position.set(v.x + v.fx * 18, 0, v.z + v.fz * 18);
     } else this.spot.intensity = 0;

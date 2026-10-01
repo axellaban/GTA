@@ -725,7 +725,7 @@ function addBuildings(scene, atlas, colliders, rng, city) {
     const geos = [];
     const col = new THREE.Color();
     for (const s of city.neon) {
-      col.setHex(NEON[s.v % NEON.length]).multiplyScalar(2.2);
+      col.setHex(NEON[s.v % NEON.length]).multiplyScalar(1.25);
       const px = s.cx + s.nx * 0.12;
       const pz = s.cz + s.nz * 0.12;
       const add = (w, h, x, y, z) => {

@@ -138,12 +138,13 @@ export class Post {
   setMood(k, dusk, rain = 0) {
     if (!this.enabled) return;
     // resplandor suave también de día (la "radiosidad" de la PS2)
-    this.bloom.strength = 0.28 + k * 0.62 + dusk * 0.25;
-    this.bloom.threshold = 0.88 - k * 0.33;
-    this.bloom.radius = 0.6 + k * 0.15;
-    // estelas: de noche las luces dejan rastro largo; de día, casi nada
-    this.trails.uniforms.damp.value = 0.55 + k * 0.33;
-    this.trails.uniforms.thr.value = 0.9 - k * 0.22;
+    // (medido en celu: con más fuerza los neones, faros y fogatas se queman en manchas blancas)
+    this.bloom.strength = 0.24 + k * 0.34 + dusk * 0.12;
+    this.bloom.threshold = 0.9 - k * 0.18;
+    this.bloom.radius = 0.5 + k * 0.1;
+    // estelas: de noche las luces dejan rastro; de día, casi nada
+    this.trails.uniforms.damp.value = 0.55 + k * 0.25;
+    this.trails.uniforms.thr.value = 0.92 - k * 0.14;
     const u = this.grade.uniforms;
     // día: luces cálidas y sombras apenas azules; atardecer: más naranja; noche: todo más frío
     // al atardecer, un toque magenta (luces rosas y sombras violetas) como Vice City

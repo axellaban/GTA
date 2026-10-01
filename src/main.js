@@ -680,23 +680,24 @@ function updateTime(dt) {
   const lampsOn = lit < 0.35;
   lampColor.set(lampsOn ? 0xffc46b : 0x3a3226);
   for (const m of city.lampMats) m.color.copy(lampColor);
-  lightMat.color.setScalar(lampsOn ? 2.2 : 0.9);
-  tailMat.color.setScalar(lampsOn ? 1.5 : 0.75);
-  brakeMat.color.setScalar(lampsOn ? 4.5 : 2.6);
+  lightMat.color.setScalar(lampsOn ? 1.5 : 0.9);
+  tailMat.color.setScalar(lampsOn ? 1.1 : 0.75);
+  // (las rayas de reflejo detectan la frenada con color.r > 2)
+  brakeMat.color.setScalar(lampsOn ? 2.8 : 2.4);
   city.lampPools.visible = false;
   time.glow = THREE.MathUtils.clamp((0.42 - lit) * 2.6, 0, 1);
   // la luz de sodio de los faroles sobre todo lo que está cerca (y su reflejo si está mojado)
   LAMPS.lampParams.value.w = lampsOn ? time.glow * NIGHT.faroles : 0;
   LAMPS.lampWet.value = weather.wet * NIGHT.reflejo;
   city.windowMat.emissiveIntensity = THREE.MathUtils.clamp((0.45 - lit) * 2.2, 0, 0.85);
-  if (city.signMat) city.signMat.emissiveIntensity = THREE.MathUtils.clamp((0.5 - lit) * 2.4, 0, 1);
+  if (city.signMat) city.signMat.emissiveIntensity = THREE.MathUtils.clamp((0.5 - lit) * 2, 0, 0.6);
   if (city.neonMesh) {
-    const on = THREE.MathUtils.clamp((0.45 - lit) * 3, 0, 1);
+    const on = THREE.MathUtils.clamp((0.45 - lit) * 3, 0, 0.85);
     city.neonMesh.visible = on > 0.01;
     city.neonMesh.material.opacity = on;
   }
   city.lampPools.material.opacity = THREE.MathUtils.clamp((0.35 - lit) * 0.8, 0, 0.2);
-  renderer.toneMappingExposure = 0.95 + (1 - day) * 0.5;
+  renderer.toneMappingExposure = 0.95 + (1 - day) * 0.35;
 }
 
 const lightDir = new THREE.Vector3();

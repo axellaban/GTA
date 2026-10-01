@@ -102,7 +102,7 @@ export const LAMPS = {
 
 // Intensidades de la noche. Se pueden probar en vivo desde la consola: __gta.night.faroles = 3
 export const NIGHT = {
-  faroles: 2.6, // luz de los faroles sobre piso, paredes, autos y gente
+  faroles: 2.2, // luz de los faroles sobre piso, paredes, autos y gente
   reflejo: 1, // faroles reflejados en la calle mojada
   haces: 1, // haces de luz de los faros de los autos
   conos: 1, // conos de luz bajo los faroles (con bruma o lluvia)
