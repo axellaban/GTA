@@ -226,6 +226,15 @@ export class Audio {
     o.start(t);
     o.stop(t + dur + 0.05);
   }
+  // petardeo del escape: un estampido seco y grave, a veces doble
+  petardeo(v = 0.5) {
+    this.thump(110, 40, 0.12, v * 0.9);
+    this.burst(0.09, 700, 'lowpass', v * 0.7);
+    if (Math.random() < 0.4) {
+      this.thump(95, 38, 0.1, v * 0.6, 0.11);
+      this.burst(0.07, 600, 'lowpass', v * 0.45, 0.11);
+    }
+  }
   // motosierra: motor de dos tiempos que acelera en cada corte
   motosierra(v = 0.6) {
     if (!this.ctx) return;

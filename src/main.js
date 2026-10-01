@@ -13,7 +13,7 @@ import { Crime } from './crime.js';
 import { Events } from './events.js';
 import { Trains } from './trains.js';
 import { Hud } from './hud.js';
-import { lightMat, paintMat, repairCar } from './cars.js';
+import { lightMat, tailMat, brakeMat, paintMat, repairCar } from './cars.js';
 import { CAR_COLORS, makeCar } from './vehicles.js';
 import { loadGaspiPhoto, updateHumanLod } from './human.js';
 import { Sky } from './sky.js';
@@ -644,6 +644,8 @@ function updateTime(dt) {
   lampColor.set(lampsOn ? 0xffc46b : 0x3a3226);
   for (const m of city.lampMats) m.color.copy(lampColor);
   lightMat.color.setScalar(lampsOn ? 2.2 : 0.9);
+  tailMat.color.setScalar(lampsOn ? 1.5 : 0.75);
+  brakeMat.color.setScalar(lampsOn ? 4.5 : 2.6);
   city.lampPools.visible = false;
   time.glow = THREE.MathUtils.clamp((0.42 - lit) * 2.6, 0, 1);
   // la luz de sodio de los faroles sobre todo lo que está cerca (y su reflejo si está mojado)

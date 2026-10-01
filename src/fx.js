@@ -202,6 +202,7 @@ export class Fx {
     this.q = new THREE.Quaternion();
     this.v = new THREE.Vector3();
     this.s = new THREE.Vector3();
+    this.e = new THREE.Euler();
     this.rain = null;
   }
 
@@ -252,6 +253,43 @@ export class Fx {
     if (this.casingList.length >= this.casingCap) this.casingList.shift();
     const side = rnd(1.4, 2.4);
     this.casingList.push({ x, y, z, vx: -hz * side - hx * 0.4, vy: rnd(1.8, 2.8), vz: hx * side - hz * 0.4, rx: rnd(0, 6), ry: rnd(0, 6), spin: rnd(15, 30), life: 0, rest: false, shell, bounces: 0 });
+  }
+  // choque de autos: escamas de pintura y vidrio picado que rebotan en el asfalto
+  debris(x, y, z, color, n = 6, glass = 0) {
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = rnd(1.5, 4.5);
+      const g = rnd(0.7, 1.15);
+      this.alpha.add({ x, y: y + rnd(-0.2, 0.3), z, vx: Math.cos(a) * sp, vy: rnd(1.5, 4), vz: Math.sin(a) * sp, grav: -9.8, drag: 0.3, life: 0, max: rnd(1.6, 2.6), s0: rnd(0.07, 0.14), s1: 0.06, c0: [color[0] * g, color[1] * g, color[2] * g], a: 1 });
+    }
+    // vidrio: granitos verdosos (a la sombra se ven oscuros) y algunos que destellan con el sol
+    for (let i = 0; i < glass; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = rnd(2, 5.5);
+      const g = rnd(0.35, 0.6);
+      this.alpha.add({ x, y: y + rnd(0.1, 0.6), z, vx: Math.cos(a) * sp, vy: rnd(1, 3.5), vz: Math.sin(a) * sp, grav: -9.8, drag: 0.3, life: 0, max: rnd(1.4, 2.4), s0: rnd(0.035, 0.06), s1: 0.035, c0: [g * 0.85, g, g * 1.02], a: 0.95 });
+    }
+    for (let i = 0; i < glass / 3; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = rnd(2, 5);
+      this.add.add({ x, y: y + rnd(0.1, 0.5), z, vx: Math.cos(a) * sp, vy: rnd(1, 3.5), vz: Math.sin(a) * sp, grav: -9.8, drag: 0.3, life: 0, max: rnd(0.4, 0.9), s0: 0.09, s1: 0.03, c0: [0.95, 0.97, 1], a: 0.9 });
+    }
+  }
+  // escape: bocanada de humo gris (negro si el auto está hecho pelota)
+  exhaust(x, y, z, vx, vz, k = 1, dark = false) {
+    const g = dark ? rnd(0.12, 0.2) : rnd(0.55, 0.68);
+    this.alpha.add({ x, y, z, vx: vx + rnd(-0.2, 0.2), vy: rnd(0.2, 0.5), vz: vz + rnd(-0.2, 0.2), grav: 0, drag: 2.2, life: 0, max: rnd(0.8, 1.4), s0: 0.15, s1: 0.5 + k * 0.8, c0: [g, g, g * 1.03], a: 0.1 + k * 0.18, fadeIn: 0.05 });
+  }
+  // petardeo: llamarada corta por el caño de escape
+  backfire(x, y, z, fx, fz) {
+    for (let i = 0; i < 4; i++) this.add.add({ x, y, z, vx: -fx * rnd(2, 5) + rnd(-0.4, 0.4), vy: rnd(0, 0.4), vz: -fz * rnd(2, 5) + rnd(-0.4, 0.4), grav: 0, drag: 3, life: 0, max: rnd(0.06, 0.14), s0: rnd(0.35, 0.6), s1: 0.1, c0: [1, 0.75, 0.35], c1: [0.9, 0.3, 0.05], a: 1 });
+    this.exhaust(x, y, z, -fx * 1.5, -fz * 1.5, 1.2, true);
+    this.flashLight.position.set(x, y + 0.2, z);
+    this.flashLight.intensity = Math.max(this.flashLight.intensity, 14);
+  }
+  // rocío de las gomas con la calle mojada
+  spray(x, z, vx, vz, k = 1) {
+    this.alpha.add({ x: x + rnd(-0.15, 0.15), y: 0.2, z: z + rnd(-0.15, 0.15), vx: vx + rnd(-0.6, 0.6), vy: rnd(0.6, 1.6), vz: vz + rnd(-0.6, 0.6), grav: -2, drag: 1.6, life: 0, max: rnd(0.4, 0.8), s0: 0.25, s1: 1.3 * k, c0: [0.72, 0.76, 0.8], a: 0.16 * k, fadeIn: 0.04 });
   }
   explosion(x, z, power = 1) {
     for (let i = 0; i < 40 * power; i++) {
@@ -405,7 +443,7 @@ export class Fx {
         }
       }
       if (c.life > 8) continue;
-      this.q.setFromEuler(new THREE.Euler(c.rest ? 0 : c.rx, c.ry, 0));
+      this.q.setFromEuler(this.e.set(c.rest ? 0 : c.rx, c.ry, 0));
       this.s.setScalar(c.shell ? 1.9 : 1);
       this.casings.setMatrixAt(n++, this.m4.compose(this.v.set(c.x, c.y, c.z), this.q, this.s));
     }

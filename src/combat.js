@@ -461,7 +461,7 @@ export class Combat {
       this.fx.sparks(hit.x, hit.y, hit.z, 6, 5);
       this.audio.metal(0.5);
       if (v.kind === 'moto' && v.rider) world.traffic.ejectRider(v, world, fx, fz);
-      this.damageVehicle(world, v, dmg * 0.45, byPlayer, hit.x, hit.z);
+      this.damageVehicle(world, v, dmg * 0.45, byPlayer, hit.x, hit.z, true);
       if (v === world.player.vehicle && !byPlayer) world.player.hurt(dmg * 0.12, 'Te balearon el auto');
     } else if (hit.type === 'player') {
       world.player.hurt(dmg, 'Te dieron un tiro');
@@ -497,10 +497,20 @@ export class Combat {
 
   // ---------- Autos: humo, fuego y explosión ----------
   // hx, hz: dónde pegó (si se sabe), para abollar ahí
-  damageVehicle(world, v, dmg, byPlayer, hx = null, hz = null) {
+  damageVehicle(world, v, dmg, byPlayer, hx = null, hz = null, bullet = false) {
     if (v.wreck) return;
-    v.damage = Math.min(100, (v.damage || 0) + dmg);
-    if (hx != null) dentCar(v, hx, hz, dmg);
+    const before = v.damage || 0;
+    v.damage = Math.min(100, before + dmg);
+    if (hx != null) {
+      dentCar(v, hx, hz, dmg);
+      v.kick?.(hx, hz, bullet ? dmg * 0.15 : dmg);
+      // choque: saltan pedazos de pintura y, si pega fuerte, vidrio
+      if (!bullet && dmg > 4 && v.kind !== 'moto') {
+        const c = v.mesh.userData.body?.material.color;
+        const glass = dmg > 9 || (before < 45 && v.damage >= 45);
+        this.fx.debris(hx, 0.75, hz, c ? [c.r, c.g, c.b] : [0.3, 0.3, 0.3], Math.min(14, 3 + dmg * 0.6), glass ? Math.min(22, 6 + dmg) : 0);
+      }
+    }
     if (byPlayer) v.lastHitByPlayer = true;
     // auto estacionado: salta la alarma
     if (!v.ai && !v.driver && v.kind === 'car' && !v.police) v.alarmT = 12;

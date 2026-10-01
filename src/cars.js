@@ -25,6 +25,10 @@ export const detailMat = new THREE.MeshLambertMaterial({ vertexColors: true });
 export const wheelMat = new THREE.MeshStandardMaterial({ vertexColors: true, metalness: 0.55, roughness: 0.38 });
 // luces: color por vértice, se sobreexponen de noche para que "brillen"
 export const lightMat = new THREE.MeshBasicMaterial({ vertexColors: true });
+// traseras: apagadas, con el pie en el freno (se encienden fuerte) — main.js las ajusta de noche
+export const tailMat = new THREE.MeshBasicMaterial({ vertexColors: true });
+export const brakeMat = new THREE.MeshBasicMaterial({ vertexColors: true });
+brakeMat.color.setScalar(2.6);
 
 // Perfiles laterales: x = largo (frente en +x), y = alto. Medidas en metros.
 const MODELS = {
@@ -284,6 +288,8 @@ function buildModel(name) {
     D.box(W + 0.02, 0.18, 0.12, 0x1a1a1a, 0, 0.45, L / 2 + 0.02);
     D.box(W + 0.02, 0.18, 0.12, 0x1a1a1a, 0, 0.45, -L / 2 - 0.02);
   }
+  // luces de retroceso: el vidrio blanco al lado de las traseras
+  for (const s of [-1, 1]) D.box(0.08, 0.1, 0.035, 0xd8d8d2, s * (W / 2 - 0.5), m.tail - 0.14, -L / 2 - 0.004);
   const detailGeo = D.mesh().geometry;
 
   // luces delanteras y traseras
@@ -293,9 +299,13 @@ function buildModel(name) {
     if (round) Lb.add(new THREE.CylinderGeometry(0.085, 0.085, 0.04, 12).rotateX(Math.PI / 2), 0xfff3cf, s * (W / 2 - 0.22), m.nose - 0.12, L / 2 + 0.02);
     else Lb.box(0.3, 0.13, 0.04, 0xfff3cf, s * (W / 2 - 0.25), m.nose - 0.12, L / 2 + 0.02);
     Lb.box(0.1, 0.06, 0.04, 0xffa000, s * (W / 2 - 0.13), m.nose - 0.2, L / 2 + 0.01);
-    Lb.box(0.28, 0.14, 0.04, 0xb01010, s * (W / 2 - 0.3), m.tail - 0.14, -L / 2 - 0.005);
   }
   const lightGeo = Lb.mesh().geometry;
+  const Tb = new BoxBuilder();
+  for (const s of [-1, 1]) {
+    Tb.box(0.28, 0.14, 0.04, 0xb01010, s * (W / 2 - 0.3), m.tail - 0.14, -L / 2 - 0.005);
+  }
+  const tailGeo = Tb.mesh().geometry;
 
   // rueda: cubierta con hombros redondos, llanta con rayos y tapa (de revolución, eje x)
   const Wb = new BoxBuilder();
@@ -343,7 +353,7 @@ function buildModel(name) {
   // del lado de adentro, un disco oscuro (se ve por la llanta)
   Wb.add(new THREE.CylinderGeometry(wr * 0.6, wr * 0.6, 0.02, 14).rotateZ(-Math.PI / 2).translate(-0.06, 0, 0), 0x202020);
   const wheelGeo = Wb.mesh().geometry;
-  const out = { m, paintGeo, shinyGeo, glassGeo, detailGeo, lightGeo, wheelGeo };
+  const out = { m, paintGeo, shinyGeo, glassGeo, detailGeo, lightGeo, tailGeo, wheelGeo };
   geoCache.set(name, out);
   return out;
 }
@@ -359,16 +369,20 @@ export function makeCar(model = 'duna', color = 0xd8d4c8, { parked = false } = {
   const glass = new THREE.Mesh(M.glassGeo, glassMat);
   const detail = new THREE.Mesh(M.detailGeo, detailMat);
   const lights = new THREE.Mesh(M.lightGeo, lightMat);
+  const tail = new THREE.Mesh(M.tailGeo, tailMat);
   for (const o of [body, shiny, glass, detail]) {
     o.castShadow = true;
     o.receiveShadow = true;
   }
-  g.add(body, shiny, glass, detail, lights);
+  // la carrocería va en su propio grupo: se hunde y se inclina sobre la suspensión (las ruedas no)
+  const chassis = new THREE.Group();
+  chassis.add(body, shiny, glass, detail, lights, tail);
+  g.add(chassis);
   if (model === 'patrullero') {
     // puertas blancas
     const doors = new THREE.Mesh(new THREE.BoxGeometry(W + 0.01, 0.34, 1.9), paintMat(0xf2f2f2));
     doors.position.set(0, M.m.belt - 0.28, -0.1);
-    g.add(doors);
+    chassis.add(doors);
   }
   const wheels = [];
   for (const [x, z] of [
@@ -385,7 +399,7 @@ export function makeCar(model = 'duna', color = 0xd8d4c8, { parked = false } = {
     g.add(w);
     wheels.push(w);
   }
-  g.userData = { L, W, wheels, kind: 'car', model, parkedBuild: parked, tall: M.m.roof + 0.1, body, shiny, glass };
+  g.userData = { L, W, wheels, kind: 'car', model, parkedBuild: parked, tall: M.m.roof + 0.1, body, shiny, glass, chassis, tail };
   return g;
 }
 

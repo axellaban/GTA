@@ -2,9 +2,13 @@
 import { ROADS, HALF } from './map.js';
 import { makeCar, makeBus, makeMoto, makeTruck, makeCarro, CAR_COLORS } from './vehicles.js';
 import { ANIMALS, makeAnimal, animalPlay } from './people.js';
-import { repairCar } from './cars.js';
+import { repairCar, tailMat, brakeMat } from './cars.js';
+import * as THREE from 'three';
 import { makeHuman, animateHuman, randomCivilian } from './human.js';
 import { R } from './rng.js';
+import { carEffects } from './carfx.js';
+
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 export class Vehicle {
   constructor(mesh, x, z, heading) {
@@ -26,6 +30,13 @@ export class Vehicle {
     this.driver = null;
     this.wheelSpin = 0;
     this.honkT = 0;
+    // colectivos y camiones: la carrocería también va sobre la suspensión
+    if (u.wheels && !u.chassis && (u.kind === 'bus' || u.model === 'camion')) {
+      const c = new THREE.Group();
+      for (const o of [...mesh.children]) if (!u.wheels.includes(o)) c.add(o);
+      mesh.add(c);
+      u.chassis = c;
+    }
     this.sync(0);
   }
   get fx() {
@@ -58,6 +69,7 @@ export class Vehicle {
     } else this.mesh.rotation.z = this.flat ? 0.04 : 0;
     this.wheelSpin += this.speed * dt * 3;
     const u = this.mesh.userData;
+    if (u.chassis) this.suspend(dt, u);
     if (u.wheels) {
       u.wheels.forEach((w, i) => {
         w.rotation.x = this.wheelSpin * (u.spinSign ?? 1);
@@ -91,6 +103,74 @@ export class Vehicle {
         if (l.userData.lower) l.userData.lower.rotation.x = (i > 1 ? -1 : 1) * Math.max(0, i > 1 ? w : -w) * 0.9 * k;
       });
     }
+  }
+  // Suspensión: la carrocería cabecea al frenar y acelerar, se inclina para afuera en las curvas,
+  // vibra con el asfalto y rebota al caer de un salto o en un choque. Resorte amortiguado blando.
+  suspend(dt, u) {
+    const s = (this.sus ??= { p: 0, pv: 0, r: 0, rv: 0, y: 0, yv: 0, sp: this.speed, h: this.heading, lift: 0, aLong: 0 });
+    if (dt <= 0) return;
+    const step = Math.min(dt, 1 / 30);
+    const aLong = clamp((this.speed - s.sp) / dt, -30, 30);
+    s.aLong += (aLong - s.aLong) * Math.min(1, dt * 10);
+    let dh = this.heading - s.h;
+    dh = Math.atan2(Math.sin(dh), Math.cos(dh));
+    const yawRate = clamp(dh / dt, -3, 3);
+    s.sp = this.speed;
+    s.h = this.heading;
+    const soft = this.kind === 'bus' ? 0.7 : this.model === 'camion' ? 0.8 : 1;
+    const tp = clamp(-s.aLong * 0.0055 * soft, -0.045, 0.045);
+    const tr = clamp(this.speed * yawRate * 0.0062 * soft, -0.07, 0.07);
+    const K = 150;
+    const C = 12;
+    s.pv += ((tp - s.p) * K - s.pv * C) * step;
+    s.rv += ((tr - s.r) * K - s.rv * C) * step;
+    s.yv += (-s.y * K * 1.4 - s.yv * C) * step;
+    s.p += s.pv * step;
+    s.r += s.rv * step;
+    s.y += s.yv * step;
+    // aterrizaje: se aplasta contra los amortiguadores
+    const lift = this.lift || 0;
+    if (s.lift > 0.25 && lift < 0.05) {
+      s.yv -= Math.min(1.6, s.lift * 1.2);
+      s.pv += 0.6;
+    }
+    s.lift = lift;
+    const sp = Math.abs(this.speed);
+    const buzz = sp > 1 ? Math.sin(this.wheelSpin * 2.3) * Math.sin(this.wheelSpin * 0.71 + 1) * Math.min(0.01, sp * 0.0005) : 0;
+    const c = u.chassis;
+    c.rotation.x = clamp(s.p, -0.09, 0.09);
+    c.rotation.z = clamp(s.r, -0.11, 0.11);
+    c.position.y = clamp(s.y, -0.12, 0.08) + buzz;
+    // luces de freno: pie en el freno o parado con alguien al volante
+    if (u.tail && !this.wreck) {
+      const driven = this.driver || this.ai || this.police;
+      const brake = driven && (this.brakeIn ?? (s.aLong < -2.2 || sp < 0.25));
+      u.tail.material = brake ? brakeMat : tailMat;
+    }
+  }
+  // estacionado: la carrocería queda quieta y las luces de freno se apagan
+  settle() {
+    const u = this.mesh.userData;
+    this.brakeIn = undefined;
+    if (this.sus) Object.assign(this.sus, { p: 0, pv: 0, r: 0, rv: 0, y: 0, yv: 0, aLong: 0 });
+    if (u.chassis) {
+      u.chassis.rotation.set(0, 0, 0);
+      u.chassis.position.y = 0;
+    }
+    if (u.tail && !this.wreck) u.tail.material = tailMat;
+  }
+  // golpe en (wx, wz): la carrocería se sacude hacia el otro lado
+  kick(wx, wz, amount) {
+    const s = this.sus;
+    if (!s || !this.mesh.userData.chassis) return;
+    const dx = wx - this.x;
+    const dz = wz - this.z;
+    const lz = dx * this.fx + dz * this.fz;
+    const lx = dx * this.fz - dz * this.fx;
+    const k = Math.min(1.2, amount * 0.05);
+    s.pv += Math.sign(lz) * k;
+    s.rv += Math.sign(lx) * k * 1.3;
+    s.yv += k * 0.5;
   }
 }
 
@@ -542,6 +622,7 @@ export class Traffic {
       v.x = Math.max(-HALF + 2, Math.min(HALF - 2, v.x));
       v.z = Math.max(-HALF + 2, Math.min(HALF - 2, v.z));
       v.sync(dt);
+      if (Math.abs(v.x - player.x) < 32 && Math.abs(v.z - player.z) < 32) carEffects(v, dt, world);
     }
   }
 }

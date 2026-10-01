@@ -6,6 +6,7 @@ import { Vehicle } from './traffic.js';
 import { handWeapon } from './weapons.js';
 import { R } from './rng.js';
 import { radialTexture } from './city.js';
+import { carEffects } from './carfx.js';
 
 const HEAT = { robo_negocio: 1.7, pina: 0.1, ko: 0.45, herido: 0.45, muerte: 0.9, tiros: 0.2, cana: 1.2, robo_auto: 0.6, atropello: 0.4, explosion: 1.1 };
 const beaconMat = (c) => new THREE.MeshBasicMaterial({ color: c });
@@ -104,7 +105,7 @@ export class Police {
     blue.position.x = -0.24;
     bar.add(red, blue);
     bar.position.set(0, 1.52, -0.2);
-    mesh.add(bar);
+    (mesh.userData.chassis || mesh).add(bar);
     v.beacons = { red, blue };
     this.scene.add(mesh);
     this.cars.push(v);
@@ -415,6 +416,7 @@ export class Police {
         if (d > 170 || (v.leaveT > 30 && d > 90)) v.gone = true;
       }
       v.sync(dt);
+      if (Math.abs(v.x - P.x) < 32 && Math.abs(v.z - P.z) < 32) carEffects(v, dt, world);
       // balizas
       const on = v.mode !== 'leave' || v.leaveT < 5;
       const ph = (performance.now() / 120) | 0;

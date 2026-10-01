@@ -38,12 +38,12 @@ Jugás con **Gaspi** (saco, camisa blanca, corbata a rayas rojas y blancas).
 ## Estilo GTA (0.4)
 
 - **Piñas**: combo de jab, directo, gancho y patada, con apuntado automático al más cercano. La gente se defiende, sale corriendo o queda nocaut (y se le cae la plata).
-- **Armas**: palo, revólver 38, pistola 9 mm y tumbera. Clic derecho apunta sobre el hombro; sin apuntar, apunta solo. Fogonazo, trazas, chispas en las paredes, gente que se tira al piso o levanta las manos.
+- **Armas**: palo, revólver 38, pistola 9 mm y tumbera. Clic derecho apunta sobre el hombro; sin apuntar, apunta solo. Fogonazo, trazas, chispas en las paredes, gente que se tira al piso o levanta las manos. Casquillos que rebotan en el piso, recarga animada y la mira que salta con cada tiro.
 - **La Bonaerense**: estrellas de búsqueda según lo que hagas y quién te vea. Patrulleros con balizas y sirena que te persiguen por las calles (con GPS), canas a pie que te esposan o, desde dos estrellas, te tiran. Con cuatro estrellas aparece el helicóptero con reflector. Si te pierden de vista un rato, zafaste; si te agarran, comisaría, coima y te sacan los fierros.
 - **Robar autos**: Gaspi va hasta la puerta, saca al conductor (que después se enoja o se raja) y arranca. Se pueden robar patrulleros.
 - **Motos**: 20 motos en el tránsito (muchas de delivery con su caja). Se manejan con inclinación en las curvas, willy con Shift y, si chocás fuerte, volás.
 - **Vehículos**: Duna, Gol, Falcon, 504, Fiat 600, pickup, remís, taxi, Trafic, camiones de fletes, colectivos perfilados con fileteado y carro de cartonero con caballo.
-- **Manejo**: derrapes con freno de mano, marcas de frenada, humo de gomas, daño con humo; los autos se prenden fuego y explotan. Alarmas en los autos estacionados.
+- **Manejo**: derrapes con freno de mano, marcas de frenada, humo de gomas, daño con humo; los autos se prenden fuego y explotan. Alarmas en los autos estacionados. La carrocería va sobre la suspensión (se clava al frenar, se inclina en las curvas, rebota en los choques), luces de freno, humo de escape (negro en los colectivos al arrancar), petardeos, rocío con la calle mojada y pedazos de chapa y vidrio en los choques.
 - **Radio del auto** (R): cumbia, rock nacional, tango y **Flash Conurbano 89.3**, synthpop ochentoso a lo Vice City (caja de ritmos con redoblante gateado, bajo de sinte en octavas, colchones, arpegios y estribillo). Todo compuesto en el momento: no usa temas con derechos.
 - **Clima**: se larga a llover, las calles se mojan y brillan, relámpagos y truenos.
 - **GPS** violeta en el minimapa y **mapa grande** con los nombres de las calles (P o tocando el minimapa).
@@ -240,7 +240,8 @@ Box de CrossFit a unos 70 m de la estación (cuadrado amarillo en el mapa): galp
 | `src/races.js` | Picadas: carreras callejeras con aros y rivales |
 | `src/trains.js` | Trenes, barreras y pasos a nivel |
 | `src/radio.js`, `src/audio.js` | Radio y sonidos sintetizados |
-| `src/fx.js` | Partículas, trazas, marcas de frenada, lluvia |
+| `src/fx.js` | Partículas, trazas, marcas de frenada, casquillos, restos de choque, lluvia |
+| `src/carfx.js` | Escape, petardeos y rocío de los autos andando |
 | `src/hud.js`, `src/style.css` | Tarjeta SUBE, estrellas, minimapa, mapa grande, zócalo, diálogos |
 | `src/sky.js`, `src/atmosphere.js`, `src/post.js`, `src/glow.js` | Cielo, bruma con altura y sol, oclusión ambiental (N8AO), gradeo de color y luces de noche |
 

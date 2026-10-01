@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { makeGaspi, animateHuman } from './human.js';
 import { WEAPONS } from './weapons.js';
 import { R } from './rng.js';
+import { carEffects } from './carfx.js';
 
 const WALK = 2.3;
 const RUN = 6.3;
@@ -254,6 +255,7 @@ export class Player {
     v.driver = null;
     v.parked = true;
     v.steer = 0;
+    v.settle?.();
     this.h.root.visible = true;
     if (world) {
       if (!world.traffic.parked.includes(v)) world.traffic.parked.push(v);
@@ -611,6 +613,7 @@ export class Player {
     v.x += v.vx * dt;
     v.z += v.vz * dt;
     v.speed = vf;
+    v.brakeIn = hb || (throttle < 0 && vf > 0.5) || (throttle > 0 && vf < -0.5) || (throttle === 0 && Math.abs(vf) < 0.3);
     const slip = Math.abs(vl);
     // en llanta: las ruedas raspan el asfalto y saltan chispas
     if (v.flat && !moto && sp > 6 && Math.random() < Math.min(0.8, sp / 30)) {
@@ -792,6 +795,7 @@ export class Player {
       }
     }
     v.sync(dt);
+    carEffects(v, dt, world, { throttle, player: true });
     this.x = v.x;
     this.z = v.z;
     this.heading = v.heading;
