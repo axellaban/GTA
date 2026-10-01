@@ -135,7 +135,8 @@ Radio ≈ 550 m desde la estación (`STATION` en `src/map.js`). Hoy: 1.872 edifi
 
 - ✅ Subirse al tren y al colectivo como pasajero (`src/transit.js`; el colectivo frena en las paradas: `busStops` en `src/traffic.js`).
 - Interiores (kiosco, estación, el gym por dentro ya es visible desde la puerta).
-- Más misiones encadenadas con historia (hoy hay 3 en `src/missions.js`).
+- ✅ Más misiones encadenadas: hay 6 en `src/missions.js` (`DEFS`; se prueban sin el llamado con
+  `world.missions.defs`, `offer` y `begin()`).
 - ✅ Policía: retenes (`roadblock` en `src/police.js`) con tira de clavos (`addSpikes`/`updateSpikes`) y 6 estrellas con Gendarmería.
 - ✅ Autos que se abollan (`dentCar`/`repairCar` en `src/cars.js`; punto del golpe en `damageVehicle`).
 
@@ -190,7 +191,9 @@ CC0 con animaciones, autos que se abollan (`dentCar`), changas de paramédico y 
 4. ✅ Tren y colectivo de pasajero (`src/transit.js`): E con el tren parado en el andén o el colectivo
    frenado; el tren lleva hasta la próxima estación (fundido, media hora después, la cana pierde el
    rastro) y el colectivo frena en las paradas reales (`busStops` en `src/traffic.js`). Falta: interiores.
-5. Más misiones encadenadas (`src/missions.js`, `DEFS`).
+5. ✅ Tres misiones más (`src/missions.js`): la recaudación del Turco (motochorros), el Roca de las seis
+   (escaparse de la cana en tren) y la proteína de Ciro (ida y vuelta a una dietética; `ciroPeace`
+   evita que Ciro pelee mientras dura).
 Lo que espera al dueño: relevamiento cargado (JSON), dirección real del gym, red para Quaternius /
 Overture / Overpass (ver §7).
 

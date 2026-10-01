@@ -179,11 +179,143 @@ const DEFS = [
       },
     ],
   },
+  {
+    id: 'motochorros',
+    title: 'LA RECAUDACIÓN DEL TURCO',
+    name: 'La recaudación del Turco',
+    giver: 'El Turco del kiosco',
+    call: '¡Gaspi! Dos en una moto me llevaron la recaudación del día. Van rajando por el barrio. ¡Bajalos!',
+    reward: 9000,
+    respeto: 3,
+    start: (c) => c.near(STATION, 30, 90),
+    stages: [
+      {
+        text: () => 'Conseguí un auto para perseguirlos',
+        skip: (c) => c.inCar(),
+        target: (c) => c.nearestCar(),
+        update: (c) => c.inCar(),
+      },
+      {
+        enter: (c) => {
+          const crime = c.w.crime;
+          let mo = null;
+          for (let i = 0; i < 12 && !mo; i++) mo = crime.spawn(c.P);
+          c.m.moto = mo;
+          if (mo) {
+            Object.assign(mo, { state: 'flee', t: 0, life: 0, loot: { phone: false, money: 20000 } });
+            crime.say(mo, '¡Rajemos, rajemos!', 2.5);
+          }
+          c.hud.flash('¡AHÍ VAN!', 'Chocales la moto para bajarlos', 'warn', 2.4);
+        },
+        text: () => 'Bajá a los motochorros (chocales la moto)',
+        target: (c) => (c.m.moto ? c.m.moto.v : null),
+        update: (c) => {
+          const mo = c.m.moto;
+          if (!mo) return 'Se esfumaron antes de que los vieras';
+          if (mo.state === 'down') {
+            c.m.lootAt = { x: mo.v.x, z: mo.v.z };
+            return true;
+          }
+          if (mo.state === 'gone') return 'Se escaparon con la plata';
+          return false;
+        },
+      },
+      {
+        text: () => 'Juntá la recaudación que se les cayó',
+        target: (c) => c.m.lootAt,
+        update: (c) => dist(c.P, c.m.lootAt) < 3,
+      },
+    ],
+    done: (c) => c.hud.toast('El Turco: "¡Sos un fenómeno! Quedate con una parte"', 3),
+  },
+  {
+    id: 'tren',
+    title: 'EL ROCA DE LAS SEIS',
+    name: 'El Roca de las seis',
+    giver: 'El Negro',
+    call: 'Gaspi, la cana anda preguntando por vos en el barrio. Tomate el Roca un rato hasta que se calme la cosa.',
+    reward: 7000,
+    respeto: 2,
+    start: (c) => c.near(c.P, 50, 120),
+    stages: [
+      {
+        enter: (c) => {
+          c.police.heat = Math.max(c.police.heat, 2.2);
+          c.police.updateStars();
+          c.police.lostT = 0;
+          c.police.spawnT = 2;
+          c.audio.alerta();
+          c.hud.flash('¡TE ENCONTRARON!', 'Corré a la estación y subite al tren', 'bad', 2.6);
+        },
+        text: () => 'Subite al tren en la estación (E con el tren parado en el andén)',
+        target: (c) => c.city.spots.stationDoor,
+        update: (c) => !!c.w.transit?.ride && c.w.transit.ride.kind !== 'bus',
+      },
+      {
+        text: () => 'Viajá hasta que se calme la cosa',
+        target: () => null,
+        update: (c) => {
+          if (c.w.transit?.ride) return false;
+          return c.police.stars === 0 ? true : 'Te bajaste antes de tiempo';
+        },
+      },
+    ],
+    done: (c) => c.hud.toast('El Negro: "Bien ahí. Ni se enteraron"', 3),
+  },
+  {
+    id: 'proteina',
+    title: 'LA PROTEÍNA DE CIRO',
+    name: 'La proteína de Ciro',
+    giver: 'Ciro, el profe del gym',
+    call: '¡Gaspi! Se me terminó la proteína y los pibes están perdiendo músculo. Traeme un tarro ya, que el reloj corre.',
+    reward: 6000,
+    respeto: 3,
+    start: (c) => (c.w.gym?.x != null ? c.w.gym.world(0, c.w.gym.edge - 0.3) : c.near(STATION, 40, 90)),
+    stages: [
+      {
+        enter: (c) => {
+          // una dietética o farmacia (por el cartel); si no hay, un autoservicio o kiosco
+          const signs = c.city.shopSigns || [];
+          const from = c.m.origin;
+          const ok = (s, a, b) => dist(s, from) > a && dist(s, from) < b;
+          c.m.shop =
+            signs.find((s) => /DIET|NUTRI|FARMA/i.test(s.name || '') && ok(s, 100, 450)) ??
+            signs.find((s) => /AUTOSERV|SUPER|ALMAC|KIOSCO|MERCADO/i.test(s.name || '') && ok(s, 100, 450)) ??
+            { ...c.near(from, 150, 300), name: null };
+          c.m.left = 120;
+          c.m.timer = c.m.left;
+        },
+        text: (c) => (c.m.shop.name ? `Comprá la proteína en "${c.m.shop.name}"` : 'Comprá la proteína en un kiosco'),
+        target: (c) => c.m.shop,
+        update: (c, dt) => {
+          c.m.timer -= dt;
+          c.m.left = c.m.timer;
+          if (c.m.timer <= 0) return 'Se te pasó el tiempo: Ciro está furioso';
+          return dist(c.P, c.m.shop) < 3.5;
+        },
+      },
+      {
+        enter: (c) => {
+          c.m.timer = c.m.left;
+          c.hud.toast('Tarro de proteína sabor vainilla: ¡corré!', 2);
+        },
+        text: () => 'Llevale la proteína a Ciro al gym',
+        target: (c) => c.m.origin,
+        update: (c, dt) => {
+          c.m.timer -= dt;
+          if (c.m.timer <= 0) return 'Llegaste tarde: Ciro está furioso';
+          return dist(c.P, c.m.origin) < 4 && (!c.P.vehicle || Math.abs(c.P.vehicle.speed) < 3);
+        },
+      },
+    ],
+    done: (c) => c.hud.toast('Ciro: "¡Eso, campeón! Ahora sos de la casa"', 3),
+  },
 ];
 
 export class Missions {
   constructor(scene, world, save = {}) {
     this.w = world;
+    this.defs = DEFS;
     this.marker = makeMarker();
     scene.add(this.marker);
     this.next = save.next ?? 0; // próxima misión (vuelven a empezar al terminar todas)
@@ -195,6 +327,10 @@ export class Missions {
   }
   save() {
     return { next: this.next, done: this.done };
+  }
+  // mientras dura el encargo de Ciro, Ciro no le busca pelea a Gaspi
+  get ciroPeace() {
+    return (this.m ?? this.offer)?.def.id === 'proteina';
   }
   // contexto para las funciones de cada misión
   get c() {

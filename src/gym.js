@@ -262,7 +262,7 @@ export class Gym {
     if (!this.slots.length) return;
     // Ciro busca pelea: si Gaspi pasa cerca a pie, lo encara
     const ciro = this.slots.find((s) => s.ciro)?.n;
-    if (ciro && !ciro.dead && !ciro.down && ciro.state !== 'fight' && !world.player.vehicle && !world.player.dead) {
+    if (ciro && !ciro.dead && !ciro.down && ciro.state !== 'fight' && !world.player.vehicle && !world.player.dead && !world.missions?.ciroPeace) {
       const dc = Math.hypot(world.player.x - ciro.x, world.player.z - ciro.z);
       if (dc < 16) {
         this.npcs.setState(ciro, 'fight');

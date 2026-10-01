@@ -117,6 +117,9 @@ Después del tutorial te llaman al celu (si los motochorros te lo robaron, no te
 - **La encomienda del Turco**: conseguí un auto y llevá la encomienda a tiempo sin romperla.
 - **El celu de Doña Marta**: encontrá a los chorros, bajalos a piñas y devolvele el celu a la señora.
 - **El bolso del Negro**: buscá el bolso en la estación, perdé a la Bonaerense (te caen tres estrellas) y llevalo al taller.
+- **La recaudación del Turco**: dos en una moto le afanaron la caja al Turco; conseguí un auto, chocales la moto y juntá la plata que se les cae.
+- **El Roca de las seis**: la cana te encuentra (dos estrellas); corré a la estación, subite al tren y viajá hasta que se calme.
+- **La proteína de Ciro**: Ciro, el profe del gym, necesita un tarro de proteína de la dietética; ida y vuelta en dos minutos (mientras tanto no te busca pelea).
 
 Al cumplirlas: plata, respeto y la próxima llamada. Cuando se terminan, vuelven a empezar con otros destinos. El avance se guarda.
 
