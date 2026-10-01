@@ -91,8 +91,15 @@ sube a `main` apenas anda, así si se corta la sesión otra IA sigue desde acá.
 oficiales). `GYM_LOT` en `src/map.js` reserva el frente (≈ 403, 2; vereda impar) antes de armar la
 ciudad y saca las huellas de Overture, cercos y árboles que lo pisaban; `src/gym.js` lo usa.
 
-**R3 — Misiones con lo nuevo**: el marciano (llevarle panchos / devolverle la nave), destrucción con
-bazuca (desarmadero del Turco), persecución del OVNI con la cana.
+**R3 — ✅ Misiones con lo nuevo** (`src/missions.js`, al final de `DEFS`):
+- `panchos`: salchichas para el panchero antes de que baje el marciano (`Ufo.summon`); se cumple
+  cuando el marciano come; falla si le robás la nave o le pegás.
+- `nave`: el marciano espera en la estación; la nave está en un desarmadero a 260–420 m (`Ufo.openSpot`,
+  `Ufo.parkAt` con `hold` para que no se vaya sola) con tres pibes que pelean (`spawnThugs`,
+  `thugsFight`); se la traés y te bajás cerca del carrito. Después se la lleva (`Ufo.parked`).
+- `desarmadero`: el Turco te da la bazuca con 6 cohetes; tres autos en el cordón (`yardSpots`) y dos
+  pibes; volarlos y perder a la cana.
+Falta: persecución del OVNI robado con helicóptero (ver R4).
 
 **R4 — Policía más dura**: ✅ con 5 estrellas la cana tira con metra y los gendarmes (6) con
 ametralladora, en ráfagas (`arm`/`copBrain` en `src/police.js`, `enemyShoot(..., wid)`); el gendarme

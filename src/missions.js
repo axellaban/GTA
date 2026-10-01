@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { STATION, nearestStreetName } from './map.js';
 import { R } from './rng.js';
+import { makeCar } from './vehicles.js';
 
 const fmt = (n) => `$${Math.round(n).toLocaleString('es-AR')}`;
 const dist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
@@ -20,6 +21,58 @@ export function makeMarker() {
   g.userData = { tube, ring };
   g.visible = false;
   return g;
+}
+
+// pibes de gorrita que paran en la esquina (chorros, los del desarmadero)
+function spawnThugs(c, spot, k, spread = 1.4) {
+  const out = [];
+  for (let i = 0; i < k; i++) {
+    const a = (i / k) * Math.PI * 2;
+    const n = c.npcs.spawnWalker({ x: spot.x + Math.cos(a) * spread, z: spot.z + Math.sin(a) * spread, heading: a + Math.PI }, null, 0, 0, {
+      skin: R.pick([0xc68b62, 0xd9a882, 0xa86f4a]),
+      hair: 0x1a1a1a,
+      hairStyle: 'buzz',
+      top: 'hoodie',
+      shirt: R.pick([0x222222, 0x3a3a3a, 0x1e2a44]),
+      bottom: 'pants',
+      pants: 0x1a1a1a,
+      shoes: 0xf2f2f2,
+      cap: i % 2 ? 0x111111 : null,
+    });
+    if (n) {
+      n.vmax = 0;
+      n.brave = 1;
+      n.money = 2000;
+      n.mission = true;
+      out.push(n);
+    }
+  }
+  return out;
+}
+// mientras estén parados y Gaspi ande cerca, pelean
+function thugsFight(c, list, r = 30) {
+  for (const n of list) if (n && !n.down && n.state !== 'fight' && dist(c.P, n) < r) {
+    c.npcs.setState(n, 'fight');
+    n.fightT = 999;
+    if (!n.bubble) n.say(R.pick(['¿Qué querés, gil?', '¡De acá no te llevás nada!', '¡Rajá, amigo!']), 2.5);
+  }
+}
+// el desarmadero: tres lugares de cordón seguidos, lejos del origen
+function yardSpots(c, from, rmin, rmax) {
+  const curb = c.city.curbSpots || [];
+  const far = curb.filter((s) => dist(s, from) > rmin && dist(s, from) < rmax);
+  for (let t = 0; t < 40 && far.length; t++) {
+    const a = R.pick(far);
+    const row = [a];
+    for (const s of curb) {
+      if (row.length >= 3) break;
+      if (row.every((r) => dist(r, s) > 5.6) && dist(a, s) < 20) row.push(s);
+    }
+    if (row.length >= 3) return row;
+  }
+  // sin cordones: en fila sobre la vereda
+  const p = c.near(from, rmin, rmax);
+  return [0, 1, 2].map((i) => ({ x: p.x + i * 6, z: p.z, heading: Math.PI / 2 }));
 }
 
 // Las misiones. start(ctx): dónde está el marcador. stages: lo que hay que hacer, en orden.
@@ -310,6 +363,169 @@ const DEFS = [
     ],
     done: (c) => c.hud.toast('Ciro: "¡Eso, campeón! Ahora sos de la casa"', 3),
   },
+  {
+    id: 'panchos',
+    title: 'PANCHOS PARA EL MARCIANO',
+    name: 'Panchos para el marciano',
+    giver: 'El panchero de la estación',
+    call: 'Gaspi, se me acabaron las salchichas y está por bajar el marciano a comprar. Si no tengo, se calienta y abduce a alguien. ¡Traeme un paquete, rápido!',
+    reward: 7000,
+    respeto: 3,
+    start: (c) => c.near(c.city.spots.pancho, 4, 14),
+    stages: [
+      {
+        enter: (c) => {
+          const signs = c.city.shopSigns || [];
+          const from = c.m.origin;
+          const ok = (s) => dist(s, from) > 90 && dist(s, from) < 420;
+          c.m.shop = signs.find((s) => /AUTOSERV|SUPER|ALMAC|CARNIC|FIAMBR|MERCADO/i.test(s.name || '') && ok(s)) ?? { ...c.near(from, 150, 280), name: null };
+          c.m.timer = 130;
+        },
+        text: (c) => (c.m.shop.name ? `Comprá salchichas en "${c.m.shop.name}"` : 'Comprá salchichas en un almacén'),
+        target: (c) => c.m.shop,
+        update: (c, dt) => {
+          c.m.timer -= dt;
+          c.m.left = c.m.timer;
+          if (c.m.timer <= 0) return 'El panchero cerró: no llegaste con las salchichas';
+          return dist(c.P, c.m.shop) < 3.5;
+        },
+      },
+      {
+        enter: (c) => {
+          c.m.timer = c.m.left;
+          c.hud.toast('Paquete de salchichas de las largas', 2);
+        },
+        text: () => 'Llevale las salchichas al panchero de la estación',
+        target: (c) => c.city.spots.pancho,
+        update: (c, dt) => {
+          c.m.timer -= dt;
+          if (c.m.timer <= 0) return 'Llegaste tarde: el marciano se fue con hambre';
+          return dist(c.P, c.city.spots.pancho) < 4 && (!c.P.vehicle || Math.abs(c.P.vehicle.speed) < 3);
+        },
+      },
+      {
+        enter: (c) => c.hud.toast('Panchero: "¡Justo a tiempo! Mirá, ahí baja"', 2.5),
+        text: () => 'Esperá que el marciano compre y coma tranquilo',
+        target: (c) => (c.w.ufo?.state !== 'away' ? c.w.ufo : null),
+        update: (c) => {
+          const u = c.w.ufo;
+          if (!u) return true;
+          // si recién se fue, baja en la próxima
+          if (u.state === 'away') u.summon(c.w);
+          if (u.state === 'player') return 'Le robaste la nave al cliente';
+          if (u.alien && (u.alien.dead || u.alien.down) && !u.alien.aboard) return 'Le pegaste al cliente';
+          return u.state === 'landed' && u.phase === 'eating';
+        },
+      },
+    ],
+    done: (c) => c.w.ufo?.alien?.say('¡Riquísimo, terrícola! Tomá, cristales de Plutón', 3.5),
+  },
+  {
+    id: 'nave',
+    title: 'LA NAVE DEL MARCIANO',
+    name: 'La nave del marciano',
+    giver: 'El marciano',
+    call: '¡Terrícola! Mientras comía un pancho unos pibes me afanaron la nave y la escondieron en un desarmadero. Recuperala y te pago en cristales. Te espero en la estación.',
+    reward: 18000,
+    respeto: 5,
+    start: (c) => c.near(c.city.spots.pancho, 6, 20),
+    begin: (c) => {
+      const u = c.w.ufo;
+      if (!u) return;
+      // la nave, escondida lejos (si estaba en otro lado, aparece allá)
+      const at = u.openSpot(c.m.origin.x, c.m.origin.z, 260, 420) ?? c.near(c.m.origin, 260, 420);
+      u.parkAt(c.w, at.x, at.z);
+      c.m.ship = at;
+      // el marciano espera en la estación
+      const a = u.makeAlien(c.m.origin.x + 1.5, c.m.origin.z + 1.5);
+      c.npcs.add(a);
+      a.aboard = false;
+      a.mission = true;
+      u.alien = a;
+      c.m.alien = a;
+      a.say('¡Mi nave, terrícola! ¡Traémela!', 3);
+    },
+    stages: [
+      {
+        enter: (c) => (c.m.thugs = spawnThugs(c, { x: c.m.ship.x + 7, z: c.m.ship.z }, 3, 2.2)),
+        text: (c) => `Andá al desarmadero en ${nearestStreetName(c.m.ship.x, c.m.ship.z)}`,
+        target: (c) => c.m.ship,
+        update: (c) => dist(c.P, c.m.ship) < 28,
+      },
+      {
+        enter: (c) => c.hud.flash('¡AHÍ ESTÁ LA NAVE!', 'Los del desarmadero la cuidan', 'warn', 2.4),
+        text: () => 'Subite a la nave (F)',
+        target: (c) => c.m.ship,
+        update: (c) => {
+          thugsFight(c, c.m.thugs);
+          return c.w.ufo?.state === 'player';
+        },
+      },
+      {
+        text: () => 'Llevale la nave al marciano a la estación y bajate (F)',
+        target: (c) => c.city.spots.pancho,
+        update: (c) => {
+          const u = c.w.ufo;
+          if (c.m.alien.dead) return 'El marciano quedó tirado';
+          return u.state === 'parked' && dist(u, c.city.spots.pancho) < 35;
+        },
+      },
+    ],
+    done: (c) => {
+      const u = c.w.ufo;
+      c.m.alien.say('¡Mi nave! Sos un capo, terrícola. ¡Nos vemos en Andrómeda!', 3.5);
+      // se la lleva apenas Gaspi se aleja (Ufo.parked)
+      u.hold = false;
+      u.parkT = 21;
+    },
+  },
+  {
+    id: 'desarmadero',
+    title: 'EL DESARMADERO DEL TURCO',
+    name: 'El desarmadero del Turco',
+    giver: 'El Turco del kiosco',
+    call: 'Gaspi, los del desarmadero me vendieron repuestos truchos. Pasá por el kiosco que te tengo un regalito con cohetes.',
+    reward: 16000,
+    respeto: 4,
+    start: (c) => c.near(STATION, 30, 90),
+    begin: (c) => {
+      // la bazuca con seis cohetes
+      c.w.combat.give(c.P, 'bazuca');
+      const a = c.P.ammo.bazuca;
+      if (a) a.res = Math.max(a.res, 5);
+      c.hud.toast('El Turco te dio una bazuca con seis cohetes', 2.5);
+    },
+    stages: [
+      {
+        enter: (c) => {
+          const row = yardSpots(c, c.m.origin, 240, 420);
+          c.m.cars = row.map((s, i) => c.w.traffic.addParked(makeCar(['falcon', 'duna', 'pickup'][i], [0x6b5a3a, 0x5a6b6b, 0x7a3a2a][i]), s.x, s.z, s.heading));
+          c.m.yard = row[1];
+          c.m.thugs = spawnThugs(c, { x: row[1].x + 3, z: row[1].z + 3 }, 2, 1.5);
+        },
+        text: (c) => `Andá al desarmadero en ${nearestStreetName(c.m.yard.x, c.m.yard.z)}`,
+        target: (c) => c.m.yard,
+        update: (c) => dist(c.P, c.m.yard) < 70,
+      },
+      {
+        enter: (c) => c.hud.flash('¡VOLALES LOS AUTOS!', 'Elegí la bazuca y apuntá', 'warn', 2.4),
+        text: (c) => `Volá los autos del desarmadero (${c.m.cars.filter((v) => !v.wreck).length} de 3)`,
+        target: (c) => c.m.cars.find((v) => !v.wreck) ?? c.m.yard,
+        update: (c) => {
+          thugsFight(c, c.m.thugs, 25);
+          return c.m.cars.every((v) => v.wreck);
+        },
+      },
+      {
+        skip: (c) => c.police.stars === 0,
+        enter: (c) => c.hud.flash('¡LA CANA!', 'Perdelos antes de volver', 'bad', 2.4),
+        text: () => 'Perdé a la Bonaerense',
+        target: () => null,
+        update: (c) => c.police.stars === 0,
+      },
+    ],
+    done: (c) => c.hud.toast('El Turco: "¡Así se arregla con los truchos! Quedate con la bazuca"', 3),
+  },
 ];
 
 export class Missions {
@@ -396,7 +612,7 @@ export class Missions {
     }
     if (this.m) return this.run(dt);
     if (this.offer) {
-      if (dist(P, this.offer.origin) < 1.6 && !P.dead && !(w.police.stars > 0)) this.begin();
+      if (dist(P, this.offer.origin) < 1.6 && !P.dead && !P.ufo && !(w.police.stars > 0)) this.begin();
       return;
     }
     // la próxima llamada
@@ -495,6 +711,12 @@ export class Missions {
     // los chorros que siguen parados se van; la señora vuelve a caminar
     for (const n of m.thugs || []) if (n && !n.down) this.w.npcs.setState(n, 'flee', this.w.player);
     for (const n of [...(m.thugs || []), m.lady]) if (n) n.mission = false;
+    // la nave del marciano: si la misión se cayó, al rato se va sola
+    const u = this.w.ufo;
+    if (m.def.id === 'nave' && u) {
+      u.hold = false;
+      if (m.alien && !m.alien.dead && u.alien !== m.alien) m.alien.dead = true;
+    }
     if (m.lady && !m.lady.down) m.lady.vmax = 1.1;
   }
 }

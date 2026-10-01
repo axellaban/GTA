@@ -13,6 +13,8 @@ const LINES = {
   llega: ['Dos completos, maestro. ¿Acepta cristales de Plutón?', '¿Tiene con papas pay? En mi planeta no hay', 'Uno con todo, por favor. Vengo de lejos'],
   come: ['Mmm... ¡qué rico, terrícola!', 'Esto no lo tenemos en Andrómeda', 'Le falta un poquito de mostaza'],
   enojo: ['¡EH! ¡MI NAVE!', '¡Devolvé eso, terrícola!', '¡Te voy a abducir a vos!', '¡Es leasing, la tengo que devolver!'],
+  // en la misión de la nave: le pide a Gaspi que se la traiga
+  pide: ['¡Mi nave, terrícola! ¡Traémela!', 'Sin nave no vuelvo a Andrómeda', '¿Y? ¿La encontraste?', 'Te pago en cristales de Plutón'],
   gente: ['¡UN PLATO VOLADOR!', '¡Filmalo, filmalo!', '¿Ese es un marciano?', '¡Vino a comprar panchos!', '¡Mirá, mamá, un OVNI!'],
 };
 
@@ -345,7 +347,7 @@ export class Ufo {
       this.board(world);
       return;
     }
-    if (this.parkT > 20 && Math.hypot(P.x - this.x, P.z - this.z) > 18) {
+    if (this.parkT > 20 && !this.hold && Math.hypot(P.x - this.x, P.z - this.z) > 18) {
       const a = this.alien;
       if (a && !a.dead && !a.killed) {
         world.fx.sparks(a.x, 1.2, a.z, 20, 4);
@@ -357,6 +359,51 @@ export class Ufo {
     }
   }
 
+  // ---------- Para las misiones (src/missions.js) ----------
+  // si no anda por acá, que baje ya a comprar panchos
+  summon(world) {
+    if (this.state !== 'away') return false;
+    this.arrive(world);
+    return true;
+  }
+  // un lugar despejado para apoyar la nave, entre rmin y rmax metros de (x, z)
+  openSpot(x, z, rmin, rmax) {
+    const { colliders, heightAt } = this.world;
+    for (let tries = 0; tries < 120; tries++) {
+      const a = R.range(0, Math.PI * 2);
+      const d = R.range(rmin, rmax);
+      const q = { x: x + Math.cos(a) * d, z: z + Math.sin(a) * d };
+      if (colliders.resolveCircle({ ...q }, RADIUS + 0.6)) continue;
+      if (tries < 80 && heightAt(q.x, q.z) < 0.1) continue;
+      return q;
+    }
+    return null;
+  }
+  // la nave queda apoyada en (x, z), sin marciano, y no se va sola mientras `hold` (la misión la suelta)
+  parkAt(world, x, z) {
+    if (this.alien && !this.alien.dead) this.alien.dead = true;
+    this.alien = null;
+    this.dropAll(world);
+    this.beamOn = 0;
+    if (this.col) {
+      this.col.x = this.col.z = 1e6;
+      this.col = null;
+      this.block = null;
+    }
+    this.spot = { x, z };
+    this.gy = world.heightAt(x, z);
+    this.x = x;
+    this.z = z;
+    this.y = this.gy + 1.95;
+    this.vx = this.vy = this.vz = 0;
+    this.state = 'parked';
+    this.parkT = 0;
+    this.hold = true;
+    this.mesh.visible = true;
+    this.legsK = 1;
+    this.rampK = 0;
+  }
+
   // ---------- El marciano ----------
   // lo llama npcs.update: devuelve cuánto camina y en qué pose
   alienBrain(n, dt, world, dp) {
@@ -365,7 +412,7 @@ export class Ufo {
     if (this.state === 'player' || this.state === 'parked') {
       // le robaron la nave: puteadas y le apunta con el dedo a Gaspi
       n.target = { x: pan.x, z: pan.z };
-      if (!n.bubble && R.chance(dt * 0.4)) n.say(R.pick(LINES.enojo), 2.6);
+      if (!n.bubble && R.chance(dt * 0.4)) n.say(R.pick(this.hold ? LINES.pide : LINES.enojo), 2.6);
       if (this.pancho) this.pancho.visible = false;
       const d = Math.hypot(n.target.x - n.x, n.target.z - n.z);
       if (d > 1.5) return { want: 1.8, pose: 'walk' };
