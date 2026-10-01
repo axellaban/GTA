@@ -36,6 +36,7 @@ import { Nav } from './nav.js';
 import { Radio } from './radio.js';
 import { R } from './rng.js';
 import { setupInstall } from './install.js';
+import { Transit } from './transit.js';
 import { Missions, makeMarker } from './missions.js';
 
 setupInstall();
@@ -207,6 +208,8 @@ const comisaria = stationHouse();
 const time = { hour: 17.5, night: false, label: '17:30' };
 const weather = { rain: 0, target: 0, wet: 0, slick: false, next: R.range(200, 320), t: 0, boltT: R.range(10, 25), flash: 0 };
 const world = { scene, camera, city, input, audio, hud, player, traffic, npcs, crime, events, trains, time, lights, colliders: city.colliders, fx, pickups, combat, police, nav, radio, weather, night: NIGHT, heightAt };
+const transit = new Transit(city, trains, traffic);
+world.transit = transit;
 police.world = world;
 const missions = new Missions(scene, world);
 world.missions = missions;
@@ -845,6 +848,7 @@ function interactions() {
   if (!action && crime.motos.some((m) => m.state !== 'down' && m.v.speed < 2.5 && Math.hypot(m.v.x - player.x, m.v.z - player.z) < 2.2)) {
     action = { text: 'Voltearles la moto', run: () => crime.tryShove(world) };
   }
+  if (!action) action = transit.action(world);
   const car = player.nearestVehicle(world);
   if (action) hud.prompt('E', action.text);
   else if (car) {
@@ -1093,7 +1097,7 @@ function frame(now) {
       combat.strip(player);
       player.respawn(comisaria, 'comisaria');
     }
-  } else {
+  } else if (!transit.update(dt, world)) {
     interactions();
     player.update(dt, world);
     combat.update(dt, world);

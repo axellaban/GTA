@@ -133,7 +133,7 @@ Radio ≈ 550 m desde la estación (`STATION` en `src/map.js`). Hoy: 1.872 edifi
 
 ### C. Otros pendientes
 
-- Subirse al tren y al colectivo como pasajero.
+- ✅ Subirse al tren y al colectivo como pasajero (`src/transit.js`; el colectivo frena en las paradas: `busStops` en `src/traffic.js`).
 - Interiores (kiosco, estación, el gym por dentro ya es visible desde la puerta).
 - Más misiones encadenadas con historia (hoy hay 3 en `src/missions.js`).
 - ✅ Policía: retenes (`roadblock` en `src/police.js`) con tira de clavos (`addSpikes`/`updateSpikes`) y 6 estrellas con Gendarmería.
@@ -187,7 +187,9 @@ CC0 con animaciones, autos que se abollan (`dentCar`), changas de paramédico y 
 3. ✅ Clavos en los retenes: `addSpikes`/`updateSpikes` en `src/police.js` (la tira va del lado por donde
    llega Gaspi; pisarla pone `v.flat = true`: menos velocidad, el auto tira, chispas de las llantas en
    `src/player.js`; chapa y pintura las cambia).
-4. Subirse al tren y al colectivo como pasajero; interiores.
+4. ✅ Tren y colectivo de pasajero (`src/transit.js`): E con el tren parado en el andén o el colectivo
+   frenado; el tren lleva hasta la próxima estación (fundido, media hora después, la cana pierde el
+   rastro) y el colectivo frena en las paradas reales (`busStops` en `src/traffic.js`). Falta: interiores.
 5. Más misiones encadenadas (`src/missions.js`, `DEFS`).
 Lo que espera al dueño: relevamiento cargado (JSON), dirección real del gym, red para Quaternius /
 Overture / Overpass (ver §7).

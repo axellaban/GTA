@@ -64,7 +64,7 @@ Jugás con **Gaspi** (saco, camisa blanca, corbata a rayas rojas y blancas).
 | R | Recargar · cambiar la radio arriba del auto |
 | Espacio | Saltar · freno de mano |
 | Shift | Correr · willy en la moto · quemar gomas |
-| E | Acción: pagar, comprar, dar, robar un negocio |
+| E | Acción: pagar, comprar, dar, robar un negocio, subirse al tren o al colectivo (y bajarse) |
 | F | Subir, robar o bajar de un vehículo |
 | H | Bocina |
 | P | Pausa y mapa |
@@ -137,6 +137,7 @@ La gente dice en voz alta lo que aparece en los globitos: vecinos, la cana, los 
 - **Coimas**: estrellas amarillas en la calle (también en el radar). Si te busca la cana, agarrás una y se va una estrella. Reaparecen a los 4 minutos.
 - **Figuritas**: 30 escondidas por Temperley, sin luz ni marca en el mapa. A las 10: $15.000 y chaleco; a las 20: la tumbera; a las 30: $50.000 y +5 de respeto. Se guardan.
 - **Porcentaje**: en la pausa, cuánto del juego completaste (tutorial, misiones y figuritas).
+- **Tren y colectivo de pasajero**: con el tren parado en el andén, E te sube (SUBE $650) y viajás hasta la próxima estación; volvés en el de la vuelta media hora después y, si te buscaba la cana, te perdió el rastro. El colectivo frena en las paradas reales del mapa: E para subirte (SUBE $700) y E para bajarte cuando frena.
 - **Muerte a lo GTA**: cámara lenta, la imagen se va a blanco y negro y entra el "TE BAJARON".
 
 ## Armas nuevas y armería (0.12)
@@ -244,5 +245,4 @@ En `/relevamiento.html` (por ejemplo https://gta-6-conurba.vercel.app/relevamien
 El plan completo y ordenado está en [`PLAN.md`](PLAN.md).
 
 
-- Subirse al tren y al colectivo como pasajero.
 - Interiores (el kiosco, la estación por dentro).

@@ -423,6 +423,28 @@ export class Traffic {
       if (Math.abs(diff) > 0.6) target = Math.min(target, 4);
       const fx = v.fx;
       const fz = v.fz;
+      // el colectivo frena en las paradas (las del mapa real) a subir y bajar gente
+      if (v.kind === 'bus' && this.busStops) {
+        if (a.stopWait > 0) {
+          a.stopWait -= dt;
+          target = 0;
+        } else {
+          for (const s of this.busStops) {
+            if (s === a.lastStop) continue;
+            const ox = s.x - v.x;
+            const oz = s.z - v.z;
+            const ahead = ox * fx + oz * fz;
+            if (ahead < -1 || ahead > 20) continue;
+            if (Math.abs(ox * fz - oz * fx) > s.w / 2 + 1.5) continue;
+            if (ahead < 1.6 && Math.abs(v.speed) < 1) {
+              a.stopWait = R.range(5, 8);
+              a.lastStop = s;
+              target = 0;
+            } else target = Math.min(target, Math.sqrt(2 * 2.2 * Math.max(0, ahead - 0.6)) + 0.3);
+            break;
+          }
+        }
+      }
       let block = Infinity;
       let reason = null;
       // otros vehículos

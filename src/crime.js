@@ -125,7 +125,7 @@ export class Crime {
       let target = null;
       let vmax = 0;
       if (m.state === 'hunt') {
-        if (player.vehicle || player.dead || m.life > 70) {
+        if (player.vehicle || player.riding || player.dead || m.life > 70) {
           m.state = 'flee';
           m.t = 0;
         } else if (dp < 28) {
