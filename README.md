@@ -205,7 +205,7 @@ Los perros también son un modelo CC0 de Mesh2Motion, con animaciones de verdad 
 
 ## Gym El Kaiser (0.13)
 
-Box de CrossFit a unos 70 m de la estación (cuadrado amarillo en el mapa): galpón negro con el portón levantado, el cartel del lobo arriba y el mismo logo en la pared del fondo, racks rojos, discos, cajones y kettlebells. Adentro entrenan los musculosos (dominadas, sentadilla y press) y El Kaiser te recibe en la puerta. Si les pegás, se defienden, y aguantan más que un vecino.
+Box de CrossFit en su dirección real, **Rivadavia 321** (a unas cuatro cuadras de la estación; ícono en el mapa). El lote se reserva en `src/map.js` (`GYM_LOT`) y las huellas de Overture que lo pisaban no se levantan: galpón negro con el portón levantado, el cartel del lobo arriba y el mismo logo en la pared del fondo, racks rojos, discos, cajones y kettlebells. Adentro entrenan los musculosos (dominadas, sentadilla y press) y El Kaiser te recibe en la puerta. Si les pegás, se defienden, y aguantan más que un vecino.
 
 **Las chicas fit**: cinco chicas entrenando entre los musculosos (sentadilla, press y dominadas), con musculosa, calzas de colores y colita o rodete.
 

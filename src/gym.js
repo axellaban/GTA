@@ -1,13 +1,13 @@
-// Gym El Kaiser: un box de CrossFit a pasos de la estación. Galpón negro con el portón
-// levantado, el cartel del lobo arriba, racks rojos adentro y los musculosos entrenando
+// Gym El Kaiser: un box de CrossFit en su dirección real, Rivadavia 321. Galpón negro con el
+// portón levantado, el cartel del lobo arriba, racks rojos adentro y los musculosos entrenando
 // (press, sentadilla y dominadas). Si les pegás, se defienden.
 import * as THREE from 'three';
-import { STATION, TRACKS, nearestRoad, distToPolyline } from './map.js';
+import { STATION, TRACKS, nearestRoad, distToPolyline, GYM_LOT, GYM_SIZE } from './map.js';
 import { randomCivilian } from './human.js';
 import { R } from './rng.js';
 
-const W = 12; // ancho (frente)
-const DP = 9; // fondo
+const W = GYM_SIZE.W; // ancho (frente)
+const DP = GYM_SIZE.DP; // fondo
 const HT = 4.4; // alto
 
 // cartel: escudo negro con borde amarillo, cabeza de lobo roja y negra, ELKAISER y GYM
@@ -74,8 +74,10 @@ function logoTexture() {
   return t;
 }
 
-// lote libre frente a una calle, cerca de la estación
+// El lote está reservado en map.js (GYM_LOT: Rivadavia 321, la dirección real). Si los datos del mapa
+// cambian y no aparece, se busca un terreno libre frente a una calle cerca de la estación.
 function findLot(colliders) {
+  if (GYM_LOT) return GYM_LOT;
   for (let r = 40; r <= 190; r += 6) {
     for (let a = 0; a < 60; a++) {
       const ang = (a / 60) * Math.PI * 2 + r;

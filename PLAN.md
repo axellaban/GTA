@@ -87,10 +87,9 @@ sube a `main` apenas anda, así si se corta la sesión otra IA sigue desde acá.
   `dropBanner`; lo llaman el auto en `drive`, `meleeHit` y `explode`). A más de 9 m/s el auto rompe el
   corte (`breakEv` en `src/player.js`).
 
-**R2 — Gym El Kaiser en su dirección real: Rivadavia 321** (confirmada en el Instagram/Facebook
-oficiales). Punto ≈ (414, 10), vereda impar. En `src/gym.js` está `ADDRESS` + `findAddressLot`, pero
-ahí no hay lote libre: hay que reservar el lote en `src/map.js` (antes de armar la ciudad), que
-`city.js` no levante los edificios que lo pisan y poner el gym ahí.
+**R2 — ✅ Gym El Kaiser en su dirección real: Rivadavia 321** (confirmada en el Instagram/Facebook
+oficiales). `GYM_LOT` en `src/map.js` reserva el frente (≈ 403, 2; vereda impar) antes de armar la
+ciudad y saca las huellas de Overture, cercos y árboles que lo pisaban; `src/gym.js` lo usa.
 
 **R3 — Misiones con lo nuevo**: el marciano (llevarle panchos / devolverle la nave), destrucción con
 bazuca (desarmadero del Turco), persecución del OVNI con la cana.
@@ -163,8 +162,7 @@ Radio ≈ 550 m desde la estación (`STATION` en `src/map.js`). Hoy: 1.872 edifi
 - **B3 — Construcción (resto)**: por cada local, arma el frente con
   piezas (vidriera, persiana, puerta, toldo, cartel con el nombre real; foto como textura si hay),
   con los pisos reales. Prioridad: la cuadra de la estación sobre Av. Meeks y el centro comercial.
-- **B4 — El gym El Kaiser a su dirección real**: Rivadavia 321 (ver R2). Hoy sigue en un lote libre a
-  ~70 m de la estación (`findLot` en `src/gym.js`).
+- **B4 — ✅ El gym El Kaiser a su dirección real**: Rivadavia 321 (ver R2, `GYM_LOT` en `src/map.js`).
 
 ### A5. Vehículos de artista (✅ ambulancia y autobomba integradas en `src/rescue.js`)
 

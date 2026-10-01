@@ -174,6 +174,76 @@ for (const b of D.buildings) {
   if (((b.v * 9301 + 49297) % 233280) / 233280 < p) b.k = 'local';
 }
 
+// ---------- Gym El Kaiser en su dirección real: Rivadavia 321 ----------
+// (Instagram y Facebook de @elkaisergym). La numeración se calibró con las esquinas del mapa: Santa
+// María de Oro = 100, Obligado = 200, Almirante Brown = 300 (y un negocio de Overture en Rivadavia
+// 163). El 321 queda pasando Almirante Brown, del lado impar. El lote se reserva acá, antes de armar
+// la ciudad: las huellas de Overture que lo pisan (un local y una casa) no se levantan, y el gym
+// (src/gym.js) ocupa ese frente.
+export const GYM_SIZE = { W: 12, DP: 9 };
+export const GYM_LOT = (() => {
+  const A = { x: 410.3, z: 12.5 }; // frente del 321
+  const ODD = { x: -0.556, z: -0.831 }; // hacia la vereda de los impares
+  let road = null;
+  let p = null;
+  for (const r of ROADS) {
+    if (r.name !== 'Rivadavia') continue;
+    const q = project(r.pts, r.cum, A.x, A.z);
+    if (!p || q.dist < p.dist) {
+      p = q;
+      road = r;
+    }
+  }
+  if (!road || p.dist > 6) return null;
+  let nx = -p.dz;
+  let nz = p.dx;
+  if (nx * ODD.x + nz * ODD.z < 0) {
+    nx = -nx;
+    nz = -nz;
+  }
+  const edge = road.w / 2 + SIDEWALK + GYM_SIZE.DP / 2 + 0.1;
+  const x = p.x + nx * edge;
+  const z = p.z + nz * edge;
+  // eje u: a lo largo de la calle; eje n: de la calle hacia el fondo del lote
+  const u = { x: p.dx, z: p.dz };
+  const n = { x: nx, z: nz };
+  const inLot = (px, pz, pad = 0.4) => {
+    const rx = px - x;
+    const rz = pz - z;
+    return Math.abs(rx * u.x + rz * u.z) <= GYM_SIZE.W / 2 + pad && Math.abs(rx * n.x + rz * n.z) <= GYM_SIZE.DP / 2 + pad;
+  };
+  return { x, z, h: Math.atan2(-nx, -nz), edge: edge, road, inLot };
+})();
+
+// ¿un polígono (o segmento) toca el lote? vértices adentro, o algún punto de sus lados
+function touchesLot(pts, closed) {
+  const L = GYM_LOT;
+  if (!pts.some(([x, z]) => Math.abs(x - L.x) < 40 && Math.abs(z - L.z) < 40)) return false;
+  const m = closed ? pts.length : pts.length - 1;
+  for (let i = 0; i < m; i++) {
+    const [ax, az] = pts[i];
+    const [bx, bz] = pts[(i + 1) % pts.length];
+    const k = Math.max(1, Math.ceil(Math.hypot(bx - ax, bz - az) / 0.5));
+    for (let j = 0; j <= k; j++) if (L.inLot(ax + ((bx - ax) * j) / k, az + ((bz - az) * j) / k)) return true;
+  }
+  // el lote entero adentro de un polígono grande
+  if (closed) {
+    let c = false;
+    for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+      const [xi, zi] = pts[i];
+      const [xj, zj] = pts[j];
+      if (zi > L.z !== zj > L.z && L.x < ((xj - xi) * (L.z - zi)) / (zj - zi) + xi) c = !c;
+    }
+    return c;
+  }
+  return false;
+}
+if (GYM_LOT) {
+  D.buildings = D.buildings.filter((b) => !touchesLot(b.r, true));
+  D.fences = D.fences.filter((f) => !touchesLot([[f[0], f[1]], [f[2], f[3]]], false));
+  D.trees = D.trees.filter((t) => !GYM_LOT.inLot(t[0], t[1], 1));
+}
+
 // "Av. Meeks y 25 de Mayo": las dos calles con nombre distinto más cercanas
 export function cornerName(x, z) {
   const found = [];
