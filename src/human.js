@@ -1082,8 +1082,10 @@ function reset(h) {
 }
 
 // Anima caminata y poses. `speed` en m/s. `t` (0..1) es el avance de un golpe.
-export function animateHuman(h, dt, speed, pose = 'walk', t = 0) {
+// `post(bones)`: retoques encima de la pose (mirar a alguien, inclinarse) antes de copiarla al modelo.
+export function animateHuman(h, dt, speed, pose = 'walk', t = 0, post = null) {
   poseHuman(h, dt, speed, pose, t);
+  post?.(h.bones);
   // personajes de modelo externo (src/rig.js): copiar la pose al esqueleto real
   h.rig?.apply();
 }

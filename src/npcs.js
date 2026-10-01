@@ -52,6 +52,7 @@ const LINES = {
   cana: ['¡Alto, policía!', '¡Quieto ahí!', '¡Al piso, al piso!', '¡Las manos donde las vea!', '¡No te hagás el vivo!'],
 };
 export const lines = (t) => LINES[t];
+const WEAPON_OUT = (p) => !!p.weapon && p.weapon !== 'punos';
 
 export class Npcs {
   constructor(scene, city, graph, heightAt, audio) {
@@ -421,6 +422,10 @@ export class Npcs {
   update(dt, world) {
     const { player, time } = world;
     const night = time.night;
+    // quiénes están cerca (para esquivarse entre ellos y a Gaspi)
+    const near = [];
+    for (const n of this.list) if (!n.down && n.state !== 'sit' && Math.abs(n.x - player.x) < 40 && Math.abs(n.z - player.z) < 40) near.push(n);
+    if (!player.vehicle && !player.dead) near.push({ x: player.x, z: player.z, wide: 1.15 });
     for (const n of this.list) {
       n.t += dt;
       if (n.bubble) {
@@ -498,7 +503,15 @@ export class Npcs {
       } else if (n.type === 'vecino') {
         want = n.vmax;
         pose = n.phone ? 'phone' : 'walk';
-        if (Math.hypot(n.target.x - n.x, n.target.z - n.z) < 0.9) this.nextLeg(n);
+        if (n.pauseT > 0) {
+          n.pauseT -= dt;
+          want = 0;
+        } else if (Math.hypot(n.target.x - n.x, n.target.z - n.z) < 0.9) {
+          // a veces se para: en la esquina antes de cruzar, o en la cuadra a mirar el celu
+          const corner = n.leg === 'walk';
+          this.nextLeg(n);
+          if (!n.mission && R.chance(corner ? 0.3 : 0.1)) n.pauseT = R.range(1.2, corner ? 3.5 : 5);
+        }
         if (dp < 4 && n.cool <= 0 && R.chance(0.01)) {
           n.say(R.pick(LINES.vecino), 2.5);
           n.cool = 20;
@@ -566,8 +579,17 @@ export class Npcs {
           want = Math.min(want, 0.5);
         }
       }
-      if (want > 0 && n.target) this.steer(n, dt, want);
-      else n.speed = 0;
+      if (want > 0 && n.target) {
+        if (dp < 40 && n.state !== 'fight' && n.type !== 'cana') this.avoidance(n, near, dt);
+        else n.avoid = 0;
+        this.steer(n, dt, want);
+      } else if (n.speed > 0) {
+        // frena en un par de pasos, no en seco
+        n.speed = Math.max(0, n.speed - 6 * dt);
+        n.x += Math.sin(n.heading) * n.speed * dt;
+        n.z += Math.cos(n.heading) * n.speed * dt;
+        n.turnW = 0;
+      }
       // choque contra casas y rejas
       if (n.type !== 'mendigo' || n.state !== 'sit') {
         const p = { x: n.x, z: n.z };
@@ -575,7 +597,7 @@ export class Npcs {
         n.x = p.x;
         n.z = p.z;
       }
-      if (!far) animateHuman(n.h, dt, n.speed, pose, t);
+      if (!far) animateHuman(n.h, dt, n.speed, pose, t, dp < 30 && !n.act ? this.lifeLook(n, dt, player, dp) : null);
       this.place(n);
     }
     this.list = this.list.filter((n) => {
@@ -599,23 +621,72 @@ export class Npcs {
     return (dx * Math.sin(player.heading) + dz * Math.cos(player.heading)) / d > 0.9;
   }
 
+  // camina hacia n.target: acelera y frena de a poco, afloja para doblar y esquiva (n.avoid)
   steer(n, dt, want) {
     const dx = n.target.x - n.x;
     const dz = n.target.z - n.z;
     const d = Math.hypot(dx, dz);
-    if (d < 0.2) {
-      n.speed = 0;
-      return;
-    }
-    let h = Math.atan2(dx, dz);
+    let h = Math.atan2(dx, dz) + (n.avoid || 0);
     if (n.type === 'zombie' && n.state === 'walk') h += Math.sin(n.t * 1.7) * 0.6;
     let diff = h - n.heading;
     while (diff > Math.PI) diff -= Math.PI * 2;
     while (diff < -Math.PI) diff += Math.PI * 2;
-    n.heading += diff * Math.min(1, dt * 7);
-    n.speed = Math.min(want, d * 2);
+    const h0 = n.heading;
+    n.heading += diff * Math.min(1, dt * (n.speed > 3 ? 5 : 7));
+    // para un giro cerrado primero afloja (nadie camina de costado)
+    const align = Math.max(0.3, Math.cos(Math.min(Math.PI / 2, Math.abs(diff) * 0.8)));
+    const tgt = d < 0.2 ? 0 : Math.min(want, d * 2) * align;
+    const rate = tgt > n.speed ? (want > 3 ? 10 : 2.6) : 6;
+    n.speed += Math.sign(tgt - n.speed) * Math.min(Math.abs(tgt - n.speed), rate * dt);
     n.x += Math.sin(n.heading) * n.speed * dt;
     n.z += Math.cos(n.heading) * n.speed * dt;
+    let dh = n.heading - h0;
+    if (dh > Math.PI) dh -= Math.PI * 2;
+    if (dh < -Math.PI) dh += Math.PI * 2;
+    n.turnW = (n.turnW || 0) + ((dt > 0 ? dh / dt : 0) - (n.turnW || 0)) * Math.min(1, dt * 8);
+  }
+  // se corre para no llevarse puesto a nadie (ni a Gaspi): a un costado, y si viene de frente, a la derecha
+  avoidance(n, near, dt) {
+    let push = 0;
+    const fx = Math.sin(n.heading);
+    const fz = Math.cos(n.heading);
+    for (const o of near) {
+      if (o === n) continue;
+      const ox = o.x - n.x;
+      const oz = o.z - n.z;
+      const ahead = ox * fx + oz * fz;
+      if (ahead < 0.1 || ahead > 3.4) continue;
+      const lat = ox * fz - oz * fx;
+      const wide = o.wide ?? 0.85;
+      if (Math.abs(lat) > wide) continue;
+      const side = Math.abs(lat) < 0.12 ? -1 : -Math.sign(lat);
+      push += side * (1.15 - ahead / 3.4) * (1.2 - Math.abs(lat) / wide) * 1.3;
+    }
+    const want = Math.max(-1, Math.min(1, push)) * 0.95;
+    n.avoid = (n.avoid || 0) + (want - (n.avoid || 0)) * Math.min(1, dt * 6);
+  }
+  // retoques sobre la pose: la cabeza sigue a Gaspi si pasa cerca, y el cuerpo se inclina al doblar corriendo
+  lifeLook(n, dt, player, dp) {
+    let look = 0;
+    const calm = n.state === 'walk' || n.state === 'idle' || n.state === 'sit' || n.state === 'approach';
+    if (calm && dp < 9 && !player.dead && n.type !== 'zombie') {
+      let rel = Math.atan2(player.x - n.x, player.z - n.z) - n.heading;
+      while (rel > Math.PI) rel -= Math.PI * 2;
+      while (rel < -Math.PI) rel += Math.PI * 2;
+      // de reojo: si lo tiene detrás no se da vuelta; con Gaspi armado o en auto mira más
+      const interest = player.vehicle ? 0.6 : WEAPON_OUT(player) ? 1 : n.lookMood ?? 0.7;
+      if (Math.abs(rel) < 1.9) look = Math.max(-1.15, Math.min(1.15, rel)) * interest;
+    }
+    n.lookYaw = (n.lookYaw || 0) + (look - (n.lookYaw || 0)) * Math.min(1, dt * 4);
+    const lean = Math.max(-0.22, Math.min(0.22, -(n.turnW || 0) * n.speed * 0.03));
+    if (Math.abs(n.lookYaw) < 0.01 && Math.abs(lean) < 0.01) return null;
+    return (b) => {
+      b.neck.rotation.y += n.lookYaw * 0.4;
+      b.head.rotation.y += n.lookYaw * 0.55;
+      b.chest.rotation.y += n.lookYaw * 0.12;
+      b.spine.rotation.z += lean * 0.7;
+      b.hips.rotation.z += lean * 0.25;
+    };
   }
 
   // pelea a las piñas contra Gaspi
