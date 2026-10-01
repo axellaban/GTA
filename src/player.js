@@ -449,6 +449,9 @@ export class Player {
     if (this.attack) {
       pose = this.attack.pose;
       t = this.attack.t / this.attack.dur;
+    } else if (w.gun && this.reloadT > 0) {
+      pose = 'reload';
+      t = 1 - this.reloadT / w.reload;
     } else if (w.gun && (this.aiming || this.shootT > 0)) {
       pose = w.pose;
       t = this.recoil;

@@ -1347,6 +1347,16 @@ function poseHuman(h, dt, speed, pose = 'walk', t = 0) {
     b.chest.rotation.y = 0.35;
     b.head.rotation.y = -0.2;
     b.chest.rotation.x = -t * 0.12;
+  } else if (pose === 'reload') {
+    // recarga: el arma baja frente al pecho, la otra mano va y viene con el cargador, mira el arma
+    const k = Math.sin(Math.min(1, t) * Math.PI);
+    b.uaR.rotation.set(-0.75, 0, 0.2);
+    b.faR.rotation.x = -1.05;
+    b.uaL.rotation.set(-0.6 - 0.35 * k, 0, -0.35);
+    b.faL.rotation.set(-1.2 + Math.sin(Math.min(1, t) * Math.PI * 3) * 0.35 * k, 0, 0);
+    b.chest.rotation.y = 0.15;
+    b.head.rotation.x = 0.4 * k;
+    b.neck.rotation.x = 0.15 * k;
   } else if (pose === 'holdGun') {
     b.uaR.rotation.set(-0.35, 0, -0.05);
     b.faR.rotation.x = -0.9;

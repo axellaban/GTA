@@ -185,6 +185,14 @@ export class Fx {
     this.pools = [];
     this.ground = () => 0;
     scene.add(this.bloodM);
+    // casquillos de bronce que saltan al tirar (rebotan y quedan un rato en el piso)
+    const CS = 70;
+    this.casings = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.011, 0.011, 0.04, 6).rotateZ(Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xc9a227, metalness: 0.9, roughness: 0.3, emissive: 0x2a1c00 }), CS);
+    this.casings.count = 0;
+    this.casings.frustumCulled = false;
+    this.casingList = [];
+    this.casingCap = CS;
+    scene.add(this.casings);
     // luces para fogonazos y explosiones (fijas en la escena: agregarlas después recompila todo)
     this.flashLight = new THREE.PointLight(0xffc070, 0, 14, 2);
     this.boomLight = new THREE.PointLight(0xff8a3a, 0, 40, 1.6);
@@ -238,6 +246,12 @@ export class Fx {
     this.alpha.add({ x: x + fx * 0.4, y, z: z + fz * 0.4, vx: fx * 0.8, vy: 0.4, vz: fz * 0.8, grav: 0, drag: 1.5, life: 0, max: 0.8, s0: 0.3, s1: 1.4, c0: [0.7, 0.7, 0.7], a: 0.25 });
     this.flashLight.position.set(x + fx * 0.5, y, z + fz * 0.5);
     this.flashLight.intensity = big ? 60 : 35;
+  }
+  // casquillo: sale despedido a la derecha del arma (hx, hz: hacia dónde apunta)
+  casing(x, y, z, hx, hz, shell = false) {
+    if (this.casingList.length >= this.casingCap) this.casingList.shift();
+    const side = rnd(1.4, 2.4);
+    this.casingList.push({ x, y, z, vx: -hz * side - hx * 0.4, vy: rnd(1.8, 2.8), vz: hx * side - hz * 0.4, rx: rnd(0, 6), ry: rnd(0, 6), spin: rnd(15, 30), life: 0, rest: false, shell, bounces: 0 });
   }
   explosion(x, z, power = 1) {
     for (let i = 0; i < 40 * power; i++) {
@@ -363,9 +377,46 @@ export class Fx {
     u.uCam.value.copy(camera.position);
   }
 
+  updateCasings(dt) {
+    const list = this.casingList;
+    let n = 0;
+    for (const c of list) {
+      c.life += dt;
+      if (!c.rest) {
+        c.vy -= 9.8 * dt;
+        c.x += c.vx * dt;
+        c.y += c.vy * dt;
+        c.z += c.vz * dt;
+        c.rx += c.spin * dt;
+        c.ry += c.spin * 0.6 * dt;
+        const g = this.ground(c.x, c.z) + 0.012;
+        if (c.y < g) {
+          c.y = g;
+          if (Math.abs(c.vy) > 0.7 && c.bounces < 3) {
+            c.vy *= -0.32;
+            c.vx *= 0.55;
+            c.vz *= 0.55;
+            c.spin *= 0.5;
+            c.bounces++;
+          } else {
+            c.rest = true;
+            c.rx = Math.PI / 2 * Math.round(c.rx / (Math.PI / 2));
+          }
+        }
+      }
+      if (c.life > 8) continue;
+      this.q.setFromEuler(new THREE.Euler(c.rest ? 0 : c.rx, c.ry, 0));
+      this.s.setScalar(c.shell ? 1.9 : 1);
+      this.casings.setMatrixAt(n++, this.m4.compose(this.v.set(c.x, c.y, c.z), this.q, this.s));
+    }
+    this.casingList = list.filter((c) => c.life <= 8);
+    this.casings.count = n;
+    this.casings.instanceMatrix.needsUpdate = true;
+  }
   update(dt) {
     this.alpha.update(dt);
     this.add.update(dt);
+    this.updateCasings(dt);
     for (const p of this.pools) {
       if (p.r >= p.max) continue;
       p.r = Math.min(p.max, p.r + dt * 0.06);

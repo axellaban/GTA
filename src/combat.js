@@ -95,6 +95,12 @@ export class Combat {
     if (!w.gun || !a || a.res <= 0 || a.mag >= w.mag || P.reloadT > 0) return;
     P.reloadT = w.reload;
     this.audio.recarga();
+    // la tumbera se quiebra y tira los dos cartuchos vacíos
+    if (w.id === 'escopeta') {
+      const hx = Math.sin(P.heading);
+      const hz = Math.cos(P.heading);
+      for (let i = 0; i < 2; i++) this.fx.casing(P.x + hx * 0.4, P.y + 1.2, P.z + hz * 0.4, -hz, hx, true);
+    }
   }
 
   update(dt, world) {
@@ -418,9 +424,13 @@ export class Combat {
       this.shot(world, o, d, w, P, w.dmg);
     }
     this.fx.muzzle(o.x, o.y, o.z, hx, hz, w.id === 'escopeta');
+    // la pistola y la metra escupen el casquillo (el revólver lo guarda; la tumbera, al recargar)
+    if (w.id === 'pistola' || w.id === 'metra') this.fx.casing(o.x - hx * 0.25, o.y + 0.05, o.z - hz * 0.25, hx, hz);
     this.audio.disparo(w.sound, 1);
     this.fx.shake += w.id === 'escopeta' ? 0.3 : w.id === 'revolver' ? 0.16 : 0.08;
     P.recoil = w.id === 'escopeta' ? 1 : 0.5;
+    // la mira sube con el golpe del tiro
+    P.camPitch = Math.max(-0.35, P.camPitch - (w.id === 'escopeta' ? 0.05 : w.id === 'revolver' ? 0.032 : w.id === 'metra' ? 0.008 : 0.014));
     world.npcs.panic(o.x, o.z, 45, P);
     world.police.crime('tiros', o.x, o.z);
     if (a.mag === 0 && a.res > 0) setTimeout(() => this.reload(P), 250);
@@ -480,6 +490,7 @@ export class Combat {
     const d = new THREE.Vector3(tx + R.range(-miss, miss) - o.x, ty + R.range(-miss, miss) * 0.4 - o.y, tz + R.range(-miss, miss) - o.z).normalize();
     this.shot(world, o, d, WEAPONS.pistola, shooter, 6);
     this.fx.muzzle(o.x, o.y, o.z, hx, hz);
+    this.fx.casing(o.x - hx * 0.25, o.y + 0.05, o.z - hz * 0.25, hx, hz);
     this.audio.disparo('pistola', Math.max(0.1, 1 - Math.hypot(o.x - P.x, o.z - P.z) / 120));
     world.npcs.panic(o.x, o.z, 30, shooter);
   }
