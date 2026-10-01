@@ -117,6 +117,17 @@ Radio ≈ 550 m desde la estación (`STATION` en `src/map.js`). Hoy: 1.872 edifi
 - **B4 — El gym El Kaiser a su dirección real** (falta que el dueño pase calle y número; hoy está
   en un lote libre a ~70 m de la estación, ver `findLot` en `src/gym.js`).
 
+### A5. Vehículos de artista (encontrados, sin integrar todavía)
+
+- `github.com/pmndrs/market-assets` (`files/models/<nombre>/model.gltf` + `info.json`): el **Car Kit
+  de Kenney (CC0)**: `ambulance`, `firetruck`, `garbage-truck`, `delivery-truck`, `police-car`,
+  `taxi`, `sedan`, `sports-sedan`, `van`, `truck`, `race-car`; también palmeras (`palm-*`). Los de
+  "creativetrio" (`citroen-old-van`, `ice-cream-truck`) tienen licencia sin confirmar: no usar.
+  Estilo juguete (colores planos): no reemplazan a nuestros clásicos; sirven para **ambulancia y
+  bomberos** → changas de paramédico y bombero como en Vice City (copiar el patrón de `updateFare`
+  en `src/main.js`). Clonar con `git clone --depth 1 --filter=blob:none --no-checkout` y
+  `git checkout HEAD -- files/models/<nombre>`.
+
 ### C. Otros pendientes
 
 - Subirse al tren y al colectivo como pasajero.
