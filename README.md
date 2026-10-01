@@ -176,6 +176,10 @@ Ocho rampas amarillas con franjas negras en calles largas. Si entrás rápido (m
 
 Por las calles de la estación pasea **Laban the Creator** en una Ferrari amarilla descapotable: traje y sombrero blancos (estilo Alan Faena) y anteojos, con tres chicas fit arriba (una de acompañante y dos sentadas en la cola, saludando). Va despacio tirando facha, toca bocina y grita cosas cuando pasa cerca de Gaspi. Se la podés robar: Laban cae al piso gritando "¡Mi Ferrari! ¡Esto lo creé yo!" y las chicas salen corriendo.
 
+## Policía que escala (0.23)
+
+Ahora hay **6 estrellas**. Desde 3, si vas en auto, la cana arma **retenes**: dos patrulleros cruzados en una calle adelante tuyo, con canas armados (esquivalo o rompelo). Con 6 estrellas llega la **Gendarmería** en camionetas verde oliva, más rápido y en más cantidad.
+
 ## Changas de paramédico y bombero (0.22)
 
 Como las misiones de ambulancia y bomberos de Vice City. La **ambulancia** está estacionada frente a un centro de salud real del mapa: subite y te avisan dónde hay un herido; frená al lado para subirlo y llevalo al centro de salud más cercano antes de que se acabe el tiempo. La **autobomba** está a una cuadra de la estación: te avisan de un auto prendido fuego; frená cerca y quedate unos segundos para apagarlo (si no llegás, explota). Cada viaje seguido sube el nivel y paga más. Vehículos del Car Kit de Kenney (CC0), sacados de [pmndrs/market-assets](https://github.com/pmndrs/market-assets).

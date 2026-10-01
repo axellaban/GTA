@@ -40,7 +40,7 @@ export class Police {
     let k = HEAT[kind] ?? 0.3;
     if (this.stars === 0 && !this.witnessed(x, z) && kind !== 'cana') k *= 0.5;
     const before = this.stars;
-    this.heat = Math.min(5.99, this.heat + k);
+    this.heat = Math.min(6.99, this.heat + k);
     if (kind === 'cana' || kind === 'muerte') this.heat = Math.max(this.heat, 2);
     this.updateStars();
     this.lostT = 0;
@@ -63,7 +63,7 @@ export class Police {
     return R.chance(0.4);
   }
   updateStars() {
-    this.stars = this.heat >= 1 ? Math.min(5, Math.floor(this.heat)) : 0;
+    this.stars = this.heat >= 1 ? Math.min(6, Math.floor(this.heat)) : 0;
   }
   clear() {
     this.heat = 0;
@@ -84,9 +84,11 @@ export class Police {
     if (!p) return;
     const e = p.edge;
     const s = Math.max(0, Math.min(e.len, (p.x - e.from.x) * e.dx + (p.z - e.from.z) * e.dz));
-    const mesh = makeCar('patrullero', 0x1d3f8c);
+    // con 6 estrellas llega la Gendarmería: camionetas verde oliva
+    const mesh = this.stars >= 6 ? makeCar('pickup', 0x3d4a2c) : makeCar('patrullero', 0x1d3f8c);
     const v = new Vehicle(mesh, e.from.x + e.dx * s + e.rx * e.lane, e.from.z + e.dz * s + e.rz * e.lane, Math.atan2(e.dx, e.dz));
     v.police = true;
+    v.gendarmeria = this.stars >= 6;
     v.mode = 'chase';
     v.path = null;
     v.pathT = 0;
@@ -107,6 +109,43 @@ export class Police {
     this.cars.push(v);
     return v;
   }
+  // corta una calle adelante de Gaspi con dos patrulleros cruzados y canas armados
+  roadblock(world) {
+    const { player: P, traffic, npcs, hud } = world;
+    const v0 = P.vehicle;
+    const fx = v0.fx;
+    const fz = v0.fz;
+    const cand = traffic.graph.edges.filter((e) => {
+      if (e.street.w < 7 || e.len < 20) return false;
+      const mx = e.from.x + e.dx * e.len * 0.5 - P.x;
+      const mz = e.from.z + e.dz * e.len * 0.5 - P.z;
+      const d = Math.hypot(mx, mz);
+      return d > 70 && d < 160 && (mx * fx + mz * fz) / d > 0.75;
+    });
+    if (!cand.length) return;
+    const e = R.pick(cand);
+    const cx = e.from.x + e.dx * e.len * 0.5;
+    const cz = e.from.z + e.dz * e.len * 0.5;
+    const q = e.street.w / 4;
+    for (const s of [-1, 1]) {
+      const v = this.spawnCar(world);
+      if (!v) return;
+      v.x = cx + e.rx * q * s;
+      v.z = cz + e.rz * q * s;
+      v.heading = Math.atan2(e.rx, e.rz) + (s > 0 ? 0 : Math.PI);
+      v.speed = 0;
+      v.mode = 'block';
+      v.sync(0);
+      // un cana atrás de cada patrullero
+      const n = npcs.spawnCop(v.x - e.dx * 3, v.z - e.dz * 3);
+      if (n) {
+        n.heading = Math.atan2(-e.dx, -e.dz);
+        this.arm(n);
+      }
+    }
+    hud.flash('¡RETÉN!', 'La cana cortó la calle adelante. Esquivalo o rompelo', 'bad', 2.6);
+  }
+
   dropCar(v) {
     if (!this.cars.includes(v)) return;
     this.cars = this.cars.filter((c) => c !== v);
@@ -252,12 +291,18 @@ export class Police {
       }
       // mandar más patrulleros
       this.spawnT -= dt;
-      const want = Math.min(6, this.stars + 1);
+      const want = this.stars >= 6 ? 8 : Math.min(6, this.stars + 1);
       const active = this.cars.filter((v) => v.mode === 'chase').length;
       if (this.spawnT <= 0 && active < want) {
         this.spawnCar(world);
         this.spawnT = R.range(3, 7) / this.stars;
       }
+    }
+    // ---- retenes: desde 3 estrellas, dos patrulleros cruzados en una calle adelante ----
+    this.blockT = (this.blockT ?? 0) - dt;
+    if (this.stars >= 3 && P.vehicle && this.blockT <= 0 && !this.cars.some((v) => v.mode === 'block')) {
+      this.blockT = R.range(25, 40);
+      this.roadblock(world);
     }
     // ---- patrulleros ----
     for (const v of this.cars) {
@@ -288,6 +333,9 @@ export class Police {
           v.mode = 'parked';
         }
         if (P.vehicle && d > 20) v.mode = 'chase';
+      } else if (v.mode === 'block') {
+        // el retén se queda; se levanta cuando ya no te buscan o quedó lejos
+        if (this.stars === 0 || d > 260) v.gone = true;
       } else if (v.mode === 'parked') {
         if (P.vehicle && d > 25 && this.stars > 0) {
           v.mode = 'chase';

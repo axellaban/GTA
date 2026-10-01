@@ -66,7 +66,7 @@ export class Hud {
     // estrellas de búsqueda
     const pol = world.police;
     const stars = $('stars').children;
-    for (let i = 0; i < 5; i++) stars[i].className = i < pol.stars ? 'on' : '';
+    for (let i = 0; i < stars.length; i++) stars[i].className = i < pol.stars ? 'on' : '';
     $('stars').className = pol.stars && !pol.seen ? 'search' : pol.flash > 0 ? 'hot' : '';
     // arma y balas
     const w = WEAPONS[player.weapon || 'punos'];

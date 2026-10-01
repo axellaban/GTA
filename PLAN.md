@@ -136,7 +136,7 @@ Radio ≈ 550 m desde la estación (`STATION` en `src/map.js`). Hoy: 1.872 edifi
 - Subirse al tren y al colectivo como pasajero.
 - Interiores (kiosco, estación, el gym por dentro ya es visible desde la puerta).
 - Más misiones encadenadas con historia (hoy hay 3 en `src/missions.js`).
-- Policía: retenes, clavos en la calle, 6 estrellas.
+- ✅ Policía: retenes (`roadblock` en `src/police.js`) y 6 estrellas con Gendarmería. Falta: clavos en la calle.
 - ✅ Autos que se abollan (`dentCar`/`repairCar` en `src/cars.js`; punto del golpe en `damageVehicle`).
 
 ## 6. Estado (actualizar al avanzar)
@@ -166,6 +166,25 @@ Radio ≈ 550 m desde la estación (`STATION` en `src/map.js`). Hoy: 1.872 edifi
   carro (`horse.glb`, mismo esqueleto y animaciones; reemplazo en `Vehicle.sync`, `src/traffic.js`);
   en Mesh2Motion hay más modelos (killer_*, hazmat_*, swat) y otros con CC-BY/CC-SA (no usados).
 - ⛔ A2 / B1: esperan red o archivos del dueño.
+
+## 6b. Última sesión (para quien siga)
+
+Hecho y subido a `main` (cada cosa probada en Chromium sin GPU): PLAN.md y tools/, página de
+relevamiento + importación al juego (nombres, tipos, pisos, colores de cartel y fachada, toldo,
+persiana), retarget `src/rig.js`, vecinos y cana con modelos CC0 (`src/people.js`), perros y caballo
+CC0 con animaciones, autos que se abollan (`dentCar`), changas de paramédico y bombero
+(`src/rescue.js`, ambulancia y autobomba de Kenney CC0), 6 estrellas + retenes + Gendarmería.
+
+**Próximos pasos sugeridos, en orden** (ninguno necesita al dueño):
+1. Motochorros (`src/crime.js`, `makeHuman(l)`) con `makePerson('male')` y casco (colgar un casco
+   del hueso `head` del fantasma, como las armas en la mano).
+2. Más variedad de personas: hay más CC0 en Mesh2Motion (`killer_*`, `hazmat_*`, `swat_male`); y
+   tintes por material para cambiar el color de la ropa.
+3. Clavos en la calle en los retenes (pinchan las gomas: `v.flat = true`).
+4. Subirse al tren y al colectivo como pasajero; interiores.
+5. Más misiones encadenadas (`src/missions.js`, `DEFS`).
+Lo que espera al dueño: relevamiento cargado (JSON), dirección real del gym, red para Quaternius /
+Overture / Overpass (ver §7).
 
 ## 7. Preguntas abiertas para el dueño
 
