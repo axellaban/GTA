@@ -151,6 +151,7 @@ En la puerta de la comisaría hay un patrullero estacionado (o robale uno a la c
 ## Look Vice City (0.15)
 
 - **Atardecer**: el cielo se pone rosa coral en el horizonte y violeta arriba, el sol rojizo, y la imagen toma un toque magenta.
+- **Filtro PS2**: como en la PlayStation 2, las luces fuertes dejan estela al moverte (sobre todo de noche), y la imagen tiene el filtro de color de Vice City: día dorado con resplandor suave, atardecer rosa, noche azul violácea.
 - **Neón**: la mitad de los carteles de negocios tienen un marco de tubo de neón (rosa, celeste, violeta o verde) que se prende de noche.
 
 ## Radio con locutor (0.16)

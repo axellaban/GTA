@@ -7,6 +7,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { AfterimagePass } from 'three/examples/jsm/postprocessing/AfterimagePass.js';
 import { N8AOPass } from 'n8ao';
 
 const GradeShader = {
@@ -105,6 +106,23 @@ export class Post {
     this.bloom = new UnrealBloomPass(new THREE.Vector2(css.x * pr * q.bloomScale, css.y * pr * q.bloomScale), 0.35, 0.55, 0.9);
     this.composer.addPass(this.bloom);
     this.composer.addPass(new OutputPass());
+    // estelas de la PS2 (los "trails" de Vice City): lo muy brillante deja un rastro que se apaga
+    this.trails = new AfterimagePass(0.85);
+    this.trails.uniforms.thr = { value: 0.7 };
+    this.trails.compFsMaterial.fragmentShader = /* glsl */ `
+      uniform float damp;
+      uniform float thr;
+      uniform sampler2D tOld;
+      uniform sampler2D tNew;
+      varying vec2 vUv;
+      void main() {
+        vec4 o = texture2D(tOld, vUv);
+        vec4 n = texture2D(tNew, vUv);
+        float l = dot(o.rgb, vec3(0.299, 0.587, 0.114));
+        o.rgb *= damp * smoothstep(thr, thr + 0.25, l);
+        gl_FragColor = vec4(max(n.rgb, o.rgb), n.a);
+      }`;
+    this.composer.addPass(this.trails);
     this.grade = new ShaderPass(GradeShader);
     this.grade.uniforms.sharpen.value = q.sharpen;
     this.composer.addPass(this.grade);
@@ -119,13 +137,18 @@ export class Post {
   // k: 0 de día, 1 de noche; dusk: 0..1 al atardecer
   setMood(k, dusk, rain = 0) {
     if (!this.enabled) return;
-    this.bloom.strength = 0.2 + k * 0.7 + dusk * 0.25;
-    this.bloom.threshold = 0.95 - k * 0.4;
-    this.bloom.radius = 0.45 + k * 0.25;
+    // resplandor suave también de día (la "radiosidad" de la PS2)
+    this.bloom.strength = 0.28 + k * 0.62 + dusk * 0.25;
+    this.bloom.threshold = 0.88 - k * 0.33;
+    this.bloom.radius = 0.6 + k * 0.15;
+    // estelas: de noche las luces dejan rastro largo; de día, casi nada
+    this.trails.uniforms.damp.value = 0.55 + k * 0.33;
+    this.trails.uniforms.thr.value = 0.9 - k * 0.22;
     const u = this.grade.uniforms;
     // día: luces cálidas y sombras apenas azules; atardecer: más naranja; noche: todo más frío
     // al atardecer, un toque magenta (luces rosas y sombras violetas) como Vice City
-    u.gain.value.set(1.04 + dusk * 0.07 - k * 0.06, 1.0 - dusk * 0.045 - k * 0.02, 0.95 + dusk * 0.03 + k * 0.1);
+    // filtro de color a lo Vice City: día dorado, atardecer rosa, noche azul violácea
+    u.gain.value.set(1.07 + dusk * 0.05 - k * 0.1, 1.01 - dusk * 0.05 - k * 0.04, 0.9 + dusk * 0.08 + k * 0.2);
     u.lift.value.set(-0.012 - k * 0.01 + dusk * 0.012, 0.0 + k * 0.004, 0.022 + k * 0.03 + rain * 0.01 + dusk * 0.018);
     // al morir (o caer preso) la imagen se va a blanco y negro, como en GTA
     const w = this.wasted || 0;
