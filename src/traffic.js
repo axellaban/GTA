@@ -226,9 +226,16 @@ export class Traffic {
     }
   }
 
-  pickNext(e) {
+  pickNext(e, v) {
     const opts = e.to.out.filter((o) => o !== e.rev);
     if (!opts.length) return e.rev;
+    // los que pasean por un lugar (la Ferrari de Laban) no se alejan: eligen calles que vuelven
+    if (v?.home) {
+      const d = (o) => Math.hypot(o.to.x - v.home.x, o.to.z - v.home.z);
+      const near = opts.filter((o) => d(o) < v.homeR && o.street.w >= 6);
+      if (near.length) return R.pick(near);
+      return opts.reduce((a, b) => (d(a) < d(b) ? a : b));
+    }
     // preferir seguir derecho
     // preferir seguir por la misma calle o la más derecha
     const straight = opts.reduce((best, o) => (o.dx * e.dx + o.dz * e.dz > (best ? best.dx * e.dx + best.dz * e.dz : -2) ? o : best), null);
@@ -287,6 +294,7 @@ export class Traffic {
 
   // los autos que quedan lejos reaparecen cerca de Gaspi (así siempre hay tránsito)
   recycle(v, player) {
+    if (v.keep) return false;
     const d = Math.hypot(v.x - player.x, v.z - player.z);
     if (d < 260) return false;
     const cand = this.spawnEdges.filter((e) => {
@@ -367,7 +375,7 @@ export class Traffic {
       const dist = Math.hypot(dx, dz);
       if (dist < (a.stage === 'run' && a.edge.to.deg <= 2 ? 1.6 : 3.5)) {
         if (a.stage === 'run') {
-          a.next = this.pickNext(a.edge);
+          a.next = this.pickNext(a.edge, v);
           a.stage = 'turn';
         } else {
           a.edge = a.next;

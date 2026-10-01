@@ -27,6 +27,7 @@ import { Gym } from './gym.js';
 import { Stunts, RAMPS } from './stunts.js';
 import { addPalms } from './palms.js';
 import { loadFerrari } from './models.js';
+import { Laban } from './laban.js';
 import { Combat } from './combat.js';
 import { Police } from './police.js';
 import { Nav } from './nav.js';
@@ -39,6 +40,7 @@ setupInstall();
 
 const canvas = document.getElementById('game');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+renderer.localClippingEnabled = true; // el techo cortado de la Ferrari descapotable
 renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -399,6 +401,9 @@ for (const s of gym.slots) gym.spawn(s);
 world.gym = gym;
 const stunts = new Stunts(scene);
 world.palms = addPalms(scene, city.colliders, heightAt);
+// Laban the Creator paseando en la Ferrari amarilla por la estación
+const laban = new Laban(scene, traffic);
+world.laban = laban;
 // la Ferrari de Ciro, estacionada frente al gym (modelo bajado de internet)
 if (gym.x != null) {
   loadFerrari()
@@ -911,6 +916,7 @@ function speakers() {
   for (const n of npcs.list) if (n.bubble) add(n.x, n.y + 2.35 * n.h.root.scale.y, n.z, n.bubble, n.type === 'trapito' || n.type === 'cana' || n.state === 'fight', { female: n.h.female, key: n.h.phase });
   for (const m of crime.motos) if (m.bubble) add(m.v.x, 2.6, m.v.z, m.bubble, true, { key: 7 });
   if (player.bubble) add(player.x, player.y + 2.4, player.z, player.bubble, false, { key: 3 });
+  if (laban.bubble && laban.v) add(laban.v.x, 2.3, laban.v.z, laban.bubble, false, { female: laban.bubble.female, key: laban.bubble.female ? 31 : 17 });
   // la gente del corte canta
   for (const e of events.list) {
     if (e.leaving || dist(e) > 30) continue;
@@ -1094,6 +1100,7 @@ function frame(now) {
   updateArmeria();
   gym.update(dt, world);
   stunts.update(dt, world);
+  laban.update(dt, world);
   updateFare(dt);
   updateCop(dt);
   missions.update(dt, step >= steps.length - 1 && !job.active && !fare.active && !cop.active);

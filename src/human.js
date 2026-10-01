@@ -1062,6 +1062,12 @@ function addHat(m, H, o) {
     v.scale(1, 1, 0.85).rotateX(-0.12).translate(0, 1.868, H.cz + H.rz - 0.01);
     prim(m, v, 'head', tone(o.cap, 0.9), fab);
     if (o.police) prim(m, new THREE.BoxGeometry(0.03, 0.03, 0.006).translate(0, 1.88, H.cz + H.rz + 0.012), 'head', 0xe3b23c, fab);
+  } else if (o.fedora != null) {
+    // sombrero de ala ancha con cinta negra (el de Laban, estilo Alan Faena)
+    const y0 = H.cy + H.ry * 0.62;
+    prim(m, new THREE.CylinderGeometry(0.205, 0.205, 0.012, 24).translate(0, y0, H.cz), 'head', o.fedora, fab);
+    prim(m, new THREE.CylinderGeometry(0.088, 0.104, 0.12, 20).translate(0, y0 + 0.064, H.cz), 'head', o.fedora, fab);
+    prim(m, new THREE.CylinderGeometry(0.106, 0.106, 0.03, 20).translate(0, y0 + 0.022, H.cz), 'head', 0x151515, fab);
   }
   void W;
 }

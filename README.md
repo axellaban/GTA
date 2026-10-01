@@ -169,6 +169,10 @@ Ocho rampas amarillas con franjas negras en calles largas. Si entrás rápido (m
 
 - **La Ferrari de Ciro**: Ferrari 458 Italia estacionada frente al gym El Kaiser, el auto más rápido del juego. Modelo de [vicent091036](https://sketchfab.com/models/57bf6cc56931426e87494f554df1dab6) en Sketchfab, tomado del ejemplo de autos de three.js (comprimido con Draco; el decodificador está en `public/draco/`).
 
+## Laban the Creator (0.19)
+
+Por las calles de la estación pasea **Laban the Creator** en una Ferrari amarilla descapotable: traje y sombrero blancos (estilo Alan Faena) y anteojos, con tres chicas fit arriba (una de acompañante y dos sentadas en la cola, saludando). Va despacio tirando facha, toca bocina y grita cosas cuando pasa cerca de Gaspi. No se la pueden robar con ellos arriba.
+
 ## Gym El Kaiser (0.13)
 
 Box de CrossFit a unos 70 m de la estación (cuadrado amarillo en el mapa): galpón negro con el portón levantado, el cartel del lobo arriba y el mismo logo en la pared del fondo, racks rojos, discos, cajones y kettlebells. Adentro entrenan los musculosos (dominadas, sentadilla y press) y El Kaiser te recibe en la puerta. Si les pegás, se defienden, y aguantan más que un vecino.
@@ -196,6 +200,7 @@ Box de CrossFit a unos 70 m de la estación (cuadrado amarillo en el mapa): galp
 | `src/npcs.js` | Vecinos, trapitos, gente pidiendo, perdidos, vendedor de medias, perros |
 | `src/crime.js` | Motochorros |
 | `src/events.js` | Cortes, marchas y noticias |
+| `src/laban.js` | Laban the Creator y su Ferrari descapotable |
 | `src/models.js` | Modelos bajados de internet (la Ferrari) |
 | `src/palms.js` | Palmeras de las plazas (instanciadas) |
 | `src/stunts.js` | Rampas y saltos insólitos con cámara lenta |
