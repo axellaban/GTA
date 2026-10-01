@@ -139,8 +139,10 @@ del relevamiento.
 
 **R9 — Mapa real (B1)**: ✅ negocios de OSM (`scripts/map/osm_pois.py` -> `src/data/osm.json`, 117
 lugares; `src/map.js` los asigna a las huellas): 129 locales con cartel real (antes 60). Overpass:
-overpass-api.de suele cortar; el script prueba también maps.mail.ru y overpass.kumi.systems. Falta:
-integrar el relevamiento del dueño cuando lo cargue.
+overpass-api.de suele cortar; el script prueba también maps.mail.ru y overpass.kumi.systems. ✅ Más
+negocios de Overture con confianza media (0,3–0,55, solo locales a la calle: `scripts/map/places_extra.py`
+-> `src/data/places.json`), en huellas sin nombre: 146 carteles con nombre real (antes 126). Falta:
+integrar el relevamiento del dueño cuando lo cargue (o fotos/listas que mande por el chat).
 
 **R10 — Modelos de artista (A2)**: ✅ 13 personas de Quaternius (Ultimate Modular Men/Women, CC0;
 se bajan de las carpetas de Google Drive de quaternius.com con `pip install gdown` y

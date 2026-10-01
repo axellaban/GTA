@@ -4,6 +4,7 @@
 import D from './data/temperley.json';
 import REL from './data/relevamiento.json';
 import OSM from './data/osm.json';
+import PLACES from './data/places.json';
 
 // Lo cargado a mano en /relevamiento.html (exportado a src/data/relevamiento.json) pisa lo que trae
 // Overture: nombre real, tipo, pisos y colores del cartel. Ver PLAN.md, parte B.
@@ -27,7 +28,8 @@ for (const e of REL.negocios || []) {
 
 // Negocios con nombre de OpenStreetMap (scripts/map/osm_pois.py -> src/data/osm.json): cada uno va a la
 // huella que lo contiene o a la más cercana con frente a la calle (a menos de 10 m). Pisan los nombres
-// de Overture, pero no lo cargado a mano en el relevamiento.
+// de Overture, pero no lo cargado a mano en el relevamiento. Después, los lugares de Overture con
+// confianza media (scripts/map/places_extra.py -> src/data/places.json), solo en huellas sin nombre.
 function ptSeg(px, pz, ax, az, bx, bz) {
   const dx = bx - ax;
   const dz = bz - az;
@@ -61,29 +63,37 @@ function ringDist(r, x, z) {
     return [x0, z0, x1, z1];
   });
   const taken = new Set();
-  for (const p of OSM.pois) {
-    let best = null;
-    let bs = Infinity;
-    D.buildings.forEach((b, i) => {
-      const [x0, z0, x1, z1] = box[i];
-      if (p.x < x0 - 10 || p.x > x1 + 10 || p.z < z0 - 10 || p.z > z1 + 10) return;
-      const d = ringDist(b.r, p.x, p.z);
-      if (d > 10) return;
-      // mejor una huella con frente a la calle (donde va el cartel) y que no tenga ya otro negocio
-      const s = d + (b.fr.length ? 0 : 6) + (taken.has(b) ? 4 : 0);
-      if (s < bs) {
-        bs = s;
-        best = b;
-      }
-    });
-    if (!best || best.rel || taken.has(best)) continue;
-    taken.add(best);
-    best.n = p.n;
-    best.cat = p.c;
-    if (p.a) best.addr = p.a;
-    if (p.k === 'local' && (best.k === 'casa' || (best.k === 'edificio' && best.f <= 4))) best.k = 'local';
-    else if ((p.k === 'escuela' || p.k === 'iglesia') && (best.k === 'casa' || best.k === 'local')) best.k = p.k;
-  }
+  // onlyNew: los lugares de Overture con confianza media solo van a huellas que no tienen nombre real
+  const assign = (pois, onlyNew) => {
+    for (const p of pois) {
+      let best = null;
+      let bs = Infinity;
+      D.buildings.forEach((b, i) => {
+        const [x0, z0, x1, z1] = box[i];
+        if (p.x < x0 - 10 || p.x > x1 + 10 || p.z < z0 - 10 || p.z > z1 + 10) return;
+        if (onlyNew && (b.n || b.rel)) return;
+        const d = ringDist(b.r, p.x, p.z);
+        if (d > 10) return;
+        // mejor una huella con frente a la calle (donde va el cartel) y que no tenga ya otro negocio
+        const s = d + (b.fr.length ? 0 : 6) + (taken.has(b) ? 4 : 0);
+        if (s < bs) {
+          bs = s;
+          best = b;
+        }
+      });
+      if (!best || best.rel || taken.has(best) || (onlyNew && best.n)) continue;
+      taken.add(best);
+      best.n = p.n;
+      best.cat = p.c;
+      if (p.a) best.addr = p.a;
+      if (p.k === 'local' && (best.k === 'casa' || (best.k === 'edificio' && best.f <= 4))) best.k = 'local';
+      else if ((p.k === 'escuela' || p.k === 'iglesia') && (best.k === 'casa' || best.k === 'local')) best.k = p.k;
+    }
+  };
+  assign(OSM.pois, false);
+  // (si el nombre ya está en el mapa, no se repite)
+  const have = new Set(D.buildings.map((b) => b.n).filter(Boolean));
+  assign(PLACES.pois.filter((p) => !have.has(p.n)), true);
 }
 
 export const DATA = D;

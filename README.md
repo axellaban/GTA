@@ -95,10 +95,12 @@ cd scripts/map
 python3 fetch.py                                   # baja de Overture Maps el cuadrado alrededor de la estación
 python3 preprocess.py ../../src/data/temperley.json  # calles, veredas, manzanas, edificios, árboles, etc.
 python3 osm_pois.py                                # negocios con nombre de OpenStreetMap -> src/data/osm.json
+python3 places_extra.py                            # más negocios de Overture (confianza media) -> src/data/places.json
 ```
 
 `src/map.js` le pone a cada local el nombre real de OSM (la huella que contiene el punto, o la más
-cercana con frente a la calle); lo cargado a mano en el relevamiento tiene prioridad.
+cercana con frente a la calle); lo cargado a mano en el relevamiento tiene prioridad. Los de
+`places.json` solo van a huellas que todavía no tienen nombre.
 
 Datos del mapa: © colaboradores de OpenStreetMap (ODbL) y Overture Maps Foundation.
 
