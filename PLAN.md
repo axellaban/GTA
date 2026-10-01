@@ -45,7 +45,8 @@ Ver la tabla "Estructura" del README. Lo más importante:
   uaL/faL/handL, thR/shR/ftR, thL/shL/ftL`). `animateHuman(h, dt, speed, pose, t)` pone las poses
   (walk, run, jab, cross, hook, kick, swing, aim, sit, dead, press, squat, pullup, ...).
 - `src/cars.js`: autos por código (Falcon, 504, Duna, Gol, Fiat 600, pickup, taxi, remís, patrullero...).
-- `src/models.js`: modelos bajados (la Ferrari 458, simplificada) + `loadFerrari(color, {convertible})`.
+- `src/models.js`: modelos bajados (Car Kit de Kenney, CC0). La Ferrari se sacó (licencia sin
+  confirmar): ahora es el **Ferrucho**, deportivo propio hecho por código (`makeFerrucho` en `src/cars.js`).
 - `src/city.js` + `src/textures.js`: ciudad desde `src/data/temperley.json` (Overture/OSM).
   Los locales (`kind === 'local'`) tienen cartel con el nombre real si Overture lo trae.
 - `scripts/map/`: Python que baja Overture (`fetch.py`, incluye `places`) y arma el JSON (`preprocess.py`).
@@ -66,11 +67,53 @@ node tools/shot.mjs shots/x '[{"name":"calle","hour":16,"play":true,"cam":{"x":-
 - Ojo: el tiempo del juego corre muy lento en el emulador; no esperar segundos "reales".
 - Ruta de Chromium en este entorno: `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`
   (args: `--use-angle=swiftshader --enable-unsafe-swiftshader --ignore-gpu-blocklist`).
-- Red del entorno de la nube: solo GitHub y npm. kenney.nl, quaternius.com, itch.io, opengameart,
-  sketchfab, overpass y Overture están bloqueados (se habilitan en la configuración del entorno:
-  Editar → Acceso a la red).
+- Red del entorno de la nube: GitHub, npm y Overture (S3, `scripts/map/ov.py` lee por rangos HTTP).
+  Bloqueados: overpass-api.de, nominatim.openstreetmap.org, quaternius.com, kenney.nl, poly.pizza,
+  opengameart.org, itch.io, sketchfab, ambientcg.com, polyhaven.com (se habilitan en la configuración
+  del entorno: menú del entorno en la barra de la sesión → Editar → Acceso a la red).
 
-## 5. Plan pendiente (en orden)
+## 5. Hoja de ruta para terminar todo (en orden; cualquiera la puede seguir)
+
+Marcas: ⬜ pendiente · 🔶 en curso · ✅ hecho (anotar commit). Cada ítem se prueba sin GPU (§4) y se
+sube a `main` apenas anda, así si se corta la sesión otra IA sigue desde acá.
+
+**R1 — Lo que reportó el dueño desde el celu (prioridad máxima)**
+- ⬜ Luces demasiado fuertes en el celu: bajar el bloom de noche/atardecer (`setMood` en
+  `src/post.js`), el brillo de los neones, los halos de faroles y faros (`src/glow.js`) y el fuego de
+  los cortes (`src/events.js`).
+- ⬜ Piqueteros y marcha: que se les pueda pegar, tirar y pisar con el auto (hoy son `ev.people`, fuera
+  de `npcs.list`); el cartel se cae si lo chocan; un auto rápido rompe el corte (y suma estrellas).
+
+**R2 — Gym El Kaiser en su dirección real: Rivadavia 321** (confirmada en el Instagram/Facebook
+oficiales). Punto ≈ (414, 10), vereda impar. En `src/gym.js` está `ADDRESS` + `findAddressLot`, pero
+ahí no hay lote libre: hay que reservar el lote en `src/map.js` (antes de armar la ciudad), que
+`city.js` no levante los edificios que lo pisan y poner el gym ahí.
+
+**R3 — Misiones con lo nuevo**: el marciano (llevarle panchos / devolverle la nave), destrucción con
+bazuca (desarmadero del Turco), persecución del OVNI con la cana.
+
+**R4 — Policía más dura**: gendarmes con ametralladora a 5–6 estrellas; helicóptero que sigue a Gaspi
+(y al OVNI robado).
+
+**R5 — Más destrucción**: semáforos y carteles que se caen (copiar `src/smash.js`); capó que se levanta
+con mucho daño; el tránsito esquiva el OVNI estacionado y los postes caídos.
+
+**R6 — Lugares**: lavadero de autos (cambia color y saca estrellas, como chapa y pintura), bar y
+pizzería con interior (`src/interiors.js`).
+
+**R7 — Guardado**: que el guardado incluya metra, bazuca, munición y estadísticas nuevas.
+
+**R8 — Look**: reflejos de neón en los charcos; suavizar la mancha de luna; fachadas con rejas y foto
+del relevamiento.
+
+**R9 — Mapa real (B1)**: enriquecer nombres y rubros con Overture `places` (alcanzable); sumar OSM
+cuando se habilite Overpass; integrar el relevamiento del dueño cuando lo cargue.
+
+**R10 — Modelos de artista (A2)**: personajes y animales Quaternius CC0 cuando se habilite la red.
+
+**R11 — Pruebas en celu real**: el dueño prueba en iPhone/Android y manda capturas; se ajusta.
+
+## 5b. Detalle por área (historia y notas técnicas)
 
 ### A. Personajes, perros y autos "nivel Vice City"
 
@@ -117,8 +160,8 @@ Radio ≈ 550 m desde la estación (`STATION` en `src/map.js`). Hoy: 1.872 edifi
 - **B3 — Construcción (resto)**: por cada local, arma el frente con
   piezas (vidriera, persiana, puerta, toldo, cartel con el nombre real; foto como textura si hay),
   con los pisos reales. Prioridad: la cuadra de la estación sobre Av. Meeks y el centro comercial.
-- **B4 — El gym El Kaiser a su dirección real** (falta que el dueño pase calle y número; hoy está
-  en un lote libre a ~70 m de la estación, ver `findLot` en `src/gym.js`).
+- **B4 — El gym El Kaiser a su dirección real**: Rivadavia 321 (ver R2). Hoy sigue en un lote libre a
+  ~70 m de la estación (`findLot` en `src/gym.js`).
 
 ### A5. Vehículos de artista (✅ ambulancia y autobomba integradas en `src/rescue.js`)
 
@@ -206,9 +249,10 @@ Ideas para seguir: capó que se levanta con mucho daño; semáforos y carteles q
   (motosierra siempre, bastón presidencial, metra, molotov), coimas, figuritas, saltos, voces,
   radio con locutor, muerte a lo GTA.
 - ✅ Gym El Kaiser con Ciro (el profe gigante que busca pelea), musculosos y chicas fit.
-- ✅ Ferrari de Ciro (roja, estacionada) y Laban the Creator (Ferrari amarilla descapotable con
-  tres chicas, se puede robar).
-- ✅ Arreglo del cuelgue en iPhone (Ferrari simplificada, sin Draco).
+- ✅ Ferrucho de Ciro (rojo, estacionado en el gym) y Laban the Creator (Ferrucho amarillo
+  descapotable con tres chicas, se puede robar). Nombre del juego: **GTA VI Conurba**.
+- ✅ Arreglo del cuelgue en iPhone (sin modelos pesados ni Draco).
+- ✅ Íconos a lo GTA en el minimapa y el mapa de pausa (`src/icons.js`, leyenda en la pausa).
 - ✅ B2 página de relevamiento: `public/relevamiento.html` (en el sitio: `/relevamiento.html`), base
   generada con `node scripts/relevamiento-base.mjs` (edificios, plazas/escuelas/canchas y calles a 600 m).
   Tipos: negocio, casa, edificio, colegio, iglesia, plaza/club, otro. Falta que el dueño cargue datos.
@@ -252,12 +296,11 @@ CC0 con animaciones, autos que se abollan (`dentCar`), changas de paramédico y 
 5. ✅ Tres misiones más (`src/missions.js`): la recaudación del Turco (motochorros), el Roca de las seis
    (escaparse de la cana en tren) y la proteína de Ciro (ida y vuelta a una dietética; `ciroPeace`
    evita que Ciro pelee mientras dura).
-Lo que espera al dueño: relevamiento cargado (JSON), dirección real del gym, red para Quaternius /
-Overture / Overpass (ver §7).
+Lo que espera al dueño: relevamiento cargado (JSON) y red para Quaternius / Overpass (ver §7).
 
 ## 7. Preguntas abiertas para el dueño
 
-1. ¿Habilita en el entorno `quaternius.com`, `itch.io`, `opengameart.org`, Overture y Overpass, o
-   sube él los archivos?
-2. Calle y número reales del gym El Kaiser.
+1. ¿Habilita en el entorno `quaternius.com`, `kenney.nl`, `opengameart.org`, `poly.pizza` y
+   `overpass-api.de`, o sube él los archivos?
+2. ✅ Dirección del gym: Rivadavia 321 (sacada de sus redes oficiales).
 3. Cuando cargue el relevamiento, subir el JSON exportado (o pasarlo) para integrarlo.
