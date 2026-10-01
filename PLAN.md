@@ -113,7 +113,7 @@ una instancia de `posts` con colisionador `signal`; `knock` lo voltea, se apaga,
 `stopAhead` ignora ese lado; el choque está en `drive` de `src/player.js`, junto al de los postes).
 ✅ Capó que se levanta con daño > 70 y flamea con la velocidad (`makeHood` en `src/cars.js`, lo mueve
 `Combat.updateVehicles`; abajo se ve el motor). Chapa y pintura pinta todo de un solo color.
-Falta: carteles con el nombre de la calle que se caen. ✅ El tránsito frena ante el OVNI apoyado y los postes caídos, toca bocina y pega la
+✅ Carteles con el nombre de la calle que se caen (`SIGNS` en `src/props.js`: siguen en dos mallas juntas; al chocar uno se esconden sus vértices y cae una copia suelta). ✅ El tránsito frena ante el OVNI apoyado y los postes caídos, toca bocina y pega la
 vuelta (`obs` en `Traffic.update`, `ufo.block`, `smash.obstacles`); la nave apoyada tiene colisionador
 (`groundBlock` en `src/ufo.js`).
 

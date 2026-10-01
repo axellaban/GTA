@@ -21,7 +21,7 @@ import { loadGaspiPhoto, updateHumanLod } from './human.js';
 import { Sky } from './sky.js';
 import { Post, QUALITY } from './post.js';
 import { Glows } from './glow.js';
-import { buildProps, TrafficLights, BlobShadows } from './props.js';
+import { buildProps, TrafficLights, BlobShadows, SIGNS } from './props.js';
 import { Fx } from './fx.js';
 import { Pickups, FIGUS } from './pickups.js';
 import { WEAPONS } from './weapons.js';
@@ -1213,6 +1213,7 @@ function frame(now) {
   player.updateCamera(camera, dt, city.colliders, fx);
   fx.update(dt);
   smash.update(dt);
+  SIGNS.update(dt, world);
   radio.update();
   const moto = crime.nearestMoto(player.x, player.z, 80);
   audio.update(player.vehicle?.speed ?? 0, !!player.vehicle, moto ? Math.hypot(moto.x - player.x, moto.z - player.z) : 999, player.vehicle?.kind === 'moto');
@@ -1284,5 +1285,6 @@ addEventListener('resize', () => {
 });
 
 // Para pruebas desde la consola
+world.signs = SIGNS;
 window.__gta = world;
 window.__renderer = renderer;

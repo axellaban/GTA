@@ -4,6 +4,7 @@ import { makeGaspi, animateHuman } from './human.js';
 import { WEAPONS } from './weapons.js';
 import { R } from './rng.js';
 import { carEffects } from './carfx.js';
+import { SIGNS } from './props.js';
 
 const WALK = 2.3;
 const RUN = 6.3;
@@ -824,7 +825,12 @@ export class Player {
         // un poste de luz a velocidad: lo voltea y sigue (frenado)
         const vel = Math.hypot(v.vx, v.vz);
         // (y un semáforo también)
-        const knocked = vel > 5 && !moto && ((hit.box.kind === 'lamp' && world.smash?.knock(hit.box, v.vx, v.vz)) || (hit.box.kind === 'signal' && world.lights?.knock(hit.box, v.vx, v.vz)));
+        const knocked =
+          vel > 5 &&
+          !moto &&
+          ((hit.box.kind === 'lamp' && world.smash?.knock(hit.box, v.vx, v.vz)) ||
+            (hit.box.kind === 'signal' && world.lights?.knock(hit.box, v.vx, v.vz)) ||
+            (hit.box.kind === 'sign' && SIGNS.knock(hit.box, v.vx, v.vz, world)));
         if (knocked) {
           v.vx *= 0.62;
           v.vz *= 0.62;

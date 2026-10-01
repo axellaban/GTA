@@ -191,7 +191,68 @@ export class TrafficLights {
 }
 
 // ---------- Carteles con el nombre de la calle ----------
-function streetSigns(scene) {
+// Carteles de esquina que se voltean: siguen dibujándose todos juntos (dos mallas); al chocar uno,
+// sus vértices se esconden en la malla grande y cae una copia suelta (como los postes de luz).
+export const SIGNS = {
+  list: [],
+  falling: [],
+  knock(box, vx, vz, world) {
+    const s = this.list[box.sign];
+    if (!s || s.down) return false;
+    s.down = true;
+    box.x = box.z = 1e6;
+    // la copia: caño y chapas, con la base en el origen
+    const g = new THREE.Group();
+    g.position.set(s.x, 0, s.z);
+    const pole = new THREE.BufferGeometry();
+    const P = this.pole.geometry.attributes;
+    const pp = [];
+    for (let i = s.p0; i < s.p1; i++) pp.push(P.position.getX(i) - s.x, P.position.getY(i), P.position.getZ(i) - s.z);
+    pole.setAttribute('position', new THREE.Float32BufferAttribute(pp, 3));
+    pole.setAttribute('normal', new THREE.Float32BufferAttribute(Array.from(P.normal.array.slice(s.p0 * 3, s.p1 * 3)), 3));
+    pole.setAttribute('color', new THREE.Float32BufferAttribute(Array.from(P.color.array.slice(s.p0 * 3, s.p1 * 3)), 3));
+    pole.setIndex(Array.from(this.pole.geometry.index.array.slice(s.p0 * 1.5, s.p1 * 1.5), (i) => i - s.p0));
+    g.add(new THREE.Mesh(pole, this.pole.material));
+    const B = this.blades.geometry.attributes;
+    const bp = [];
+    for (let i = s.b0; i < s.b1; i++) bp.push(B.position.getX(i) - s.x, B.position.getY(i), B.position.getZ(i) - s.z);
+    const bl = new THREE.BufferGeometry();
+    bl.setAttribute('position', new THREE.Float32BufferAttribute(bp, 3));
+    bl.setAttribute('uv', new THREE.Float32BufferAttribute(Array.from(B.uv.array.slice(s.b0 * 2, s.b1 * 2)), 2));
+    bl.setIndex(Array.from(this.blades.geometry.index.array.slice(s.b0 * 1.5, s.b1 * 1.5), (i) => i - s.b0));
+    bl.computeVertexNormals();
+    g.add(new THREE.Mesh(bl, this.blades.material));
+    g.traverse((o) => (o.castShadow = !!o.isMesh));
+    this.scene.add(g);
+    // el original se esconde (vértices bajo tierra)
+    for (let i = s.p0; i < s.p1; i++) P.position.setY(i, -50);
+    for (let i = s.b0; i < s.b1; i++) B.position.setY(i, -50);
+    P.position.needsUpdate = B.position.needsUpdate = true;
+    const sp = Math.hypot(vx, vz) || 1;
+    this.falling.push({ g, dx: vx / sp, dz: vz / sp, a: 0.15, w: Math.min(3, sp * 0.12), landed: false });
+    world.fx.sparks(s.x, 0.4, s.z, 8, 4);
+    world.audio.metal(0.7);
+    return true;
+  },
+  update(dt, world) {
+    for (const f of this.falling) {
+      if (f.landed) continue;
+      f.w += ((3 * 9.8) / (2 * 2.9)) * Math.sin(f.a) * dt;
+      f.a += f.w * dt;
+      if (f.a >= Math.PI / 2 - 0.03) {
+        f.a = Math.PI / 2 - 0.03;
+        f.landed = true;
+        world.fx.sparks(f.g.position.x + f.dx * 2.6, 0.2, f.g.position.z + f.dz * 2.6, 10, 4);
+        world.audio.metal(0.6);
+      }
+      // gira sobre la base hacia donde iba el auto
+      f.g.quaternion.setFromAxisAngle(new THREE.Vector3(f.dz, 0, -f.dx), f.a);
+    }
+    if (this.falling.length && this.falling.every((f) => f.landed)) this.falling.length = 0;
+  },
+};
+
+function streetSigns(scene, colliders) {
   const names = [...new Set(ROADS.map((r) => r.name).filter(Boolean))];
   const rowH = 64;
   const c = document.createElement('canvas');
@@ -245,17 +306,28 @@ function streetSigns(scene) {
     if (!b) continue;
     const px = n.x + a.dx * (b.road.w / 2 + 1.3) + b.dx * (a.road.w / 2 + 1.3);
     const pz = n.z + a.dz * (b.road.w / 2 + 1.3) + b.dz * (a.road.w / 2 + 1.3);
+    // qué vértices son de este cartel (para voltearlo después)
+    const s = { x: px, z: pz, p0: F.pos.length / 3, b0: pos.length / 3 };
     F.box(0.07, 2.9, 0.07, 0x3a3f44, px, 1.45, pz);
     blade(px - a.dx * 0.75, 2.75, pz - a.dz * 0.75, a.dx, a.dz, a.road.name);
     blade(px - b.dx * 0.75, 2.45, pz - b.dz * 0.75, b.dx, b.dz, b.road.name);
+    s.p1 = F.pos.length / 3;
+    s.b1 = pos.length / 3;
+    if (colliders) colliders.addCircle(px, pz, 0.08, 2.9, 'sign').sign = SIGNS.list.length;
+    SIGNS.list.push(s);
   }
-  scene.add(F.mesh());
+  const pole = F.mesh();
+  pole.userData.noChunk = true;
+  scene.add(pole);
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   geo.setIndex(idx);
   geo.computeVertexNormals();
-  scene.add(new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ map: tex })));
+  const blades = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ map: tex }));
+  blades.userData.noChunk = true;
+  scene.add(blades);
+  Object.assign(SIGNS, { scene, pole, blades });
 }
 
 // ---------- Paradas de colectivo ----------
@@ -544,7 +616,7 @@ export class BlobShadows {
 
 export function buildProps(scene, city) {
   const rng = new Rng(2024);
-  streetSigns(scene);
+  streetSigns(scene, city.colliders);
   busStops(scene, rng);
   baskets(scene, city, rng);
   containers(scene, city, rng);
