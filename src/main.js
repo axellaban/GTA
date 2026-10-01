@@ -222,6 +222,7 @@ const time = { hour: 17.5, night: false, label: '17:30' };
 const weather = { rain: 0, target: 0, wet: 0, slick: false, next: R.range(200, 320), t: 0, boltT: R.range(10, 25), flash: 0 };
 const world = { scene, camera, city, input, audio, hud, player, traffic, npcs, crime, events, trains, time, lights, colliders: city.colliders, fx, pickups, combat, police, nav, radio, weather, night: NIGHT, heightAt };
 world.smash = smash;
+world.comisaria = comisaria;
 // portazo: se oye si Gaspi está cerca
 Vehicle.onSlam = (v, k) => {
   const d = Math.hypot(v.x - player.x, v.z - player.z);

@@ -3,6 +3,10 @@ import * as THREE from 'three';
 import { HALF, DATA as D, TRACKS, nearestStreetName } from './map.js';
 import gaspiUrl from './gaspi.webp';
 import { WEAPONS } from './weapons.js';
+import { drawIcon, iconCanvas, ICONS, LEGEND, PICKUP_ICON } from './icons.js';
+
+// inicial de quien da la misión (como las letras de los GTA): "El Turco del kiosco" → T
+const initial = (who = '') => (who.split(/[\s,]+/).find((w) => w && !['El', 'La', 'Los', 'Las', 'Don', 'Doña'].includes(w)) ?? 'M')[0].toUpperCase();
 
 const $ = (id) => document.getElementById(id);
 const fmt = (n) => `$ ${Math.round(n).toLocaleString('es-AR')}`;
@@ -31,6 +35,60 @@ export class Hud {
     this.mini = $('minimap');
     this.mctx = this.mini.getContext('2d');
     this.baseMap = this.drawBaseMap();
+    this.buildLegend();
+  }
+
+  // leyenda del mapa de pausa con los mismos íconos
+  buildLegend() {
+    const ul = $('pm-legend');
+    if (!ul) return;
+    ul.textContent = '';
+    const item = (el, label) => {
+      const li = document.createElement('li');
+      li.append(el, document.createTextNode(label));
+      ul.append(li);
+    };
+    for (const [color, label] of [['#ffe14a', 'Objetivo'], ['#c86bff', 'Ruta del GPS']]) {
+      const i = document.createElement('i');
+      i.style.background = color;
+      item(i, label);
+    }
+    for (const k of LEGEND) {
+      const img = document.createElement('img');
+      img.src = iconCanvas(k).toDataURL();
+      img.alt = '';
+      item(img, ICONS[k].label);
+    }
+  }
+
+  // Lugares con ícono: tiendas, changas, misiones y lo que se mueve (OVNI, ambulancia...).
+  // edge: si queda afuera del minimapa, se pega al borde (como en GTA).
+  pois(world) {
+    const out = [];
+    const add = (kind, p, o) => {
+      if (p && Number.isFinite(p.x)) out.push({ kind, x: p.x, z: p.z, ...o });
+    };
+    const P = world.player;
+    const mi = world.missions;
+    if (mi?.offer && !mi.m) add('mision', mi.offer.origin, { letter: initial(mi.offer.def.giver), edge: true });
+    add('armeria', world.armeria);
+    for (const g of world.garages || []) add('pintura', g);
+    if (world.gym?.x != null) add('gym', world.gym);
+    add('comisaria', world.comisaria);
+    for (const h of world.rescue?.hospitals || []) add('hospital', h);
+    add('tren', world.city?.spots.stationDoor);
+    add('pancho', world.city?.spots.pancho);
+    for (const n of world.npcs?.vendors || []) if (!n.dead && !n.killed) add('medias', n);
+    for (const d of world.interiors?.doors || []) if (d.room === 'kiosco') add('kiosco', d.outside);
+    for (const m of world.races?.markers() || []) add('picada', m);
+    for (const m of world.events?.markers() || []) add('corte', m);
+    const r = world.rescue;
+    if (r?.ambulance && !r.ambulance.wreck && P.vehicle !== r.ambulance) add('ambulancia', r.ambulance);
+    if (r?.firetruck && !r.firetruck.wreck && P.vehicle !== r.firetruck) add('bombero', r.firetruck);
+    for (const v of world.traffic?.parked || []) if (v.model === 'delivery' && !v.wreck && Math.abs(v.x - P.x) < 300 && Math.abs(v.z - P.z) < 300) add('delivery', v);
+    const u = world.ufo;
+    if (u && u.state !== 'away' && u.state !== 'player') add('ovni', u, { edge: true });
+    return out;
   }
 
   show() {
@@ -382,14 +440,13 @@ export class Hud {
       this.route.forEach(([x, z], i) => (i ? g.lineTo(X(x), X(z)) : g.moveTo(X(x), X(z))));
       g.stroke();
     }
-    for (const m of world.pickups.markers({ x: player.x, z: player.z }, true)) dot(m.x, m.z, m.kind === 'weapon' ? '#ffa726' : m.kind === 'health' ? '#ff5a5a' : m.kind === 'coima' ? '#ffd23a' : '#5aa9ff', 6);
-    for (const m of world.events.markers()) dot(m.x, m.z, '#ff7a1a', 7, 'square');
-    for (const m of world.races?.markers() || []) dot(m.x, m.z, '#ff3355', 7, 'square');
-    if (world.ufo && world.ufo.state !== 'away' && world.ufo.state !== 'player') dot(world.ufo.x, world.ufo.z, '#3dff6a', 9);
-    for (const m of world.garages || []) dot(m.x, m.z, '#3ddc84', 7, 'square');
-    if (world.armeria) dot(world.armeria.x, world.armeria.z, '#ff5a36', 7, 'square');
-    if (world.gym?.x != null) dot(world.gym.x, world.gym.z, '#f2c21a', 8, 'square');
     for (const m of world.police.markers()) dot(m.x, m.z, '#3060ff', 5, 'square');
+    // íconos a lo GTA (los objetos del piso, más chicos)
+    for (const m of world.pickups.markers({ x: player.x, z: player.z }, true)) {
+      if (PICKUP_ICON[m.kind]) drawIcon(g, PICKUP_ICON[m.kind], X(m.x), X(m.z), 26);
+      else dot(m.x, m.z, '#6ec3ea', 5);
+    }
+    for (const m of this.pois(world)) drawIcon(g, m.kind, X(m.x), X(m.z), m.kind === 'mision' || m.kind === 'ovni' ? 46 : 38, m.letter);
     const o = this.objective;
     if (o?.target) dot(o.target.x, o.target.z, '#ffe14a', 9);
     // Gaspi
@@ -454,21 +511,39 @@ export class Hud {
       this.route.forEach(([x, z], i) => (i ? g.lineTo((x + HALF) * k, (z + HALF) * k) : g.moveTo((x + HALF) * k, (z + HALF) * k)));
       g.stroke();
     }
-    for (const m of events.markers()) mark(m.x, m.z, m.kind === 'corte' ? '#ff7a1a' : '#ffb23e', 6, 'square');
-    for (const m of world.races?.markers() || []) mark(m.x, m.z, '#ff3355', 6, 'square');
-    // el plato volador: verde, grande, titilando
-    const u = world.ufo;
-    if (u && u.state !== 'away' && u.state !== 'player' && ((performance.now() / 300) | 0) % 2) mark(u.x, u.z, '#3dff6a', 7);
-    for (const m of world.garages || []) mark(m.x, m.z, '#3ddc84', 6, 'square');
-    if (world.armeria) mark(world.armeria.x, world.armeria.z, '#ff5a36', 6, 'square');
-    if (world.gym?.x != null) mark(world.gym.x, world.gym.z, '#f2c21a', 7, 'square');
     for (const m of crime.markers()) mark(m.x, m.z, m.kind === 'moto' ? '#e5484d' : '#6ec3ea', 5);
-    for (const m of world.pickups.markers(player)) mark(m.x, m.z, m.kind === 'weapon' ? '#ffa726' : m.kind === 'health' ? '#ff5a5a' : m.kind === 'armor' ? '#5aa9ff' : m.kind === 'coima' ? '#ffd23a' : '#6ec3ea', 3.5);
+    for (const m of world.pickups.markers(player)) if (!PICKUP_ICON[m.kind]) mark(m.x, m.z, '#6ec3ea', 3.5);
     const blink = ((performance.now() / 250) | 0) % 2;
     for (const m of world.police.markers()) mark(m.x, m.z, m.kind === 'heli' ? '#ffffff' : blink ? '#ff3030' : '#3060ff', m.kind === 'poli' ? 5 : 3.5, m.kind === 'poli' ? 'square' : 'dot');
     const o = this.objective;
     if (o?.target) mark(o.target.x, o.target.z, '#ffe14a', 6);
+    // íconos derechos aunque el mapa gire (en coordenadas de pantalla)
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    const cy = Math.cos(player.camYaw);
+    const sy = Math.sin(player.camYaw);
+    const R0 = W / 2;
+    const toScreen = (x, z) => {
+      const dx = (x - player.x) * scale;
+      const dz = (z - player.z) * scale;
+      return [R0 + dx * cy - dz * sy, R0 + dx * sy + dz * cy];
+    };
+    const edgeIcons = [];
+    for (const m of world.pickups.markers(player)) {
+      if (!PICKUP_ICON[m.kind]) continue;
+      const [x, y] = toScreen(m.x, m.z);
+      if (Math.hypot(x - R0, y - R0) < R0 - 4) drawIcon(g, PICKUP_ICON[m.kind], x, y, 13);
+    }
+    for (const m of this.pois(world)) {
+      const [x, y] = toScreen(m.x, m.z);
+      const size = m.kind === 'mision' || m.kind === 'ovni' ? 22 : 18;
+      const d = Math.hypot(x - R0, y - R0);
+      const lim = R0 - size / 2 - 2;
+      if (d <= lim) drawIcon(g, m.kind, x, y, size, m.letter);
+      else if (m.edge) edgeIcons.push({ m, x: R0 + ((x - R0) / d) * lim, y: R0 + ((y - R0) / d) * lim, size });
+    }
     g.restore();
+    // los importantes, pegados al borde aunque estén lejos
+    for (const e of edgeIcons) drawIcon(this.mctx, e.m.kind, e.x, e.y, e.size, e.m.letter);
     // con la cana atrás, el borde titila rojo y azul
     if (world.police.stars > 0) {
       g.strokeStyle = blink ? 'rgba(255,48,48,0.9)' : 'rgba(48,96,255,0.9)';

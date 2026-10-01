@@ -728,7 +728,7 @@ body {
   cursor: pointer;
 }
 .pm-side {
-  max-width: 260px;
+  max-width: 340px;
   display: grid;
   gap: 8px;
 }
@@ -762,6 +762,27 @@ body {
   margin-right: 8px;
   vertical-align: -1px;
 }
+.pm-legend {
+  grid-template-columns: 1fr 1fr;
+  column-gap: 12px;
+  font-size: 0.9rem;
+}
+.pm-legend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  line-height: 1.15;
+}
+.pm-legend img {
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+.pm-legend i {
+  flex: none;
+  margin-right: 0;
+}
 .pm-hint {
   margin: 0;
   color: var(--cal-2);
@@ -788,7 +809,16 @@ body {
     font-size: 1.4rem;
   }
   .pm-legend {
-    font-size: 0.8rem;
+    font-size: 0.72rem;
+    column-gap: 8px;
+  }
+  .pm-legend img {
+    width: 16px;
+    height: 16px;
+  }
+  .pm-side {
+    max-height: 92vh;
+    overflow-y: auto;
   }
 }
 @media (max-width: 520px) {

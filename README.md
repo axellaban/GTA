@@ -39,6 +39,7 @@ Jugás con **Gaspi** (saco, camisa blanca, corbata a rayas rojas y blancas).
 ## Estilo GTA (0.4)
 
 - **Piñas**: combo de jab, directo, gancho y patada, con apuntado automático al más cercano. La gente se defiende, sale corriendo o queda nocaut (y se le cae la plata).
+- **Mapa con íconos a lo GTA**: armería, chapa y pintura, gym, comisaría, hospitales, estación, panchos, medias, kiosco, picadas, cortes, changas (paramédico, bombero, delivery), el plato volador y los objetos del piso, cada uno con su ícono. En el minimapa quedan derechos aunque el mapa gire, y la misión ofrecida (con la inicial de quien la da) y el OVNI se pegan al borde si están lejos. El mapa de pausa (P) trae la leyenda.
 - **Plato volador**: cada tanto baja un OVNI al lado del carrito de panchos de la estación (luces que giran, zumbido de theremin, la gente lo filma). Se baja un marciano verde, pide "dos completos" y se pone a comer. Mientras come, acercate y robale la nave (F): volás con WASD (o el joystick) mirando con el mouse, Espacio sube, Shift baja; clic tira un rayo que hace volar lo que toca y clic derecho (o R) prende el rayo tractor, que levanta autos y gente: soltalos desde arriba. Para bajarte, aterrizá y F. El marciano te putea y, si dejás la nave, se la lleva. ¿Apurado? Escribí OVNI.
 - **Armas**: palo, revólver 38, pistola 9 mm, tumbera, ametralladora (cinta de 100, patea y voltea) y bazuca (cohete con estela que hace volar autos). En la armería, escondidas en el mapa o con el truco: escribí FIERROS. Clic derecho apunta sobre el hombro; sin apuntar, apunta solo. Fogonazo, trazas, chispas en las paredes, gente que se tira al piso o levanta las manos. Casquillos que rebotan en el piso, recarga animada, la mira que salta con cada tiro, agujeros de bala que quedan en paredes y veredas y astillas de revoque.
 - **La Bonaerense**: estrellas de búsqueda según lo que hagas y quién te vea. Patrulleros con balizas y sirena que te persiguen por las calles (con GPS), canas a pie que te esposan o, desde dos estrellas, te tiran. Con cuatro estrellas aparece el helicóptero con reflector. Si te pierden de vista un rato, zafaste; si te agarran, comisaría, coima y te sacan los fierros.
@@ -244,6 +245,7 @@ Box de CrossFit a unos 70 m de la estación (cuadrado amarillo en el mapa): galp
 | `src/radio.js`, `src/audio.js` | Radio y sonidos sintetizados |
 | `src/fx.js` | Partículas, trazas, marcas de frenada, casquillos, agujeros de bala, restos de choque, lluvia y salpicaduras |
 | `src/carfx.js` | Escape, petardeos y rocío de los autos andando |
+| `src/icons.js` | Íconos del mapa (dibujados por código) y la leyenda |
 | `src/ufo.js` | Plato volador: llegada, el marciano de los panchos, robarlo, volar, rayo y tractor |
 | `src/smash.js` | Postes de luz que se caen al chocarlos |
 | `src/hud.js`, `src/style.css` | Tarjeta SUBE, estrellas, minimapa, mapa grande, zócalo, diálogos |
