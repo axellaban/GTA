@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { DATA as D, TRACKS, CORNERS, ROADS, nearestRoad } from './map.js';
-import { outward, pointInRing } from './city.js';
+import { outward, pointInRing, fixed } from './city.js';
 import { FastBoxes } from './builder.js';
 import { Rng } from './rng.js';
 const ni = (g) => (g.index ? g.toNonIndexed() : g);
@@ -242,7 +242,7 @@ function busStops(scene, rng) {
   const geo = new THREE.PlaneGeometry(0.5, 0.75);
   const inst = new THREE.InstancedMesh(geo, new THREE.MeshLambertMaterial({ map: tex, side: THREE.DoubleSide }), signs.length);
   signs.forEach((p, i) => place(inst, i, p.x, p.y, p.z, p.rot));
-  scene.add(inst);
+  scene.add(...fixed(140, inst));
 }
 
 // ---------- Canastos de basura elevados frente a las casas ----------
@@ -285,7 +285,7 @@ function baskets(scene, city, rng) {
     if (f) place(bag, j++, x, 0.15 + 1.25, z, 0, 1.2, 0.9, 1);
   });
   post.castShadow = basket.castShadow = true;
-  scene.add(post, basket, bag);
+  scene.add(...fixed(120, post, basket, bag));
 }
 
 // ---------- Contenedores verdes en las esquinas de las avenidas ----------
@@ -400,7 +400,7 @@ function rooftops(scene, city, rng) {
   const ri = new THREE.InstancedMesh(mergeGeometries(rParts), new THREE.MeshLambertMaterial({ color: 0x6b3b24 }), rebar.length);
   rebar.forEach(([x, y, z], i) => place(ri, i, x, y, z, rng.range(0, 1)));
   ai.castShadow = di.castShadow = true;
-  scene.add(ai, di, ri);
+  scene.add(...fixed(160, ai, di, ri));
 }
 
 // ---------- Catenaria del Roca ----------

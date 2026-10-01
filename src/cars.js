@@ -466,7 +466,7 @@ export function makeCar(model = 'duna', color = 0xd8d4c8, { parked = false } = {
     doorway.visible = false;
     chassis.add(door, doorway);
   }
-  g.userData = { L, W, wheels, kind: 'car', model, parkedBuild: parked, tall: M.m.roof + 0.1, body, shiny, glass, chassis, tail, door, doorway };
+  g.userData = { L, W, wheels, kind: 'car', model, parkedBuild: parked, tall: M.m.roof + 0.1, body, shiny, glass, chassis, tail, door, doorway, lodParts: [shiny, detail] };
   return g;
 }
 
@@ -611,4 +611,22 @@ export function repairCar(v) {
   u.dented = false;
   u.lostF = u.lostR = false;
   u.hitF = u.hitR = 0;
+}
+
+// Nivel de detalle por distancia a la cámara: de lejos no se ven los cromados ni los detalles chicos,
+// las ruedas no hace falta que tiren sombra y bien lejos ni se dibujan (la niebla las tapa).
+export function carLod(mesh, d2) {
+  const u = mesh.userData;
+  if (!u.lodParts) return;
+  const lvl = d2 < 45 * 45 ? 0 : d2 < 140 * 140 ? 1 : 2;
+  if (lvl === u.lodLvl) return;
+  u.lodLvl = lvl;
+  for (const o of u.lodParts) o.visible = lvl === 0;
+  // de lejos la sombra la tira solo la carrocería (sin vidrios), y bien lejos ni eso
+  if (u.glass) u.glass.castShadow = lvl === 0;
+  if (u.body) u.body.castShadow = lvl < 2;
+  for (const w of u.wheels) {
+    w.visible = lvl < 2;
+    w.castShadow = lvl === 0;
+  }
 }

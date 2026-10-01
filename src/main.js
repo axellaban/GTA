@@ -27,6 +27,7 @@ import { Pickups, FIGUS } from './pickups.js';
 import { WEAPONS } from './weapons.js';
 import { Gym } from './gym.js';
 import { Stunts, RAMPS } from './stunts.js';
+import { chunkScene, updateChunks } from './chunks.js';
 import { addPalms } from './palms.js';
 import { Laban } from './laban.js';
 import { loadPeople, loadAnimals } from './people.js';
@@ -1209,11 +1210,15 @@ function frame(now) {
   lights.update(dt);
   blobs.update(world, heightAt);
   if ((frame.n = (frame.n || 0) + 1) % 8 === 1) updateHumanLod(camera, Q.lodNear);
+  if (frame.n % 8 === 5) updateChunks(camera.position);
   sky.follow(camera);
   post.render();
   input.endFrame();
   requestAnimationFrame(frame);
 }
+
+// la ciudad fija en pedazos de 120 m: lo que no se ve (ni proyecta sombra cerca) no se dibuja
+chunkScene(scene);
 
 function start(data = {}) {
   if (data.money != null) {

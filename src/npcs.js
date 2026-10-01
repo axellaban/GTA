@@ -499,8 +499,16 @@ export class Npcs {
       n.cool -= dt;
       n.fightCd -= dt;
       const dp = Math.hypot(player.x - n.x, player.z - n.z);
-      const far = dp > 190;
+      const far = dp > 150;
       n.mesh.visible = !far;
+      // sombra de verdad solo cerca (de lejos alcanza con la mancha de contacto)
+      const shade = dp < 40;
+      if (shade !== n.shade) {
+        n.shade = shade;
+        n.mesh.traverse((o) => {
+          if (o.isMesh) o.castShadow = shade;
+        });
+      }
       // colgando del rayo tractor: patalea en el aire (la nave lo mueve)
       if (n.lifted) {
         if (!far) animateHuman(n.h, dt, 3, n.killed ? 'dead' : 'flee', n.deadPose);

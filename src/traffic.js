@@ -2,7 +2,7 @@
 import { ROADS, HALF } from './map.js';
 import { makeCar, makeBus, makeMoto, makeTruck, makeCarro, CAR_COLORS } from './vehicles.js';
 import { ANIMALS, makeAnimal, animalPlay } from './people.js';
-import { repairCar, tailMat, brakeMat } from './cars.js';
+import { repairCar, tailMat, brakeMat, carLod } from './cars.js';
 import * as THREE from 'three';
 import { makeHuman, animateHuman, randomCivilian } from './human.js';
 import { R } from './rng.js';
@@ -461,12 +461,19 @@ export class Traffic {
     const { player, events, trains, npcs } = world;
     const pv = player.vehicle;
     // lo que queda detrás de la niebla no se dibuja
+    const cam = world.camera.position;
+    const lod = (v) => carLod(v.mesh, (v.x - cam.x) ** 2 + (v.z - cam.z) ** 2);
     for (const v of this.parked) {
       v.mesh.visible = Math.abs(v.x - player.x) < 240 && Math.abs(v.z - player.z) < 240;
+      if (!v.mesh.visible) continue;
+      lod(v);
       // estacionado con la puerta moviéndose (Gaspi se acaba de bajar)
-      if (v.doorBusy && v.mesh.visible) v.sync(dt);
+      if (v.doorBusy) v.sync(dt);
     }
-    for (const v of this.cars) v.mesh.visible = Math.abs(v.x - player.x) < 280 && Math.abs(v.z - player.z) < 280;
+    for (const v of this.cars) {
+      v.mesh.visible = Math.abs(v.x - player.x) < 280 && Math.abs(v.z - player.z) < 280;
+      if (v.mesh.visible) lod(v);
+    }
     this.recycleI = ((this.recycleI || 0) + 1) % 30;
     for (let i = this.recycleI; i < this.cars.length; i += 30) this.recycle(this.cars[i], world.interiors?.focus(player) ?? player);
     const police = world.police?.cars || [];

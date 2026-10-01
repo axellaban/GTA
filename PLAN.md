@@ -126,6 +126,22 @@ cara con foto: habría que pegarla en la cabeza del modelo); autos de artista.
 
 **R11 — Pruebas en celu real**: el dueño prueba en iPhone/Android y manda capturas; se ajusta.
 
+**R12 — ✅ Rendimiento en la compu** (el dueño la notó lenta). Medido con un cuadro en la vereda de
+Meeks (`onBeforeRender`/`onBeforeShadow` por malla): antes 4,77 M triángulos y 1.057 dibujos por cuadro
+(cámara + sombra); ahora 2,19 M y 1.087. Qué se hizo:
+- `src/chunks.js`: al final de `main.js` (`chunkScene`) las mallas fijas grandes (casas, cornisas,
+  techos: hasta 436 k triángulos cada una) se parten en cuadrados de 200 m y las instancias fijas
+  (árboles, palmeras, tanques, antenas, parabólicas, canastos…) en cuadrados de 320 m. Así la cámara
+  y la sombra del sol solo dibujan lo cercano. **Instancias nuevas que no se muevan: envolverlas en
+  `fixed(...)` de `src/city.js`** (con un número adelante, ej. `fixed(120, m)`, ni se dibujan más allá
+  de esos metros: `updateChunks`). Las que cambian en el juego (postes de `smash.js`, luces de semáforo,
+  efectos) no se marcan.
+- Autos (`carLod` en `src/cars.js`, lo llama `Traffic.update`): a más de 45 m se apagan cromados y
+  detalles y la sombra la tira solo la carrocería; a más de 140 m tampoco ruedas ni sombra.
+- Vecinos (`src/npcs.js`): se dibujan hasta 150 m (antes 190) y tiran sombra real solo a menos de 40 m.
+- Falta si sigue lenta: los brazos de los faroles (`arms` en `city.js`, 58 k triángulos, los mueve
+  `smash.js` por índice) y menos dibujos por auto (4 ruedas = 4 dibujos).
+
 ## 5b. Detalle por área (historia y notas técnicas)
 
 ### A. Personajes, perros y autos "nivel Vice City"

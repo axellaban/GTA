@@ -115,6 +115,7 @@ export function addPalms(scene, colliders, heightAt) {
     colliders.addCircle(p.x, p.z, 0.3, 6, 'tree');
   });
   for (const o of [T, C]) {
+    o.userData.static = true;
     o.castShadow = true;
     o.receiveShadow = true;
     scene.add(o);

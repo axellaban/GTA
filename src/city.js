@@ -26,6 +26,16 @@ import { Colliders } from './physics.js';
 import { FastBoxes } from './builder.js';
 import { Rng } from './rng.js';
 const ni = (g) => (g.index ? g.toNonIndexed() : g);
+// instancias que no se mueven nunca: chunks.js las reparte por cuadrado para no dibujarlas todas
+// (con un número adelante: más allá de esos metros ni se dibujan, son cosas chicas)
+export const fixed = (...ms) => {
+  const far = typeof ms[0] === 'number' ? ms.shift() : 0;
+  for (const m of ms) {
+    m.userData.static = true;
+    if (far) m.userData.far = far;
+  }
+  return ms;
+};
 
 const FLOOR_H = 3.1;
 const angOf = (ux, uz) => Math.atan2(-uz, ux); // para FastBoxes.rbox: el ancho va a lo largo de (ux, uz)
@@ -336,7 +346,7 @@ function addRoadMarkings(scene) {
     m4.makeTranslation(p.x - p.dz * off, 0.037, p.z + p.dx * off);
     ci.setMatrixAt(i, m4);
   }
-  scene.add(ci);
+  scene.add(...fixed(120, ci));
 }
 
 // ---------- Edificios ----------
@@ -757,7 +767,7 @@ function addBuildings(scene, atlas, colliders, rng, city) {
     bi.setMatrixAt(i, m4);
   });
   ti.castShadow = true;
-  scene.add(ti, bi);
+  scene.add(...fixed(220, ti, bi));
 }
 
 // ---------- Rejas ----------
@@ -870,7 +880,7 @@ function addTracks(scene) {
     m4.compose(v.set(x, 0.17, z), q, one);
     inst.setMatrixAt(i, m4);
   });
-  scene.add(inst);
+  scene.add(...fixed(160, inst));
 }
 
 // ---------- Estación: andenes, techos, puente peatonal, carrito de panchos ----------
@@ -917,7 +927,7 @@ function addStation(scene, colliders, city) {
     colliders.addCircle(x, z, 0.15, 5, 'column');
   });
   col.castShadow = true;
-  scene.add(col);
+  scene.add(...fixed(col));
   // carteles azules TEMPERLEY colgando en los andenes
   const hs = new Quads();
   D.columns.forEach(([x, z], i) => {
@@ -1053,7 +1063,7 @@ function addLamps(scene, city, rng) {
     pools.setMatrixAt(i, m4);
   });
   pools.visible = false;
-  scene.add(pools);
+  scene.add(...fixed(pools));
   city.lampPools = pools;
   // cables entre postes consecutivos y zapatillas colgadas
   const pts = [];
@@ -1088,7 +1098,7 @@ function addLamps(scene, city, rng) {
     sm.setMatrixAt(i * 2 + 1, m4);
   });
   sm.count = shoes.length * 2;
-  scene.add(sm);
+  scene.add(...fixed(120, sm));
 }
 
 export function radialTexture(inner = 'rgba(255,255,255,1)', size = 128) {
@@ -1288,11 +1298,11 @@ function addTrees(scene, colliders, rng) {
     });
     li.castShadow = ci.castShadow = true;
     li.receiveShadow = true;
-    scene.add(ci, li);
+    scene.add(...fixed(ci, li));
     for (const g of trunks) {
       g.mesh.castShadow = true;
       g.mesh.receiveShadow = true;
-      scene.add(g.mesh);
+      scene.add(...fixed(g.mesh));
     }
   }
   // cazuelas de tierra en la vereda, alineadas con la calle
@@ -1306,7 +1316,7 @@ function addTrees(scene, colliders, rng) {
       cm.setMatrixAt(i, m4);
     });
     cm.receiveShadow = true;
-    scene.add(cm);
+    scene.add(...fixed(140, cm));
   }
 }
 
@@ -1328,7 +1338,7 @@ function addClutter(scene, rng) {
     m4.setPosition(x, 0.15 + s * 0.6, z);
     inst.setMatrixAt(i, m4);
   });
-  scene.add(inst);
+  scene.add(...fixed(120, inst));
 }
 
 function addBounds(colliders) {
