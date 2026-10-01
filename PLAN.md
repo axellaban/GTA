@@ -114,8 +114,11 @@ Falta: carteles con el nombre de la calle que se caen. ✅ El tránsito frena an
 vuelta (`obs` en `Traffic.update`, `ufo.block`, `smash.obstacles`); la nave apoyada tiene colisionador
 (`groundBlock` en `src/ufo.js`).
 
-**R6 — Lugares**: lavadero de autos (cambia color y saca estrellas, como chapa y pintura), bar y
-pizzería con interior (`src/interiors.js`).
+**R6 — ✅ Lugares**: lavadero de autos (`src/carwash.js`: pórtico con rodillos sobre el carril frente
+a un local con cartel de lavadero; $700, sale de otro color y con hasta 2 estrellas la cana te pierde;
+no arregla golpes), bar y pizzería con interior (`buildBar`/`buildPizzeria` en `src/interiors.js`, en
+el local real con cartel de bar/café o pizzería más cerca de la estación; se pide en el mostrador,
+`MENUS`). Íconos `lavadero`, `bar` y `pizzeria` en `src/icons.js`.
 
 **R7 — ✅ Guardado**: `saveGame` en `src/main.js` guarda `inv` y `ammo` enteros, así que ya incluye
 ametralladora, bazuca y su munición.

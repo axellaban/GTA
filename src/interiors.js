@@ -3,6 +3,9 @@
 // - Hall de la estación Temperley: boletería, molinetes, bancos y el cartel de próximos trenes.
 //   Tiene dos salidas: a la calle y a los andenes.
 // - Un kiosco del barrio: mostrador con reja, golosinas, heladera y el kiosquero, que te vende.
+// - Un bar (el más cerca de la estación con cartel de bar o café): barra, botellas, la tele con el
+//   partido del Gasolero y parroquianos; en la barra se pide.
+// - Una pizzería: horno de ladrillo, mostrador con las pizzas, mesas con mantel a cuadros.
 // Los ambientes tienen luz pareja de tubo (materiales sin iluminación, con el sombreado de cada
 // cara ya puesto en los colores) y paredes con colisión.
 import * as THREE from 'three';
@@ -13,6 +16,60 @@ import { R } from './rng.js';
 
 const HALL = { x: 1500, z: 1500 };
 const KIOSCO = { x: 1560, z: 1500 };
+const BAR = { x: 1620, z: 1500 };
+const PIZZA = { x: 1680, z: 1500 };
+
+// lo que se vende en cada lugar: [texto, precio, vida]
+const MENUS = {
+  kiosco: { who: 'El kiosquero: "¿Qué llevás, maestro?"', items: [['Alfajor triple', 900, 15], ['Gaseosa', 1200, 25]] },
+  bar: { who: 'El mozo: "¿Qué te sirvo, Gaspi?"', items: [['Fernet con coca', 2500, 35], ['Porrón de rubia', 1800, 25], ['Café con medialunas', 1400, 15]] },
+  pizza: { who: 'El pizzero: "¿Qué sale, jefe?"', items: [['Porción de muzza', 1500, 30], ['Porción de fugazzeta', 1800, 35], ['Fainá', 700, 10], ['Grande de muzza', 7000, 100]] },
+};
+
+// el local real más cerca de la estación cuyo cartel dice `re` (y la puerta: una de pickups.shops)
+function realShop(city, pickups, re) {
+  const door = city.spots.stationDoor;
+  const signs = (city.shopSigns || []).filter((s) => re.test(s.name || ''));
+  signs.sort((a, b) => Math.hypot(a.x - door.x, a.z - door.z) - Math.hypot(b.x - door.x, b.z - door.z));
+  for (const sgn of signs) {
+    const shop = (pickups.shops || []).reduce((best, s) => (Math.hypot(s.x - sgn.x, s.z - sgn.z) < (best ? Math.hypot(best.x - sgn.x, best.z - sgn.z) : 7) ? s : best), null);
+    if (shop) return { name: sgn.name, shop };
+  }
+  return null;
+}
+
+// cuatro paredes, techo y la luz de tubo; el anillo de colisión va aparte
+function roomBox(F, W, D, H, wall, ceil = 0xe8e8e8) {
+  F.box(W, H, 0.15, wall, 0, H / 2, -D / 2);
+  F.box(W, H, 0.15, wall, 0, H / 2, D / 2);
+  F.box(0.15, H, D, wall, -W / 2, H / 2, 0);
+  F.box(0.15, H, D, wall, W / 2, H / 2, 0);
+  F.box(W, 0.15, D, ceil, 0, H, 0);
+  F.box(1.2, 0.05, 0.2, 0xfffbe8, 0, H - 0.1, 0);
+}
+function roomWalls(colliders, at, W, D) {
+  colliders.addRing(
+    [
+      [at.x - W / 2 + 0.12, at.z - D / 2 + 0.12],
+      [at.x + W / 2 - 0.12, at.z - D / 2 + 0.12],
+      [at.x + W / 2 - 0.12, at.z + D / 2 - 0.12],
+      [at.x - W / 2 + 0.12, at.z + D / 2 - 0.12],
+    ],
+    3,
+    'wall',
+  );
+}
+// mesa con dos sillas (a los costados en x)
+function table(F, x, z, top = 0x6d4c33) {
+  F.box(0.8, 0.05, 0.8, top, x, 0.75, z);
+  F.box(0.08, 0.72, 0.08, 0x2a2a2a, x, 0.36, z);
+  F.box(0.5, 0.04, 0.5, 0x2a2a2a, x, 0.02, z);
+  for (const s of [-1, 1]) {
+    F.box(0.42, 0.05, 0.42, 0x5a3a22, x + s * 0.75, 0.46, z);
+    for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) F.box(0.04, 0.44, 0.04, 0x3a2414, x + s * 0.75 + a * 0.17, 0.22, z + b * 0.17);
+    F.box(0.04, 0.5, 0.42, 0x5a3a22, x + s * 0.94, 0.72, z);
+  }
+}
 
 // sombreado fijo por cara: arriba claro, abajo oscuro, costados intermedios
 function shaded(F) {
@@ -91,6 +148,8 @@ export class Interiors {
     this.doors = [];
     this.buildHall(colliders);
     this.buildKiosco(colliders, pickups);
+    this.buildBar(colliders, pickups);
+    this.buildPizzeria(colliders, pickups);
     this.fade = document.createElement('div');
     Object.assign(this.fade.style, { position: 'fixed', inset: '0', background: '#000', opacity: '0', pointerEvents: 'none', transition: 'opacity 0.4s', zIndex: '40' });
     document.body.appendChild(this.fade);
@@ -173,10 +232,10 @@ export class Interiors {
     board.rotation.y = -Math.PI / 2;
     g.add(board);
     // gente adentro
-    this.people.push(extra(g, W / 2 - 1.25, 1.2, -Math.PI / 2, 'sit'));
-    this.people.push(extra(g, W / 2 - 3, -0.4, Math.PI / 2, 'idle'));
-    this.people.push(extra(g, -W / 2 + 1.2, -1.8, -Math.PI / 2, 'idle'));
-    this.people.push(extra(g, -2, 1.5, 0.6, 'phone'));
+    this.people.push({ ...extra(g, W / 2 - 1.25, 1.2, -Math.PI / 2, 'sit'), room: 'hall' });
+    this.people.push({ ...extra(g, W / 2 - 3, -0.4, Math.PI / 2, 'idle'), room: 'hall' });
+    this.people.push({ ...extra(g, -W / 2 + 1.2, -1.8, -Math.PI / 2, 'idle'), room: 'hall' });
+    this.people.push({ ...extra(g, -2, 1.5, 0.6, 'phone'), room: 'hall' });
     this.scene.add(g);
     this.hall = g;
     // paredes con colisión (en el marco del mundo)
@@ -277,7 +336,7 @@ export class Interiors {
     sign(g, this.kioscoName, { w: 2.6, h: 0.45, x: 0, y: 2.6, z: -D / 2 + 0.09, bg: '#c62828', font: 60 });
     sign(g, 'QUINIELA · CARGÁ TU SUBE', { w: 2.4, h: 0.35, x: W / 2 - 0.09, y: 2.4, z: 1.1, rot: -Math.PI / 2, bg: '#0f5fa8', font: 46 });
     // el kiosquero
-    this.people.push(extra(g, 0.3, -1.4, 0, 'idle'));
+    this.people.push({ ...extra(g, 0.3, -1.4, 0, 'idle'), room: 'kiosco' });
     this.scene.add(g);
     colliders.addRing(
       [
@@ -292,6 +351,182 @@ export class Interiors {
     colliders.addSegment(KIOSCO.x - W / 2, KIOSCO.z - 0.3, KIOSCO.x + W / 2, KIOSCO.z - 0.3, 1, 'wall');
     this.counter = { x: KIOSCO.x, z: KIOSCO.z + 0.2 };
     this.doors.push({ room: 'kiosco', label: `Entrar al kiosco "${this.kioscoName}"`, outside: { x: shop.x, z: shop.z, face: Math.atan2(shop.nx, shop.nz) }, inside: { x: KIOSCO.x, z: KIOSCO.z + D / 2 - 1.1, face: Math.PI }, exit: 'Salir a la calle' });
+  }
+
+  // ---------- Bar ----------
+  buildBar(colliders, pickups) {
+    const real = realShop(this.city, pickups, /\bBAR\b|CAF[EÉ]|BODEG|CERVEC|\bPUB\b|CONFITER/i);
+    if (!real) return;
+    this.barName = real.name;
+    const g = new THREE.Group();
+    g.position.set(BAR.x, 0, BAR.z);
+    const F = new FastBoxes();
+    const W = 7;
+    const D = 6.4;
+    const H = 3.2;
+    roomBox(F, W, D, H, 0xe8dcc0, 0xd8cfbf);
+    // zócalo de madera
+    for (const [w, d, x, z] of [[W, 0.04, 0, -D / 2 + 0.1], [W, 0.04, 0, D / 2 - 0.1], [0.04, D, -W / 2 + 0.1, 0], [0.04, D, W / 2 - 0.1, 0]]) F.box(w, 1.1, d, 0x5d3a1a, x, 0.55, z);
+    // la barra
+    const bz = -D / 2 + 1.5;
+    F.box(W - 2, 1.08, 0.6, 0x6d4422, -0.6, 0.54, bz);
+    F.box(W - 1.9, 0.06, 0.7, 0x3e2510, -0.6, 1.1, bz);
+    F.box(W - 2, 0.06, 0.06, 0xc9a227, -0.6, 0.18, bz + 0.33);
+    // banquetas
+    for (let k = 0; k < 5; k++) {
+      const x = -W / 2 + 1.3 + k * 0.95;
+      F.box(0.36, 0.06, 0.36, 0x8b1a1a, x, 0.76, bz + 0.75);
+      F.box(0.06, 0.74, 0.06, 0x2a2a2a, x, 0.37, bz + 0.75);
+      F.box(0.3, 0.03, 0.3, 0x2a2a2a, x, 0.02, bz + 0.75);
+    }
+    // estantes con botellas atrás de la barra (y el espejo)
+    F.box(W - 2.4, 1.3, 0.03, 0x9fb6c0, -0.6, 1.9, -D / 2 + 0.1);
+    const bottles = [0x1b5e20, 0x8d5524, 0xc9a227, 0x4e342e, 0xd7ccc8, 0x2e7d32, 0x6d1b1b, 0xffb300];
+    for (let row = 0; row < 3; row++) {
+      F.box(W - 2.2, 0.04, 0.28, 0x3e2510, -0.6, 1.35 + row * 0.5, -D / 2 + 0.22);
+      for (let k = 0; k < 18; k++) F.box(0.08, 0.3 - (k % 3) * 0.04, 0.08, bottles[(k * 5 + row) % bottles.length], -W / 2 + 1.35 + k * 0.27, 1.52 + row * 0.5, -D / 2 + 0.24);
+    }
+    // canilla de cerveza y la heladera
+    F.box(0.12, 0.35, 0.12, 0xc0c0c0, 0.8, 1.3, bz);
+    F.box(0.8, 1.9, 0.6, 0xd0d0d0, W / 2 - 0.6, 0.95, -D / 2 + 0.5);
+    // mesas
+    table(F, -1.6, 1.4);
+    table(F, 1.6, 1.4);
+    g.add(shaded(F));
+    const fl = new THREE.Mesh(new THREE.PlaneGeometry(W, D).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: floorTex('#7a5a3c', '#6a4c31', 10) }));
+    fl.material.map.repeat.set(W / 2, D / 2);
+    fl.position.y = 0.01;
+    g.add(fl);
+    sign(g, this.barName, { w: 3, h: 0.5, x: -0.6, y: 2.85, z: -D / 2 + 0.09, bg: '#3e2510', fg: '#ffd27a', font: 60 });
+    // la tele con el partido del Gasolero
+    const tv = canvasTex(320, 180, (c, w, h) => {
+      c.fillStyle = '#2e7d32';
+      c.fillRect(0, 0, w, h);
+      c.strokeStyle = 'rgba(255,255,255,0.7)';
+      c.lineWidth = 3;
+      c.strokeRect(10, 10, w - 20, h - 20);
+      c.beginPath();
+      c.arc(w / 2, h / 2, 26, 0, Math.PI * 2);
+      c.moveTo(w / 2, 10);
+      c.lineTo(w / 2, h - 10);
+      c.stroke();
+      c.fillStyle = 'rgba(0,0,0,0.65)';
+      c.fillRect(8, 8, 190, 30);
+      c.fillStyle = '#ffffff';
+      c.font = 'bold 20px Arial';
+      c.fillText('TEMPERLEY 2 - 0 BANFIELD', 14, 30);
+    });
+    const tvm = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 0.75), new THREE.MeshBasicMaterial({ map: tv }));
+    tvm.position.set(W / 2 - 0.1, 2.3, 0.6);
+    tvm.rotation.y = -Math.PI / 2;
+    g.add(tvm);
+    sign(g, 'EL GASOLERO · TEMPERLEY', { w: 2.4, h: 0.4, x: -W / 2 + 0.09, y: 2.4, z: 0.8, rot: Math.PI / 2, bg: '#5bb8e8', fg: '#ffffff', font: 46 });
+    // el mozo y los parroquianos mirando el partido
+    this.people.push({ ...extra(g, -0.6, bz - 0.7, 0, 'idle'), room: 'bar' });
+    for (const [x, face] of [[-W / 2 + 2.25, -Math.PI / 2], [-W / 2 + 4.15, -Math.PI / 2]]) {
+      const p = extra(g, x, bz + 0.8, face + Math.PI, 'sit');
+      p.h.root.position.y = 0.3;
+      this.people.push({ ...p, room: 'bar' });
+    }
+    const p = extra(g, 1.6 - 0.75, 1.4, Math.PI / 2, 'sit');
+    this.people.push({ ...p, room: 'bar' });
+    this.scene.add(g);
+    roomWalls(colliders, BAR, W, D);
+    colliders.addSegment(BAR.x - W / 2, BAR.z + bz + 0.35, BAR.x + W / 2 - 1.1, BAR.z + bz + 0.35, 1, 'wall');
+    this.barCounter = { x: BAR.x + 0.4, z: BAR.z + bz + 0.75 };
+    this.doors.push({ room: 'bar', label: `Entrar al bar "${this.barName}"`, outside: { x: real.shop.x, z: real.shop.z, face: Math.atan2(real.shop.nx, real.shop.nz) }, inside: { x: BAR.x, z: BAR.z + D / 2 - 1.1, face: Math.PI }, exit: 'Salir a la calle' });
+  }
+
+  // ---------- Pizzería ----------
+  buildPizzeria(colliders, pickups) {
+    const real = realShop(this.city, pickups, /PIZZ/i);
+    if (!real) return;
+    this.pizzaName = real.name;
+    const g = new THREE.Group();
+    g.position.set(PIZZA.x, 0, PIZZA.z);
+    const F = new FastBoxes();
+    const W = 6.6;
+    const D = 6.2;
+    const H = 3.1;
+    roomBox(F, W, D, H, 0xf4f1ea);
+    // guarda de azulejos rojos
+    for (const [w, d, x, z] of [[W, 0.04, 0, -D / 2 + 0.1], [W, 0.04, 0, D / 2 - 0.1], [0.04, D, -W / 2 + 0.1, 0], [0.04, D, W / 2 - 0.1, 0]]) F.box(w, 0.18, d, 0xc62828, x, 1.45, z);
+    // horno de ladrillo con la boca encendida
+    F.box(2.0, 1.6, 1.4, 0xa0522d, W / 2 - 1.2, 0.8, -D / 2 + 0.8);
+    F.box(1.7, 0.5, 1.2, 0x8b4513, W / 2 - 1.2, 1.85, -D / 2 + 0.8);
+    F.box(0.9, 0.55, 0.05, 0x1a0d05, W / 2 - 1.2, 1.15, -D / 2 + 1.52);
+    F.box(0.7, 0.2, 0.04, 0xff8a1a, W / 2 - 1.2, 1.0, -D / 2 + 1.55);
+    F.box(0.3, 1.3, 0.3, 0x6d3b1e, W / 2 - 1.2, 2.45, -D / 2 + 0.6);
+    // mostrador con vitrina
+    const cz = -D / 2 + 1.9;
+    F.box(3.4, 1.0, 0.7, 0xd9d2c4, -1.1, 0.5, cz);
+    F.box(3.4, 0.04, 0.72, 0x2a2a2a, -1.1, 1.02, cz);
+    F.box(3.3, 0.35, 0.03, 0xbcd6e0, -1.1, 1.22, cz + 0.33);
+    // mesas con mantel a cuadros
+    table(F, -1.5, 1.3, 0xffffff);
+    table(F, 1.6, 1.3, 0xffffff);
+    g.add(shaded(F));
+    const fl = new THREE.Mesh(new THREE.PlaneGeometry(W, D).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: floorTex('#efefef', '#262626', 8) }));
+    fl.material.map.repeat.set(W / 2, D / 2);
+    fl.position.y = 0.01;
+    g.add(fl);
+    // manteles y pizzas (planos con dibujo)
+    const cloth = canvasTex(128, 128, (c, w) => {
+      for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++) {
+        c.fillStyle = (i + j) % 2 ? '#c62828' : '#ffffff';
+        c.fillRect(i * 16, j * 16, 16, 16);
+      }
+    });
+    for (const x of [-1.5, 1.6]) {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(0.95, 0.95).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: cloth }));
+      m.position.set(x, 0.78, 1.3);
+      g.add(m);
+    }
+    const pizzaTex = (fug) =>
+      canvasTex(128, 128, (c, w) => {
+        c.fillStyle = '#d9a35a';
+        c.beginPath();
+        c.arc(64, 64, 62, 0, Math.PI * 2);
+        c.fill();
+        c.fillStyle = fug ? '#f3ead2' : '#f7e08a';
+        c.beginPath();
+        c.arc(64, 64, 54, 0, Math.PI * 2);
+        c.fill();
+        c.fillStyle = fug ? '#c9b98a' : '#c0392b';
+        for (let k = 0; k < 26; k++) {
+          const a = Math.random() * Math.PI * 2;
+          const r = Math.random() * 46;
+          c.beginPath();
+          c.arc(64 + Math.cos(a) * r, 64 + Math.sin(a) * r, fug ? 6 : 3, 0, Math.PI * 2);
+          c.fill();
+        }
+        if (!fug) {
+          c.fillStyle = '#2e5d1e';
+          for (let k = 0; k < 6; k++) c.fillRect(30 + Math.random() * 68, 30 + Math.random() * 68, 4, 4);
+        }
+      });
+    const pz = new THREE.CircleGeometry(0.22, 20).rotateX(-Math.PI / 2);
+    [false, true, false].forEach((fug, i) => {
+      const m = new THREE.Mesh(pz, new THREE.MeshBasicMaterial({ map: pizzaTex(fug) }));
+      m.position.set(-2.2 + i * 1.1, 1.05, cz);
+      g.add(m);
+    });
+    const onTable = new THREE.Mesh(pz, new THREE.MeshBasicMaterial({ map: pizzaTex(false) }));
+    onTable.position.set(1.6, 0.8, 1.3);
+    g.add(onTable);
+    sign(g, this.pizzaName, { w: 3, h: 0.5, x: -1.1, y: 2.6, z: -D / 2 + 0.09, bg: '#c62828', fg: '#ffffff', font: 60 });
+    sign(g, 'MUZZA · FUGAZZETTA · FAINÁ · NAPOLITANA', { w: 3, h: 0.36, x: -W / 2 + 0.09, y: 2.3, z: 0.6, rot: Math.PI / 2, bg: '#1b1b1b', fg: '#ffd27a', font: 34 });
+    this.people.push({ ...extra(g, -1.1, cz - 0.75, 0, 'idle'), room: 'pizza' });
+    const p = extra(g, -1.5 - 0.75, 1.3, -Math.PI / 2, 'sit');
+    this.people.push({ ...p, room: 'pizza' });
+    const q = extra(g, 1.6 + 0.75, 1.3, Math.PI / 2, 'sit');
+    this.people.push({ ...q, room: 'pizza' });
+    this.scene.add(g);
+    roomWalls(colliders, PIZZA, W, D);
+    colliders.addSegment(PIZZA.x - W / 2, PIZZA.z + cz + 0.38, PIZZA.x + 0.6, PIZZA.z + cz + 0.38, 1, 'wall');
+    colliders.addSegment(PIZZA.x + W / 2 - 2.2, PIZZA.z - D / 2 + 1.5, PIZZA.x + W / 2, PIZZA.z - D / 2 + 1.5, 1.6, 'wall');
+    this.pizzaCounter = { x: PIZZA.x - 1.1, z: PIZZA.z + cz + 0.75 };
+    this.doors.push({ room: 'pizza', label: `Entrar a la pizzería "${this.pizzaName}"`, outside: { x: real.shop.x, z: real.shop.z, face: Math.atan2(real.shop.nx, real.shop.nz) }, inside: { x: PIZZA.x, z: PIZZA.z + D / 2 - 1.1, face: Math.PI }, exit: 'Salir a la calle' });
   }
 
   // ---------- Entrar y salir ----------
@@ -311,7 +546,9 @@ export class Interiors {
       return { text: d.label, run: () => this.go(world, d, true) };
     }
     const d = this.inside;
-    if (d.room === 'kiosco' && near(this.counter, 0.9)) return { text: 'Comprar en el kiosco', run: () => this.shop(world) };
+    if (d.room === 'kiosco' && near(this.counter, 0.9)) return { text: 'Comprar en el kiosco', run: () => this.shop(world, 'kiosco') };
+    if (d.room === 'bar' && near(this.barCounter, 1.1)) return { text: 'Pedir en la barra', run: () => this.shop(world, 'bar') };
+    if (d.room === 'pizza' && near(this.pizzaCounter, 1.1)) return { text: 'Pedir en el mostrador', run: () => this.shop(world, 'pizza') };
     if (d.room === 'hall' && near(this.hallPlatformExit, 1.8)) return { text: 'Pasar a los andenes', run: () => this.go(world, d, false, 'andenes') };
     if (near(d.inside, 1.4)) return { text: d.exit, run: () => this.go(world, d, false) };
     return null;
@@ -357,25 +594,23 @@ export class Interiors {
     }, 420);
   }
 
-  shop(world) {
+  shop(world, kind = 'kiosco') {
     const { player: P, hud, audio } = world;
-    const buy = (price, hp, text) => () => {
+    const menu = MENUS[kind];
+    const buy = (name, price, hp) => () => {
       if (P.money < price) return hud.toast('No te alcanza');
       P.addMoney(-price);
       P.health = Math.min(100, P.health + hp);
       audio.plata();
-      hud.toast(text, 2);
+      hud.toast(hp >= 100 ? `${name}: vida al máximo` : `${name}: +${hp} de vida`, 2);
     };
-    hud.ask('El kiosquero: "¿Qué llevás, maestro?"', [
-      { label: 'Alfajor triple $900 (+15 vida)', run: buy(900, 15, '¡Un alfajor triple! +15 de vida') },
-      { label: 'Gaseosa $1.200 (+25 vida)', run: buy(1200, 25, 'Gaseosa bien fría: +25 de vida') },
-      { label: 'Nada, gracias', run: () => {} },
-    ], 10);
+    const items = menu.items.map(([name, price, hp]) => ({ label: `${name} $${price.toLocaleString('es-AR')} (${hp >= 100 ? 'vida al máximo' : `+${hp} vida`})`, run: buy(name, price, hp) }));
+    hud.ask(menu.who, [...items, { label: 'Nada, gracias', run: () => {} }], 10);
   }
 
   update(dt, world) {
     if (!this.inside) return;
-    for (const p of this.people) animateHuman(p.h, dt, 0, p.pose === 'idle' ? 'walk' : p.pose);
+    for (const p of this.people) if (!p.room || p.room === this.inside.room) animateHuman(p.h, dt, 0, p.pose === 'idle' ? 'walk' : p.pose);
     this.boardT -= dt;
     if (this.inside.room === 'hall' && this.boardT <= 0) {
       this.boardT = 5;

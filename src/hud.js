@@ -79,7 +79,11 @@ export class Hud {
     add('tren', world.city?.spots.stationDoor);
     add('pancho', world.city?.spots.pancho);
     for (const n of world.npcs?.vendors || []) if (!n.dead && !n.killed) add('medias', n);
-    for (const d of world.interiors?.doors || []) if (d.room === 'kiosco') add('kiosco', d.outside);
+    for (const d of world.interiors?.doors || []) {
+      const icon = { kiosco: 'kiosco', bar: 'bar', pizza: 'pizzeria' }[d.room];
+      if (icon) add(icon, d.outside);
+    }
+    if (world.carwash?.x != null) add('lavadero', world.carwash);
     for (const m of world.races?.markers() || []) add('picada', m);
     for (const m of world.events?.markers() || []) add('corte', m);
     const r = world.rescue;

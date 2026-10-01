@@ -67,6 +67,70 @@ export const ICONS = {
       }
     },
   },
+  lavadero: {
+    bg: '#1e6fd0',
+    label: 'Lavadero',
+    draw(g) {
+      // auto con gotas
+      g.fillStyle = WHITE;
+      rrect(g, 14, 33, 36, 11, 4);
+      g.fill();
+      path(g, [[21, 33], [26, 25], [39, 25], [44, 33]]);
+      g.fill();
+      for (const x of [22, 42]) {
+        g.beginPath();
+        g.arc(x, 45, 4, 0, Math.PI * 2);
+        g.fill();
+      }
+      for (const [x, y] of [[22, 13], [32, 9], [42, 13]]) {
+        path(g, [[x, y], [x + 3.5, y + 6], [x - 3.5, y + 6]]);
+        g.fill();
+        g.beginPath();
+        g.arc(x, y + 7, 3.6, 0, Math.PI * 2);
+        g.fill();
+      }
+    },
+  },
+  bar: {
+    bg: '#6d3b1e',
+    label: 'Bar',
+    draw(g) {
+      // chopp de cerveza con espuma
+      g.fillStyle = '#ffc93c';
+      rrect(g, 18, 20, 22, 30, 3);
+      g.fill();
+      g.fillStyle = WHITE;
+      for (const [x, r] of [[21, 5], [29, 6], [37, 5]]) {
+        g.beginPath();
+        g.arc(x, 19, r, 0, Math.PI * 2);
+        g.fill();
+      }
+      g.strokeStyle = WHITE;
+      g.lineWidth = 4;
+      g.beginPath();
+      g.arc(42, 34, 7, -Math.PI / 2, Math.PI / 2);
+      g.stroke();
+    },
+  },
+  pizzeria: {
+    bg: '#d84315',
+    label: 'Pizzería',
+    draw(g) {
+      // porción de pizza
+      g.fillStyle = '#f2c27a';
+      path(g, [[14, 18], [50, 18], [32, 52]]);
+      g.fill();
+      g.fillStyle = '#ffe082';
+      path(g, [[18, 22], [46, 22], [32, 47]]);
+      g.fill();
+      g.fillStyle = '#c62828';
+      for (const [x, y] of [[26, 27], [37, 28], [32, 37]]) {
+        g.beginPath();
+        g.arc(x, y, 3.3, 0, Math.PI * 2);
+        g.fill();
+      }
+    },
+  },
   gym: {
     bg: '#e0a400',
     label: 'Gym El Kaiser',

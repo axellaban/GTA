@@ -40,6 +40,7 @@ import { R } from './rng.js';
 import { setupInstall } from './install.js';
 import { Transit } from './transit.js';
 import { Interiors } from './interiors.js';
+import { CarWash } from './carwash.js';
 import { Races } from './races.js';
 import { Missions, makeMarker } from './missions.js';
 
@@ -426,6 +427,9 @@ const garages = [];
   }
 }
 world.garages = garages;
+// lavadero de autos (sale de otro color; con hasta dos estrellas la cana te pierde)
+const carwash = new CarWash(scene, city, pickups);
+world.carwash = carwash;
 
 // ---------- Gym El Kaiser, a pasos de la estación ----------
 const gym = new Gym(scene, city.colliders, npcs, heightAt);
@@ -1194,6 +1198,7 @@ function frame(now) {
   for (const s of pickups.shops || []) if (s.cool > 0) s.cool -= dt;
   updateJob(dt);
   updateGarages();
+  carwash.update(dt, world);
   updateArmeria();
   checkCheats();
   gym.update(dt, world);
