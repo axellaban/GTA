@@ -108,6 +108,20 @@ export function loadAnimals() {
     .catch((e) => console.warn('No cargaron los animales', e));
 }
 
+// Las animaciones vienen del zorro: se sacan las pistas de huesos que el modelo no tiene (la nariz),
+// una sola vez por animal, para que three no avise en cada clon.
+const CLIPS = {};
+function clipFor(kind, name, src) {
+  const key = kind + name;
+  if (key in CLIPS) return CLIPS[key];
+  const c = ANIMALS.clips.find((x) => x.name === name);
+  if (!c) return (CLIPS[key] = null);
+  const names = new Set();
+  src.traverse((o) => names.add(o.name));
+  const tracks = c.tracks.filter((t) => names.has(THREE.PropertyBinding.parseTrackName(t.name).nodeName));
+  return (CLIPS[key] = new THREE.AnimationClip(c.name, c.duration, tracks));
+}
+
 // un animal con su mezclador: { g, mixer, actions, cur }. length: largo del cuerpo en metros.
 export function makeAnimal(kind, { length = 0.95, tint = null } = {}) {
   const src = ANIMALS[kind];
@@ -131,7 +145,7 @@ export function makeAnimal(kind, { length = 0.95, tint = null } = {}) {
   const mixer = new THREE.AnimationMixer(model);
   const actions = {};
   for (const [n, clip] of [['idle', 'Idle'], ['walk', 'Walk'], ['run', 'Run'], ['sit', 'Sit'], ['bark', 'Bark'], ['death', 'Death']]) {
-    const c = ANIMALS.clips.find((x) => x.name === clip);
+    const c = clipFor(kind, clip, src);
     if (c) actions[n] = mixer.clipAction(c);
   }
   if (actions.death) {
