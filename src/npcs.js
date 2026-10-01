@@ -627,7 +627,9 @@ export class Npcs {
       if (dp > 4) return n.type === 'zombie' ? n.vmax : 2;
       return 0;
     }
-    if (dp > 1.25) return n.type === 'zombie' ? n.vmax * 1.6 : 4.2;
+    // los grandotes (Ciro) pegan desde más lejos, más fuerte, y te tiran
+    const reach = n.reach ?? 1.25;
+    if (dp > reach) return n.type === 'zombie' ? n.vmax * 1.6 : n.chaseV ?? 4.2;
     n.heading = Math.atan2(player.x - n.x, player.z - n.z);
     if (n.fightCd <= 0 && !n.act) {
       const pose = R.pick(['jab', 'cross', 'cross', 'hook']);
@@ -636,10 +638,11 @@ export class Npcs {
     }
     if (n.act && !n.act.hit && n.act.t / n.act.dur > 0.45) {
       n.act.hit = true;
-      if (dp < 1.6 && player.blockT <= 0) {
-        const dmg = n.type === 'zombie' ? 4 : n.act.pose === 'hook' ? 10 : 7;
-        player.hurt(dmg, 'Te cagaron a trompadas');
-        player.hitReact?.(n.x, n.z);
+      if (dp < reach + 0.35 && player.blockT <= 0) {
+        const dmg = (n.type === 'zombie' ? 4 : n.act.pose === 'hook' ? 10 : 7) * (n.dmgMul ?? 1);
+        player.hurt(dmg, n.killMsg ?? 'Te cagaron a trompadas');
+        if (n.knocks && n.act.pose === 'hook') player.knockDown?.(1.6, (player.x - n.x) / (dp || 1), (player.z - n.z) / (dp || 1));
+        else player.hitReact?.(n.x, n.z);
         this.audio.golpe(0.5);
       }
     }

@@ -660,7 +660,7 @@ export function makeHuman(o = {}) {
     // ---- pelvis (pantalón o pollera) y torso (lo de arriba) ----
     const pelvisColor = bottom === 'skirt' || bottom === 'dress' ? (o.skirt ?? pants) : pants;
     loft(m, { keys: TK, to: 1.06, seg: seg(20), p: 2.4, capStart: true, color: pelvisColor, cell: bottom === 'jeans' ? rect(CELL.denim) : fab, weights: (x, y) => torsoW(y), seam });
-    const topCell = top === 'jersey' ? rect(7 + JERSEYS.indexOf(o.jersey)) : fab;
+    const topCell = top === 'jersey' ? rect(7 + JERSEYS.indexOf(o.jersey)) : top === 'none' ? skinCell : fab;
     // saco: hombros rectos con hombrera, que cubren el hombro redondo del brazo
     const TKtop = top === 'suit' ? TK.map((k) => [k[0], k[1] + 0.045 * smooth(1.4, 1.53, k[0]) * (1 - smooth(1.575, 1.61, k[0])), ...k.slice(2)]) : TK;
     const topGrow = (t) => (jacketed ? 0.012 : 0.003) * smooth(1.61, 1.55, t) + (t < 1.1 ? 0.004 : 0);
@@ -670,6 +670,14 @@ export function makeHuman(o = {}) {
       seg: seg(20),
       p: 2.4,
       color: (t, a, x, y, z) => {
+        // en cuero: pectorales y abdominales marcados con sombra
+        if (top === 'none') {
+          const fa = Math.abs(Math.atan2(Math.sin(a), Math.cos(a)));
+          if (fa < 0.62 && Math.abs(t - 1.355) < 0.012) return tone(skin, 0.82);
+          if (fa < 0.03 && t > 1.04 && t < 1.34) return tone(skin, 0.84);
+          if (fa < 0.3 && t > 1.04 && t < 1.32 && [1.115, 1.185, 1.255].some((b) => Math.abs(t - b) < 0.008)) return tone(skin, 0.86);
+          return skin;
+        }
         if (top === 'tank' && t > 1.5 && Math.abs(Math.sin(a)) > 0.75) return skin;
         // escote en V para las mujeres, cuello redondo para el resto
         if (female && top !== 'police' && t > 1.5 && Math.abs(a) < 0.35 - (1.6 - t) * 1.2) return skin;
@@ -709,7 +717,7 @@ export function makeHuman(o = {}) {
       const k = o.muscle ? (t > 1.28 ? 1.5 : t > 1.02 ? 1.3 : 1.1) : 1;
       return [t, a * k, b * k, c * k];
     });
-    const sleeveTo = top === 'tank' ? 1.62 : top === 'tshirt' || top === 'jersey' ? (female ? 1.46 : 1.38) : 1.0;
+    const sleeveTo = top === 'tank' || top === 'none' ? 1.62 : top === 'tshirt' || top === 'jersey' ? (female ? 1.46 : 1.38) : 1.0;
     for (const [s, ua, fa, hand] of [
       [-1, 'uaR', 'faR', 'handR'],
       [1, 'uaL', 'faL', 'handL'],

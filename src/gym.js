@@ -99,6 +99,9 @@ function findLot(colliders) {
   return null;
 }
 
+// lo que randomCivilian sortea y pisaría la musculosa (o el cuero): camisetas, buzos, gorras
+const CLEAN = { jersey: null, hood: null, jacket: null, tie: null, police: false, longSleeves: false, cap: null, hat: null, helmet: null };
+
 const LINES = ['¡Vamos que se puede!', '¡Una más, una más!', '¿Venís a entrenar, Gaspi? La primera es gratis', '¡Esto es El Kaiser, papá!', 'Sin dolor no hay gloria', '¡Arriba ese pecho!', 'Hoy es día de pierna'];
 
 export class Gym {
@@ -192,13 +195,17 @@ export class Gym {
       { lx: 3.2, lz: -0.6, ex: 'press', shirt: 0xf2c21a, bar: true },
       { lx: -1.8, lz: 1.8, ex: 'press', shirt: 0x222222, bar: true, female: true },
       { lx: 2.2, lz: 2.4, ex: null, shirt: 0x151515, kaiser: true },
+      // Ciro, el profe: en cuero, el doble de grande que cualquiera y con ganas de pelear
+      { lx: -0.5, lz: 3.2, ex: null, ciro: true },
     ];
   }
 
   spawn(s) {
     const p = this.world(s.lx, s.lz);
+    if (s.ciro) return this.spawnCiro(s);
     const look = {
       ...randomCivilian(),
+      ...CLEAN,
       female: !!s.female,
       muscle: true,
       top: 'tank',
@@ -231,8 +238,29 @@ export class Gym {
     s.home = p;
   }
 
+  spawnCiro(s) {
+    const p = this.world(s.lx, s.lz);
+    const look = { ...randomCivilian(),
+      ...CLEAN, female: false, muscle: true, top: 'none', bottom: 'shorts', shorts: 0x151515, pants: 0x151515, hairStyle: 'buzz', hair: 0x1a1410, skin: 0xc68a5e, beard: true, stubble: true, glasses: false, lipstick: false, scale: 2 };
+    const n = this.npcs.spawnWalker({ x: p.x, z: p.z, heading: this.h }, null, 0, 0, look);
+    if (!n) return;
+    Object.assign(n, { vmax: 0, mission: true, brave: 1, hp: 700, r: 0.75, reach: 2.3, chaseV: 4.8, dmgMul: 2.6, knocks: true, ciro: true, killMsg: 'Te fajó Ciro, el profe del gym', t: R.range(0, 10) });
+    s.n = n;
+    s.home = p;
+  }
+
   update(dt, world) {
     if (!this.slots.length) return;
+    // Ciro busca pelea: si Gaspi pasa cerca a pie, lo encara
+    const ciro = this.slots.find((s) => s.ciro)?.n;
+    if (ciro && !ciro.dead && !ciro.down && ciro.state !== 'fight' && !world.player.vehicle && !world.player.dead) {
+      const dc = Math.hypot(world.player.x - ciro.x, world.player.z - ciro.z);
+      if (dc < 16) {
+        this.npcs.setState(ciro, 'fight');
+        ciro.fightT = 40;
+        ciro.say(R.pick(['¿Qué mirás, flaco? ¡Vení!', 'Soy Ciro, el profe. ¡Acá mando yo!', '¡Te voy a dar una clase gratis, pero de trompadas!', '¡Vení que te rompo!']), 3);
+      }
+    }
     const P = world.player;
     const d = Math.hypot(P.x - this.x, P.z - this.z);
     for (const s of this.slots) {

@@ -888,7 +888,7 @@ function speakers() {
     const d = Math.hypot(x - player.x, z - player.z);
     if (d < 38) out.push({ x, y, z, text: b.text, bad, d, b, voice });
   };
-  for (const n of npcs.list) if (n.bubble) add(n.x, n.y + 2.35, n.z, n.bubble, n.type === 'trapito' || n.type === 'cana' || n.state === 'fight', { female: n.h.female, key: n.h.phase });
+  for (const n of npcs.list) if (n.bubble) add(n.x, n.y + 2.35 * n.h.root.scale.y, n.z, n.bubble, n.type === 'trapito' || n.type === 'cana' || n.state === 'fight', { female: n.h.female, key: n.h.phase });
   for (const m of crime.motos) if (m.bubble) add(m.v.x, 2.6, m.v.z, m.bubble, true, { key: 7 });
   if (player.bubble) add(player.x, player.y + 2.4, player.z, player.bubble, false, { key: 3 });
   // la gente del corte canta
