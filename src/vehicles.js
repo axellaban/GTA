@@ -19,7 +19,8 @@ function mesh(g, m, x, y, z, parent) {
   return o;
 }
 
-export const CAR_COLORS = [0xd8d4c8, 0x8c1c13, 0x1f3a60, 0x2c2c2c, 0x9aa3a8, 0x3b5e2b, 0xc9a227, 0xf2f2f2, 0x6b3e26, 0x2d6e8a, 0xa84a1c];
+// los de siempre más pasteles de los 80 (rosa, turquesa, crema, celeste, menta, coral), como Vice City
+export const CAR_COLORS = [0xd8d4c8, 0x8c1c13, 0x1f3a60, 0x2c2c2c, 0x9aa3a8, 0x3b5e2b, 0xc9a227, 0xf2f2f2, 0x6b3e26, 0x2d6e8a, 0xa84a1c, 0xf4a6c6, 0x52c7c0, 0xf3ead3, 0x9fd8e8, 0xb8e6c4, 0xff8a65];
 export { makeCar, lightMat } from './cars.js';
 import { lightMat } from './cars.js';
 

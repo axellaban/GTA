@@ -13,12 +13,12 @@ const METALLIC = new Set([0x9aa3a8, 0x1f3a60, 0x3b5e2b, 0x2d6e8a, 0x6b3e26, 0xc9
 export function paintMat(color) {
   if (!paintCache.has(color)) {
     const metal = METALLIC.has(color);
-    paintCache.set(color, new THREE.MeshPhysicalMaterial({ color, metalness: metal ? 0.55 : 0.08, roughness: metal ? 0.38 : 0.5, clearcoat: 1, clearcoatRoughness: 0.06, envMapIntensity: 1.1 }));
+    paintCache.set(color, new THREE.MeshPhysicalMaterial({ color, metalness: metal ? 0.55 : 0.08, roughness: metal ? 0.38 : 0.5, clearcoat: 1, clearcoatRoughness: 0.06, envMapIntensity: 1.6 }));
   }
   return paintCache.get(color);
 }
 // cromados (color por vértice) y vidrios polarizados
-export const shinyMat = new THREE.MeshStandardMaterial({ vertexColors: true, metalness: 1, roughness: 0.16 });
+export const shinyMat = new THREE.MeshStandardMaterial({ vertexColors: true, metalness: 1, roughness: 0.14, envMapIntensity: 1.6 });
 export const glassMat = new THREE.MeshPhysicalMaterial({ color: 0x0b1015, metalness: 0.1, roughness: 0.04, clearcoat: 1, clearcoatRoughness: 0.02, envMapIntensity: 1.7 });
 export const detailMat = new THREE.MeshLambertMaterial({ vertexColors: true });
 // ruedas: goma casi negra y llanta plateada (un solo material, el color por vértice decide)
@@ -338,6 +338,8 @@ function buildModel(name) {
     sp.rotateX((i / 5) * Math.PI * 2);
     Wb.add(sp, 0x9ea2a6);
   }
+  // banda blanca en las gomas de los clásicos (bien de los 80)
+  if (['falcon', 'p504', 'fiat600', 'duna', 'pickup'].includes(name)) Wb.add(lathe([[wr * 0.86, 0.114], [wr * 0.71, 0.112]], 20), 0xf1efe6);
   // del lado de adentro, un disco oscuro (se ve por la llanta)
   Wb.add(new THREE.CylinderGeometry(wr * 0.6, wr * 0.6, 0.02, 14).rotateZ(-Math.PI / 2).translate(-0.06, 0, 0), 0x202020);
   const wheelGeo = Wb.mesh().geometry;
