@@ -3,6 +3,7 @@
 // scripts/map/preprocess.py. Coordenadas en metros: x al este, z al sur, origen en la estación.
 import D from './data/temperley.json';
 import REL from './data/relevamiento.json';
+import OSM from './data/osm.json';
 
 // Lo cargado a mano en /relevamiento.html (exportado a src/data/relevamiento.json) pisa lo que trae
 // Overture: nombre real, tipo, pisos y colores del cartel. Ver PLAN.md, parte B.
@@ -22,6 +23,67 @@ for (const e of REL.negocios || []) {
   if (e.pisos) b.f = e.pisos;
   if (e.nombre && e.cartel) SIGN_COLORS_REAL.set(e.nombre, { bg: e.cartel, fg: e.letras || '#ffffff' });
   b.rel = { fachada: e.fachada, persiana: !!e.persiana, toldo: !!e.toldo, rejas: !!e.rejas, rubro: e.rubro };
+}
+
+// Negocios con nombre de OpenStreetMap (scripts/map/osm_pois.py -> src/data/osm.json): cada uno va a la
+// huella que lo contiene o a la más cercana con frente a la calle (a menos de 10 m). Pisan los nombres
+// de Overture, pero no lo cargado a mano en el relevamiento.
+function ptSeg(px, pz, ax, az, bx, bz) {
+  const dx = bx - ax;
+  const dz = bz - az;
+  const l2 = dx * dx + dz * dz || 1;
+  const t = Math.max(0, Math.min(1, ((px - ax) * dx + (pz - az) * dz) / l2));
+  return Math.hypot(px - ax - dx * t, pz - az - dz * t);
+}
+function ringDist(r, x, z) {
+  let inside = false;
+  let d = Infinity;
+  for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
+    const [xi, zi] = r[i];
+    const [xj, zj] = r[j];
+    if (zi > z !== zj > z && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) inside = !inside;
+    d = Math.min(d, ptSeg(x, z, xi, zi, xj, zj));
+  }
+  return inside ? 0 : d;
+}
+{
+  const box = D.buildings.map((b) => {
+    let x0 = Infinity;
+    let z0 = Infinity;
+    let x1 = -Infinity;
+    let z1 = -Infinity;
+    for (const [x, z] of b.r) {
+      x0 = Math.min(x0, x);
+      z0 = Math.min(z0, z);
+      x1 = Math.max(x1, x);
+      z1 = Math.max(z1, z);
+    }
+    return [x0, z0, x1, z1];
+  });
+  const taken = new Set();
+  for (const p of OSM.pois) {
+    let best = null;
+    let bs = Infinity;
+    D.buildings.forEach((b, i) => {
+      const [x0, z0, x1, z1] = box[i];
+      if (p.x < x0 - 10 || p.x > x1 + 10 || p.z < z0 - 10 || p.z > z1 + 10) return;
+      const d = ringDist(b.r, p.x, p.z);
+      if (d > 10) return;
+      // mejor una huella con frente a la calle (donde va el cartel) y que no tenga ya otro negocio
+      const s = d + (b.fr.length ? 0 : 6) + (taken.has(b) ? 4 : 0);
+      if (s < bs) {
+        bs = s;
+        best = b;
+      }
+    });
+    if (!best || best.rel || taken.has(best)) continue;
+    taken.add(best);
+    best.n = p.n;
+    best.cat = p.c;
+    if (p.a) best.addr = p.a;
+    if (p.k === 'local' && (best.k === 'casa' || (best.k === 'edificio' && best.f <= 4))) best.k = 'local';
+    else if ((p.k === 'escuela' || p.k === 'iglesia') && (best.k === 'casa' || best.k === 'local')) best.k = p.k;
+  }
 }
 
 export const DATA = D;

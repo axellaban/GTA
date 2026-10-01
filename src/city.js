@@ -554,7 +554,7 @@ function addBuildings(scene, atlas, colliders, rng, city) {
         const cz = (e.az + e.bz) / 2 + e.nz * 0.2;
         signQ.vert(cx - (ux * sw) / 2, cz - (uz * sw) / 2, cx + (ux * sw) / 2, cz + (uz * sw) / 2, 3.05, 3.85, uv);
         det.rbox(sw + 0.1, 0.9, 0.16, 0x2a2d30, cx - e.nx * 0.09, 3.45, cz - e.nz * 0.09, angOf(ux, uz));
-        city.shopSigns.push({ x: cx, z: cz, name: nm });
+        city.shopSigns.push({ x: cx, z: cz, nx: e.nx, nz: e.nz, name: nm });
         if (v % 2 === 0) city.neon.push({ cx, cz, ux, uz, nx: e.nx, nz: e.nz, sw, v });
       }
     }

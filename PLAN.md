@@ -112,8 +112,10 @@ ametralladora, bazuca y su munición.
 **R8 — Look**: reflejos de neón en los charcos; suavizar la mancha de luna; fachadas con rejas y foto
 del relevamiento.
 
-**R9 — Mapa real (B1)**: enriquecer nombres y rubros con Overture `places` (alcanzable); sumar OSM
-cuando se habilite Overpass; integrar el relevamiento del dueño cuando lo cargue.
+**R9 — Mapa real (B1)**: ✅ negocios de OSM (`scripts/map/osm_pois.py` -> `src/data/osm.json`, 117
+lugares; `src/map.js` los asigna a las huellas): 129 locales con cartel real (antes 60). Overpass:
+overpass-api.de suele cortar; el script prueba también maps.mail.ru y overpass.kumi.systems. Falta:
+integrar el relevamiento del dueño cuando lo cargue.
 
 **R10 — Modelos de artista (A2)**: personajes y animales Quaternius CC0 cuando se habilite la red.
 

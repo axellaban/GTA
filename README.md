@@ -94,7 +94,11 @@ npm run build    # genera dist/index.html (un solo archivo) y dist/artifact.html
 cd scripts/map
 python3 fetch.py                                   # baja de Overture Maps el cuadrado alrededor de la estación
 python3 preprocess.py ../../src/data/temperley.json  # calles, veredas, manzanas, edificios, árboles, etc.
+python3 osm_pois.py                                # negocios con nombre de OpenStreetMap -> src/data/osm.json
 ```
+
+`src/map.js` le pone a cada local el nombre real de OSM (la huella que contiene el punto, o la más
+cercana con frente a la calle); lo cargado a mano en el relevamiento tiene prioridad.
 
 Datos del mapa: © colaboradores de OpenStreetMap (ODbL) y Overture Maps Foundation.
 
