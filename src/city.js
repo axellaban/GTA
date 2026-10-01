@@ -2,7 +2,7 @@
 // suelo, calles, pintura vial, edificios con sus frentes, rejas, estación, andenes, faroles y árboles.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { DATA as D, HALF, ROADS, TRACKS, CORNERS, pointAt, STATION, project, SIGN_COLORS_REAL } from './map.js';
+import { DATA as D, HALF, ROADS, TRACKS, CORNERS, pointAt, STATION, project, SIGN_COLORS_REAL, nearestRoad } from './map.js';
 import {
   ATLAS,
   buildAtlas,
@@ -340,16 +340,17 @@ function addRoadMarkings(scene) {
 }
 
 // ---------- Edificios ----------
-function pushQuad(arr, p0, p1, p2, p3, uv, shade, shadeBottom = shade) {
+// tint (opcional): color que multiplica la textura (el color real de la fachada del relevamiento)
+function pushQuad(arr, p0, p1, p2, p3, uv, shade, shadeBottom = shade, tint = null) {
   const { pos, uvs, col, idx } = arr;
   const base = pos.length / 3;
   pos.push(...p0, ...p1, ...p2, ...p3);
   uvs.push(uv.u0, uv.v0, uv.u1, uv.v0, uv.u1, uv.v1, uv.u0, uv.v1);
-  for (const k of [shadeBottom, shadeBottom, shade, shade]) col.push(k, k, k);
+  for (const k of [shadeBottom, shadeBottom, shade, shade]) col.push(k * (tint?.r ?? 1), k * (tint?.g ?? 1), k * (tint?.b ?? 1));
   idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
 }
 
-function wall(arr, ax, az, bx, bz, y0, y1, pickUv, shade) {
+function wall(arr, ax, az, bx, bz, y0, y1, pickUv, shade, tint = null) {
   const len = Math.hypot(bx - ax, bz - az);
   const segs = Math.max(1, Math.round(len / 10.5));
   for (let s = 0; s < segs; s++) {
@@ -364,7 +365,7 @@ function wall(arr, ax, az, bx, bz, y0, y1, pickUv, shade) {
       const floor = Math.round((y - y0) / FLOOR_H);
       const partial = yy - y < FLOOR_H * 0.6;
       const uv = partial ? ATLAS.medianera[(s + floor) % ATLAS.medianera.length] : pickUv(floor, s);
-      pushQuad(arr, [x0, y, z0], [x1, y, z1], [x1, yy, z1], [x0, yy, z0], uv, shade, floor === 0 ? shade * 0.6 : shade * 0.97);
+      pushQuad(arr, [x0, y, z0], [x1, y, z1], [x1, yy, z1], [x0, yy, z0], uv, shade, floor === 0 ? shade * 0.6 : shade * 0.97, partial ? null : tint);
       if (!partial && arr.frames && uv.open && uv.open.length && (x1 - x0) ** 2 + (z1 - z0) ** 2 > 16) addFrames(arr.frames, x0, z0, x1, z1, y, y + FLOOR_H, uv.open);
     }
   }
@@ -440,7 +441,23 @@ function addBuildings(scene, atlas, colliders, rng, city) {
     const floors = b.f;
     const h = kind === 'galpon' ? 6.2 : kind === 'estacion' ? 7.4 : kind === 'estadio' ? 9 : floors * FLOOR_H + 0.3;
     const v = b.v;
+    const rel = b.rel; // lo cargado a mano en el relevamiento (ver src/map.js)
     const fronts = new Set(b.fr);
+    // un local cargado en el relevamiento que no tenía frente: la pared que da a la calle
+    if (rel && !fronts.size) {
+      let best = -1;
+      let bd = Infinity;
+      for (let k = 0; k < ring.length; k++) {
+        const e = outward(ring, k);
+        if (e.l < 2) continue;
+        const d = nearestRoad((e.ax + e.bx) / 2 + e.nx * 3, (e.az + e.bz) / 2 + e.nz * 3)?.dist ?? Infinity;
+        if (d < bd) {
+          bd = d;
+          best = k;
+        }
+      }
+      if (best >= 0) fronts.add(best);
+    }
     const shade = 0.85 + ((v % 13) / 13) * 0.2;
     const pitched = (kind === 'casa' && ring.length === 4 && v % 10 < 3) || kind === 'estacion';
     colliders.addRing(ring, h, 'building');
@@ -461,8 +478,15 @@ function addBuildings(scene, atlas, colliders, rng, city) {
       if ((v + seg) % 9 === 0) return ATLAS.pintada[(v + floor) % ATLAS.pintada.length];
       return ATLAS.medianera[(v + seg + floor) % ATLAS.medianera.length];
     };
-    // cornisa y parapeto del mismo color que la fachada
-    const plaster = new THREE.Color(front(0)?.base || '#d8cfc0');
+    // cornisa y parapeto del mismo color que la fachada (o el color real del relevamiento)
+    const plaster = new THREE.Color(rel?.fachada || front(0)?.base || '#d8cfc0');
+    let wallTint = null;
+    if (rel?.fachada) {
+      const base = new THREE.Color(front(0)?.base || '#d8cfc0');
+      const c = new THREE.Color(rel.fachada);
+      const k = (a, b) => Math.min(1.6, Math.max(0.2, a / Math.max(0.05, b)));
+      wallTint = { r: k(c.r, base.r), g: k(c.g, base.g), b: k(c.b, base.b) };
+    }
     let bestFront = null;
     for (let k = 0; k < ring.length; k++) {
       const e = outward(ring, k);
@@ -475,7 +499,7 @@ function addBuildings(scene, atlas, colliders, rng, city) {
       const c = [e.bx, e.bz];
       const [p0, p1] = (c[0] - a[0]) * rx + (c[1] - a[1]) * rz > 0 ? [a, c] : [c, a];
       const isFront = fronts.has(k) || kind === 'estacion';
-      wall(arr, p0[0], p0[1], p1[0], p1[1], 0, h, isFront ? front : side, isFront ? shade : shade * 0.9);
+      wall(arr, p0[0], p0[1], p1[0], p1[1], 0, h, isFront ? front : side, isFront ? shade : shade * 0.9, isFront ? wallTint : null);
       const mx = (a[0] + c[0]) / 2;
       const mz = (a[1] + c[1]) / 2;
       if (!pitched) {
@@ -511,7 +535,9 @@ function addBuildings(scene, atlas, colliders, rng, city) {
       const az = e.az + uz * inset;
       const bx = e.bx - ux * inset;
       const bz = e.bz - uz * inset;
-      if (v % 3 !== 0) {
+      // persiana enrollada: la caja de chapa arriba de la vidriera
+      if (rel?.persiana) det.rbox(len - inset * 2, 0.34, 0.32, 0x8a8f96, (ax + bx) / 2 + e.nx * 0.16, 2.78, (az + bz) / 2 + e.nz * 0.16, angOf(ux, uz));
+      if (rel ? rel.toldo : v % 3 !== 0) {
         const dep = 1.5;
         const row = v % 4;
         const base = awn.pos.length / 3;
