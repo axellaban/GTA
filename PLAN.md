@@ -142,8 +142,13 @@ Radio ≈ 550 m desde la estación (`STATION` en `src/map.js`). Hoy: 1.872 edifi
 - ✅ A1 retarget: `src/rig.js` → `rigHuman(gltf.scene, { height, female })` devuelve un `h` que
   `animateHuman` mueve igual que a los nuestros (probado con Xbot y Michelle de three.js: caminar,
   piñas, sentarse, sentadilla, muerto). La mano real para colgar armas: `h.rig.map.handR`.
-  Prueba: `tools/rigtest.html`. Siguiente: pool de modelos en `public/models/people/*.glb` y que
-  `npcs.spawnWalker` use `rigHuman` cuando haya modelos (A4).
+  Prueba: `tools/rigtest.html`.
+- ✅ A2/A4 (primer paso) personas CC0: `src/people.js` carga 11 modelos de elbolilloduro (CC0, vía
+  Mesh2Motion: github.com/scottpetrovic/mesh2motion-app, `static/models-variation/human`) en
+  `public/models/people/`. Vecinos (75 %) y cana (85 %) los usan; armas en la mano vía el esqueleto
+  fantasma. Falta: motochorros (`crime.js`), gym, Laban, Gaspi; más variedad (tintes por material);
+  perros/caballo (Mesh2Motion trae `fox-animations.glb` y `horse-animations.glb`, revisar licencias);
+  en Mesh2Motion hay más modelos (killer_*, hazmat_*, swat) y otros con CC-BY/CC-SA (no usados).
 - ⛔ A2 / B1: esperan red o archivos del dueño.
 
 ## 7. Preguntas abiertas para el dueño

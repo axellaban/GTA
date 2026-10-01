@@ -28,6 +28,7 @@ import { Stunts, RAMPS } from './stunts.js';
 import { addPalms } from './palms.js';
 import { loadFerrari } from './models.js';
 import { Laban } from './laban.js';
+import { loadPeople } from './people.js';
 import { Combat } from './combat.js';
 import { Police } from './police.js';
 import { Nav } from './nav.js';
@@ -403,6 +404,8 @@ const stunts = new Stunts(scene);
 world.palms = addPalms(scene, city.colliders, heightAt);
 // Laban the Creator paseando en la Ferrari amarilla por la estación
 const laban = new Laban(scene, traffic);
+// personas con modelo de artista (CC0): cargan de fondo y los NPC nuevos las van usando
+loadPeople();
 world.laban = laban;
 // la Ferrari de Ciro, estacionada frente al gym (modelo bajado de internet)
 if (gym.x != null) {

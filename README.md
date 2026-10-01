@@ -176,6 +176,10 @@ Ocho rampas amarillas con franjas negras en calles largas. Si entrás rápido (m
 
 Por las calles de la estación pasea **Laban the Creator** en una Ferrari amarilla descapotable: traje y sombrero blancos (estilo Alan Faena) y anteojos, con tres chicas fit arriba (una de acompañante y dos sentadas en la cola, saludando). Va despacio tirando facha, toca bocina y grita cosas cuando pasa cerca de Gaspi. Se la podés robar: Laban cae al piso gritando "¡Mi Ferrari! ¡Esto lo creé yo!" y las chicas salen corriendo.
 
+## Personas con modelo de artista (0.20)
+
+Los vecinos (3 de cada 4) y la policía ahora son modelos low-poly con textura pintada, al estilo de Vice City: 11 personas CC0 de elbolilloduro (varones, mujeres, médico, policía hombre y mujer), sacadas de [Mesh2Motion](https://github.com/scottpetrovic/mesh2motion-app). Se animan con las mismas poses de siempre (caminar, piñas, celular, sentarse, caerse) gracias a `src/rig.js`, que traduce nuestro esqueleto a cualquier esqueleto humanoide estándar. Las armas de la cana se cuelgan de su mano.
+
 ## Gym El Kaiser (0.13)
 
 Box de CrossFit a unos 70 m de la estación (cuadrado amarillo en el mapa): galpón negro con el portón levantado, el cartel del lobo arriba y el mismo logo en la pared del fondo, racks rojos, discos, cajones y kettlebells. Adentro entrenan los musculosos (dominadas, sentadilla y press) y El Kaiser te recibe en la puerta. Si les pegás, se defienden, y aguantan más que un vecino.
@@ -203,6 +207,7 @@ Box de CrossFit a unos 70 m de la estación (cuadrado amarillo en el mapa): galp
 | `src/npcs.js` | Vecinos, trapitos, gente pidiendo, perdidos, vendedor de medias, perros |
 | `src/crime.js` | Motochorros |
 | `src/events.js` | Cortes, marchas y noticias |
+| `src/rig.js`, `src/people.js` | Retarget a esqueletos estándar y personas con modelo CC0 |
 | `src/laban.js` | Laban the Creator y su Ferrari descapotable |
 | `src/models.js` | Modelos bajados de internet (la Ferrari) |
 | `src/palms.js` | Palmeras de las plazas (instanciadas) |

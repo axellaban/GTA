@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { makeHuman, animateHuman, randomCivilian, SKINS, HAIRS } from './human.js';
 import { makeDog } from './animals.js';
+import { makePerson, PEOPLE } from './people.js';
 import { DATA as D } from './map.js';
 import { R } from './rng.js';
 
@@ -237,7 +238,8 @@ export class Npcs {
       p = this.sidewalkPoint(near.x, near.z, rmin, rmax);
       if (!p) return null;
     }
-    const h = makeHuman(look ?? randomCivilian());
+    // la mayoría con modelo de artista (CC0, ver src/people.js) cuando ya cargaron
+    const h = (!look && PEOPLE.ready && R.chance(0.75) && makePerson(R.chance(0.5) ? 'female' : 'male')) || makeHuman(look ?? randomCivilian());
     const n = this.add(new Npc('vecino', h, p.x, p.z));
     n.heading = p.heading ?? R.range(0, Math.PI * 2);
     n.vmax = R.range(1.1, 1.6);
@@ -264,7 +266,7 @@ export class Npcs {
 
   // Cana a pie (la maneja la policía, pero camina, pega y cae como cualquiera)
   spawnCop(x, z) {
-    const h = makeHuman({ skin: R.pick(SKINS), hair: 0x1a1a1a, hairStyle: R.pick(['short', 'buzz']), police: true, shirt: 0x8fb4d8, pants: 0x1c2a44, shoes: 0x111111, cap: 0x1c2a44, stubble: R.chance(0.4), scale: R.range(0.98, 1.06) });
+    const h = (PEOPLE.ready && R.chance(0.85) && makePerson('police')) || makeHuman({ skin: R.pick(SKINS), hair: 0x1a1a1a, hairStyle: R.pick(['short', 'buzz']), police: true, shirt: 0x8fb4d8, pants: 0x1c2a44, shoes: 0x111111, cap: 0x1c2a44, stubble: R.chance(0.4), scale: R.range(0.98, 1.06) });
     const n = this.add(new Npc('cana', h, x, z));
     n.state = 'chase';
     n.hp = 140;

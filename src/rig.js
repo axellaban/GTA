@@ -13,7 +13,7 @@ import { BONES } from './body.js';
 
 // nombres posibles (normalizados: sin "mixamorig", sin espacios ni puntos, en minúscula)
 const NAMES = {
-  hips: ['hips', 'pelvis', 'root'],
+  hips: ['hips', 'pelvis'],
   spine: ['spine', 'spine01', 'spine1'],
   chest: ['spine2', 'chest', 'upperchest', 'spine03', 'spine02'],
   neck: ['neck', 'neck01'],
@@ -25,13 +25,13 @@ const NAMES = {
   faL: ['leftforearm', 'lowerarml', 'lowerarm_l', 'forearm_l', 'forearml'],
   handL: ['lefthand', 'handl', 'hand_l'],
   thR: ['rightupleg', 'upperlegr', 'upperleg_r', 'thigh_r', 'thighr'],
-  shR: ['rightleg', 'lowerlegr', 'lowerleg_r', 'calf_r', 'shin_r', 'shinr'],
+  shR: ['rightleg', 'lowerlegr', 'lowerleg_r', 'calf_r', 'shin_r'],
   ftR: ['rightfoot', 'footr', 'foot_r'],
   thL: ['leftupleg', 'upperlegl', 'upperleg_l', 'thigh_l', 'thighl'],
   shL: ['leftleg', 'lowerlegl', 'lowerleg_l', 'calf_l', 'shin_l', 'shinl'],
   ftL: ['leftfoot', 'footl', 'foot_l'],
 };
-const norm = (n) => n.replace(/^mixamorig[:_]?/i, '').replace(/[\s.:]/g, '').toLowerCase();
+const norm = (n) => n.replace(/^mixamorig[:_]?/i, '').replace(/[\s._:-]/g, '').toLowerCase();
 
 // nuestro esqueleto en reposo (igual que makeHuman, con hombros de varón)
 const REST = {
@@ -59,7 +59,6 @@ const UP = new THREE.Vector3(0, 1, 0);
 const DOWN = new THREE.Vector3(0, -1, 0);
 const DIR = { hips: [UP, 'spine'], spine: [UP, 'chest'], chest: [UP, 'neck'], neck: [UP, 'head'], uaR: [DOWN, 'faR'], faR: [DOWN, 'handR'], uaL: [DOWN, 'faL'], faL: [DOWN, 'handL'], thR: [DOWN, 'shR'], shR: [DOWN, 'ftR'], thL: [DOWN, 'shL'], shL: [DOWN, 'ftL'] };
 
-const _q = new THREE.Quaternion();
 const _v = new THREE.Vector3();
 
 // source: escena de un glTF con un SkinnedMesh humanoide. Devuelve un "h" que entiende animateHuman.
@@ -91,7 +90,7 @@ export function rigHuman(source, { height = 1.75, female = false } = {}) {
   for (const n of BONES) {
     if (!NAMES[n]) continue;
     for (const cand of NAMES[n]) {
-      const b = all.find((x) => norm(x.name) === cand);
+      const b = all.find((x) => norm(x.name) === norm(cand));
       if (b) {
         map[n] = b;
         break;
@@ -143,17 +142,25 @@ export function rigHuman(source, { height = 1.75, female = false } = {}) {
   walk(map.hips, -1);
   const hipsParentW = wq(map.hips.parent);
   const invParent = new THREE.Quaternion();
+  // el esqueleto fantasma va adentro del personaje (invisible): lo que se cuelga de sus manos
+  // (armas, la bolsa del vendedor) se ve donde está la mano del modelo
+  root.add(bones.root);
+  // rotaciones acumuladas del fantasma, relativas a "root" (no dependen de dónde esté parado)
+  const G = Object.fromEntries(BONES.map((n) => [n, new THREE.Quaternion()]));
 
   function apply() {
-    bones.root.updateMatrixWorld(true);
-    // la cadera arrastra el modelo entero
-    bones.hips.getWorldPosition(_v);
+    for (const n of BONES) {
+      const p = REST[n][1];
+      if (p) G[n].copy(G[p]).multiply(bones[n].quaternion);
+      else G[n].copy(bones[n].quaternion);
+    }
+    // la cadera arrastra el modelo entero (sentarse, caerse, colgarse)
+    _v.copy(bones.hips.position).applyQuaternion(G.root).add(bones.root.position);
     shift.position.set(_v.x, _v.y - 0.95, _v.z);
     for (const t of list) {
       const pw = t.parent < 0 ? hipsParentW : list[t.parent].w;
       if (t.name) {
-        bones[t.name].getWorldQuaternion(_q);
-        t.w.copy(_q).multiply(A[t.name]).multiply(t.restW);
+        t.w.copy(G[t.name]).multiply(A[t.name]).multiply(t.restW);
         invParent.copy(pw).invert();
         t.bone.quaternion.copy(invParent).multiply(t.w);
       } else t.w.copy(pw).multiply(t.restLocal);
