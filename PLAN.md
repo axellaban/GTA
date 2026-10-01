@@ -184,6 +184,10 @@ Meeks (`onBeforeRender`/`onBeforeShadow` por malla): antes 4,77 M triángulos y 
   con el índice de siempre va al pedazo que corresponde, así `smash.js` los sigue volteando).
 - ✅ Autos a media distancia: las cuatro ruedas en una sola malla quieta (`farWheels`/`wheelsFar` en
   `src/cars.js`): 5 dibujos por auto en vez de 8.
+- ✅ 2026-10-01: `ScaledBloomPass` (`src/bloom.js`) conserva `bloomScale` cuando
+  `EffectComposer` llama a `setSize`: antes anulaba la media resolución de `post.js`.
+  Con calidad alta, los buffers del resplandor tienen aproximadamente 75 % menos píxeles.
+  Prueba de integración con el compositor real, resize y DPR: `node --test tools/bloom.test.mjs`.
 
 ## 5b. Detalle por área (historia y notas técnicas)
 
@@ -348,8 +352,8 @@ Ideas para seguir: capó que se levanta con mucho daño; semáforos y carteles q
 - ✅ 2026-10-01, Codex: carga atómica de materiales fotográficos (`usePhoto`): mantiene
   el material dibujado si alguna descarga falla, libera las texturas incompletas y respeta
   la rugosidad del clima. Prueba: `node --test tools/texturas.test.mjs`; build verificado.
-  Commit `fc2a730`, integrado por PR #1 (merge `3fa7bde`). Texturas: segunda entrega en
-  `codex/vice-city-graphics`, PR separado para evitar mezclar cambios con otras IA.
+  Commit `fc2a730`, integrado por PR #1 (merge `3fa7bde`). Texturas: `34955d0`, PR #2
+  (merge `ea8e245`). Tercera entrega: escala de bloom corregida, con prueba de resize y DPR.
 
 Hecho y subido a `main` (cada cosa probada en Chromium sin GPU): PLAN.md y tools/, página de
 relevamiento + importación al juego (nombres, tipos, pisos, colores de cartel y fachada, toldo,

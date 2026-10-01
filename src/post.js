@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { ScaledBloomPass } from './bloom.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { AfterimagePass } from 'three/examples/jsm/postprocessing/AfterimagePass.js';
@@ -103,7 +103,7 @@ export class Post {
       this.ao = ao;
       this.composer.addPass(ao);
     } else this.composer.addPass(new RenderPass(scene, camera));
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(css.x * pr * q.bloomScale, css.y * pr * q.bloomScale), 0.35, 0.55, 0.9);
+    this.bloom = new ScaledBloomPass(new THREE.Vector2(css.x * pr, css.y * pr), q.bloomScale, 0.35, 0.55, 0.9);
     this.composer.addPass(this.bloom);
     this.composer.addPass(new OutputPass());
     // estelas de la PS2 (los "trails" de Vice City): lo muy brillante deja un rastro que se apaga
