@@ -133,7 +133,9 @@ Radio ≈ 550 m desde la estación (`STATION` en `src/map.js`). Hoy: 1.872 edifi
 - ✅ Ferrari de Ciro (roja, estacionada) y Laban the Creator (Ferrari amarilla descapotable con
   tres chicas, se puede robar).
 - ✅ Arreglo del cuelgue en iPhone (Ferrari simplificada, sin Draco).
-- ⏳ B2 relevamiento: página hecha (ver commit), falta que el dueño cargue datos.
+- ✅ B2 página de relevamiento: `public/relevamiento.html` (en el sitio: `/relevamiento.html`), base
+  generada con `node scripts/relevamiento-base.mjs` (edificios, plazas/escuelas/canchas y calles a 600 m).
+  Tipos: negocio, casa, edificio, colegio, iglesia, plaza/club, otro. Falta que el dueño cargue datos.
 - ⏳ A1 retarget: ver commit / notas en `src/rig.js`.
 - ⛔ A2 / B1: esperan red o archivos del dueño.
 

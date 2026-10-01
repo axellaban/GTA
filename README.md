@@ -215,6 +215,10 @@ Box de CrossFit a unos 70 m de la estación (cuadrado amarillo en el mapa): galp
 | `src/hud.js`, `src/style.css` | Tarjeta SUBE, estrellas, minimapa, mapa grande, zócalo, diálogos |
 | `src/sky.js`, `src/atmosphere.js`, `src/post.js`, `src/glow.js` | Cielo, bruma con altura y sol, oclusión ambiental (N8AO), gradeo de color y luces de noche |
 
+## Relevamiento de las 5 cuadras
+
+En `/relevamiento.html` (por ejemplo https://gta-6-conurba.vercel.app/relevamiento.html) hay un mapa de los edificios, plazas y escuelas a unas 5 cuadras de la estación. Tocás cada uno y cargás cómo es en la realidad: nombre como dice el cartel, rubro, dirección, colores, persiana/toldo, pisos y una foto propia del frente. Queda guardado en el celu y se exporta a JSON para sumarlo al juego (`src/data/relevamiento.json`). El botón 📍 muestra dónde estás parado.
+
 ## Pendiente
 
 El plan completo y ordenado está en [`PLAN.md`](PLAN.md).

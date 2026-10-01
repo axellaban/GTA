@@ -1,0 +1,526 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Relevamiento Temperley</title>
+<meta name="description" content="Cargar los negocios reales de las 5 cuadras alrededor de la estación Temperley para el juego.">
+<link rel="icon" href="icons/favicon-48.png">
+<style>
+  :root {
+    --bg: #12131a; --panel: #1c1e27; --line: #2c2f3b; --text: #f2f2f2; --muted: #9aa0b0;
+    --casa: #3a3d4a; --local: #e08a2e; --hecho: #3ddc84; --sel: #5aa9ff; --calle: #4b4f5e; --acento: #ff4fa3;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 15px/1.35 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; overflow: hidden; }
+  header { position: fixed; top: 0; left: 0; right: 0; z-index: 3; padding: calc(env(safe-area-inset-top) + 8px) 12px 8px; background: linear-gradient(#12131af2, #12131a00); display: flex; gap: 8px; align-items: center; }
+  header h1 { font-size: 16px; margin: 0; flex: 1; letter-spacing: .02em; }
+  header h1 small { display: block; color: var(--muted); font-weight: 500; font-size: 12px; }
+  button, .btn { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; font: inherit; font-weight: 600; cursor: pointer; }
+  button.pri { background: var(--acento); border-color: var(--acento); color: #fff; }
+  button.ok { background: var(--hecho); border-color: var(--hecho); color: #08210f; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; touch-action: none; display: block; }
+  .tools { position: fixed; right: 12px; bottom: calc(env(safe-area-inset-bottom) + 14px); z-index: 3; display: flex; flex-direction: column; gap: 8px; }
+  .legend { position: fixed; left: 12px; bottom: calc(env(safe-area-inset-bottom) + 14px); z-index: 3; background: #1c1e27e6; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; font-size: 12px; color: var(--muted); }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+  #sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 4; background: var(--panel); border-top: 1px solid var(--line); border-radius: 16px 16px 0 0; padding: 14px 14px calc(env(safe-area-inset-bottom) + 14px); max-height: 82vh; overflow: auto; transform: translateY(100%); transition: transform .2s; }
+  #sheet.open { transform: none; }
+  #sheet h2 { margin: 0 0 4px; font-size: 17px; }
+  #sheet .hint { color: var(--muted); font-size: 13px; margin: 0 0 10px; }
+  label { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 4px; }
+  input[type=text], input[type=number], select, textarea { width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 10px; font: inherit; }
+  textarea { min-height: 60px; }
+  .row { display: flex; gap: 10px; }
+  .row > * { flex: 1; min-width: 0; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chips label { margin: 0; display: inline-flex; align-items: center; gap: 6px; background: var(--bg); border: 1px solid var(--line); border-radius: 999px; padding: 6px 10px; color: var(--text); }
+  input[type=color] { width: 100%; height: 40px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); padding: 2px; }
+  #foto-prev { width: 100%; max-height: 220px; object-fit: cover; border-radius: 10px; margin-top: 8px; display: none; }
+  .acts { display: flex; gap: 8px; margin-top: 14px; }
+  .acts button { flex: 1; }
+  #menu { position: fixed; top: calc(env(safe-area-inset-top) + 52px); right: 12px; z-index: 5; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 8px; display: none; flex-direction: column; gap: 6px; min-width: 220px; }
+  #menu.open { display: flex; }
+  #lista { position: fixed; inset: 0; z-index: 6; background: var(--bg); overflow: auto; padding: calc(env(safe-area-inset-top) + 12px) 12px 24px; display: none; }
+  #lista.open { display: block; }
+  #lista .item { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px; margin: 8px 0; display: flex; gap: 10px; align-items: center; }
+  #lista .item img { width: 56px; height: 56px; object-fit: cover; border-radius: 8px; }
+  #lista .item b { display: block; }
+  #toast { position: fixed; top: calc(env(safe-area-inset-top) + 60px); left: 50%; transform: translateX(-50%); background: #000c; padding: 8px 14px; border-radius: 999px; z-index: 7; font-size: 14px; display: none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Relevamiento · Temperley<small id="count">Cargando…</small></h1>
+  <button id="btn-menu" aria-label="Menú">☰</button>
+</header>
+<canvas id="map"></canvas>
+<div class="legend"><div><i style="background:var(--local)"></i>Local (falta)</div><div><i style="background:var(--hecho)"></i>Cargado</div><div><i style="background:var(--casa)"></i>Casa / otro</div></div>
+<div class="tools">
+  <button id="btn-gps" title="Dónde estoy">📍</button>
+  <button id="btn-centro" title="Volver a la estación">🚉</button>
+</div>
+<div id="menu">
+  <button id="m-lista">Ver lo cargado</button>
+  <button id="m-export" class="pri">Exportar (JSON)</button>
+  <button id="m-import">Importar JSON</button>
+  <button id="m-ayuda">Cómo se usa</button>
+  <input id="f-import" type="file" accept="application/json,.json" hidden>
+</div>
+<div id="lista"></div>
+<div id="toast"></div>
+<form id="sheet" autocomplete="off">
+  <h2 id="s-title">Edificio</h2>
+  <p class="hint" id="s-hint"></p>
+  <div class="chips" id="s-tipo">
+    <label><input type="radio" name="tipo" value="local" checked> Negocio</label>
+    <label><input type="radio" name="tipo" value="casa"> Casa</label>
+    <label><input type="radio" name="tipo" value="edificio"> Edificio</label>
+    <label><input type="radio" name="tipo" value="colegio"> Colegio</label>
+    <label><input type="radio" name="tipo" value="iglesia"> Iglesia</label>
+    <label><input type="radio" name="tipo" value="plaza"> Plaza / club</label>
+    <label><input type="radio" name="tipo" value="otro"> Otro</label>
+  </div>
+  <label for="s-nombre">Nombre (como dice el cartel)</label>
+  <input id="s-nombre" type="text" placeholder="Ej: Pizzería Los Dos Caños">
+  <div class="row">
+    <div><label for="s-rubro">Rubro</label>
+      <select id="s-rubro"><option value="">—</option></select></div>
+    <div><label for="s-pisos">Pisos</label><input id="s-pisos" type="number" min="1" max="20" inputmode="numeric"></div>
+  </div>
+  <div class="row">
+    <div><label for="s-calle">Calle</label><input id="s-calle" type="text" list="calles"></div>
+    <div><label for="s-num">Número</label><input id="s-num" type="text" inputmode="numeric"></div>
+  </div>
+  <datalist id="calles"></datalist>
+  <div class="row">
+    <div><label for="s-cartel">Color del cartel</label><input id="s-cartel" type="color" value="#c62828"></div>
+    <div><label for="s-letras">Color de letras</label><input id="s-letras" type="color" value="#ffffff"></div>
+    <div><label for="s-fachada">Fachada</label><input id="s-fachada" type="color" value="#d8cfc0"></div>
+  </div>
+  <label>Frente</label>
+  <div class="chips">
+    <label><input type="checkbox" id="s-persiana"> Persiana</label>
+    <label><input type="checkbox" id="s-toldo"> Toldo</label>
+    <label><input type="checkbox" id="s-vidriera"> Vidriera</label>
+    <label><input type="checkbox" id="s-rejas"> Rejas</label>
+  </div>
+  <label for="s-notas">Notas (lo que no entra arriba)</label>
+  <textarea id="s-notas" placeholder="Ej: esquina, toldo verde a rayas, cartel luminoso…"></textarea>
+  <label for="s-foto">Foto del frente (sacala vos, derecho al frente)</label>
+  <input id="s-foto" type="file" accept="image/*" capture="environment">
+  <img id="foto-prev" alt="Foto del frente">
+  <div class="acts">
+    <button type="button" id="s-cerrar">Cerrar</button>
+    <button type="button" id="s-borrar">Borrar</button>
+    <button type="submit" class="ok">Guardar</button>
+  </div>
+</form>
+<script>
+// Relevamiento de negocios reales para el juego. Todo queda en este celu (localStorage + IndexedDB
+// para las fotos) y se exporta a JSON para subirlo al repo como src/data/relevamiento.json.
+// Las coordenadas son las del juego: x al este, z al sur, en metros, con origen en la estación.
+const RUBROS = ['Almacén', 'Autoservicio', 'Bar / café', 'Panadería', 'Pizzería', 'Rotisería', 'Heladería', 'Carnicería', 'Verdulería', 'Kiosco', 'Farmacia', 'Óptica', 'Ropa', 'Zapatería', 'Celulares', 'Ferretería', 'Librería', 'Banco', 'Gimnasio', 'Peluquería', 'Veterinaria', 'Inmobiliaria', 'Escribanía', 'Médico / clínica', 'Escuela', 'Iglesia', 'Restaurante', 'Lotería / quiniela', 'Lavadero', 'Taller', 'Otro'];
+const KEY = 'relevamiento-temperley-v1';
+const $ = (id) => document.getElementById(id);
+const cv = $('map');
+const g = cv.getContext('2d');
+let base = null;
+let data = {};
+try { data = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch { data = {}; }
+let sel = null;
+let me = null;
+const view = { x: 0, z: 0, s: 2 }; // centro y píxeles por metro
+for (const r of RUBROS) $('s-rubro').append(new Option(r, r));
+
+// ---------- fotos en IndexedDB ----------
+let dbp = null;
+function db() {
+  dbp ??= new Promise((res, rej) => {
+    const q = indexedDB.open('relevamiento', 1);
+    q.onupgradeneeded = () => q.result.createObjectStore('fotos');
+    q.onsuccess = () => res(q.result);
+    q.onerror = () => rej(q.error);
+  });
+  return dbp;
+}
+async function fotoGet(id) {
+  try { const d = await db(); return await new Promise((res) => { const r = d.transaction('fotos').objectStore('fotos').get(String(id)); r.onsuccess = () => res(r.result || null); r.onerror = () => res(null); }); } catch { return null; }
+}
+async function fotoSet(id, v) {
+  try { const d = await db(); await new Promise((res) => { const t = d.transaction('fotos', 'readwrite'); v ? t.objectStore('fotos').put(v, String(id)) : t.objectStore('fotos').delete(String(id)); t.oncomplete = res; t.onerror = res; }); } catch { toast('No se pudo guardar la foto'); }
+}
+function guardar() {
+  try { localStorage.setItem(KEY, JSON.stringify(data)); } catch { toast('No se pudo guardar en este celu'); }
+  contar();
+}
+function toast(t) {
+  const el = $('toast');
+  el.textContent = t;
+  el.style.display = 'block';
+  clearTimeout(toast.t);
+  toast.t = setTimeout(() => (el.style.display = 'none'), 2200);
+}
+
+// ---------- mapa ----------
+function resize() {
+  const dpr = Math.min(2, devicePixelRatio || 1);
+  cv.width = innerWidth * dpr;
+  cv.height = innerHeight * dpr;
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  draw();
+}
+const sx = (x) => innerWidth / 2 + (x - view.x) * view.s;
+const sz = (z) => innerHeight / 2 + (z - view.z) * view.s;
+function draw() {
+  if (!base) return;
+  g.fillStyle = '#12131a';
+  g.fillRect(0, 0, innerWidth, innerHeight);
+  // radio de las 5 cuadras
+  g.strokeStyle = '#ff4fa355';
+  g.setLineDash([8, 8]);
+  g.lineWidth = 2;
+  g.beginPath();
+  g.arc(sx(base.station.x), sz(base.station.z), base.radius * view.s, 0, Math.PI * 2);
+  g.stroke();
+  g.setLineDash([]);
+  // calles
+  g.lineCap = 'round';
+  for (const r of base.roads) {
+    g.strokeStyle = '#4b4f5e';
+    g.lineWidth = Math.max(2, r.w * view.s);
+    g.beginPath();
+    r.p.forEach(([x, z], i) => (i ? g.lineTo(sx(x), sz(z)) : g.moveTo(sx(x), sz(z))));
+    g.stroke();
+  }
+  // plazas, escuelas y canchas
+  for (const p of base.parks) {
+    const e = data[p.id];
+    g.fillStyle = p === sel ? '#5aa9ff' : e?.nombre ? '#2f9e5b' : '#24452f';
+    g.beginPath();
+    p.r.forEach(([x, z], i) => (i ? g.lineTo(sx(x), sz(z)) : g.moveTo(sx(x), sz(z))));
+    g.closePath();
+    g.fill();
+  }
+  // edificios
+  for (const b of base.buildings) {
+    const e = data[b.id];
+    const tipo = e?.tipo ?? (b.k === 'local' ? 'local' : 'casa');
+    g.fillStyle = b === sel ? '#5aa9ff' : e && tipo === 'local' && e.nombre ? '#3ddc84' : tipo === 'local' ? '#e08a2e' : e ? '#57607a' : '#3a3d4a';
+    g.beginPath();
+    b.r.forEach(([x, z], i) => (i ? g.lineTo(sx(x), sz(z)) : g.moveTo(sx(x), sz(z))));
+    g.closePath();
+    g.fill();
+  }
+  // nombres de calles (con zoom)
+  if (view.s > 1.6) {
+    g.font = '600 12px system-ui, sans-serif';
+    g.fillStyle = '#c9cdd8';
+    g.textAlign = 'center';
+    const done = new Set();
+    for (const r of base.roads) {
+      if (!r.n || done.has(r.n + Math.round(r.p[0][0] / 200))) continue;
+      done.add(r.n + Math.round(r.p[0][0] / 200));
+      const m = r.p[Math.floor(r.p.length / 2)];
+      g.fillText(r.n, sx(m[0]), sz(m[1]) - 4);
+    }
+  }
+  // nombres de negocios (con más zoom)
+  if (view.s > 3.5) {
+    g.font = '600 11px system-ui, sans-serif';
+    g.fillStyle = '#fff';
+    for (const b of [...base.parks, ...base.buildings]) {
+      const n = data[b.id]?.nombre || b.n;
+      if (!n) continue;
+      const c = centro(b);
+      g.fillText(n, sx(c.x), sz(c.z));
+    }
+  }
+  // estación y yo
+  g.fillStyle = '#ff4fa3';
+  g.beginPath();
+  g.arc(sx(base.station.x), sz(base.station.z), 7, 0, Math.PI * 2);
+  g.fill();
+  if (me) {
+    g.fillStyle = '#5aa9ff';
+    g.strokeStyle = '#fff';
+    g.lineWidth = 3;
+    g.beginPath();
+    g.arc(sx(me.x), sz(me.z), 8, 0, Math.PI * 2);
+    g.fill();
+    g.stroke();
+  }
+}
+function centro(b) {
+  let x = 0;
+  let z = 0;
+  for (const p of b.r) { x += p[0]; z += p[1]; }
+  return { x: x / b.r.length, z: z / b.r.length };
+}
+function inside(x, z, r) {
+  let c = false;
+  for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
+    const [xi, zi] = r[i];
+    const [xj, zj] = r[j];
+    if (zi > z !== zj > z && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) c = !c;
+  }
+  return c;
+}
+
+// ---------- gestos: arrastrar, pellizcar, tocar ----------
+const pts = new Map();
+let moved = 0;
+let pinch = null;
+cv.addEventListener('pointerdown', (e) => {
+  cv.setPointerCapture(e.pointerId);
+  pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  moved = 0;
+  if (pts.size === 2) {
+    const [a, b] = [...pts.values()];
+    pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), s: view.s };
+  }
+});
+cv.addEventListener('pointermove', (e) => {
+  const p = pts.get(e.pointerId);
+  if (!p) return;
+  const dx = e.clientX - p.x;
+  const dy = e.clientY - p.y;
+  moved += Math.abs(dx) + Math.abs(dy);
+  p.x = e.clientX;
+  p.y = e.clientY;
+  if (pts.size === 2 && pinch) {
+    const [a, b] = [...pts.values()];
+    view.s = Math.min(14, Math.max(0.4, (pinch.s * Math.hypot(a.x - b.x, a.y - b.y)) / pinch.d));
+  } else if (pts.size === 1) {
+    view.x -= dx / view.s;
+    view.z -= dy / view.s;
+  }
+  draw();
+});
+const up = (e) => {
+  const wasTap = pts.size === 1 && moved < 8;
+  pts.delete(e.pointerId);
+  if (pts.size < 2) pinch = null;
+  if (wasTap) tap(e.clientX, e.clientY);
+};
+cv.addEventListener('pointerup', up);
+cv.addEventListener('pointercancel', (e) => pts.delete(e.pointerId));
+cv.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  view.s = Math.min(14, Math.max(0.4, view.s * (e.deltaY < 0 ? 1.15 : 1 / 1.15)));
+  draw();
+}, { passive: false });
+function tap(px, py) {
+  const x = view.x + (px - innerWidth / 2) / view.s;
+  const z = view.z + (py - innerHeight / 2) / view.s;
+  const b = base.buildings.find((b) => inside(x, z, b.r)) || base.parks.find((p) => inside(x, z, p.r));
+  if (b) abrir(b);
+}
+
+// ---------- ficha ----------
+const F = (id) => $('s-' + id);
+async function abrir(b) {
+  sel = b;
+  const e = data[b.id] || {};
+  const park = String(b.id).startsWith('p');
+  const c = centro(b);
+  F('title').textContent = e.nombre || b.n || (b.k === 'local' ? 'Local sin nombre' : 'Edificio');
+  F('hint').textContent = (park ? `Terreno ${b.id} (${b.k})` : `Edificio #${b.id}`) + (b.n ? ` · en el mapa figura como "${b.n}"` : '') + (b.c ? ` (${b.c})` : '');
+  const tipo = e.tipo ?? (park ? (/school|college/.test(b.k) ? 'colegio' : 'plaza') : b.k === 'local' || b.n ? 'local' : b.k === 'escuela' ? 'colegio' : b.k === 'iglesia' ? 'iglesia' : b.k === 'edificio' ? 'edificio' : 'casa');
+  document.querySelector(`input[name=tipo][value=${tipo}]`).checked = true;
+  F('nombre').value = e.nombre ?? b.n ?? '';
+  F('rubro').value = e.rubro ?? '';
+  F('pisos').value = e.pisos ?? b.f ?? '';
+  F('calle').value = e.calle ?? calleCercana(c.x, c.z);
+  F('num').value = e.numero ?? '';
+  F('cartel').value = e.cartel ?? '#c62828';
+  F('letras').value = e.letras ?? '#ffffff';
+  F('fachada').value = e.fachada ?? '#d8cfc0';
+  F('persiana').checked = !!e.persiana;
+  F('toldo').checked = !!e.toldo;
+  F('vidriera').checked = e.vidriera ?? tipo === 'local';
+  F('rejas').checked = !!e.rejas;
+  F('notas').value = e.notas ?? '';
+  F('foto').value = '';
+  const foto = await fotoGet(b.id);
+  $('foto-prev').src = foto || '';
+  $('foto-prev').style.display = foto ? 'block' : 'none';
+  $('sheet').classList.add('open');
+  // centrar el edificio arriba de la ficha
+  view.x = c.x;
+  view.z = c.z + innerHeight * 0.22 / view.s;
+  if (view.s < 3) view.s = 3;
+  draw();
+}
+function cerrar() {
+  $('sheet').classList.remove('open');
+  sel = null;
+  draw();
+}
+function calleCercana(x, z) {
+  let best = '';
+  let bd = Infinity;
+  for (const r of base.roads) {
+    if (!r.n) continue;
+    for (let i = 0; i < r.p.length - 1; i++) {
+      const [ax, az] = r.p[i];
+      const [bx, bz] = r.p[i + 1];
+      const dx = bx - ax;
+      const dz = bz - az;
+      const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1)));
+      const d = Math.hypot(x - ax - dx * t, z - az - dz * t);
+      if (d < bd) { bd = d; best = r.n; }
+    }
+  }
+  return best;
+}
+$('sheet').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  if (!sel) return;
+  const c = centro(sel);
+  data[sel.id] = {
+    id: sel.id, x: Math.round(c.x * 10) / 10, z: Math.round(c.z * 10) / 10,
+    tipo: document.querySelector('input[name=tipo]:checked').value,
+    nombre: F('nombre').value.trim(), rubro: F('rubro').value, pisos: +F('pisos').value || null,
+    calle: F('calle').value.trim(), numero: F('num').value.trim(),
+    cartel: F('cartel').value, letras: F('letras').value, fachada: F('fachada').value,
+    persiana: F('persiana').checked, toldo: F('toldo').checked, vidriera: F('vidriera').checked, rejas: F('rejas').checked,
+    notas: F('notas').value.trim(), fecha: new Date().toISOString(),
+  };
+  guardar();
+  toast('Guardado ✔');
+  cerrar();
+});
+$('s-borrar').addEventListener('click', async () => {
+  if (!sel || !data[sel.id]) return cerrar();
+  if (!confirm('¿Borrar lo cargado en este edificio?')) return;
+  delete data[sel.id];
+  await fotoSet(sel.id, null);
+  guardar();
+  cerrar();
+});
+$('s-cerrar').addEventListener('click', cerrar);
+// foto: se achica a 900 px y se guarda como JPEG
+$('s-foto').addEventListener('change', async () => {
+  const f = $('s-foto').files[0];
+  if (!f || !sel) return;
+  const img = new Image();
+  img.src = URL.createObjectURL(f);
+  await img.decode();
+  const k = Math.min(1, 900 / Math.max(img.width, img.height));
+  const c = document.createElement('canvas');
+  c.width = Math.round(img.width * k);
+  c.height = Math.round(img.height * k);
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+  const url = c.toDataURL('image/jpeg', 0.72);
+  URL.revokeObjectURL(img.src);
+  await fotoSet(sel.id, url);
+  $('foto-prev').src = url;
+  $('foto-prev').style.display = 'block';
+  if (!data[sel.id]) toast('Foto lista: tocá Guardar');
+});
+
+// ---------- menú, lista, exportar, importar ----------
+$('btn-menu').addEventListener('click', () => $('menu').classList.toggle('open'));
+$('m-lista').addEventListener('click', async () => {
+  $('menu').classList.remove('open');
+  const L = $('lista');
+  const items = Object.values(data).sort((a, b) => (a.calle + a.numero).localeCompare(b.calle + b.numero));
+  L.innerHTML = `<div class="acts" style="margin:0 0 8px"><button id="l-cerrar">← Volver al mapa</button></div><p style="color:var(--muted)">${items.length} cargados</p>`;
+  for (const e of items) {
+    const foto = await fotoGet(e.id);
+    const d = document.createElement('div');
+    d.className = 'item';
+    d.innerHTML = `${foto ? `<img src="${foto}" alt="">` : ''}<div><b></b><span></span></div>`;
+    d.querySelector('b').textContent = e.nombre || '(sin nombre)';
+    d.querySelector('span').textContent = `${e.rubro || e.tipo} · ${e.calle} ${e.numero}`;
+    d.addEventListener('click', () => { L.classList.remove('open'); abrir([...base.buildings, ...base.parks].find((b) => b.id === e.id)); });
+    L.append(d);
+  }
+  $('l-cerrar').addEventListener('click', () => L.classList.remove('open'));
+  L.classList.add('open');
+});
+$('m-export').addEventListener('click', async () => {
+  $('menu').classList.remove('open');
+  const out = { version: 1, lugar: 'Temperley, 5 cuadras alrededor de la estación', fecha: new Date().toISOString(), coordenadas: 'x al este y z al sur, en metros (las del juego)', negocios: [] };
+  for (const e of Object.values(data)) out.negocios.push({ ...e, foto: (await fotoGet(e.id)) || undefined });
+  const blob = new Blob([JSON.stringify(out, null, 1)], { type: 'application/json' });
+  const name = `relevamiento-${new Date().toISOString().slice(0, 10)}.json`;
+  const file = new File([blob], name, { type: 'application/json' });
+  if (navigator.canShare?.({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: 'Relevamiento Temperley' }); return; } catch { /* sigue con la descarga */ }
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+});
+$('m-import').addEventListener('click', () => $('f-import').click());
+$('f-import').addEventListener('change', async () => {
+  const f = $('f-import').files[0];
+  if (!f) return;
+  try {
+    const j = JSON.parse(await f.text());
+    let n = 0;
+    for (const e of j.negocios || []) {
+      const { foto, ...rest } = e;
+      data[e.id] = rest;
+      if (foto) await fotoSet(e.id, foto);
+      n++;
+    }
+    guardar();
+    draw();
+    toast(`Importados ${n}`);
+  } catch { toast('Ese archivo no es un relevamiento'); }
+  $('menu').classList.remove('open');
+});
+$('m-ayuda').addEventListener('click', () => {
+  $('menu').classList.remove('open');
+  alert('La idea: que esté TODO tal cual es, con el nombre real: negocios, casas, edificios, colegios, iglesias, plazas, clubes, cafés, panaderías.\n\n1) Caminá las cuadras (o mirá Street View en otra pantalla).\n2) Tocá 📍 para ver dónde estás.\n3) Tocá cada edificio y cargá el negocio como dice el cartel. Sacale una foto al frente, derecho.\n4) Naranja = local que falta, verde = cargado.\n5) Al final: ☰ → Exportar, y subí el archivo al repo como src/data/relevamiento.json (o pasáselo a quien sigue el juego).\nTodo queda guardado en este celu aunque cierres la página.');
+});
+
+// ---------- GPS ----------
+$('btn-gps').addEventListener('click', () => {
+  if (!navigator.geolocation) return toast('Este navegador no da la ubicación');
+  navigator.geolocation.watchPosition(
+    (p) => {
+      const G = base.geo;
+      me = { x: (p.coords.longitude - G.lon0) * G.kx, z: (G.lat0 - p.coords.latitude) * G.kz };
+      if (!me.seen) { view.x = me.x; view.z = me.z; view.s = Math.max(view.s, 3); me.seen = true; }
+      draw();
+    },
+    () => toast('No pude ver la ubicación'),
+    { enableHighAccuracy: true, maximumAge: 4000 },
+  );
+  toast('Buscando ubicación…');
+});
+$('btn-centro').addEventListener('click', () => {
+  view.x = base.station.x;
+  view.z = base.station.z;
+  view.s = 2;
+  draw();
+});
+
+function contar() {
+  if (!base) return;
+  const inR = base.buildings.filter((b) => b.k === 'local' || data[b.id]?.tipo === 'local');
+  const hechos = Object.values(data).filter((e) => e.tipo === 'local' && e.nombre).length;
+  $('count').textContent = `${hechos} negocios cargados · ${inR.length} locales en el mapa`;
+}
+addEventListener('resize', resize);
+fetch('relevamiento-base.json')
+  .then((r) => r.json())
+  .then((j) => {
+    base = j;
+    view.x = j.station.x;
+    view.z = j.station.z;
+    view.s = Math.min(innerWidth, innerHeight) / (j.radius * 2.3);
+    const dl = $('calles');
+    for (const n of [...new Set(j.roads.map((r) => r.n).filter(Boolean))].sort()) dl.append(new Option(n));
+    contar();
+    resize();
+  })
+  .catch(() => toast('No se pudo cargar el mapa'));
+</script>
+</body>
+</html>
