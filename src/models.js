@@ -2,15 +2,25 @@
 // vicent091036 (Sketchfab), la del ejemplo de autos de three.js. Se maneja como cualquier auto.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { glassMat } from './cars.js';
 
+// El modelo original tiene 359.000 triángulos y viene con Draco: en el iPhone se quedaba sin
+// memoria. Se simplificó una vez con glTF-Transform (sin UV ni normales, que no usa) a ~50.000
+// y sin compresión; las normales se calculan acá. Se carga una sola vez y cada auto es un clon
+// que comparte la geometría.
+let base = null;
+function ferrariBase() {
+  base ??= new GLTFLoader().loadAsync('models/ferrari.glb').then((gltf) => {
+    gltf.scene.traverse((o) => {
+      if (o.isMesh && !o.geometry.attributes.normal) o.geometry.computeVertexNormals();
+    });
+    return gltf.scene;
+  });
+  return base;
+}
+
 export async function loadFerrari(color = 0xc8102e, { convertible = false } = {}) {
-  const draco = new DRACOLoader().setDecoderPath('draco/');
-  const loader = new GLTFLoader().setDRACOLoader(draco);
-  const gltf = await loader.loadAsync('models/ferrari.glb');
-  draco.dispose();
-  const model = gltf.scene;
+  const model = (await ferrariBase()).clone(true);
   // pintura con laca, cromados y vidrios como el resto de los autos
   const body = model.getObjectByName('body');
   if (body) {
@@ -30,15 +40,16 @@ export async function loadFerrari(color = 0xc8102e, { convertible = false } = {}
     clip = new THREE.Plane(new THREE.Vector3(0, -1, 0), 0.95);
     for (const o of [body, glass, model.getObjectByName('trim'), model.getObjectByName('carbon_fibre_trim'), model.getObjectByName('yellow_trim')]) {
       if (o?.material) {
-        o.material = o.material === chrome ? chrome.clone() : o.material;
+        o.material = o.material.clone(); // propio: el corte no tiene que tocar a la otra Ferrari
         o.material.clippingPlanes = [clip];
         o.material.clipShadows = true;
         o.material.side = THREE.DoubleSide;
       }
     }
   }
+  // sombra solo de la carrocería y las ruedas (las piezas chicas no se notan y cuestan)
   model.traverse((o) => {
-    if (o.isMesh) o.castShadow = o.receiveShadow = true;
+    if (o.isMesh) o.castShadow = /body|wheel/.test(o.name) || /wheel/.test(o.parent?.name ?? '');
   });
   // las ruedas giran dentro de un pivote (el modelo las trae rotadas)
   const wheels = [];

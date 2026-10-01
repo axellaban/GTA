@@ -167,7 +167,7 @@ Ocho rampas amarillas con franjas negras en calles largas. Si entrás rápido (m
 
 ## Modelos de internet (0.18)
 
-- **La Ferrari de Ciro**: Ferrari 458 Italia estacionada frente al gym El Kaiser, el auto más rápido del juego. Modelo de [vicent091036](https://sketchfab.com/models/57bf6cc56931426e87494f554df1dab6) en Sketchfab, tomado del ejemplo de autos de three.js (comprimido con Draco; el decodificador está en `public/draco/`).
+- **La Ferrari de Ciro**: Ferrari 458 Italia estacionada frente al gym El Kaiser, el auto más rápido del juego. Modelo de [vicent091036](https://sketchfab.com/models/57bf6cc56931426e87494f554df1dab6) en Sketchfab, tomado del ejemplo de autos de three.js. El original (359.000 triángulos, con Draco) colgaba Safari en el iPhone por memoria: se simplificó una vez con glTF-Transform a ~50.000 triángulos sin compresión, y las dos Ferrari comparten esa geometría.
 
 ## Laban the Creator (0.19)
 

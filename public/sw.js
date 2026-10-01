@@ -1,6 +1,6 @@
 // Service worker: guarda el juego para abrirlo como app y sin conexión.
 // La página va primero por la red (para tener siempre la última versión) y si no hay, sale del caché.
-const CACHE = 'gta-conurba-v2';
+const CACHE = 'gta-conurba-v3';
 const CORE = ['./', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png', './icons/favicon-48.png', './img/logo.png'];
 
 self.addEventListener('install', (e) => {
