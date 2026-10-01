@@ -156,7 +156,10 @@ la textura `src/gaspi-face.webp` se rehace con `tools/models/cara-gaspi.py`); La
 anteojos; Ciro mide 3,5 m y es más ancho (`bulk`). Arrancan con el cuerpo nuestro y cambian apenas
 cargan los modelos (`swapHuman` pasa armas y lo colgado de los huesos; `Npcs.reskin`,
 `Gym.upgrade`, `Laban.upgrade`). Los retoques de pose que se hacen después de `animateHuman` necesitan
-`h.rig?.apply()` (ya está para Gaspi en el loop y para Laban). `q_suit.glb` venía con una pistola en
+`h.rig?.apply()` (ya está para Gaspi en el loop y para Laban). Ojo: en los de Quaternius las
+piernas cuelgan de `Body` (no de `Hips`) y los pies son controles colgados de `Root`; `rigHuman` recorre
+desde el hueso de más arriba y reubica cada cuadro los huesos que cuelgan de otro lado (`follow`). Sin
+eso caminaban sin mover las piernas (lo reportó el dueño: "se arrastra"). `q_suit.glb` venía con una pistola en
 la mano: se sacó con `tools/models/sinarma.mjs`. ✅ Chicas del Ferrucho (`makeGirl('fiesta')`,
 vestido de `qf_formal`) y del gym (`makeGirl('gym')`, top y calzas sobre `qf_casual`), con los colores
 de su look; cambian al cargar (`Laban.upgrade`, `Gym.upgrade`). La pintura acepta una función de la

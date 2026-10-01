@@ -139,8 +139,25 @@ export function rigHuman(source, { height = 1.75, female = false } = {}) {
     const i = list.length - 1;
     for (const c of b.children) if (c.isBone) walk(c, i);
   };
-  walk(map.hips, -1);
-  const hipsParentW = wq(map.hips.parent);
+  // desde el hueso de más arriba (no desde la cadera): en los de Quaternius las piernas cuelgan de
+  // "Body", hermanas de "Hips", y si se arrancaba de la cadera nunca se movían (caminaban sin pasos)
+  let top = map.hips;
+  while (top.parent?.isBone) top = top.parent;
+  walk(top, -1);
+  const hipsParentW = wq(top.parent);
+  // huesos que cuelgan de otro lado que en el nuestro (las piernas de "Body", los pies de control
+  // colgados de "Root"): cada cuadro se ubican donde estarían colgando del hueso que les toca
+  const follow = [];
+  for (const n of BONES) {
+    const b = map[n];
+    const pb = REST[n][1] && map[REST[n][1]];
+    if (!b || !pb) continue;
+    let a = b.parent;
+    while (a && a !== pb) a = a.parent;
+    if (a === pb) continue;
+    follow.push({ b, pb, off: pb.worldToLocal(b.getWorldPosition(new THREE.Vector3())) });
+  }
+  const fw = new THREE.Vector3();
   const invParent = new THREE.Quaternion();
   // el esqueleto fantasma va adentro del personaje (invisible): lo que se cuelga de sus manos
   // (armas, la bolsa del vendedor) se ve donde está la mano del modelo
@@ -164,6 +181,12 @@ export function rigHuman(source, { height = 1.75, female = false } = {}) {
         invParent.copy(pw).invert();
         t.bone.quaternion.copy(invParent).multiply(t.w);
       } else t.w.copy(pw).multiply(t.restLocal);
+    }
+    for (const f of follow) {
+      f.pb.updateWorldMatrix(true, false);
+      fw.copy(f.off).applyMatrix4(f.pb.matrixWorld);
+      f.b.parent.updateWorldMatrix(true, false);
+      f.b.position.copy(f.b.parent.worldToLocal(fw));
     }
   }
 
