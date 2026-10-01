@@ -93,7 +93,7 @@ function findLot(colliders) {
           break;
         }
       }
-      if (free) return { x, z, h: Math.atan2(nr.x - x, nr.z - z) };
+      if (free) return { x, z, h: Math.atan2(nr.x - x, nr.z - z), edge: nr.dist - half };
     }
   }
   return null;
@@ -112,6 +112,7 @@ export class Gym {
     const lot = findLot(colliders);
     if (!lot) return;
     const { x, z, h } = lot;
+    this.edge = lot.edge; // distancia del centro al cordón de la calle
     this.x = x;
     this.z = z;
     this.h = h;

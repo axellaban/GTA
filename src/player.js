@@ -16,6 +16,7 @@ function stats(v) {
   if (v.model === 'camion') return { acc: 4, vmax: 19, rev: 3, turn: 1.2, grip: 9, brake: 11 };
   if (v.model === 'trafic') return { acc: 6, vmax: 24, rev: 4, turn: 1.6, grip: 8.5, brake: 13 };
   if (v.model === 'fiat600') return { acc: 6, vmax: 22, rev: 4, turn: 2.2, grip: 8, brake: 13 };
+  if (v.model === 'ferrari') return { acc: 15, vmax: 47, rev: 5, turn: 2.2, grip: 10.5, brake: 19 };
   if (v.model === 'falcon' || v.model === 'patrullero') return { acc: 9.5, vmax: 33, rev: 5, turn: 1.9, grip: 7.5, brake: 15 };
   return { acc: 8.5, vmax: 30, rev: 5, turn: 2.0, grip: 8.5, brake: 15 };
 }

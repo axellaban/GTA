@@ -58,7 +58,7 @@ export class Vehicle {
     const u = this.mesh.userData;
     if (u.wheels) {
       u.wheels.forEach((w, i) => {
-        w.rotation.x = this.wheelSpin;
+        w.rotation.x = this.wheelSpin * (u.spinSign ?? 1);
         if (i < 2 && !moto && this.kind !== 'carro') w.rotation.y = this.steer * 0.5;
       });
     }

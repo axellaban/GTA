@@ -26,6 +26,7 @@ import { WEAPONS } from './weapons.js';
 import { Gym } from './gym.js';
 import { Stunts, RAMPS } from './stunts.js';
 import { addPalms } from './palms.js';
+import { loadFerrari } from './models.js';
 import { Combat } from './combat.js';
 import { Police } from './police.js';
 import { Nav } from './nav.js';
@@ -398,6 +399,23 @@ for (const s of gym.slots) gym.spawn(s);
 world.gym = gym;
 const stunts = new Stunts(scene);
 world.palms = addPalms(scene, city.colliders, heightAt);
+// la Ferrari de Ciro, estacionada frente al gym (modelo bajado de internet)
+if (gym.x != null) {
+  loadFerrari()
+    .then((mesh) => {
+      const p = gym.world(2.8, gym.edge + 1.3);
+      const v = traffic.addParked(mesh, p.x, p.z, gym.h + Math.PI / 2);
+      world.ferrari = v;
+      // si había otro auto estacionado en el lugar, se va
+      for (const o of traffic.parked.slice()) {
+        if (o !== v && Math.hypot(o.x - v.x, o.z - v.z) < 5.5) {
+          scene.remove(o.mesh);
+          traffic.parked.splice(traffic.parked.indexOf(o), 1);
+        }
+      }
+    })
+    .catch((e) => console.warn('No cargó la Ferrari', e));
+}
 world.stunts = stunts;
 
 // ---------- Armería "El Tano": entrás a pie y elegís qué comprar ----------
