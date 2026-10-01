@@ -179,8 +179,11 @@ CC0 con animaciones, autos que se abollan (`dentCar`), changas de paramédico y 
 1. ✅ Motochorros con `makePerson('male')` y casco (`wearHelmet` en `src/crime.js`, colgado del hueso
    `head` del fantasma y calzado a la altura real de la cabeza). Al voltearlos se levantan los mismos
    personajes (`spawnWalker(..., human)` en `src/npcs.js`).
-2. Más variedad de personas: hay más CC0 en Mesh2Motion (`killer_*`, `hazmat_*`, `swat_male`); y
-   tintes por material para cambiar el color de la ropa.
+2. ✅ Más variedad: cada vecino con modelo CC0 tiene la ropa de otro tono (`tintClothes` en
+   `src/people.js`: gira el tono de lo saturado que no es piel, un material por persona y un solo
+   programa). Los gendarmes (6 estrellas) bajan con el modelo `swat_male` (CC0, pasamontañas).
+   Del resto de Mesh2Motion: `male`/`female` de Quaternius son maniquíes sin cara, `zombie` de Kenney
+   es caricatura y `killer_*`/`monster*`/`hazmat_*` son de terror: no sirven para la calle.
 3. Clavos en la calle en los retenes (pinchan las gomas: `v.flat = true`).
 4. Subirse al tren y al colectivo como pasajero; interiores.
 5. Más misiones encadenadas (`src/missions.js`, `DEFS`).

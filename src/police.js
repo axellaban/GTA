@@ -323,7 +323,7 @@ export class Police {
         if (Math.abs(v.speed) < 0.5 && v.crew > 0) {
           for (const s of [-1, 1]) {
             if (v.crew <= 0) break;
-            const n = npcs.spawnCop(v.x - v.fz * s * 1.6, v.z + v.fx * s * 1.6);
+            const n = npcs.spawnCop(v.x - v.fz * s * 1.6, v.z + v.fx * s * 1.6, v.gendarmeria);
             n.heading = v.heading;
             n.car = v;
             if (this.stars >= 2) this.arm(n);

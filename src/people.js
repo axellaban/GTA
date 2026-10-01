@@ -12,7 +12,48 @@ const SETS = {
   male: ['male_5', 'male_6', 'male_10', 'male_15', 'male_32', 'doctor_m'],
   female: ['female_8', 'female_9', 'female_31'],
   police: ['police_male', 'police_female'],
+  swat: ['swat_male'],
 };
+
+// Ropa de otro color para cada vecino: se gira el tono de lo que está saturado y no es piel
+// (la piel, el pelo oscuro y lo gris quedan como están). Un material por persona, mismo programa.
+const TINT_GLSL = /* glsl */ `
+vec3 tintHsv(vec3 c) {
+  vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+  vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
+  vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
+  float d = q.x - min(q.w, q.y);
+  return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + 1e-10)), d / (q.x + 1e-10), q.x);
+}
+vec3 tintRgb(vec3 c) {
+  vec3 p = abs(fract(c.xxx + vec3(1.0, 2.0 / 3.0, 1.0 / 3.0)) * 6.0 - 3.0);
+  return c.z * mix(vec3(1.0), clamp(p - 1.0, 0.0, 1.0), c.y);
+}`;
+function tintClothes(material, hue, sat, val) {
+  const m = material.clone();
+  m.onBeforeCompile = (shader) => {
+    THREE.Material.prototype.onBeforeCompile.call(m, shader);
+    shader.uniforms.uTint = { value: new THREE.Vector3(hue, sat, val) };
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nuniform vec3 uTint;\n' + TINT_GLSL)
+      .replace(
+        '#include <map_fragment>',
+        `#include <map_fragment>
+        {
+          vec3 cs = pow(max(diffuseColor.rgb, 0.0), vec3(0.4545));
+          vec3 hsv = tintHsv(cs);
+          float skin = (smoothstep(0.0, 0.03, hsv.x) - smoothstep(0.11, 0.15, hsv.x)) * smoothstep(0.12, 0.22, hsv.y) * (1.0 - smoothstep(0.7, 0.85, hsv.y)) * smoothstep(0.2, 0.38, hsv.z);
+          float cloth = (1.0 - skin) * smoothstep(0.14, 0.3, hsv.y);
+          hsv.x = fract(hsv.x + uTint.x * cloth);
+          hsv.y = clamp(hsv.y * mix(1.0, uTint.y, cloth), 0.0, 1.0);
+          hsv.z *= mix(1.0, uTint.z, 1.0 - skin);
+          diffuseColor.rgb = pow(tintRgb(hsv), vec3(2.2));
+        }`,
+      );
+  };
+  m.customProgramCacheKey = () => 'ropa-tenida';
+  return m;
+}
 
 export const PEOPLE = { ready: false, scenes: {} };
 
@@ -38,7 +79,17 @@ export function makePerson(kind) {
   if (!list?.length) return null;
   const s = R.pick(list);
   const female = kind === 'female' || /female/.test(s.f);
-  return rigHuman(s.scene, { female, height: female ? R.range(1.6, 1.7) : R.range(1.7, 1.84) });
+  const h = rigHuman(s.scene, { female, height: female ? R.range(1.6, 1.7) : R.range(1.7, 1.84) });
+  // los vecinos con ropa de otro color (los uniformes quedan como son)
+  if (kind === 'male' || kind === 'female') {
+    const hue = R.chance(0.25) ? 0 : Math.random();
+    const sat = R.range(0.75, 1.3);
+    const val = R.range(0.72, 1.18);
+    h.rig.model.traverse((o) => {
+      if (o.isMesh && o.material?.map) o.material = tintClothes(o.material, hue, sat, val);
+    });
+  }
+  return h;
 }
 
 // ---------- Animales (CC0, Mesh2Motion: perro y caballo con el esqueleto del zorro) ----------
