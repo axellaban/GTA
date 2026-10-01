@@ -201,7 +201,7 @@ function addGround(scene, city) {
   city.wetMats = [road.material, walk.material];
   // fotos CC0 de asfalto y baldosas si se bajaron (scripts/texturas.mjs); si no, quedan las dibujadas
   usePhoto(roadMat, 'asfalto', { size: 3, perTile: 9 });
-  usePhoto(walkMat, 'vereda', { size: 2, perTile: 3.2 });
+  usePhoto(walkMat, 'vereda', { size: 1.8, perTile: 3.2 });
 
   // senderos de las plazas
   const q = new Quads();

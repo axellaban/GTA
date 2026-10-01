@@ -29,6 +29,17 @@ Jugás con **Gaspi** (saco, camisa blanca, corbata a rayas rojas y blancas).
 - **Noche**: ventanas y vidrieras que se prenden, halos en faroles, faros y luces traseras, foco del auto de Gaspi y el fuego de los cortes brillando.
 - Gráficos siempre en calidad alta. Para que ande fluido también en pantallas grandes, se dibuja como máximo lo equivalente a Full HD, y la resolución baja o sube sola según los cuadros por segundo (resolución dinámica, como en GTA V o Fortnite). Si agregás `?fps` al final del link aparece un contador. Si el navegador no usa la placa de video, el juego avisa. La rueda del mouse acerca o aleja la cámara.
 
+### Materiales de calles y veredas
+
+El asfalto y las baldosas usan fotos de 1K con mapas de relieve y rugosidad, a escala real,
+sin sumar polígonos. Se sirven con el juego y, si falla una descarga, quedan las texturas
+dibujadas. Materiales CC0 de Poly Haven: [Asphalt 02](https://polyhaven.com/a/asphalt_02)
+de Rob Tuytel y [Concrete Pavement](https://polyhaven.com/a/concrete_pavement) de Charlotte
+Baglioni. Fuentes y presupuesto de memoria en `public/textures/CREDITS.md`.
+
+Para comparar la misma calle de día, al atardecer y con lluvia: `npm run dev` y abrir
+`/tools/graphics.html`. La herramienta es solo de desarrollo.
+
 ## Temperley real (0.3)
 
 - **Mapa real** de 1,2 km alrededor de la estación, sacado de Overture Maps (datos de OpenStreetMap y huellas de edificios): calles con su nombre y ancho, vías, andenes, la playa de maniobras, casi 3.000 edificios con su forma real, plazas, canchas, árboles, faroles y semáforos.

@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="es">
+<meta charset="utf-8">
+<title>Prueba visual de materiales · Conurba</title>
+<style>
+body { margin: 16px; background: #171922; color: #eee; font: 14px system-ui; }
+button { padding: 10px 18px; margin: 0 6px 12px 0; cursor: pointer; }
+iframe { width: 960px; height: 540px; border: 0; display: block; }
+pre { white-space: pre-wrap; }
+</style>
+<h1>Materiales: misma cámara, distinta luz</h1>
+<button data-hour="14">Día seco</button>
+<button data-hour="18.5">Atardecer</button>
+<button data-hour="23" data-rain="1">Noche con lluvia</button>
+<iframe src="/?fps" title="Juego de prueba" allow="autoplay"></iframe>
+<pre id="status">Esperando el juego…</pre>
+<script type="module">
+// Herramienta local de Vite; no forma parte del build de producción.
+const frame = document.querySelector('iframe');
+const status = document.getElementById('status');
+let scenario;
+for (const button of document.querySelectorAll('button')) button.onclick = () => {
+  const win = frame.contentWindow;
+  const w = win.__gta;
+  if (!w) return;
+  scenario = { hour: Number(button.dataset.hour), rain: Number(button.dataset.rain || 0) };
+  if (!win.document.getElementById('start').hidden) win.document.getElementById('play').click();
+  win.document.exitPointerLock?.();
+  w.player.x = -98;
+  w.player.z = 12;
+  w.player.updateCamera = (camera) => {
+    camera.position.set(-98, 1.8, 12);
+    camera.lookAt(-108, 1, -60);
+  };
+};
+setInterval(() => {
+  const win = frame.contentWindow;
+  const w = win.__gta;
+  if (!w) return;
+  if (scenario) {
+    w.time.hour = scenario.hour;
+    w.weather.rain = w.weather.target = w.weather.wet = scenario.rain;
+    w.weather.next = 1e9;
+  }
+  const mats = w.city.wetMats.map((m) => ({
+    color: m.map?.image?.src?.split('/').pop() || 'dibujada',
+    normal: m.normalMap?.image?.src?.split('/').pop() || 'dibujada',
+    rugosidad: m.roughnessMap?.image?.src?.split('/').pop() || 'sin foto',
+    escala: m.map?.repeat.toArray(),
+  }));
+  status.textContent = JSON.stringify({ hora: w.time.hour, materiales: mats, texturasGPU: win.__renderer.info.memory.textures }, null, 2);
+}, 500);
+</script>
+</html>

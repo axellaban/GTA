@@ -129,14 +129,14 @@ ametralladora, bazuca y su munición.
 **R8 — Look**: ✅ reflejos de neón en la calle mojada (`LAMPS.neonSpot`: mapa de los carteles visto
 desde arriba, muestreado a 3,4 m en `WET_REFLECT` de `src/detail.js`); ✅ luna de borde suave con mares y
 halo (`src/sky.js`); ✅ rejas. Falta: foto del relevamiento en las fachadas.
-- 🔶 Texturas de foto CC0 (Poly Haven / ambientCG) para calles y veredas: listo el camino, faltan las
-  fotos. `node scripts/texturas.mjs` las baja de la API de Poly Haven a `public/textures/` (color,
-  normal y rugosidad de 1K) y escribe `list.json`; `usePhoto` (src/textures.js, llamado en city.js para
-  `asfalto` y `vereda`) las usa si están y si no deja las dibujadas. Desde la nube de Claude esos
-  dominios están bloqueados (api.polyhaven.com, dl.polyhaven.org, ambientcg.com): el dueño tiene que
-  habilitarlos en Network access del entorno. El script no se probó contra la API real: revisar las
-  fotos elegidas, ajustar `size` (metros que cubre la foto), poner el crédito en la pausa y el README.
-  Para fachadas falta decidir cómo mezclar la foto con el atlas dibujado (`buildAtlas`).
+- ✅ Texturas de foto CC0 para calles y veredas (entrega 2026-10-01, Codex):
+  Asphalt 02 (Rob Tuytel, 3 m) y Concrete Pavement (Charlotte Baglioni, 1,8 m), de Poly Haven.
+  Color, normal GL y rugosidad de 1K en `public/textures/`, servidos junto con el juego.
+  `node scripts/texturas.mjs` reproduce la selección; créditos en pausa, README y
+  `public/textures/CREDITS.md`. Sin geometría extra. `usePhoto` conserva el material dibujado
+  completo si falla una descarga. Prueba visual local: `/tools/graphics.html` con Vite
+  (día, atardecer y noche con lluvia); no se incluye en el build de producción.
+  Falta para otra entrega: fachadas y prueba en iPhone real.
 
 **R9 — Mapa real (B1)**: ✅ negocios de OSM (`scripts/map/osm_pois.py` -> `src/data/osm.json`, 117
 lugares; `src/map.js` los asigna a las huellas): 129 locales con cartel real (antes 60). Overpass:
@@ -348,7 +348,8 @@ Ideas para seguir: capó que se levanta con mucho daño; semáforos y carteles q
 - ✅ 2026-10-01, Codex: carga atómica de materiales fotográficos (`usePhoto`): mantiene
   el material dibujado si alguna descarga falla, libera las texturas incompletas y respeta
   la rugosidad del clima. Prueba: `node --test tools/texturas.test.mjs`; build verificado.
-  Primera entrega en `codex/vice-city-graphics`; el hash se registra con la entrega de texturas.
+  Commit `fc2a730`, integrado por PR #1 (merge `3fa7bde`). Texturas: segunda entrega en
+  `codex/vice-city-graphics`, PR separado para evitar mezclar cambios con otras IA.
 
 Hecho y subido a `main` (cada cosa probada en Chromium sin GPU): PLAN.md y tools/, página de
 relevamiento + importación al juego (nombres, tipos, pisos, colores de cartel y fachada, toldo,
