@@ -1,6 +1,7 @@
 // Texturas dibujadas con canvas: fachadas del conurbano, veredas, asfalto, banderas.
 import * as THREE from 'three';
 import { Rng } from './rng.js';
+import { paintFacadeDepth } from './facade-depth.js';
 
 const FONT = '"Arial Black", Impact, "Helvetica Neue", Arial, sans-serif';
 
@@ -19,11 +20,11 @@ function tex(c, repeat = false) {
   return t;
 }
 
-function noise(ctx, w, h, rng, amount, alpha = 0.08) {
+function noise(ctx, w, h, rng, amount, alpha = 0.08, ox = 0, oy = 0) {
   for (let i = 0; i < amount; i++) {
     const v = rng.int(0, 255);
     ctx.fillStyle = `rgba(${v},${v},${v},${alpha})`;
-    ctx.fillRect(rng.range(0, w), rng.range(0, h), rng.range(1, 3), rng.range(1, 3));
+    ctx.fillRect(ox + rng.range(0, w), oy + rng.range(0, h), rng.range(1, 3), rng.range(1, 3));
   }
 }
 
@@ -349,7 +350,7 @@ function stains(ctx, x, y, w, h, rng) {
     const sx = x + rng.range(0, w);
     ctx.fillRect(sx, y, rng.range(3, 14), rng.range(h * 0.2, h * 0.7));
   }
-  noise(ctx, w, h, rng, 700, 0.05);
+  noise(ctx, w, h, rng, 700, 0.05, x, y);
 }
 
 function spray(ctx, text, color, x, y, size, rng) {
@@ -586,7 +587,7 @@ function drawEdificio(ctx, x, y, rng) {
   }
   ctx.fillStyle = 'rgba(0,0,0,0.12)';
   ctx.fillRect(x, y + H - 6, W, 6);
-  noise(ctx, W, H, rng, 400, 0.05);
+  noise(ctx, W, H, rng, 400, 0.05, x, y);
 }
 
 function drawEntrada(ctx, x, y, rng) {
@@ -705,7 +706,7 @@ function drawEstacion(ctx, x, y, rng, upper) {
       EM.fillRect(wx + 4, top + ww / 2, ww - 8, bot - top - ww / 2);
     }
   }
-  noise(ctx, W, H, rng, 500, 0.05);
+  noise(ctx, W, H, rng, 500, 0.05, x, y);
 }
 
 function drawEstadio(ctx, x, y, rng) {
@@ -722,7 +723,7 @@ function drawEstadio(ctx, x, y, rng) {
   ctx.textAlign = 'center';
   ctx.fillText('CLUB ATLÉTICO TEMPERLEY', x + W / 2, y + 74, W - 30);
   ctx.textAlign = 'left';
-  noise(ctx, W, H, rng, 400, 0.05);
+  noise(ctx, W, H, rng, 400, 0.05, x, y);
 }
 
 function drawGalpon(ctx, x, y, rng) {
@@ -823,7 +824,15 @@ export function buildAtlas() {
     const col = i % COLS;
     const row = Math.floor(i / COLS);
     CUR = { ox: col * CELL_W, oy: row * CELL_H, list: [], base: null };
+    // Cada fachada vive en su celda: ladrillos y desgaste no deben invadir la de al lado.
+    for (const target of [ctx, EM, OR]) {
+      target.save();
+      target.beginPath();
+      target.rect(CUR.ox, CUR.oy, CELL_W, CELL_H);
+      target.clip();
+    }
     fn(col * CELL_W, row * CELL_H);
+    for (const target of [ctx, EM, OR]) target.restore();
     const r = uvRect(i++);
     r.open = CUR.list;
     r.base = CUR.base;
@@ -851,6 +860,12 @@ export function buildAtlas() {
   if (i > COLS * ROWS) console.warn('Atlas lleno', i);
   // el relieve sale del dibujo limpio; el grano va después para que no quede todo granulado
   const normal = normalMapFrom(c, 2.2);
+  // La sombra pintada no es relieve: se aplica después de generar las normales.
+  for (const cells of Object.values(ATLAS)) for (const cell of cells) {
+    const col = Math.round(cell.u0 * COLS);
+    const row = Math.round((1 - cell.v1) * ROWS);
+    paintFacadeDepth(ctx, EM, col * CELL_W, row * CELL_H, CELL_W, CELL_H, cell.open);
+  }
   grain(ctx, c.width, c.height, rng);
   const t = tex(c);
   t.generateMipmaps = true;

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="es">
+<meta charset="utf-8">
+<title>Fachadas · prueba visual</title>
+<style>body{background:#1b1e29;color:#eee;font:16px system-ui;margin:24px}canvas{max-width:100%;display:block;margin:12px 0 24px;border:1px solid #555}pre{white-space:pre-wrap}</style>
+<h1>Profundidad de aberturas · atlas real</h1>
+<pre id="result">Probando…</pre>
+<script type="module">
+import { buildAtlas, ATLAS } from '../src/textures.js';
+import { paintFacadeDepth } from '../src/facade-depth.js';
+const result = document.getElementById('result');
+try {
+  const c = document.createElement('canvas'); c.width = 100; c.height = 100;
+  const ctx = c.getContext('2d', {willReadFrequently:true});
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,100,100);
+  const e = c.cloneNode(); const ec = e.getContext('2d', {willReadFrequently:true});
+  ec.fillStyle = '#ffffff'; ec.fillRect(0,0,100,100);
+  paintFacadeDepth(ctx, ec, 0,0,100,100,[{kind:'window',x0:0.2,y0:0.2,x1:0.8,y1:0.8}]);
+  const pixel = (g,x,y) => g.getImageData(x,y,1,1).data[0];
+  if (pixel(ctx,50,21) >= pixel(ctx,50,50)) throw Error('Falta sombra bajo el dintel');
+  if (pixel(ctx,21,50) >= pixel(ctx,50,50)) throw Error('Falta sombra en la jamba');
+  if (pixel(ctx,19,50) !== 255 || pixel(ctx,50,81) !== 255) throw Error('Sombra fuera de la abertura');
+  if (pixel(ec,50,21) !== pixel(ctx,50,21)) throw Error('Emisión y color no coinciden');
+  const atlas = buildAtlas();
+  for (const [name, cells] of [['Casas',ATLAS.casa],['Locales',ATLAS.local],['Ventanas de noche',ATLAS.alto]]) {
+    const h = document.createElement('h2'); h.textContent=name; document.body.append(h);
+    const out = document.createElement('canvas');out.width=1024;out.height=256;
+    const g=out.getContext('2d');
+    for(let i=0;i<4;i++) {
+      const uv=cells[i];const sx=Math.round(uv.u0*4)*512;const sy=Math.round((1-uv.v1)*16)*128;
+      g.drawImage(name.includes('noche')?atlas.emissive.image:atlas.map.image,sx,sy,512,128,(i%2)*512,Math.floor(i/2)*128,512,128);
+    }
+    document.body.append(out);
+  }
+  result.textContent='PASS: dinteles, jambas, límites de la abertura y emisión nocturna. Atlas 2048 × 2048, sin texturas GPU adicionales.';
+} catch(e) {result.textContent='FAIL: '+e.message;throw e;}
+</script>
+</html>

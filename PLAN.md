@@ -349,6 +349,14 @@ Ideas para seguir: capó que se levanta con mucho daño; semáforos y carteles q
 
 ## 6b. Última sesión (para quien siga)
 
+- ✅ 2026-10-01, segunda tanda Codex: profundidad pintada en dinteles y jambas,
+  tanto en color como en emisión nocturna (`src/facade-depth.js`). Se aplica después
+  de calcular las normales para no convertir las sombras en relieve. Misma resolución
+  de atlas, sin geometría ni texturas GPU nuevas. Se corrigió el ruido que se dibujaba
+  siempre en la primera celda y se recortó cada fachada para que no invada las vecinas.
+  Prueba de píxeles y atlas real: `/tools/facades.html` con Vite. Commit de esta entrega
+  en la PR «Dar profundidad a las aberturas y aislar las celdas del atlas».
+
 - ✅ 2026-10-01, Codex: carga atómica de materiales fotográficos (`usePhoto`): mantiene
   el material dibujado si alguna descarga falla, libera las texturas incompletas y respeta
   la rugosidad del clima. Prueba: `node --test tools/texturas.test.mjs`; build verificado.
