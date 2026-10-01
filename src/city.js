@@ -1024,7 +1024,11 @@ function addLamps(scene, city, rng) {
   const up = new THREE.Vector3(0, 1, 0);
   const one = new THREE.Vector3(1, 1, 1);
   const v = new THREE.Vector3();
+  city.lampRig = { poles, arms, heads, data: L };
   L.forEach(([x, z, rot], i) => {
+    // el poste es un obstáculo (y un auto rápido lo voltea, ver src/smash.js)
+    const c = city.colliders.addCircle(x, z, 0.17, 8, 'lamp');
+    c.lamp = i;
     m4.makeTranslation(x, 4.25, z);
     poles.setMatrixAt(i, m4);
     q.setFromAxisAngle(up, rot);

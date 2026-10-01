@@ -808,21 +808,51 @@ export class Player {
     // choques con casas
     let bump = 0;
     let hitAt = null; // dónde fue el golpe más fuerte (para abollar ahí)
+    v.spin = (v.spin || 0) * Math.exp(-dt * 2.6);
+    this.scrapeT = (this.scrapeT || 0) - dt;
     for (const c of v.circles()) {
       const p = { x: c.x, z: c.z };
       const hit = colliders.resolveCircle(p, c.r);
       if (hit) {
+        // un poste de luz a velocidad: lo voltea y sigue (frenado)
+        const vel = Math.hypot(v.vx, v.vz);
+        if (hit.box.kind === 'lamp' && vel > 5 && !moto && world.smash?.knock(hit.box, v.vx, v.vz)) {
+          v.vx *= 0.62;
+          v.vz *= 0.62;
+          effects.shake += 0.35;
+          combat.damageVehicle(world, v, 9, false, c.x - hit.nx * c.r, c.z - hit.nz * c.r);
+          police.crime('choque', v.x, v.z);
+          continue;
+        }
         v.x += p.x - c.x;
         v.z += p.z - c.z;
         const into = v.vx * hit.nx + v.vz * hit.nz;
+        const cx = c.x - hit.nx * c.r;
+        const cz = c.z - hit.nz * c.r;
         if (into < 0) {
-          if (-into > bump) hitAt = { x: c.x - hit.nx * c.r, z: c.z - hit.nz * c.r };
+          if (-into > bump) hitAt = { x: cx, z: cz };
           bump = Math.max(bump, -into);
           v.vx -= hit.nx * into * 1.25;
           v.vz -= hit.nz * into * 1.25;
+          // golpe descentrado: el auto pega un trompo
+          const rx = cx - v.x;
+          const rz = cz - v.z;
+          const jx = -hit.nx * into;
+          const jz = -hit.nz * into;
+          v.spin -= ((rx * jz - rz * jx) / (v.L * 0.5)) * (moto ? 0.1 : 0.32);
+        }
+        // raspando contra la pared: chispas y chirrido de chapa
+        const along = Math.abs(v.vx * -hit.nz + v.vz * hit.nx);
+        if (along > 4 && !moto) {
+          if (Math.random() < 0.7) effects.sparks(cx, 0.45, cz, 2, 3 + along * 0.15);
+          if (this.scrapeT <= 0) {
+            this.scrapeT = 0.14;
+            audio.metal(Math.min(0.5, along / 40));
+          }
         }
       }
     }
+    v.heading += v.spin * dt;
     // choques con otros vehículos
     const others = traffic.all().concat(police.cars);
     for (const o of others) {
@@ -850,8 +880,19 @@ export class Player {
               bump = Math.max(bump, -rel * 0.8);
               v.vx -= nx * rel * 0.8;
               v.vz -= nz * rel * 0.8;
-              // el otro sale empujado
+              // los dos giran según dónde fue el golpe
+              const rx = at.x - v.x;
+              const rz = at.z - v.z;
+              v.spin -= ((rx * -nz * rel - rz * -nx * rel) / (v.L * 0.5)) * 0.25;
+              // el otro sale empujado (y con un golpe fuerte, girando y despegando un poco)
               o.speed = (o.speed || 0) * 0.5;
+              if (-rel > 6 && o.kind !== 'bus') {
+                const k = Math.min(1.6, -rel / 12);
+                o.shove = { t: 0, vx: -nx * -rel * 0.55, vz: -nz * -rel * 0.55, vy: 1.2 * k };
+                const ox = at.x - o.x;
+                const oz = at.z - o.z;
+                o.heading += ((ox * nz - oz * nx) / (o.L * 0.5)) * 0.32 * k;
+              }
               if (o.kind === 'moto' && o.rider && -rel > 5) traffic.ejectRider(o, world, -nx, -nz);
               if (-rel > 7) combat.damageVehicle(world, o, -rel * 0.9, true, at.x, at.z);
               if (o.police && -rel > 4) police.crime('pina', o.x, o.z);
@@ -882,7 +923,12 @@ export class Player {
       if (bump > 6) {
         combat.damageVehicle(world, v, bump * (moto ? 0.3 : 0.55), false, hitAt?.x, hitAt?.z);
         audio.golpe(Math.min(1, bump / 15));
-        effects.shake += Math.min(0.6, bump / 25);
+        effects.shake += Math.min(0.9, bump / 18);
+        // golpe fuerte: humo de gomas y polvo en el punto del choque
+        if (bump > 12 && hitAt) {
+          effects.dust(hitAt.x, 0.5, hitAt.z, 8, [0.5, 0.48, 0.44], 1.2);
+          for (let i = 0; i < 3; i++) effects.tireSmoke(hitAt.x, hitAt.z, 1);
+        }
         if (bump > 11) hud.toast(R.pick(['¡Qué palo!', '¡Uh, la chapa!', '¡Pará, loco!']));
         if (bump > 8) effects.sparks(v.x + v.fx * v.L * 0.5, 0.6, v.z + v.fz * v.L * 0.5, 8, 5);
       }

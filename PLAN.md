@@ -185,7 +185,11 @@ Hecho (cada ronda probada sin GPU y subida a `main`):
   autos que vuelan (`blastStep`, `v.tilt` en `Vehicle.sync`), piezas sueltas (`flyParts`), empujón
   (`shoveStep`) y cadena de fuego en `explode`; gente que vuela (`flyStep` en `src/npcs.js`).
 
-Ideas para seguir: capó que se levanta con mucho daño; reacción al ver un auto que se acerca rápido
+- ✅ Choques: trompo por golpe descentrado (`v.spin` en `drive`), chispas al raspar, el otro auto
+  empujado y girando, postes de luz que se voltean y se apagan (`src/smash.js`, colisionadores
+  `lamp` en `addLamps`).
+
+Ideas para seguir: capó que se levanta con mucho daño; semáforos y carteles que se caen; reacción al ver un auto que se acerca rápido
 (ya se tiran a un costado); reflejos de luces en los charcos de noche más marcados.
 
 ## 6. Estado (actualizar al avanzar)

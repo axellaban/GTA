@@ -261,4 +261,13 @@ export class Glows {
     this.streaks.instanceMatrix.needsUpdate = true;
     if (this.streaks.instanceColor) this.streaks.instanceColor.needsUpdate = true;
   }
+
+  // farol voltead: se apaga el halo y el cono de luz
+  lampOff(i) {
+    const pos = this.lamps.geometry.attributes.position;
+    pos.setY(i, -500);
+    pos.needsUpdate = true;
+    this.cones.setMatrixAt(i, this.m4.makeScale(0, 0, 0));
+    this.cones.instanceMatrix.needsUpdate = true;
+  }
 }

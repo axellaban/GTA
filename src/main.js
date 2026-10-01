@@ -8,6 +8,7 @@ import { Input } from './input.js';
 import { Audio } from './audio.js';
 import { Player } from './player.js';
 import { Traffic, Vehicle } from './traffic.js';
+import { Smash } from './smash.js';
 import { Npcs } from './npcs.js';
 import { Crime } from './crime.js';
 import { Events } from './events.js';
@@ -201,6 +202,15 @@ fx.ground = heightAt;
 const pickups = new Pickups(scene, audio);
 pickups.placeWorld(city, heightAt);
 buildLampMap(city.lamps, pickups.shops);
+// postes que se caen al chocarlos: se apaga el halo y la luz que tiraban al piso
+const smash = new Smash(city, fx, audio);
+smash.onLampOff = (i) => {
+  glows.lampOff(i);
+  const lit = city.lamps.filter((_, k) => !smash.down.has(k));
+  const old = [LAMPS.lampPool.value, LAMPS.lampSpot.value];
+  buildLampMap(lit, pickups.shops);
+  for (const t of old) t?.dispose();
+};
 const combat = new Combat(scene, fx, audio);
 combat.setupPlayer(player);
 const police = new Police(scene, audio, nav);
@@ -210,6 +220,7 @@ const comisaria = stationHouse();
 const time = { hour: 17.5, night: false, label: '17:30' };
 const weather = { rain: 0, target: 0, wet: 0, slick: false, next: R.range(200, 320), t: 0, boltT: R.range(10, 25), flash: 0 };
 const world = { scene, camera, city, input, audio, hud, player, traffic, npcs, crime, events, trains, time, lights, colliders: city.colliders, fx, pickups, combat, police, nav, radio, weather, night: NIGHT, heightAt };
+world.smash = smash;
 // portazo: se oye si Gaspi está cerca
 Vehicle.onSlam = (v, k) => {
   const d = Math.hypot(v.x - player.x, v.z - player.z);
@@ -1172,6 +1183,7 @@ function frame(now) {
   updateGps(dt);
   player.updateCamera(camera, dt, city.colliders, fx);
   fx.update(dt);
+  smash.update(dt);
   radio.update();
   const moto = crime.nearestMoto(player.x, player.z, 80);
   audio.update(player.vehicle?.speed ?? 0, !!player.vehicle, moto ? Math.hypot(moto.x - player.x, moto.z - player.z) : 999, player.vehicle?.kind === 'moto');
