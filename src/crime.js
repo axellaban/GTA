@@ -2,10 +2,35 @@
 import * as THREE from 'three';
 import { makeMoto } from './vehicles.js';
 import { makeHuman, animateHuman } from './human.js';
+import { makePerson, PEOPLE } from './people.js';
 import { Vehicle } from './traffic.js';
 import { cornerName } from './map.js';
 import { R } from './rng.js';
 import { TOUCH } from './input.js';
+
+// Casco de moto: calota brillante con visera oscura, colgado del hueso de la cabeza
+const HELMET_GEO = (() => {
+  const shell = new THREE.SphereGeometry(0.155, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.62);
+  shell.scale(1, 1.05, 1.12);
+  return shell;
+})();
+const VISOR_GEO = new THREE.SphereGeometry(0.158, 12, 6, -Math.PI * 0.36, Math.PI * 0.72, Math.PI * 0.32, Math.PI * 0.2).scale(1, 1.05, 1.12);
+const VISOR_MAT = new THREE.MeshStandardMaterial({ color: 0x0b0d10, roughness: 0.08, metalness: 0.6 });
+// el esqueleto fantasma mide siempre lo mismo y los modelos no: se calza a la altura real de la cabeza
+const _hb = new THREE.Box3();
+const _hv = new THREE.Vector3();
+function wearHelmet(h, color) {
+  const g = new THREE.Group();
+  const m = new THREE.Mesh(HELMET_GEO, new THREE.MeshStandardMaterial({ color, roughness: 0.28, metalness: 0.1 }));
+  const v = new THREE.Mesh(VISOR_GEO, VISOR_MAT);
+  m.castShadow = true;
+  g.add(m, v);
+  h.root.updateMatrixWorld(true);
+  const top = _hb.setFromObject(h.rig.model).max.y - h.root.position.y;
+  const headY = h.bones.head.getWorldPosition(_hv).y - h.root.position.y;
+  g.position.set(0, top - 0.14 - headY, 0.01);
+  h.bones.head.add(g);
+}
 
 export class Crime {
   constructor(scene, traffic, colliders, audio) {
@@ -60,7 +85,13 @@ export class Crime {
       { shirt: 0x222222, pants: 0x1a1a3a, helmet: R.pick([0x111111, 0xc62828, 0xf5f5f5]), longSleeves: true },
       { shirt: R.pick([0x1565c0, 0x333333, 0xc62828]), pants: 0x2a2a2a, hood: 0x2a2a2a, longSleeves: true },
     ];
-    const riders = looks.map((l) => makeHuman(l));
+    // con los personajes de artista (CC0) si ya cargaron: el que maneja con casco, el de atrás a veces
+    const riders = looks.map((l, i) => {
+      const h = PEOPLE.ready && makePerson('male');
+      if (!h) return makeHuman(l);
+      if (i === 0 || R.chance(0.35)) wearHelmet(h, i === 0 ? l.helmet : R.pick([0x111111, 0x1565c0, 0xf5f5f5]));
+      return h;
+    });
     riders[0].root.position.set(0, 0.36, -0.08);
     riders[1].root.position.set(0, 0.46, -0.55);
     for (const r of riders) mesh.add(r.root);
@@ -260,7 +291,10 @@ export class Crime {
     m.riders.forEach((r, i) => {
       m.v.mesh.remove(r.root);
       const s = i ? 1 : -1;
-      const n = npcs.spawnWalker({ x: m.v.x + m.v.fz * s * 1.3, z: m.v.z - m.v.fx * s * 1.3, heading: m.v.heading }, null, 0, 0, m.looks[i]);
+      // el mismo personaje (con su casco) se levanta y sale corriendo
+      r.root.position.set(0, 0, 0);
+      r.root.rotation.set(0, 0, 0);
+      const n = npcs.spawnWalker({ x: m.v.x + m.v.fz * s * 1.3, z: m.v.z - m.v.fx * s * 1.3, heading: m.v.heading }, null, 0, 0, m.looks[i], r);
       if (!n) return;
       n.money = 0;
       n.brave = 0;

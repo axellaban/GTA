@@ -232,14 +232,15 @@ export class Npcs {
     }
   }
 
-  spawnWalker(at, near, rmin = 60, rmax = 150, look = null) {
+  // human: un personaje ya armado (por ejemplo el motochorro que se cae de la moto)
+  spawnWalker(at, near, rmin = 60, rmax = 150, look = null, human = null) {
     let p = at;
     if (!p) {
       p = this.sidewalkPoint(near.x, near.z, rmin, rmax);
       if (!p) return null;
     }
     // la mayoría con modelo de artista (CC0, ver src/people.js) cuando ya cargaron
-    const h = (!look && PEOPLE.ready && R.chance(0.75) && makePerson(R.chance(0.5) ? 'female' : 'male')) || makeHuman(look ?? randomCivilian());
+    const h = human || (!look && PEOPLE.ready && R.chance(0.75) && makePerson(R.chance(0.5) ? 'female' : 'male')) || makeHuman(look ?? randomCivilian());
     const n = this.add(new Npc('vecino', h, p.x, p.z));
     n.heading = p.heading ?? R.range(0, Math.PI * 2);
     n.vmax = R.range(1.1, 1.6);

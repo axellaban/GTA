@@ -176,8 +176,9 @@ CC0 con animaciones, autos que se abollan (`dentCar`), changas de paramédico y 
 (`src/rescue.js`, ambulancia y autobomba de Kenney CC0), 6 estrellas + retenes + Gendarmería.
 
 **Próximos pasos sugeridos, en orden** (ninguno necesita al dueño):
-1. Motochorros (`src/crime.js`, `makeHuman(l)`) con `makePerson('male')` y casco (colgar un casco
-   del hueso `head` del fantasma, como las armas en la mano).
+1. ✅ Motochorros con `makePerson('male')` y casco (`wearHelmet` en `src/crime.js`, colgado del hueso
+   `head` del fantasma y calzado a la altura real de la cabeza). Al voltearlos se levantan los mismos
+   personajes (`spawnWalker(..., human)` en `src/npcs.js`).
 2. Más variedad de personas: hay más CC0 en Mesh2Motion (`killer_*`, `hazmat_*`, `swat_male`); y
    tintes por material para cambiar el color de la ropa.
 3. Clavos en la calle en los retenes (pinchan las gomas: `v.flat = true`).
