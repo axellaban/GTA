@@ -1,0 +1,13 @@
+{
+  "name": "gta-tools-models",
+  "private": true,
+  "type": "module",
+  "description": "Procesa modelos glTF de internet para el juego (simplificar, sin Draco). npm i && node lite.mjs entrada.glb salida.glb 0.1 0.003",
+  "dependencies": {
+    "@gltf-transform/core": "^4",
+    "@gltf-transform/extensions": "^4",
+    "@gltf-transform/functions": "^4",
+    "draco3dgltf": "^1.5.7",
+    "meshoptimizer": "^0.22.0"
+  }
+}

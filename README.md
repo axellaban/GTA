@@ -4,6 +4,9 @@ Juego de mundo abierto en el navegador, ambientado alrededor de la estación Tem
 
 Jugás con **Gaspi** (saco, camisa blanca, corbata a rayas rojas y blancas).
 
+
+> **¿Seguís el proyecto (persona o IA)?** Empezá por [`PLAN.md`](PLAN.md): reglas, cómo probar sin GPU y qué falta, en orden.
+
 ## Qué hay en esta versión (0.1)
 
 - **La estación**: edificio del Ferrocarril del Sud sobre Av. Meeks 1400, 10 andenes con techo, puente peatonal hacia Fray Justo Sta. María de Oro, carrito de panchos.
@@ -213,6 +216,9 @@ Box de CrossFit a unos 70 m de la estación (cuadrado amarillo en el mapa): galp
 | `src/sky.js`, `src/atmosphere.js`, `src/post.js`, `src/glow.js` | Cielo, bruma con altura y sol, oclusión ambiental (N8AO), gradeo de color y luces de noche |
 
 ## Pendiente
+
+El plan completo y ordenado está en [`PLAN.md`](PLAN.md).
+
 
 - Subirse al tren y al colectivo como pasajero.
 - Interiores (el kiosco, la estación por dentro).

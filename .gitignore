@@ -4,3 +4,4 @@ dist/
 .DS_Store
 scripts/map/*.json
 scripts/map/__pycache__/
+tools/models/node_modules
