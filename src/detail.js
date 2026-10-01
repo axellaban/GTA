@@ -68,8 +68,11 @@ const WET_REFLECT = /* glsl */ `
     float rup = max(rr.y, 0.015);
     float rh = max(7.7 - rw.y, 0.5);
     vec3 spot = vec3(0.0);
+    // cada píxel corre un poco las muestras: el reflejo queda como una raya continua (con grano de
+    // agua) y no como cinco bandas separadas sobre las baldosas
+    float jit = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
     for (int i = 0; i < 5; i++) {
-      float k = 0.55 + float(i) * 0.28;
+      float k = 0.55 + (float(i) + jit - 0.5) * 0.28;
       float wk = 1.0 - abs(float(i) - 2.0) * 0.3;
       vec2 rp = rw.xz + rr.xz * (rh / (rup * k));
       spot += texture2D(lampSpot, (rp - lampParams.xy) / lampParams.z).rgb * wk;

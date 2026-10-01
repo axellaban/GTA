@@ -175,6 +175,9 @@ Hecho (cada ronda probada sin GPU y subida a `main`):
 - ✅ Grupitos charlando (`spawnGroup`/`updateGroups` en `src/npcs.js`, poses `talk`/`listen` en
   `src/human.js`): se turnan para hablar, con tiros se dispersan y al rato se despiden.
 
+- ✅ Noche mojada: faros y luces de freno reflejados como rayas en el asfalto (`updateStreaks` en
+  `src/glow.js`); el reflejo de los faroles ya no hace bandas (muestras con jitter en `src/detail.js`).
+
 Ideas para seguir: capó que se levanta con mucho daño; reacción al ver un auto que se acerca rápido
 (ya se tiran a un costado); reflejos de luces en los charcos de noche más marcados.
 

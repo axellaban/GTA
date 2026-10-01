@@ -92,6 +92,33 @@ function points(n, color, size, tex) {
   return p;
 }
 
+// raya de reflejo en el asfalto mojado: fuerte del lado de la luz, se esfuma hacia la cámara
+function streakTexture() {
+  const W = 32;
+  const H = 128;
+  const c = document.createElement('canvas');
+  c.width = W;
+  c.height = H;
+  const g = c.getContext('2d');
+  const img = g.createImageData(W, H);
+  for (let y = 0; y < H; y++) {
+    const v = 1 - y / (H - 1); // 1 arriba (la luz)
+    for (let x = 0; x < W; x++) {
+      const u = (x / (W - 1)) * 2 - 1;
+      // cortes de agua: la raya tiene huecos y se ensancha un poco lejos de la luz
+      const ripple = 0.75 + 0.25 * Math.sin(y * 0.9 + Math.sin(y * 0.23) * 3);
+      const k = Math.exp(-(u * u) / (0.12 + (1 - v) * 0.25)) * v ** 1.6 * ripple;
+      const i = (y * W + x) * 4;
+      img.data[i] = img.data[i + 1] = img.data[i + 2] = Math.round(255 * k);
+      img.data[i + 3] = 255;
+    }
+  }
+  g.putImageData(img, 0, 0);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
 export class Glows {
   constructor(scene, city) {
     const tex = glowTexture();
@@ -116,6 +143,16 @@ export class Glows {
     city.lamps.forEach((l, i) => this.cones.setMatrixAt(i, m4.makeTranslation(l.x, 7.62, l.z)));
     this.cones.renderOrder = 4;
     scene.add(this.beams, this.cones);
+    // reflejos de faros y luces traseras en la calle mojada (rayas que apuntan a la cámara)
+    const sg = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2).translate(0, 0, 0.5);
+    this.streaks = new THREE.InstancedMesh(sg, new THREE.MeshBasicMaterial({ map: streakTexture(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), 160);
+    this.streaks.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(160 * 3), 3);
+    this.streaks.count = 0;
+    this.streaks.frustumCulled = false;
+    this.streaks.renderOrder = 3;
+    scene.add(this.streaks);
+    this.sc = new THREE.Color();
+    this.ss = new THREE.Vector3();
     this.m4 = new THREE.Matrix4();
     this.q = new THREE.Quaternion();
     this.e = new THREE.Euler(0, 0, 0, 'YXZ');
@@ -138,6 +175,7 @@ export class Glows {
     this.beams.material.uniforms.uStrength.value = k * (0.1 + rain * 0.12) * NIGHT.haces;
     if (!on) {
       this.spot.intensity = 0;
+      this.streaks.count = 0;
       return;
     }
     const hp = this.heads.geometry.attributes.position;
@@ -171,6 +209,7 @@ export class Glows {
       n++;
     }
     this.beams.count = nb;
+    this.updateStreaks(world, all, k);
     this.beams.instanceMatrix.needsUpdate = true;
     this.heads.geometry.setDrawRange(0, n * 2);
     this.tails.geometry.setDrawRange(0, n * 2);
@@ -182,5 +221,44 @@ export class Glows {
       this.spot.position.set(v.x + v.fx * (v.L / 2), 1.1, v.z + v.fz * (v.L / 2));
       this.spot.target.position.set(v.x + v.fx * 18, 0, v.z + v.fz * 18);
     } else this.spot.intensity = 0;
+  }
+
+  updateStreaks(world, cars, k) {
+    const wet = world.weather?.wet ?? 0;
+    const cam = world.camera.position;
+    let n = 0;
+    if (wet > 0.15 && !this.lite && cam.y < 25) {
+      const len = 2.5 + wet * 4.5;
+      const put = (x, z, w, r, g, b) => {
+        if (n >= 160) return;
+        const ang = Math.atan2(cam.x - x, cam.z - z);
+        const d = Math.hypot(cam.x - x, cam.z - z);
+        // más larga cuanto más al ras se mira (y nunca más allá de la cámara)
+        const l = Math.min(d * 0.9, len * (1 + Math.min(2, d / (cam.y * 8 + 1))));
+        this.q.setFromAxisAngle(this.ss.set(0, 1, 0), ang);
+        this.m4.compose(this.v.set(x, 0.035, z), this.q, this.ss.set(w, 1, l));
+        this.streaks.setMatrixAt(n, this.m4);
+        this.sc.setRGB(r * wet * k, g * wet * k, b * wet * k);
+        this.streaks.setColorAt(n, this.sc);
+        n++;
+      };
+      for (const v of cars) {
+        if (!v.mesh.visible || v.kind === 'moto' || Math.abs(v.x - cam.x) > 70 || Math.abs(v.z - cam.z) > 70) continue;
+        const fx = v.fx;
+        const fz = v.fz;
+        const half = v.L / 2 + 0.1;
+        const w = v.W / 2 - 0.28;
+        const brake = v.mesh.userData.tail?.material?.color?.r > 2;
+        for (const s of [-1, 1]) {
+          const rx = fz * w * s;
+          const rz = -fx * w * s;
+          put(v.x + fx * half + rx, v.z + fz * half + rz, 0.45, 0.9, 0.82, 0.62);
+          put(v.x - fx * half + rx, v.z - fz * half + rz, 0.35, brake ? 1 : 0.55, brake ? 0.1 : 0.05, brake ? 0.06 : 0.03);
+        }
+      }
+    }
+    this.streaks.count = n;
+    this.streaks.instanceMatrix.needsUpdate = true;
+    if (this.streaks.instanceColor) this.streaks.instanceColor.needsUpdate = true;
   }
 }
