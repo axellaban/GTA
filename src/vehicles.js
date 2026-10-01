@@ -26,13 +26,24 @@ import { lightMat } from './cars.js';
 
 // Colectivo: carrocería perfilada, ventanillas con parantes, parabrisas, puertas del lado derecho,
 // cartel de línea y fileteado en el faldón.
-const BUS_COLORS = { 160: [0xf2c230, 0xc0392b], 266: [0x2e86c1, 0xf2f2f2], 318: [0x27ae60, 0xf4d03f], 518: [0xe67e22, 0x1a1a1a] };
-export function makeBus(line = 518) {
+// Líneas que pasan por la estación Temperley. Los colores son de fantasía; el cartel dice el
+// destino cuando lo sabemos (160: Claypole; 549: Cruce de Lomas) y si no, Temperley.
+export const BUS_LINES = {
+  160: { top: 0xf2c230, band: 0xc0392b, skirt: '#c0392b', dest: 'CLAYPOLE' },
+  74: { top: 0xf2f2f2, band: 0x1e5aa8, skirt: '#1e5aa8', dest: 'TEMPERLEY' },
+  548: { top: 0x2e86c1, band: 0xf2f2f2, skirt: '#f7f9f9', dest: 'TEMPERLEY' },
+  549: { top: 0xe67e22, band: 0x1a1a1a, skirt: '#1a1a1a', dest: 'CRUCE DE LOMAS' },
+  318: { top: 0x27ae60, band: 0xf4d03f, skirt: '#f4d03f', dest: 'TEMPERLEY' },
+  266: { top: 0x8e44ad, band: 0xf2f2f2, skirt: '#f7f9f9', dest: 'TEMPERLEY' },
+  278: { top: 0xc0392b, band: 0xf2c230, skirt: '#f2c230', dest: 'TEMPERLEY' },
+};
+export function makeBus(line = 160) {
   const g = new THREE.Group();
   const L = 11.5;
   const W = 2.5;
   const H = 3.05;
-  const [top, band] = BUS_COLORS[line] ?? [0xf2c230, 0xc0392b];
+  const L_ = BUS_LINES[line] ?? BUS_LINES[160];
+  const { top, band } = L_;
   // perfil lateral (x = largo, frente en +x)
   const s = new THREE.Shape();
   const f = L / 2;
@@ -84,14 +95,14 @@ export function makeBus(line = 518) {
   const det = D.mesh(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.25, metalness: 0.5 }));
   g.add(det);
   // fileteado con el número de línea en el faldón
-  const side = new THREE.MeshLambertMaterial({ map: busTexture(line), transparent: true });
+  const side = new THREE.MeshLambertMaterial({ map: busTexture(line, L_.skirt), transparent: true });
   for (const sx of [-1, 1]) {
     const pl = new THREE.Mesh(new THREE.PlaneGeometry(L - 1, 0.55), side);
     pl.position.set(sx * (W / 2 + 0.035), 0.72, 0);
     pl.rotation.y = (sx * Math.PI) / 2;
     g.add(pl);
   }
-  const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 0.32), new THREE.MeshBasicMaterial({ map: textTexture(`${line}  TEMPERLEY`, { w: 256, h: 44, bg: '#111', fg: '#ffb300', font: 28 }) }));
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 0.32), new THREE.MeshBasicMaterial({ map: textTexture(`${line}  ${L_.dest}`, { w: 256, h: 44, bg: '#111', fg: '#ffb300', font: L_.dest.length > 10 ? 22 : 28 }) }));
   sign.position.set(0, H - 0.3, f - 0.02);
   g.add(sign);
   const wheels = [];

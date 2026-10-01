@@ -165,13 +165,13 @@ export class Traffic {
     return { mesh, rider, look };
   }
 
-  populate(city, player, n = 34, buses = 3) {
+  populate(city, player, n = 34, buses = 5) {
     const edges = this.graph.edges.filter((e) => e.len > 25 && e.street.w >= 7);
     this.spawnEdges = edges;
     for (let i = 0; i < n + buses; i++) {
       const isBus = i >= n;
       let mesh;
-      if (isBus) mesh = makeBus([160, 266, 318][i - n]);
+      if (isBus) mesh = makeBus([160, 74, 548, 549, 318][i - n]);
       else if (i < 2) mesh = makeTruck(R.pick([0xe8e8e8, 0xc62828, 0x1565c0]), R.pick(['FLETES TEMPERLEY', 'DISTRIBUIDORA SUR', 'MUDANZAS LOMAS']));
       else if (i === 5 || i === 21) mesh = makeCar('patrullero'); // la cana también anda dando vueltas
       else mesh = this.randomCar();

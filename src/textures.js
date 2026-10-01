@@ -1522,15 +1522,13 @@ export function trainSideTexture(kind) {
   return tex(c);
 }
 
-export function busTexture(line) {
+export function busTexture(line, bg = '#c0392b') {
   // faldón del colectivo (10,5 m x 0,55 m): color de la línea, fileteado y el número
   const c = canvas(1024, 54);
   const ctx = c.getContext('2d');
-  const colors = { 160: '#c0392b', 266: '#f7f9f9', 318: '#f4d03f', 518: '#1a1a1a' };
-  const bg = colors[line] ?? '#c0392b';
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, 1024, 54);
-  const ink = bg === '#f7f9f9' || bg === '#f4d03f' ? '#1b4f9c' : '#ffffff';
+  const ink = ['#f7f9f9', '#f4d03f', '#f2c230'].includes(bg) ? '#1b4f9c' : '#ffffff';
   ctx.strokeStyle = ink;
   ctx.lineWidth = 2.5;
   ctx.beginPath();

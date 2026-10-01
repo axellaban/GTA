@@ -206,9 +206,10 @@ function busStops(scene, rng) {
   g.font = 'bold 30px Arial, sans-serif';
   g.textAlign = 'center';
   g.fillText('PARADA', 64, 36);
+  // las líneas que paran en Temperley
   g.fillStyle = '#111';
-  g.font = 'bold 34px Arial, sans-serif';
-  ['160', '266', '318'].forEach((n, i) => g.fillText(n, 64, 92 + i * 36));
+  g.font = 'bold 30px Arial, sans-serif';
+  ['160', '74', '548', '549', '318', '266'].forEach((n, i) => g.fillText(n, i % 2 ? 94 : 36, 88 + Math.floor(i / 2) * 36));
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   const F = new FastBoxes();
