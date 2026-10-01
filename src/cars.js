@@ -447,6 +447,40 @@ function makeHood(m, paint) {
   return { pivot, bay, k: 0 };
 }
 
+// las cuatro ruedas del modelo juntas (las de la izquierda espejadas, con la cara para afuera)
+function farWheels(M) {
+  if (M.farWheels) return M.farWheels;
+  const { W, L, wheelR } = M.m;
+  const parts = [];
+  for (const [x, z] of [
+    [-W / 2 + 0.12, L / 2 - 0.82],
+    [W / 2 - 0.12, L / 2 - 0.82],
+    [-W / 2 + 0.12, -L / 2 + 0.82],
+    [W / 2 - 0.12, -L / 2 + 0.82],
+  ]) {
+    const g = M.wheelGeo.clone();
+    if (x < 0) {
+      g.scale(-1, 1, 1);
+      // espejar invierte el orden de los vértices: se da vuelta cada triángulo
+      if (g.index) {
+        const a = g.index.array;
+        for (let i = 0; i < a.length; i += 3) [a[i + 1], a[i + 2]] = [a[i + 2], a[i + 1]];
+      } else {
+        for (const att of Object.values(g.attributes)) {
+          const n = att.itemSize;
+          const a = att.array;
+          for (let v = 0; v < att.count; v += 3) {
+            for (let c = 0; c < n; c++) [a[(v + 1) * n + c], a[(v + 2) * n + c]] = [a[(v + 2) * n + c], a[(v + 1) * n + c]];
+          }
+        }
+      }
+    }
+    parts.push(g.translate(x, wheelR, z));
+  }
+  M.farWheels = mergeGeometries(parts);
+  return M.farWheels;
+}
+
 export function makeCar(model = 'duna', color = 0xd8d4c8, { parked = false } = {}) {
   const M = buildModel(model);
   const { L, W, wheelR } = M.m;
@@ -488,6 +522,10 @@ export function makeCar(model = 'duna', color = 0xd8d4c8, { parked = false } = {
     g.add(w);
     wheels.push(w);
   }
+  // de lejos (carLod) las cuatro ruedas van en una sola malla quieta: un dibujo en vez de cuatro
+  const wheelsFar = new THREE.Mesh(farWheels(M), wheelMat);
+  wheelsFar.visible = false;
+  g.add(wheelsFar);
   const hood = makeHood(M.m, body.material);
   chassis.add(hood.pivot, hood.bay);
   let door = null;
@@ -505,7 +543,7 @@ export function makeCar(model = 'duna', color = 0xd8d4c8, { parked = false } = {
     doorway.visible = false;
     chassis.add(door, doorway);
   }
-  g.userData = { L, W, wheels, kind: 'car', model, parkedBuild: parked, tall: M.m.roof + 0.1, body, shiny, glass, chassis, tail, door, doorway, hood, lodParts: [shiny, detail, hood.pivot] };
+  g.userData = { L, W, wheels, kind: 'car', model, parkedBuild: parked, tall: M.m.roof + 0.1, body, shiny, glass, chassis, tail, door, doorway, hood, wheelsFar, lodParts: [shiny, detail, hood.pivot] };
   return g;
 }
 
@@ -664,8 +702,11 @@ export function carLod(mesh, d2) {
   // de lejos la sombra la tira solo la carrocería (sin vidrios), y bien lejos ni eso
   if (u.glass) u.glass.castShadow = lvl === 0;
   if (u.body) u.body.castShadow = lvl < 2;
+  // cerca, las ruedas que giran; a media distancia, las cuatro en una malla quieta; lejos, ninguna
+  const far = !!u.wheelsFar;
   for (const w of u.wheels) {
-    w.visible = lvl < 2;
+    w.visible = far ? lvl === 0 : lvl < 2;
     w.castShadow = lvl === 0;
   }
+  if (far) u.wheelsFar.visible = lvl === 1;
 }

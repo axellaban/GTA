@@ -1095,7 +1095,9 @@ function addLamps(scene, city, rng) {
     city.lamps.push({ x: hx, z: hz });
   });
   poles.castShadow = true;
-  scene.add(poles, arms, heads);
+  // fijos para chunks.js, pero los voltea smash.js por índice (movable)
+  for (const m of [poles, arms, heads]) m.userData.movable = true;
+  scene.add(...fixed(poles, arms, heads));
   city.lampMats.push(lampMat);
   // manchas de luz de sodio en el piso
   const poolGeo = new THREE.PlaneGeometry(13, 13);

@@ -177,8 +177,10 @@ Meeks (`onBeforeRender`/`onBeforeShadow` por malla): antes 4,77 M triángulos y 
 - Autos (`carLod` en `src/cars.js`, lo llama `Traffic.update`): a más de 45 m se apagan cromados y
   detalles y la sombra la tira solo la carrocería; a más de 140 m tampoco ruedas ni sombra.
 - Vecinos (`src/npcs.js`): se dibujan hasta 150 m (antes 190) y tiran sombra real solo a menos de 40 m.
-- Falta si sigue lenta: los brazos de los faroles (`arms` en `city.js`, 58 k triángulos, los mueve
-  `smash.js` por índice) y menos dibujos por auto (4 ruedas = 4 dibujos).
+- ✅ Postes, brazos y cabezales de los faroles también en pedazos (`userData.movable`: `setMatrixAt`
+  con el índice de siempre va al pedazo que corresponde, así `smash.js` los sigue volteando).
+- ✅ Autos a media distancia: las cuatro ruedas en una sola malla quieta (`farWheels`/`wheelsFar` en
+  `src/cars.js`): 5 dibujos por auto en vez de 8.
 
 ## 5b. Detalle por área (historia y notas técnicas)
 

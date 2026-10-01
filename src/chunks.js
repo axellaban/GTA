@@ -88,10 +88,13 @@ export function chunkInstanced(mesh, cell = 120) {
   }
   if (buckets.size < 2) return false;
   const col = mesh.instanceColor;
+  // de qué pedazo y en qué lugar quedó cada instancia (para las que se mueven, ver más abajo)
+  const remap = [];
   for (const list of buckets.values()) {
     const m = new THREE.InstancedMesh(mesh.geometry, mesh.material, list.length);
     if (col) m.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(list.length * 3), 3);
     list.forEach((i, k) => {
+      remap[i] = [m, k];
       m.instanceMatrix.array.set(e.subarray(i * 16, i * 16 + 16), k * 16);
       if (col) m.instanceColor.array.set(col.array.subarray(i * 3, i * 3 + 3), k * 3);
     });
@@ -109,6 +112,16 @@ export function chunkInstanced(mesh, cell = 120) {
   // el original queda vacío y siempre fuera de cámara
   mesh.count = 0;
   mesh.boundingSphere = FAR;
+  // userData.movable (los postes que se caen, src/smash.js): setMatrixAt sigue andando con el índice
+  // de siempre y lo manda al pedazo que corresponde
+  if (mesh.userData.movable) {
+    mesh.setMatrixAt = (i, m4) => {
+      const [m, k] = remap[i];
+      m.setMatrixAt(k, m4);
+      m.instanceMatrix.needsUpdate = true;
+      m.computeBoundingSphere();
+    };
+  }
   return true;
 }
 
