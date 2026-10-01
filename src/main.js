@@ -29,6 +29,7 @@ import { addPalms } from './palms.js';
 import { loadFerrari } from './models.js';
 import { Laban } from './laban.js';
 import { loadPeople, loadAnimals } from './people.js';
+import { Rescue } from './rescue.js';
 import { Combat } from './combat.js';
 import { Police } from './police.js';
 import { Nav } from './nav.js';
@@ -353,7 +354,7 @@ function endCop(msg) {
 function updateCop(dt) {
   const isCop = player.vehicle?.model === 'patrullero';
   if (!cop.active) {
-    if (isCop && !cop.offered && !missions.m && !fare.active) {
+    if (isCop && !cop.offered && !missions.m && !fare.active && !rescue.active) {
       cop.offered = true;
       startCop();
     }
@@ -407,6 +408,9 @@ const laban = new Laban(scene, traffic);
 // personas con modelo de artista (CC0): cargan de fondo y los NPC nuevos las van usando
 loadPeople();
 loadAnimals();
+// changas de paramédico y bombero (ambulancia y autobomba de Kenney, CC0)
+const rescue = new Rescue(world);
+world.rescue = rescue;
 world.laban = laban;
 // la Ferrari de Ciro, estacionada frente al gym (modelo bajado de internet)
 if (gym.x != null) {
@@ -707,6 +711,12 @@ const praise = ['¡BIEN AHÍ!', '¡VAMOS, GASPI!', '¡DE UNA!', '¡ESO!', '¡QU�
 function updateObjective() {
   if (job.active) {
     hud.setObjective(`Delivery a ${job.street}: ${Math.ceil(job.t)} s`, { x: job.x, z: job.z });
+    hud.updateObjective(player);
+    return;
+  }
+  const ro = rescue.objective();
+  if (ro) {
+    hud.setObjective(ro.text, ro.target);
     hud.updateObjective(player);
     return;
   }
@@ -1108,7 +1118,8 @@ function frame(now) {
   laban.update(dt, world);
   updateFare(dt);
   updateCop(dt);
-  missions.update(dt, step >= steps.length - 1 && !job.active && !fare.active && !cop.active);
+  rescue.update(dt);
+  missions.update(dt, step >= steps.length - 1 && !job.active && !fare.active && !cop.active && !rescue.active);
   updateObjective();
   updateGps(dt);
   player.updateCamera(camera, dt, city.colliders, fx);

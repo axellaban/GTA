@@ -176,6 +176,10 @@ Ocho rampas amarillas con franjas negras en calles largas. Si entrás rápido (m
 
 Por las calles de la estación pasea **Laban the Creator** en una Ferrari amarilla descapotable: traje y sombrero blancos (estilo Alan Faena) y anteojos, con tres chicas fit arriba (una de acompañante y dos sentadas en la cola, saludando). Va despacio tirando facha, toca bocina y grita cosas cuando pasa cerca de Gaspi. Se la podés robar: Laban cae al piso gritando "¡Mi Ferrari! ¡Esto lo creé yo!" y las chicas salen corriendo.
 
+## Changas de paramédico y bombero (0.22)
+
+Como las misiones de ambulancia y bomberos de Vice City. La **ambulancia** está estacionada frente a un centro de salud real del mapa: subite y te avisan dónde hay un herido; frená al lado para subirlo y llevalo al centro de salud más cercano antes de que se acabe el tiempo. La **autobomba** está a una cuadra de la estación: te avisan de un auto prendido fuego; frená cerca y quedate unos segundos para apagarlo (si no llegás, explota). Cada viaje seguido sube el nivel y paga más. Vehículos del Car Kit de Kenney (CC0), sacados de [pmndrs/market-assets](https://github.com/pmndrs/market-assets).
+
 ## Autos que se abollan (0.21)
 
 Como en Vice City, la chapa se hunde donde pega el golpe (choques, tiros, explosiones) y queda arrugada; con mucho daño se rompen los vidrios, sale humo del motor y al final se prende fuego. Chapa y pintura (o que el auto vuelva al tránsito) lo deja como nuevo.
@@ -214,6 +218,7 @@ Box de CrossFit a unos 70 m de la estación (cuadrado amarillo en el mapa): galp
 | `src/crime.js` | Motochorros |
 | `src/events.js` | Cortes, marchas y noticias |
 | `src/rig.js`, `src/people.js` | Retarget a esqueletos estándar y personas con modelo CC0 |
+| `src/rescue.js` | Changas de paramédico y bombero (ambulancia y autobomba) |
 | `src/laban.js` | Laban the Creator y su Ferrari descapotable |
 | `src/models.js` | Modelos bajados de internet (la Ferrari) |
 | `src/palms.js` | Palmeras de las plazas (instanciadas) |
