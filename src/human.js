@@ -53,6 +53,48 @@ function clipCell(g, r) {
   g.clip();
 }
 
+// sombra "horneada" como en los personajes de la PS2: costados más oscuros que el frente y la
+// espalda (u = 0,25 y 0,75), y un poco en los bordes de arriba y abajo
+function sideShade(g, r, a) {
+  const grad = g.createLinearGradient(r.x, 0, r.x + CW, 0);
+  for (const [s, k] of [[0, 1], [0.25, 0], [0.5, 1], [0.75, 0], [1, 1]]) grad.addColorStop(s, `rgba(0,0,0,${a * k})`);
+  g.fillStyle = grad;
+  g.fillRect(r.x, r.y, CW, CH);
+  const v = g.createLinearGradient(0, r.y, 0, r.y + CH);
+  v.addColorStop(0, `rgba(0,0,0,${a * 0.5})`);
+  v.addColorStop(0.12, 'rgba(0,0,0,0)');
+  v.addColorStop(0.88, 'rgba(0,0,0,0)');
+  v.addColorStop(1, `rgba(0,0,0,${a * 0.5})`);
+  g.fillStyle = v;
+  g.fillRect(r.x, r.y, CW, CH);
+}
+// tela pintada: sombra de costados, pliegues con luz y sombra, y costuras con puntadas
+function paintedCloth(g, r, a) {
+  sideShade(g, r, a);
+  for (let i = 0; i < 46; i++) {
+    const x = r.x + rnd() * CW;
+    const y = r.y + rnd() * CH;
+    const dx = (rnd() - 0.5) * 50;
+    const dy = 18 + rnd() * 40;
+    const bend = (rnd() - 0.5) * 30;
+    for (const [col, off, w] of [['rgba(0,0,0,0.13)', 0, 3.5], ['rgba(255,255,255,0.12)', 3, 2]]) {
+      g.strokeStyle = col;
+      g.lineWidth = w;
+      g.beginPath();
+      g.moveTo(x + off, y);
+      g.quadraticCurveTo(x + dx / 2 + bend + off, y + dy / 2, x + dx + off, y + dy);
+      g.stroke();
+    }
+  }
+  for (const u of [0, 0.5, 1]) {
+    const x = r.x + u * CW;
+    g.fillStyle = 'rgba(0,0,0,0.22)';
+    g.fillRect(x - 1.5, r.y, 3, CH);
+    g.fillStyle = 'rgba(255,255,255,0.25)';
+    for (let y = 0; y < CH; y += 7) g.fillRect(x + 3, r.y + y, 1, 4);
+  }
+}
+
 function initAtlas() {
   if (atlas) return;
   atlas = document.createElement('canvas');
@@ -66,10 +108,7 @@ function initAtlas() {
   g.fillStyle = '#ededed';
   g.fillRect(r.x, r.y, CW, CH);
   noise(g, r, 5000, 205, 255, 2, 2);
-  for (let i = 0; i < 16; i++) {
-    g.fillStyle = 'rgba(0,0,0,0.05)';
-    g.fillRect(r.x + rnd() * CW, r.y, 3 + rnd() * 8, CH);
-  }
+  paintedCloth(g, r, 0.22);
   g.restore();
   // corbata a rayas rojas y blancas
   r = cellRect(CELL.tie);
@@ -103,6 +142,7 @@ function initAtlas() {
   g.fillStyle = '#f7f7f7';
   g.fillRect(r.x, r.y, CW, CH);
   noise(g, r, 3000, 228, 255, 1, 1);
+  sideShade(g, r, 0.12);
   g.restore();
   // pelo: mechones verticales
   r = cellRect(CELL.hair);
@@ -135,6 +175,13 @@ function initAtlas() {
     g.stroke();
   }
   noise(g, r, 2500, 170, 255, 2, 1);
+  // gastado más claro adelante de los muslos (u = 0,25) y sombra en los costados
+  const fade = g.createRadialGradient(r.x + CW * 0.25, r.y + CH * 0.45, 4, r.x + CW * 0.25, r.y + CH * 0.45, CW * 0.2);
+  fade.addColorStop(0, 'rgba(255,255,255,0.28)');
+  fade.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = fade;
+  g.fillRect(r.x, r.y, CW, CH);
+  paintedCloth(g, r, 0.2);
   g.fillStyle = 'rgba(210,150,60,0.55)';
   g.fillRect(r.x + CW * 0.49, r.y, 2, CH);
   g.fillRect(r.x + CW * 0.99, r.y, 2, CH);
