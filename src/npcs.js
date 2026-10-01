@@ -329,6 +329,7 @@ export class Npcs {
   spawnCop(x, z, gendarme = false) {
     const h = (gendarme && PEOPLE.ready && makePerson('swat')) || (PEOPLE.ready && R.chance(0.85) && makePerson('police')) || makeHuman({ skin: R.pick(SKINS), hair: 0x1a1a1a, hairStyle: R.pick(['short', 'buzz']), police: true, shirt: 0x8fb4d8, pants: 0x1c2a44, shoes: 0x111111, cap: 0x1c2a44, stubble: R.chance(0.4), scale: R.range(0.98, 1.06) });
     const n = this.add(new Npc('cana', h, x, z));
+    n.gendarme = gendarme;
     n.state = 'chase';
     n.hp = gendarme ? 200 : 140;
     n.vmax = R.range(4.6, 5.6);
@@ -383,7 +384,8 @@ export class Npcs {
       n.bubble = null;
       if (n.money && w) w.pickups.money(n.x + R.range(-0.6, 0.6), n.z + R.range(-0.6, 0.6), n.money);
       n.money = 0;
-      if (w && n.type === 'cana' && R.chance(0.6)) w.pickups.weapon(n.x - fz, n.z + fx, R.chance(0.7) ? 'pistola' : 'escopeta', true);
+      // la cana suelta el arma (el gendarme, siempre: la ametralladora es el premio)
+      if (w && n.type === 'cana' && (n.gendarme || R.chance(0.6))) w.pickups.weapon(n.x - fz, n.z + fx, n.gunId && n.gunId !== 'pistola' ? n.gunId : R.chance(0.7) ? 'pistola' : 'escopeta', true);
       this.audio.golpe(0.7);
       // un tiro, un golpe muy fuerte o seguir pegándole: muere
       if (o.gun || dmg >= 45 || n.hp < -20) {

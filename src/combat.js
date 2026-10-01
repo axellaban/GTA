@@ -566,8 +566,9 @@ export class Combat {
     return hit;
   }
 
-  // la cana tira: acierta menos de lejos y si Gaspi corre
-  enemyShoot(world, shooter, accuracy = 0.5) {
+  // la cana tira: acierta menos de lejos y si Gaspi corre (wid: pistola, metra o ametralladora)
+  enemyShoot(world, shooter, accuracy = 0.5, wid = 'pistola') {
+    const W = WEAPONS[wid] ?? WEAPONS.pistola;
     const P = world.player;
     const hx = Math.sin(shooter.heading);
     const hz = Math.cos(shooter.heading);
@@ -578,10 +579,11 @@ export class Combat {
     const dist = Math.hypot(tx - o.x, tz - o.z);
     const miss = (1 - accuracy) * (0.4 + dist * 0.05) * (1 + Math.min(2, Math.abs(P.speed) * 0.25));
     const d = new THREE.Vector3(tx + R.range(-miss, miss) - o.x, ty + R.range(-miss, miss) * 0.4 - o.y, tz + R.range(-miss, miss) - o.z).normalize();
-    this.shot(world, o, d, WEAPONS.pistola, shooter, 6);
-    this.fx.muzzle(o.x, o.y, o.z, hx, hz);
-    this.fx.casing(o.x - hx * 0.25, o.y + 0.05, o.z - hz * 0.25, hx, hz);
-    this.audio.disparo('pistola', Math.max(0.1, 1 - Math.hypot(o.x - P.x, o.z - P.z) / 120));
+    const heavy = W.id === 'ametralladora';
+    this.shot(world, o, d, W, shooter, heavy ? 6 : W.id === 'metra' ? 4 : 6);
+    this.fx.muzzle(o.x + hx * (heavy ? 0.5 : 0), o.y, o.z + hz * (heavy ? 0.5 : 0), hx, hz, heavy);
+    this.fx.casing(o.x - hx * 0.25, o.y + 0.05, o.z - hz * 0.25, hx, hz, heavy);
+    this.audio.disparo(W.sound, Math.max(0.1, 1 - Math.hypot(o.x - P.x, o.z - P.z) / 120));
     world.npcs.panic(o.x, o.z, 30, shooter);
   }
 

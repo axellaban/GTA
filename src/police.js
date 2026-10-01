@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { makeCar } from './vehicles.js';
 import { Vehicle } from './traffic.js';
-import { handWeapon } from './weapons.js';
+import { handWeapon, WEAPONS } from './weapons.js';
 import { R } from './rng.js';
 import { radialTexture } from './city.js';
 import { carEffects } from './carfx.js';
@@ -448,9 +448,13 @@ export class Police {
     audio.helicoptero(this.heli ? Math.max(0, 1 - Math.hypot(this.heli.x - P.x, this.heli.z - P.z) / 120) * 0.6 : 0);
   }
 
+  // pistola; con 5 estrellas la metra; los gendarmes (6 estrellas) bajan con ametralladora
   arm(n) {
-    if (n.gun) return;
-    n.gun = handWeapon('pistola');
+    const id = n.gendarme ? 'ametralladora' : this.stars >= 5 ? 'metra' : 'pistola';
+    if (n.gun && n.gunId === id) return;
+    if (n.gun) n.gun.removeFromParent();
+    n.gun = handWeapon(id);
+    n.gunId = id;
     n.h.bones.handR.add(n.gun);
   }
 
@@ -470,11 +474,21 @@ export class Police {
     if (armed && los && dp > 4 && dp < 26 && !P.dead) {
       n.heading = Math.atan2(P.x - n.x, P.z - n.z);
       n.target = null;
+      const w = WEAPONS[n.gunId] ?? WEAPONS.pistola;
       if (n.shootCd <= 0) {
-        world.combat.enemyShoot(world, n, 0.12 + this.stars * 0.06);
-        n.shootCd = R.range(0.8, 1.6) - this.stars * 0.08;
+        world.combat.enemyShoot(world, n, 0.12 + this.stars * 0.06, w.id);
+        if (w.id === 'pistola') n.shootCd = R.range(0.8, 1.6) - this.stars * 0.08;
+        else {
+          // ráfagas cortas y una pausa para apuntar de nuevo
+          n.burst = (n.burst ?? R.int(4, w.id === 'ametralladora' ? 9 : 6)) - 1;
+          if (n.burst > 0) n.shootCd = w.rate * 1.5;
+          else {
+            n.burst = null;
+            n.shootCd = R.range(1, 1.9);
+          }
+        }
       }
-      return { want: 0, pose: 'aim' };
+      return { want: 0, pose: w.pose };
     }
     n.target = { x: P.vehicle ? P.vehicle.x : P.x, z: P.vehicle ? P.vehicle.z : P.z };
     if (dp > 1.2) {

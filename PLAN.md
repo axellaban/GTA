@@ -94,8 +94,9 @@ ciudad y saca las huellas de Overture, cercos y árboles que lo pisaban; `src/gy
 **R3 — Misiones con lo nuevo**: el marciano (llevarle panchos / devolverle la nave), destrucción con
 bazuca (desarmadero del Turco), persecución del OVNI con la cana.
 
-**R4 — Policía más dura**: gendarmes con ametralladora a 5–6 estrellas; helicóptero que sigue a Gaspi
-(y al OVNI robado).
+**R4 — Policía más dura**: ✅ con 5 estrellas la cana tira con metra y los gendarmes (6) con
+ametralladora, en ráfagas (`arm`/`copBrain` en `src/police.js`, `enemyShoot(..., wid)`); el gendarme
+muerto suelta la ametralladora. Falta: helicóptero que persiga al OVNI robado.
 
 **R5 — Más destrucción**: semáforos y carteles que se caen (copiar `src/smash.js`); capó que se levanta
 con mucho daño. ✅ El tránsito frena ante el OVNI apoyado y los postes caídos, toca bocina y pega la
