@@ -136,7 +136,7 @@ Radio ≈ 550 m desde la estación (`STATION` en `src/map.js`). Hoy: 1.872 edifi
 - Subirse al tren y al colectivo como pasajero.
 - Interiores (kiosco, estación, el gym por dentro ya es visible desde la puerta).
 - Más misiones encadenadas con historia (hoy hay 3 en `src/missions.js`).
-- ✅ Policía: retenes (`roadblock` en `src/police.js`) y 6 estrellas con Gendarmería. Falta: clavos en la calle.
+- ✅ Policía: retenes (`roadblock` en `src/police.js`) con tira de clavos (`addSpikes`/`updateSpikes`) y 6 estrellas con Gendarmería.
 - ✅ Autos que se abollan (`dentCar`/`repairCar` en `src/cars.js`; punto del golpe en `damageVehicle`).
 
 ## 6. Estado (actualizar al avanzar)
@@ -184,7 +184,9 @@ CC0 con animaciones, autos que se abollan (`dentCar`), changas de paramédico y 
    programa). Los gendarmes (6 estrellas) bajan con el modelo `swat_male` (CC0, pasamontañas).
    Del resto de Mesh2Motion: `male`/`female` de Quaternius son maniquíes sin cara, `zombie` de Kenney
    es caricatura y `killer_*`/`monster*`/`hazmat_*` son de terror: no sirven para la calle.
-3. Clavos en la calle en los retenes (pinchan las gomas: `v.flat = true`).
+3. ✅ Clavos en los retenes: `addSpikes`/`updateSpikes` en `src/police.js` (la tira va del lado por donde
+   llega Gaspi; pisarla pone `v.flat = true`: menos velocidad, el auto tira, chispas de las llantas en
+   `src/player.js`; chapa y pintura las cambia).
 4. Subirse al tren y al colectivo como pasajero; interiores.
 5. Más misiones encadenadas (`src/missions.js`, `DEFS`).
 Lo que espera al dueño: relevamiento cargado (JSON), dirección real del gym, red para Quaternius /

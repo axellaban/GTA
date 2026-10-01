@@ -520,6 +520,11 @@ export class Player {
     v.z += v.vz * dt;
     v.speed = vf;
     const slip = Math.abs(vl);
+    // en llanta: las ruedas raspan el asfalto y saltan chispas
+    if (v.flat && !moto && sp > 6 && Math.random() < Math.min(0.8, sp / 30)) {
+      const s = Math.random() < 0.5 ? -1 : 1;
+      effects.sparks(v.x - fx * v.L * 0.32 + fz * s * v.W * 0.45, 0.12, v.z - fz * v.L * 0.32 - fx * s * v.W * 0.45, 2, 3);
+    }
     // humo de gomas y marcas en el asfalto
     const burnout = throttle > 0 && sp < 6 && input.down('shift');
     if (!moto && v.kind !== 'carro' && (slip > 2.2 || burnout || (hb && sp > 8))) {

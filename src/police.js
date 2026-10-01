@@ -25,6 +25,7 @@ export class Police {
     this.tirosT = 0;
     this.heli = null;
     this.flash = 0;
+    this.spikes = []; // tiras de clavos de los retenes
   }
 
   get wanted() {
@@ -143,7 +144,62 @@ export class Police {
         this.arm(n);
       }
     }
-    hud.flash('¡RETÉN!', 'La cana cortó la calle adelante. Esquivalo o rompelo', 'bad', 2.6);
+    // tira de clavos del lado por donde llega Gaspi
+    const side = (P.x - cx) * e.dx + (P.z - cz) * e.dz > 0 ? 1 : -1;
+    this.addSpikes(cx + e.dx * side * 11, cz + e.dz * side * 11, e.rx, e.rz, e.dx, e.dz, e.street.w * 0.42);
+    hud.flash('¡RETÉN!', 'La cana cortó la calle y tiró clavos. Esquivalos o te quedás en llanta', 'bad', 2.8);
+  }
+
+  // Tira de clavos (miguelitos) cruzada en la calle: a lo ancho (ax, az), media longitud half
+  addSpikes(x, z, ax, az, dx, dz, half) {
+    const g = new THREE.Group();
+    const len = half * 2;
+    const belt = new THREE.Mesh(new THREE.BoxGeometry(len, 0.035, 0.42), new THREE.MeshStandardMaterial({ color: 0x2a2c2e, roughness: 0.6, metalness: 0.5 }));
+    belt.position.y = 0.04;
+    g.add(belt);
+    // franjas amarillas en las puntas para que se vean
+    for (const k of [-1, 1]) {
+      const tip = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.04, 0.44), new THREE.MeshStandardMaterial({ color: 0xf2c418, roughness: 0.5 }));
+      tip.position.set(k * (half - 0.17), 0.045, 0);
+      g.add(tip);
+    }
+    const n = Math.max(4, Math.floor(len / 0.18));
+    const spikes = new THREE.InstancedMesh(new THREE.ConeGeometry(0.025, 0.09, 4), new THREE.MeshStandardMaterial({ color: 0xb8bcc0, roughness: 0.3, metalness: 0.9 }), n * 2);
+    const m4 = new THREE.Matrix4();
+    for (let i = 0; i < n; i++) {
+      for (let r = 0; r < 2; r++) spikes.setMatrixAt(i * 2 + r, m4.makeTranslation(-half + 0.09 + i * 0.18 + r * 0.09, 0.1, r ? 0.1 : -0.1));
+    }
+    g.add(spikes);
+    g.position.set(x, 0.02, z);
+    g.rotation.y = Math.atan2(ax, az) - Math.PI / 2;
+    this.scene.add(g);
+    this.spikes.push({ g, x, z, ax, az, dx, dz, half, life: 120 });
+  }
+
+  // ¿Gaspi pisó los clavos? Pincha las gomas (se manejan peor hasta pasar por chapa y pintura)
+  updateSpikes(dt, world) {
+    const v = world.player.vehicle;
+    for (const s of this.spikes) {
+      s.life -= dt;
+      if (!v || v.flat || v.kind === 'carro' || Math.abs(v.speed) < 1) continue;
+      const rx = v.x - s.x;
+      const rz = v.z - s.z;
+      const along = rx * s.ax + rz * s.az;
+      const perp = rx * s.dx + rz * s.dz;
+      if (Math.abs(along) < s.half + v.W * 0.4 && Math.abs(perp) < v.L * 0.5 + 0.2) {
+        v.flat = true;
+        world.audio.burst(0.25, 900, 'highpass', 0.6);
+        world.audio.burst(0.18, 700, 'highpass', 0.5, 0.12);
+        world.fx.sparks(v.x, 0.3, v.z, 14, 5);
+        world.hud.flash('¡TE PINCHARON LAS GOMAS!', 'Andás en llanta: cambialas en chapa y pintura', 'bad', 2.8);
+      }
+    }
+    this.spikes = this.spikes.filter((s) => {
+      const far = Math.hypot(s.x - world.player.x, s.z - world.player.z) > 320;
+      if (s.life > 0 && !far) return true;
+      this.scene.remove(s.g);
+      return false;
+    });
   }
 
   dropCar(v) {
@@ -265,6 +321,7 @@ export class Police {
   update(dt, world) {
     this.world = world;
     const { player: P, npcs, audio } = world;
+    this.updateSpikes(dt, world);
     this.tirosT -= dt;
     this.flash = Math.max(0, this.flash - dt);
     // ---- ¿lo están viendo? ----
