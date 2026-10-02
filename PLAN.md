@@ -266,6 +266,11 @@ de 1 m. Falta: que los vecinos usen el puente.
 **R12 — Acercarse al look del video de Higgsfield** (Gaspi de traje y corbata roja en una vereda a lo
 GTA V; el video es IA pre-renderizada, no se puede generar así en tiempo real en un celu). Pasos:
 1. Cinemáticas con videos de Higgsfield del dueño (intro, entre misiones), comprimidos a 1–2 MB.
+   ✅ Intro: `public/cine/intro.mp4` (H.264) + `.webm` (VP9), `playCine` en `src/cine.js` (franjas, título,
+   saltear; se ve la primera vez al tocar Jugar y desde la pausa con "Ver la intro"). Para sumar otra:
+   `ffmpeg -i video.mp4 -vf scale=720:-2 -c:v libx264 -crf 26 -movflags +faststart -an cine/x.mp4` y lo
+   mismo con `-c:v libvpx-vp9 -b:v 0 -crf 38` a `.webm`. Antes de gastar créditos en Higgsfield, el dueño
+   aprueba cada escena.
 2. Gaspi en 3D desde una imagen suya en pose A (Higgsfield `generate_3d`), simplificado a ≤ 5.000
    triángulos con textura de 1024 y animado con `src/rig.js` (hay que pesarle los huesos).
 3. Más texturas de foto CC0 en fachadas, veredas y asfalto (ya empezado: Poly Haven).
