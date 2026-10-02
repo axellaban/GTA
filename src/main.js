@@ -27,6 +27,7 @@ import { Pickups, FIGUS } from './pickups.js';
 import { WEAPONS } from './weapons.js';
 import { Gym } from './gym.js';
 import { Nafta } from './nafta.js';
+import { playCine, CINE } from './cine.js';
 import { Stunts, RAMPS } from './stunts.js';
 import { chunkScene, updateChunks } from './chunks.js';
 import { Gangs } from './gangs.js';
@@ -1055,12 +1056,22 @@ function setPaused(p) {
 document.getElementById('minimap').addEventListener('click', () => started && setPaused(!paused));
 document.getElementById('bigmap').addEventListener('click', () => setPaused(false));
 document.getElementById('resume').addEventListener('click', () => setPaused(false));
+document.getElementById('intro').addEventListener('click', async () => {
+  await playIntro();
+  last = performance.now();
+});
 
 // ---------- Loop ----------
 let started = false;
 let last = performance.now();
 let intro = 0;
 function frame(now) {
+  // durante una cinemática no se dibuja el juego (el video tapa todo y el celu descansa)
+  if (CINE.playing) {
+    last = now;
+    requestAnimationFrame(frame);
+    return;
+  }
   let dt = Math.max(0, Math.min(0.05, (now - last) / 1000));
   last = now;
   // golpe que "pega": el tiempo casi se frena un instante
@@ -1205,21 +1216,39 @@ window.claude?.hot?.snapshot?.(() => ({ money: player.money, respeto: player.res
 if (window.claude?.hot?.ready) window.claude.hot.ready(start);
 else start(window.claude?.hot?.data ?? {});
 
-document.getElementById('play').addEventListener('click', () => {
+// la intro (video de Gaspi hecho con Higgsfield) se ve la primera vez; después, desde la pausa
+const INTRO_KEY = 'gta-intro-visto';
+let introSeen = false;
+try {
+  introSeen = localStorage.getItem(INTRO_KEY) === 'si';
+} catch {
+  /* sin almacenamiento: se ve siempre */
+}
+const playIntro = () => playCine('cine/intro', { title: 'GASPI', sub: 'Temperley · Lomas de Zamora', poster: 'cine/intro.jpg' });
+document.getElementById('play').addEventListener('click', async () => {
   document.getElementById('start').hidden = true;
-  document.body.classList.add('playing');
-  hud.show();
   // en el celu: pantalla completa si el navegador deja
   if (coarse && !document.fullscreenElement && document.documentElement.requestFullscreen) {
     document.documentElement.requestFullscreen({ navigationUI: 'hide' }).then(() => window.screen.orientation?.lock?.('landscape').catch(() => {})).catch(() => {});
   }
   audio.start();
+  if (!introSeen) {
+    introSeen = true;
+    try {
+      localStorage.setItem(INTRO_KEY, 'si');
+    } catch {
+      /* sin almacenamiento */
+    }
+    await playIntro();
+  }
+  document.body.classList.add('playing');
+  hud.show();
   input.wantLock = true;
   try {
     const p = canvas.requestPointerLock?.();
     if (p && p.catch) p.catch(() => {});
   } catch {
-    /* sin pointer lock */
+    /* sin pointer lock (después de la intro hace falta un clic) */
   }
   started = true;
   last = performance.now();
