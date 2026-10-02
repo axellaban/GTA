@@ -259,7 +259,15 @@ con ancho y altura de inicio y fin). `walkwayHeight` en `src/physics.js` da el p
 está a la altura y (solo cuenta si se sube de un paso, 0,7 m): `Player.groundAt` lo usa en `place`, el
 salto y `airborne`. Barandas y costados de escalera son paredes con `y0` (`Colliders.add3d`): el
 jugador las respeta según su altura; el resto (vecinos, autos, tiros) ignora las que arrancan arriba
-de 1 m. Falta: que los vecinos usen el puente.
+de 1 m. ✅ Los vecinos cruzan (pedido del dueño): `addStation` guarda `city.bridgeRoutes` (pie,
+escalón de abajo, de arriba, descanso y el puente con su punto `mid`); `Npcs.bridgeTraffic` (cada 0,5 s
+desde `recycle`) desvía a alguien que pasa a menos de 40 m con vista libre al pie, o hace aparecer uno
+ahí si Gaspi está a más de 60 m; hasta 5 a la vez de día y 2 de noche. Solo los puentes que bajan a la
+calle en las dos puntas (`r.ok`; el que baja a un andén no). `bridgeStep` sigue los puntos; en la
+mitad alguno se para a mirar el tren; si no se acerca en 8 s, abandona. `Npcs.place` suma
+`walkwayHeight` (dentro de la caja de los puentes) para todos, así la cana también sube; arriba de
+1,3 m chocan con `upFilter` (mismo criterio que Gaspi) y solo se esquivan con los de su altura.
+`attach` con alguien arriba (después de un susto) lo baja por la escalera más cerca (`bridgeExit`).
 
 **R20 — ✅ iPhone: "Jugar no anda"** (reporte del dueño, Safari y web app). Medido en Chromium con
 UA de iPhone: el arranque creaba 220 MB de lienzos (canvas) y Safari del iPhone corta en ~224 MB

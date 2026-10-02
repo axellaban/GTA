@@ -7,6 +7,7 @@ import { makeDog } from './animals.js';
 import { makePerson, PEOPLE, ANIMALS, makeAnimal, animalPlay, swapHuman } from './people.js';
 import { DATA as D } from './map.js';
 import { R } from './rng.js';
+import { walkwayHeight } from './physics.js';
 
 const OFF = (e) => e.street.w / 2 + 1.5; // mitad de la vereda
 const EG = 40; // grilla de aristas
@@ -69,6 +70,18 @@ export class Npcs {
     this.groups = []; // grupitos charlando en la vereda
     this.graph = graph;
     this.recycleT = 0;
+    // puentes peatonales (src/city.js, addStation): altura del piso y recorridos para cruzarlos
+    this.walkways = city.walkways || [];
+    this.routes = (city.bridgeRoutes || []).filter((r) => r.ends.length === 2);
+    // solo se usan los que bajan a la calle (no a un andén) en las dos puntas
+    for (const r of this.routes) r.ok = r.ends.every((e) => heightAt(e.foot.x, e.foot.z) < 0.5 && !this.colliders.resolveCircle({ x: e.foot.x, z: e.foot.z }, 0.35));
+    this.wb = { x0: Infinity, x1: -Infinity, z0: Infinity, z1: -Infinity };
+    for (const w of this.walkways) {
+      this.wb.x0 = Math.min(this.wb.x0, w.ax - 3, w.bx - 3);
+      this.wb.x1 = Math.max(this.wb.x1, w.ax + 3, w.bx + 3);
+      this.wb.z0 = Math.min(this.wb.z0, w.az - 3, w.bz - 3);
+      this.wb.z1 = Math.max(this.wb.z1, w.az + 3, w.bz + 3);
+    }
     for (const n of graph.nodes) n.maxW = Math.max(...n.out.map((e) => e.street.w), 6);
     // aristas caminables: calles con vereda (no pasillos ni vías de servicio angostas)
     this.walkEdges = graph.edges.filter((e) => e.street.w >= 6 && e.len > 8);
@@ -115,6 +128,8 @@ export class Npcs {
   }
   // se engancha a la vereda más cercana y sigue caminando desde ahí
   attach(n) {
+    n.bridge = null;
+    if (n.y > 1.5 && this.bridgeExit(n)) return;
     const e = this.nearestEdge(n.x, n.z);
     const lat = (n.x - e.from.x) * e.rx + (n.z - e.from.z) * e.rz;
     // caminar en el sentido que más se parece a hacia dónde mira
@@ -153,6 +168,108 @@ export class Npcs {
     n.target = { x: ne.from.x + ne.dx * k + ne.rx * OFF(ne) * side, z: ne.from.z + ne.dz * k + ne.rz * OFF(ne) * side };
     n.leg = 'corner';
   }
+  // ---------- Puente peatonal de la estación ----------
+  // de la punta a a la otra: pie de la escalera, escalones, descanso, el puente y la otra escalera
+  bridgeRoute(r, a) {
+    const A = r.ends[a];
+    const B = r.ends[1 - a];
+    const deck = a ? [...r.deck].reverse() : r.deck;
+    return [A.foot, A.bottom, A.top, A.land, ...deck, B.land, B.top, B.bottom, B.foot];
+  }
+  // alguien que quedó arriba (se asustó, se cayó): sigue hasta la escalera más cerca
+  bridgeExit(n) {
+    let best = null;
+    for (const r of this.routes) {
+      for (const a of [0, 1]) {
+        const pts = this.bridgeRoute(r, a);
+        let i0 = 0;
+        let d0 = Infinity;
+        for (let i = 0; i < pts.length; i++) {
+          const d = Math.hypot(pts[i].x - n.x, pts[i].z - n.z);
+          if (d < d0) {
+            d0 = d;
+            i0 = i;
+          }
+        }
+        if (d0 > 8) continue;
+        let rest = 0;
+        for (let i = i0 + 1; i < pts.length; i++) rest += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].z - pts[i - 1].z);
+        if (!best || rest < best.rest) best = { rest, pts: pts.slice(i0) };
+      }
+    }
+    if (!best) return false;
+    n.bridge = { pts: best.pts, i: 0, t: 0 };
+    n.target = best.pts[0];
+    n.leg = 'bridge';
+    return true;
+  }
+  // camina el recorrido; al llegar abajo vuelve a la vereda
+  bridgeStep(n, dt, dp) {
+    const b = n.bridge;
+    let p = b.pts[b.i];
+    const d = Math.hypot(p.x - n.x, p.z - n.z);
+    // trabado = hace rato que no se acerca (no cuenta mientras está parado)
+    b.t += n.pauseT > 0 ? 0 : dt;
+    if (d < (b.best ?? Infinity) - 0.3) {
+      b.best = d;
+      b.t = 0;
+    }
+    if (d < 0.7) {
+      b.i++;
+      b.t = 0;
+      b.best = Infinity;
+      if (b.i >= b.pts.length) {
+        n.bridge = null;
+        this.attach(n);
+        return;
+      }
+      p = b.pts[b.i];
+      // en el medio, alguno se apoya en la baranda a mirar pasar el tren
+      if (b.pts[b.i - 1].mid && R.chance(0.35)) {
+        n.pauseT = R.range(3, 7);
+        const l = b.pts[b.i];
+        n.heading = Math.atan2(l.x - n.x, l.z - n.z) + (R.chance(0.5) ? 1 : -1) * Math.PI / 2;
+      }
+    } else if (b.t > 8) {
+      // trabado (alguien estacionó en la escalera): se va
+      n.bridge = null;
+      if (dp > 50) n.dead = true;
+      else this.attach(n);
+      return;
+    }
+    n.target = p;
+  }
+  // de a poco, algunos vecinos de los que andan cerca suben al puente para cruzar las vías
+  bridgeTraffic(player, night) {
+    const ok = this.routes.filter((r) => r.ok);
+    if (!ok.length) return;
+    let on = 0;
+    for (const n of this.list) if (n.bridge) on++;
+    if (on >= (night ? 2 : 5) || !R.chance(0.35)) return;
+    const r = R.pick(ok);
+    const a = R.chance(0.5) ? 1 : 0;
+    const f = r.ends[a].foot;
+    const df = Math.hypot(f.x - player.x, f.z - player.z);
+    if (df > 200) return;
+    let pick = null;
+    let bd = 40;
+    for (const n of this.list) {
+      if (n.type !== 'vecino' || n.state !== 'walk' || n.bridge || n.mission || n.group || n.down || n.pauseT > 0) continue;
+      const d = Math.hypot(n.x - f.x, n.z - f.z);
+      if (d < bd && this.colliders.blocked(n.x, n.z, f.x, f.z, 0.8) >= 1) {
+        bd = d;
+        pick = n;
+      }
+    }
+    // si no pasa nadie, aparece uno en el pie de la escalera (lejos de Gaspi, que no lo vea aparecer)
+    if (!pick && df > 60) pick = this.spawnWalker({ x: f.x, z: f.z, heading: Math.atan2(r.ends[a].bottom.x - f.x, r.ends[a].bottom.z - f.z) }, player);
+    if (!pick) return;
+    pick.bridge = { pts: this.bridgeRoute(r, a), i: 0, t: 0 };
+    pick.target = pick.bridge.pts[0];
+    pick.leg = 'bridge';
+    pick.phone = false;
+  }
+
   // un punto de vereda al azar entre rmin y rmax de (x, z)
   sidewalkPoint(x, z, rmin, rmax) {
     for (let tries = 0; tries < 30; tries++) {
@@ -532,7 +649,7 @@ export class Npcs {
     // quiénes están cerca (para esquivarse entre ellos y a Gaspi)
     const near = [];
     for (const n of this.list) if (!n.down && n.state !== 'sit' && Math.abs(n.x - player.x) < 40 && Math.abs(n.z - player.z) < 40) near.push(n);
-    if (!player.vehicle && !player.dead) near.push({ x: player.x, z: player.z, wide: 1.15 });
+    if (!player.vehicle && !player.dead) near.push({ x: player.x, y: player.y, z: player.z, wide: 1.15 });
     for (const n of this.list) {
       n.t += dt;
       if (n.bubble) {
@@ -659,6 +776,10 @@ export class Npcs {
         if (n.pauseT > 0) {
           n.pauseT -= dt;
           want = 0;
+        } else if (n.bridge) {
+          this.bridgeStep(n, dt, dp);
+          // en la escalera, más despacio
+          if (n.y > 0.6 && n.y < 7) want *= 0.75;
         } else if (Math.hypot(n.target.x - n.x, n.target.z - n.z) < 0.9) {
           // a veces se para: en la esquina antes de cruzar, o en la cuadra a mirar el celu
           const corner = n.leg === 'walk';
@@ -781,7 +902,7 @@ export class Npcs {
       if (n.type !== 'mendigo' || n.state !== 'sit') {
         const p = { x: n.x, z: n.z };
         // el marciano baja por la rampa de su propia nave
-        this.colliders.resolveCircle(p, n.r, n.type === 'alien' ? notUfo : undefined);
+        this.colliders.resolveCircle(p, n.r, n.type === 'alien' ? notUfo : n.y > 1.3 ? this.upFilter(n) : undefined);
         n.x = p.x;
         n.z = p.z;
       }
@@ -840,7 +961,7 @@ export class Npcs {
     const fx = Math.sin(n.heading);
     const fz = Math.cos(n.heading);
     for (const o of near) {
-      if (o === n) continue;
+      if (o === n || Math.abs((o.y ?? 0) - (n.y ?? 0)) > 2) continue;
       const ox = o.x - n.x;
       const oz = o.z - n.z;
       const ahead = ox * fx + oz * fz;
@@ -949,6 +1070,7 @@ export class Npcs {
     }
     for (let i = walkers; i < wantWalkers && i < walkers + 3; i++) this.spawnWalker(null, player, 70, 150);
     if (this.groups.length < (time.night ? 1 : 3) && R.chance(0.2)) this.spawnGroup(player, 70, 140);
+    this.bridgeTraffic(player, time.night);
     if (this.count('zombie') < wantZombies && R.chance(0.3)) this.spawnZombie(player);
     for (const d of this.dogs) {
       if (Math.hypot(d.x - player.x, d.z - player.z) > 190) {
@@ -961,8 +1083,15 @@ export class Npcs {
     }
   }
 
+  // arriba del puente: chocan las barandas de su altura, no las paredes de abajo
+  upFilter(n) {
+    return (b) => (b.y0 ? n.y > b.y0 - 0.6 && n.y < b.h : n.y < 1 || n.y < b.h - 0.3);
+  }
+
   place(n) {
-    const y = this.heightAt(n.x, n.z);
+    let y = this.heightAt(n.x, n.z);
+    const k = this.wb;
+    if (n.x > k.x0 && n.x < k.x1 && n.z > k.z0 && n.z < k.z1) y = Math.max(y, walkwayHeight(this.walkways, n.x, n.z, n.y));
     n.y += (y - n.y) * 0.3;
     n.mesh.position.set(n.x, n.y + (n.fly ? n.fly.y : 0), n.z);
     n.mesh.rotation.set(n.fly ? n.fly.spin : 0, n.heading, 0);

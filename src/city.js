@@ -1002,6 +1002,8 @@ function addStation(scene, colliders, city) {
   const steel = 0x3f5563;
   const F = new FastBoxes();
   city.walkways ??= [];
+  // por dónde cruzan los vecinos (src/npcs.js): pie de la escalera, arriba, descanso y el puente
+  city.bridgeRoutes ??= [];
   const DECK = 7.375;
   const free = (x, z) => !colliders.query(x, z, 1.4).size;
   for (const line of D.bridges) {
@@ -1019,6 +1021,7 @@ function addStation(scene, colliders, city) {
         for (const s of [-1, 1]) colliders.add3d(ax + px * 1.52 * s, az + pz * 1.52 * s, bx + px * 1.52 * s, bz + pz * 1.52 * s, DECK, 1.1);
       }
       // en cada punta: descanso y escalera hacia el lado que esté libre
+      const ends = [];
       for (const end of [0, 1]) {
         const [ex, ez] = end ? line[line.length - 1] : line[0];
         const [qx, qz] = end ? line[line.length - 2] : line[1];
@@ -1074,7 +1077,27 @@ function addStation(scene, colliders, city) {
           colliders.add3d(bx0 + ox, bz0 + oz, bx0 + sx * RUN + ox, bz0 + sz * RUN + oz, 0, DECK + 1);
         }
         city.walkways.push({ ax: bx0 + sx * RUN, az: bz0 + sz * RUN, bx: bx0, bz: bz0, w: 2.2, y0: 0.15, y1: DECK });
+        ends.push({
+          foot: { x: bx0 + sx * (RUN + 1.8), z: bz0 + sz * (RUN + 1.8) },
+          bottom: { x: bx0 + sx * (RUN - 0.4), z: bz0 + sz * (RUN - 0.4) },
+          top: { x: bx0 - sx * 0.2, z: bz0 - sz * 0.2 },
+          land: { x: cx, z: cz },
+        });
       }
+      // el medio del puente (ahí alguno se para a mirar el tren)
+      const deck = line.map(([x, z]) => ({ x, z }));
+      let len = 0;
+      for (let i = 1; i < deck.length; i++) len += Math.hypot(deck[i].x - deck[i - 1].x, deck[i].z - deck[i - 1].z);
+      for (let i = 1, acc = 0; i < deck.length; i++) {
+        const l = Math.hypot(deck[i].x - deck[i - 1].x, deck[i].z - deck[i - 1].z);
+        if (acc + l >= len / 2) {
+          const k = (len / 2 - acc) / (l || 1);
+          deck.splice(i, 0, { x: deck[i - 1].x + (deck[i].x - deck[i - 1].x) * k, z: deck[i - 1].z + (deck[i].z - deck[i - 1].z) * k, mid: true });
+          break;
+        }
+        acc += l;
+      }
+      city.bridgeRoutes.push({ ends, deck });
     }
     for (let i = 0; i < line.length - 1; i++) {
       const [ax, az] = line[i];
