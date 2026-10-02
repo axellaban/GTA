@@ -231,6 +231,14 @@ agua de la autobomba (`Rescue.waterJet`: tubo en arco que se rehace cada cuadro,
 
 **R11 — Pruebas en celu real**: el dueño prueba en iPhone/Android y manda capturas; se ajusta.
 
+**R12 — Acercarse al look del video de Higgsfield** (Gaspi de traje y corbata roja en una vereda a lo
+GTA V; el video es IA pre-renderizada, no se puede generar así en tiempo real en un celu). Pasos:
+1. Cinemáticas con videos de Higgsfield del dueño (intro, entre misiones), comprimidos a 1–2 MB.
+2. Gaspi en 3D desde una imagen suya en pose A (Higgsfield `generate_3d`), simplificado a ≤ 5.000
+   triángulos con textura de 1024 y animado con `src/rig.js` (hay que pesarle los huesos).
+3. Más texturas de foto CC0 en fachadas, veredas y asfalto (ya empezado: Poly Haven).
+4. Luz de día más nítida y cálida, sombras más definidas y menos bruma (gradeo en `src/post.js`).
+
 **R12 — ✅ Rendimiento en la compu** (el dueño la notó lenta). Medido con un cuadro en la vereda de
 Meeks (`onBeforeRender`/`onBeforeShadow` por malla): antes 4,77 M triángulos y 1.057 dibujos por cuadro
 (cámara + sombra); ahora 2,19 M y 1.087. Qué se hizo:
