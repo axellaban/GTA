@@ -32,6 +32,7 @@ import { Stunts, RAMPS } from './stunts.js';
 import { chunkScene, updateChunks } from './chunks.js';
 import { GPU, flushTextures } from './textures.js';
 import { Gangs } from './gangs.js';
+import { Barrio } from './barrio.js';
 import { Garages } from './garage.js';
 import { Destroy } from './destroy.js';
 import { Tanks } from './tank.js';
@@ -448,6 +449,9 @@ world.carwash = carwash;
 // bandas: los arbolitos en los bancos y los jubilados en la ANSES (src/gangs.js)
 const gangs = new Gangs(scene, npcs, city, pickups);
 world.gangs = gangs;
+// borrachos en la puerta del Supermercado Luna y chicos en la del Colegio Eccleston (src/barrio.js)
+const barrio = new Barrio(npcs, city);
+world.barrio = barrio;
 // casas que se derrumban y el tanque del Ejército (6 estrellas)
 const destroy = new Destroy(scene, city);
 world.destroy = destroy;
@@ -1169,6 +1173,7 @@ function frame(now) {
   garages.update(dt, world);
   carwash.update(dt, world);
   gangs.update(dt, world);
+  barrio.update(dt, world);
   tanks.update(dt, world);
   destroy.update(dt, world);
   checkCheats();

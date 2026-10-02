@@ -236,6 +236,14 @@ Además hay 13 vecinos y vecinas de [Quaternius](https://quaternius.com) (Ultima
 
 Los perros también son un modelo CC0 de Mesh2Motion, con animaciones de verdad (quieto, caminar, correr, ladrar) y distintos tonos de pelo, y el caballo del carro del cartonero también.
 
+## Lo que cargó el dueño (relevamiento, 0.28)
+
+- **Morres**, la carnicería de la esquina de Cangallo y Santa María de Oro (cartel rojo y toldo).
+- **Escuela Media Tomás Espora**, sobre Santa María de Oro, a mitad de cuadra antes de 14 de Julio.
+- **Vaicrem**, la heladería de Av. Almirante Brown y 14 de Julio.
+- **Borrachos** en la puerta del Supermercado Luna, con el porrón y la camiseta del Celeste, tambaleándose y pidiendo para el vino.
+- **Chicos** en la puerta del Colegio Eccleston a la hora del colegio (de 7:30 a 18:30), con uniforme y mochila, jugando a la mancha. Como en los GTA, a los chicos no se los puede lastimar: si hay lío, salen corriendo.
+
 ## El puente de la estación (0.27)
 
 La pasarela que cruza las vías frente a la estación Temperley (y las otras de la estación) se puede subir: en cada punta hay un descanso y una escalera hasta la calle. Arriba se camina a 7 m sobre los trenes, con barandas a los costados (y si te tirás por la punta, caés).

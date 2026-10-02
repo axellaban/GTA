@@ -275,6 +275,15 @@ textura después de un `flushTextures`.** Además, "Jugar" arranca deshabilitado
 que el juego terminó de armarse. Prueba: `canvasmem.mjs` (copiar de la sesión) y la emulación de
 iPhone con `hasTouch`/`isMobile`. Falta probar en un iPhone de verdad.
 
+**R21 — ✅ Relevamiento del dueño (por chat)**: en `src/data/relevamiento.json` (campo `fuente` con lo que
+dijo): Morres (#2505, carnicería, esquina Cangallo y Santa María de Oro: pisa "Tienda de Mascotas" de
+Overture), Escuela Media Tomás Espora (#1288, el galpón grande que da a Santa María de Oro antes de 14 de
+Julio, pasa a escuela de 2 pisos con cartel) y Vaicrem (#1322, colores de cartel). `src/barrio.js`:
+3 borrachos (`borracho`) en la puerta del cartel "Supermercado Luna" y 11 chicos (`chico`) en la del
+Colegio Eccleston de 7:30 a 18:30. Los chicos no se pueden lastimar: `Npcs.hurt` los hace huir, las
+balas los atraviesan (`Combat.trace`), no se apuntan y el rayo del OVNI no los levanta. Esquinas
+calculadas con las calles de OSM (Cangallo y SMdO en 65.6,-12.5; SMdO y 14 de Julio en 58.3,-160.2).
+
 **R11 — Pruebas en celu real**: el dueño prueba en iPhone/Android y manda capturas; se ajusta.
 
 **R12 — Acercarse al look del video de Higgsfield** (Gaspi de traje y corbata roja en una vereda a lo

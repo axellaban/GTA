@@ -513,7 +513,8 @@ export class Combat {
       best = { t, type, obj };
     };
     for (const n of world.npcs.list) {
-      if (n === shooter || !near(n.x, n.z)) continue;
+      // a los chicos no les pegan las balas (pasan de largo)
+      if (n === shooter || n.type === 'chico' || !near(n.x, n.z)) continue;
       const h = n.down ? 0.45 : n.state === 'cower' || n.state === 'sit' ? 1.1 : 1.8;
       test(n.x, n.z, n.down ? 0.6 : 0.36, n.y, n.y + h, 'npc', n);
     }
@@ -549,7 +550,7 @@ export class Combat {
         best = { x, y, z };
       }
     };
-    for (const n of world.npcs.list) if (!n.down) consider(n.x, n.y + 1.25, n.z, n.state === 'fight' || n.type === 'cana' || n.type === 'zombie' || (n.type === 'banda' && n.gang?.war));
+    for (const n of world.npcs.list) if (!n.down && n.type !== 'chico') consider(n.x, n.y + 1.25, n.z, n.state === 'fight' || n.type === 'cana' || n.type === 'zombie' || (n.type === 'banda' && n.gang?.war));
     for (const m of world.crime.motos) if (m.state !== 'down') consider(m.v.x, 1.2, m.v.z, true);
     // con la bazuca también los autos (al medio de la carrocería); los patrulleros primero
     if (cars) for (const v of this.vehicles(world)) if (!v.wreck && v !== P.vehicle && v.kind !== 'moto') consider(v.x, 0.75, v.z, !!v.police);

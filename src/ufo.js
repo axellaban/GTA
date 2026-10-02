@@ -666,7 +666,8 @@ export class Ufo {
     if (this.held.length < 3) {
       for (const n of world.npcs.list) {
         if (this.held.length >= 3) break;
-        if (n.type === 'alien' || n.lifted || n.dead || Math.hypot(n.x - this.x, n.z - this.z) > r) continue;
+        // a los chicos no se los lleva el rayo
+        if (n.type === 'alien' || n.type === 'chico' || n.lifted || n.dead || Math.hypot(n.x - this.x, n.z - this.z) > r) continue;
         n.lifted = true;
         n.fly = null;
         this.held.push({ kind: 'npc', o: n, y: n.y, spin: R.range(1, 3) });

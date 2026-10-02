@@ -1,1 +1,33 @@
-{ "version": 1, "negocios": [] }
+{
+ "version": 1,
+ "negocios": [
+  {
+   "id": 2505,
+   "nombre": "Morres",
+   "tipo": "local",
+   "rubro": "Carnicería",
+   "cartel": "#b71c1c",
+   "letras": "#ffffff",
+   "toldo": true,
+   "persiana": true,
+   "fuente": "dueño: esquina Cangallo y Santa María de Oro"
+  },
+  {
+   "id": 1288,
+   "nombre": "Escuela Media Tomás Espora",
+   "tipo": "colegio",
+   "pisos": 2,
+   "fuente": "dueño: Santa María de Oro, a mitad de cuadra antes de 14 de Julio"
+  },
+  {
+   "id": 1322,
+   "nombre": "Vaicrem",
+   "tipo": "local",
+   "rubro": "Heladería",
+   "cartel": "#fce4ec",
+   "letras": "#ad1457",
+   "toldo": true,
+   "fuente": "dueño: Av. Almirante Brown y 14 de Julio"
+  }
+ ]
+}
