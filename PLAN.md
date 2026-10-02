@@ -200,6 +200,18 @@ del cuerpo acostado y termina boca arriba) y pierde salud según la velocidad (4
 El auto queda con `coast` y lo mueve `Combat.coastStep`: frena solo, choca paredes y autos (daño y
 chispas) y voltea a la gente que se cruza.
 
+**R15 — ✅ Bandas** (`src/gangs.js`, pedido del dueño): Arbolitos (5, ametralladoras) en el centro de
+los bancos de `src/data/osm.json` y Jubilados (6: 2 molotov, 2 lanzallamas, 2 bazucas) en un local de
+avenida a más de 420 m de los bancos, convertido en "ANSES" (cartel y pasacalle; no es la dirección
+real: si el dueño la pasa, se ubica ahí). Son `Npc` de tipo `banda` (`n.gang`, `n.arm`); el cerebro es
+`Gangs.brain` (lo llama `Npcs.update`). Calor: cerca (`fire`) o apuntándoles sube; a 1,8 s, guerra.
+Tiros/golpes del jugador a uno (`Npcs.react`) o disparar cerca: guerra al toque. Se calman tras 9 s
+lejos. Armas enemigas en `src/combat.js`: `enemyMolotov` (arco hasta el blanco, el fuego no quema a
+los de su banda), `enemyRocket`, `flame` (cono de 8,5 m, también para el jugador: `WEAPONS.lanzallamas`).
+Sueltan `dropGun`/`dropHealth`; reaparecen a los 90 s si Gaspi está a más de 160 m. Íconos
+`arbolitos`/`jubilados` en `src/icons.js`. La noche dura menos: reloj ×3 de noche y ×1,7 en el
+amanecer/atardecer oscuros (`updateTime` en `src/main.js`).
+
 **R11 — Pruebas en celu real**: el dueño prueba en iPhone/Android y manda capturas; se ajusta.
 
 **R12 — ✅ Rendimiento en la compu** (el dueño la notó lenta). Medido con un cuadro en la vereda de

@@ -17,8 +17,10 @@ export const WEAPONS = {
   ametralladora: { id: 'ametralladora', name: 'Ametralladora', gun: true, heavy: true, dmg: 36, rate: 0.068, mag: 100, reload: 3.6, range: 85, spread: 0.03, pellets: 1, pose: 'aimLong', knock: true, ammoPickup: 200, sound: 'ametralladora', auto: true },
   // bazuca: un cohete por vez, con estela de humo, que explota donde pega
   bazuca: { id: 'bazuca', name: 'Bazuca', gun: true, rocket: true, heavy: true, dmg: 0, rate: 1.1, mag: 1, reload: 2.4, range: 160, spread: 0.004, pellets: 1, pose: 'aimLong', ammoPickup: 5, sound: 'bazuca' },
+  // lanzallamas (el de los jubilados): chorro de fuego mientras apretás; quema gente y autos
+  lanzallamas: { id: 'lanzallamas', name: 'Lanzallamas', gun: true, flame: true, heavy: true, auto: true, dmg: 0, rate: 0.05, mag: 120, reload: 2.8, range: 8.5, spread: 0, pellets: 1, pose: 'aimLong', ammoPickup: 120 },
 };
-export const ORDER = ['punos', 'motosierra', 'baston', 'palo', 'revolver', 'pistola', 'metra', 'ametralladora', 'escopeta', 'molotov', 'bazuca'];
+export const ORDER = ['punos', 'motosierra', 'baston', 'palo', 'revolver', 'pistola', 'metra', 'ametralladora', 'escopeta', 'molotov', 'bazuca', 'lanzallamas'];
 
 const metal = 0x2a2c30;
 const wood = 0x7a4a26;
@@ -87,6 +89,17 @@ function gunGeo(id) {
     B.box(0.012, 0.012, 0.2, 0x222222, 0.02, 0.02, 0.55);
     B.box(0.012, 0.012, 0.2, 0x222222, -0.02, 0.02, 0.55);
     B.box(0.012, 0.05, 0.012, 0x111111, 0, 0.115, 0.6);
+  } else if (id === 'lanzallamas') {
+    // tubo con boquilla, garrafa roja abajo, manguera y el piloto encendido en la punta
+    B.add(new THREE.CylinderGeometry(0.03, 0.035, 0.7, 10).rotateX(Math.PI / 2).translate(0, 0.06, 0.3), 0x3a3b3e);
+    B.add(new THREE.CylinderGeometry(0.045, 0.03, 0.1, 10).rotateX(Math.PI / 2).translate(0, 0.06, 0.68), 0x1c1c1c);
+    B.add(new THREE.CylinderGeometry(0.075, 0.075, 0.34, 12).rotateX(Math.PI / 2).translate(0, -0.07, 0.12), 0xc62828);
+    B.add(new THREE.SphereGeometry(0.075, 10, 6).scale(1, 1, 0.6).translate(0, -0.07, 0.29), 0xc62828);
+    B.add(new THREE.SphereGeometry(0.075, 10, 6).scale(1, 1, 0.6).translate(0, -0.07, -0.05), 0xc62828);
+    B.box(0.035, 0.11, 0.045, 0x222222, 0, 0.0, -0.02);
+    B.box(0.03, 0.1, 0.04, 0x222222, 0, 0.0, 0.32);
+    B.box(0.02, 0.02, 0.14, 0x111111, 0.05, -0.01, 0.1);
+    B.add(new THREE.SphereGeometry(0.022, 8, 6).translate(0, 0.02, 0.74), 0x4fc3f7);
   } else if (id === 'bazuca') {
     // tubo verde oliva sobre el hombro: boca acampanada atrás, mira, empuñadura y el cohete asomando
     B.add(new THREE.CylinderGeometry(0.06, 0.06, 1.15, 14).rotateX(Math.PI / 2).translate(0, 0.1, 0.05), 0x4a5a34);
@@ -140,6 +153,6 @@ export function handWeapon(id) {
 // Objeto que gira en el piso
 export function pickupWeapon(id) {
   const m = new THREE.Mesh(geoFor(id), mat);
-  m.scale.setScalar(['palo', 'baston', 'motosierra'].includes(id) ? 1.2 : ['ametralladora', 'bazuca'].includes(id) ? 1.3 : 2.2);
+  m.scale.setScalar(['palo', 'baston', 'motosierra'].includes(id) ? 1.2 : ['ametralladora', 'bazuca', 'lanzallamas'].includes(id) ? 1.3 : 2.2);
   return m;
 }

@@ -233,6 +233,15 @@ Además hay 13 vecinos y vecinas de [Quaternius](https://quaternius.com) (Ultima
 
 Los perros también son un modelo CC0 de Mesh2Motion, con animaciones de verdad (quieto, caminar, correr, ladrar) y distintos tonos de pelo, y el caballo del carro del cartonero también.
 
+## Bandas (0.25)
+
+Como las pandillas de GTA, dos bandas con su territorio (íconos en el mapa):
+
+- **Los Arbolitos** (US$, verde): los del dólar blue, en la vereda de los bancos de Almirante Brown. Patrullan la cuadra con ametralladoras gritando "¡Cambio, cambio!". Si te acercás te miran y te avisan; si te quedás (o pasás despacio con el auto), te cagan a tiros en ráfagas.
+- **Los Jubilados** (bastón, violeta): hartos de que les saquen el descuento de la farmacia, plantados en la puerta de la ANSES (en la otra punta del mapa) con un pasacalle. Tienen molotovs, lanzallamas y bazucas: son lentos, pero pegan mucho más fuerte.
+
+Si le pegás o le tirás a uno, salen todos; si apuntás o tirás cerca, también. Se calman si te vas lejos un rato. Muertos sueltan plata y el arma (el **lanzallamas** lo podés usar vos: chorro de fuego que quema gente y prende autos) y los jubilados, a veces, los remedios. Al rato, si no estás cerca, vuelven.
+
 ## Autos de artista (0.24)
 
 Entre los clásicos hechos por código (Duna, Falcon, Gol, 504...) ahora andan autos modernos del [Realistic Car Pack de Quaternius](https://quaternius.com/packs/cars.html) (CC0): un sedán, un compacto, una SUV y dos deportivos. Son uno de cada cuatro en el tránsito y algunos de los estacionados, con el color del auto al azar, la chapa con laca, vidrios polarizados, ruedas que giran y doblan, abolladuras, luces de freno y el mismo nivel de detalle por distancia que los demás. Los deportivos tiran más y la SUV es más pesada. `tools/models/qcars.mjs` arma `public/models/vehicles/qcars.glb` desde los OBJ del pack (escala real, piso en 0, frente a +z y las partes separadas); unos 3.000 triángulos por auto.

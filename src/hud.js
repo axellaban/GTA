@@ -84,6 +84,7 @@ export class Hud {
       if (icon) add(icon, d.outside);
     }
     if (world.carwash?.x != null) add('lavadero', world.carwash);
+    for (const m of world.gangs?.markers() || []) add(m.kind, m);
     for (const m of world.races?.markers() || []) add('picada', m);
     for (const m of world.events?.markers() || []) add('corte', m);
     const r = world.rescue;

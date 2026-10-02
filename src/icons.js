@@ -50,6 +50,23 @@ const pistol = (g) => {
 // fondo, dibujo y nombre para la leyenda
 export const ICONS = {
   armeria: { bg: '#c0392b', label: 'Armería', draw: pistol },
+  // territorios de las bandas
+  arbolitos: { bg: '#1b5e20', label: 'Los Arbolitos', draw: (g) => text(g, 'US$', 26) },
+  jubilados: {
+    bg: '#5d4b7a',
+    label: 'Los Jubilados',
+    draw(g) {
+      // bastón
+      g.strokeStyle = WHITE;
+      g.lineWidth = 5;
+      g.lineCap = 'round';
+      g.beginPath();
+      g.moveTo(34, 50);
+      g.lineTo(34, 22);
+      g.arc(27, 22, 7, 0, Math.PI, true);
+      g.stroke();
+    },
+  },
   pintura: {
     bg: '#2e9e5b',
     label: 'Chapa y pintura',
@@ -412,6 +429,6 @@ export function drawIcon(g, kind, x, y, size, letter = null) {
 }
 
 // lo que se muestra en la leyenda del mapa de pausa, en orden
-export const LEGEND = ['mision', 'armeria', 'pintura', 'gym', 'comisaria', 'hospital', 'tren', 'pancho', 'medias', 'kiosco', 'picada', 'corte', 'ambulancia', 'bombero', 'delivery', 'ovni', 'arma', 'vida', 'chaleco', 'coima'];
+export const LEGEND = ['mision', 'armeria', 'arbolitos', 'jubilados', 'pintura', 'gym', 'comisaria', 'hospital', 'tren', 'pancho', 'medias', 'kiosco', 'picada', 'corte', 'ambulancia', 'bombero', 'delivery', 'ovni', 'arma', 'vida', 'chaleco', 'coima'];
 // de los objetos del piso (pickups) al ícono
 export const PICKUP_ICON = { weapon: 'arma', health: 'vida', armor: 'chaleco', coima: 'coima' };

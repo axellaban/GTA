@@ -28,6 +28,7 @@ import { WEAPONS } from './weapons.js';
 import { Gym } from './gym.js';
 import { Stunts, RAMPS } from './stunts.js';
 import { chunkScene, updateChunks } from './chunks.js';
+import { Gangs } from './gangs.js';
 import { addPalms } from './palms.js';
 import { Laban } from './laban.js';
 import { loadPeople, loadAnimals, makeStar, swapHuman } from './people.js';
@@ -432,6 +433,9 @@ world.garages = garages;
 // lavadero de autos (sale de otro color; con hasta dos estrellas la cana te pierde)
 const carwash = new CarWash(scene, city, pickups);
 world.carwash = carwash;
+// bandas: los arbolitos en los bancos y los jubilados en la ANSES (src/gangs.js)
+const gangs = new Gangs(scene, npcs, city, pickups);
+world.gangs = gangs;
 
 // ---------- Gym El Kaiser, a pasos de la estación ----------
 const gym = new Gym(scene, city.colliders, npcs, heightAt);
@@ -630,7 +634,10 @@ const duskTop = new THREE.Color(0x5a2f8a);
 const greyTmp = new THREE.Color();
 const cityGlow = new THREE.Color(0x4a3240);
 function updateTime(dt) {
-  const rate = time.night ? 2.2 : 1; // minutos de juego por segundo real
+  // minutos de juego por segundo real: de día 1; en el atardecer y el amanecer oscuros 1,7; de noche 3
+  // (el día dura unos 13 minutos de verdad y la noche unos 4)
+  const e0 = Math.sin(((time.hour - 6.5) / 13) * Math.PI) * 3 + 0.12;
+  const rate = time.night ? 3 : e0 < 0.5 ? 1.7 : 1;
   time.hour = (time.hour + (dt * rate) / 60) % 24;
   const h = time.hour;
   const hh = Math.floor(h);
@@ -1205,6 +1212,7 @@ function frame(now) {
   updateJob(dt);
   updateGarages();
   carwash.update(dt, world);
+  gangs.update(dt, world);
   updateArmeria();
   checkCheats();
   gym.update(dt, world);

@@ -294,9 +294,10 @@ export class Combat {
       this.fx.smoke(p.x, gy + 0.8, p.z, 6);
       this.audio.metal?.(0.5);
       this.audio.explosion?.(0.35);
-      this.fires.push({ x: p.x, z: p.z, y: gy, t: 7, tick: 0 });
-      world.police.crime('tiros', p.x, p.z);
-      world.npcs.scare?.(p.x, p.z, 25, world);
+      const byPlayer = b.byPlayer !== false;
+      this.fires.push({ x: p.x, z: p.z, y: gy, t: 7, tick: 0, byPlayer, gang: b.gang });
+      if (byPlayer) world.police.crime('tiros', p.x, p.z);
+      world.npcs.panic(p.x, p.z, 25, b.shooter ?? world.player);
     }
     this.flying = this.flying.filter((b) => !b.done);
     const P = world.player;
@@ -307,16 +308,110 @@ export class Combat {
       if (f.tick > 0) continue;
       f.tick = 0.35;
       for (const n of world.npcs.list) {
+        // los de la banda pisan con cuidado su propio fuego
+        if (f.gang && n.gang === f.gang) continue;
         const d = Math.hypot(n.x - f.x, n.z - f.z);
         if (d < 2.6 && !n.killed) {
-          const res = world.npcs.hurt(n, 14, (n.x - f.x) / (d || 1), (n.z - f.z) / (d || 1), { byPlayer: true, world });
-          if (res === 'muerte') world.police.crime('muerte', n.x, n.z);
+          const res = world.npcs.hurt(n, 14, (n.x - f.x) / (d || 1), (n.z - f.z) / (d || 1), { byPlayer: f.byPlayer, world });
+          if (res === 'muerte' && f.byPlayer) world.police.crime('muerte', n.x, n.z);
         }
       }
-      if (!P.vehicle && Math.hypot(P.x - f.x, P.z - f.z) < 1.8) P.hurt(9, 'Te quemaste con tu propio molotov');
-      for (const v of this.vehicles(world)) if (Math.hypot(v.x - f.x, v.z - f.z) < 3) this.damageVehicle(world, v, 8, true);
+      if (!P.vehicle && Math.hypot(P.x - f.x, P.z - f.z) < 1.8) P.hurt(9, f.byPlayer ? 'Te quemaste con tu propio molotov' : 'Te prendieron fuego con un molotov');
+      for (const v of this.vehicles(world)) if (Math.hypot(v.x - f.x, v.z - f.z) < 3) this.damageVehicle(world, v, 8, f.byPlayer);
     }
     this.fires = this.fires.filter((f) => f.t > 0);
+  }
+
+  // un enemigo tira un molotov en arco hasta (tx, tz)
+  enemyMolotov(world, shooter, tx, tz) {
+    const dx = tx - shooter.x;
+    const dz = tz - shooter.z;
+    const d = Math.hypot(dx, dz) || 1;
+    const T = Math.max(0.5, d / 12);
+    const y0 = (shooter.y || 0) + 1.7;
+    const m = handWeapon('molotov');
+    m.position.set(shooter.x + (dx / d) * 0.5, y0, shooter.z + (dz / d) * 0.5);
+    this.scene.add(m);
+    this.flying.push({ m, vx: dx / T, vy: (4.9 * T * T - y0) / T, vz: dz / T, byPlayer: false, gang: shooter.gang, shooter });
+    this.audio.whoosh(0.45);
+  }
+  // un enemigo dispara la bazuca hacia (tx, ty, tz), con algo de error
+  enemyRocket(world, shooter, tx, ty, tz, miss = 1.5) {
+    const hx = Math.sin(shooter.heading);
+    const hz = Math.cos(shooter.heading);
+    const o = { x: shooter.x + hx * 0.9, y: (shooter.y || 0) + 1.55, z: shooter.z + hz * 0.9 };
+    const d = new THREE.Vector3(tx + R.range(-miss, miss) - o.x, ty + R.range(-0.4, 0.6) - o.y, tz + R.range(-miss, miss) - o.z).normalize();
+    this.fireRocket(world, o, d, shooter);
+    this.fx.smoke(o.x - hx * 1.2, o.y, o.z - hz * 1.2, 6, { s0: 0.6, s1: 2.6, vx: -hx * 3, vz: -hz * 3, life: 0.8 });
+    this.fx.muzzle(o.x - hx * 0.9, o.y + 0.1, o.z - hz * 0.9, -hx, -hz, true);
+    const P = world.player;
+    this.audio.disparo('bazuca', Math.max(0.15, 1 - Math.hypot(o.x - P.x, o.z - P.z) / 140));
+  }
+
+  // ---------- Lanzallamas: un chorro de fuego en cono que quema gente y autos ----------
+  // shooter: Gaspi o un enemigo (con .x, .z, .y y .heading); se llama cada cuadro mientras tira
+  flame(world, shooter, dt) {
+    const P = world.player;
+    const byPlayer = shooter === P;
+    const hd = shooter.heading;
+    const fx = Math.sin(hd);
+    const fz = Math.cos(hd);
+    const ox = shooter.x + fx * 0.95;
+    const oz = shooter.z + fz * 0.95;
+    const oy = (shooter.y || 0) + 1.3;
+    // lenguas de fuego que salen de la boquilla, se abren y suben
+    const n = Math.min(6, Math.max(1, Math.round(dt * 80)));
+    for (let i = 0; i < n; i++) {
+      const sp = R.range(8.5, 12.5);
+      const a = hd + R.range(-0.12, 0.12);
+      this.fx.add.add({ x: ox, y: oy, z: oz, vx: Math.sin(a) * sp, vy: R.range(0.1, 1.2), vz: Math.cos(a) * sp, grav: -2, drag: 1.6, life: 0, max: R.range(0.45, 0.7), s0: 0.22, s1: 1.7, c0: [1, 0.86, 0.5], c1: [1, 0.28, 0.04], a: 0.95 });
+    }
+    if (Math.random() < dt * 6) this.fx.smoke(ox + fx * 6, oy + 0.8, oz + fz * 6, 1, { black: true, s0: 0.8, s1: 3 });
+    shooter.flameTick = (shooter.flameTick || 0) - dt;
+    if (shooter.flameTick > 0) return;
+    shooter.flameTick = 0.15;
+    const RANGE = 8.5;
+    const cone = (x, z) => {
+      const dx = x - shooter.x;
+      const dz = z - shooter.z;
+      const d = Math.hypot(dx, dz);
+      if (d > RANGE || d < 0.2) return 0;
+      if ((dx * fx + dz * fz) / d < 0.92) return 0;
+      if (world.colliders.blocked(shooter.x, shooter.z, x, z, 1.5) < 0.98) return 0;
+      return 1 - d / (RANGE + 3);
+    };
+    for (const t of world.npcs.list) {
+      if (t === shooter || t.killed || (shooter.gang && t.gang === shooter.gang)) continue;
+      const k = cone(t.x, t.z);
+      if (!k) continue;
+      const res = world.npcs.hurt(t, 7 + 9 * k, fx, fz, { byPlayer, world });
+      this.fx.fire(t.x, (t.y || 0) + 1, t.z, 2, 0.45);
+      if (byPlayer && res === 'muerte') world.police.crime('muerte', t.x, t.z);
+    }
+    if (!byPlayer && !P.dead) {
+      const tv = P.vehicle;
+      const k = cone(tv ? tv.x : P.x, tv ? tv.z : P.z);
+      if (k && tv) {
+        this.damageVehicle(world, tv, 4 + 5 * k, false);
+        if (tv.damage > 65 && !(tv.burning > 0)) tv.burning = R.range(4, 7);
+      } else if (k) {
+        P.hurt(2.5 + 3.5 * k, 'Te prendieron fuego con un lanzallamas');
+        this.fx.fire(P.x, (P.y || 0) + 1, P.z, 2, 0.45);
+      }
+    }
+    for (const v of this.vehicles(world)) {
+      if (v.wreck || (v === P.vehicle && !byPlayer) || v === shooter.vehicle) continue;
+      const k = cone(v.x, v.z);
+      if (!k) continue;
+      this.damageVehicle(world, v, 4 + 6 * k, byPlayer);
+      if (v.damage > 70 && !(v.burning > 0)) {
+        v.burning = R.range(3, 6);
+        v.lastHitByPlayer = v.lastHitByPlayer || byPlayer;
+      }
+    }
+    this.audio.burst(0.22, 520, 'lowpass', byPlayer ? 0.28 : 0.2 * Math.max(0, 1 - Math.hypot(shooter.x - P.x, shooter.z - P.z) / 60), 0, 0.5);
+    world.npcs.panic(shooter.x, shooter.z, 30, shooter);
+    if (byPlayer) world.police.crime('tiros', shooter.x, shooter.z);
   }
 
   // ---------- Bazuca ----------
@@ -442,7 +537,7 @@ export class Combat {
         best = { x, y, z };
       }
     };
-    for (const n of world.npcs.list) if (!n.down) consider(n.x, n.y + 1.25, n.z, n.state === 'fight' || n.type === 'cana' || n.type === 'zombie');
+    for (const n of world.npcs.list) if (!n.down) consider(n.x, n.y + 1.25, n.z, n.state === 'fight' || n.type === 'cana' || n.type === 'zombie' || (n.type === 'banda' && n.gang?.war));
     for (const m of world.crime.motos) if (m.state !== 'down') consider(m.v.x, 1.2, m.v.z, true);
     // con la bazuca también los autos (al medio de la carrocería); los patrulleros primero
     if (cars) for (const v of this.vehicles(world)) if (!v.wreck && v !== P.vehicle && v.kind !== 'moto') consider(v.x, 0.75, v.z, !!v.police);
@@ -465,6 +560,13 @@ export class Combat {
     a.mag--;
     this.fireCd = w.rate;
     P.shootT = 0.16;
+    if (w.flame) {
+      // el chorro sale para donde mira la cámara (o adonde camina)
+      if (P.speed < 0.5 || P.aiming) P.heading = Math.atan2(-Math.sin(P.camYaw), -Math.cos(P.camYaw));
+      this.flame(world, P, w.rate);
+      if (a.mag === 0 && a.res > 0) setTimeout(() => this.reload(P), 250);
+      return;
+    }
     // dirección: mira (cámara) o apuntado automático hacia adelante
     let aim;
     if (P.aiming) {

@@ -392,6 +392,10 @@ export class Npcs {
       n.money = 0;
       // la cana suelta el arma (el gendarme, siempre: la ametralladora es el premio)
       if (w && n.type === 'cana' && (n.gendarme || R.chance(0.6))) w.pickups.weapon(n.x - fz, n.z + fx, n.gunId && n.gunId !== 'pistola' ? n.gunId : R.chance(0.7) ? 'pistola' : 'escopeta', true);
+      // los de las bandas sueltan su arma (y los jubilados, los remedios)
+      if (w && n.dropGun) w.pickups.weapon(n.x - fz, n.z + fx, n.dropGun, true);
+      if (w && n.dropHealth) w.pickups.spawn('health', n.x + fz, n.z - fx, {}, { life: 60 });
+      if (n.gang) w?.gangs?.lost(n);
       this.audio.golpe(0.7);
       // un tiro, un golpe muy fuerte o seguir pegándole: muere
       if (o.gun || dmg >= 45 || n.hp < -20) {
@@ -440,6 +444,12 @@ export class Npcs {
 
   // qué hace cuando lo lastima Gaspi
   react(n, w, gun) {
+    // a uno de la banda no se lo toca: salen todos a los tiros
+    if (n.type === 'banda') {
+      w?.gangs?.provoke(n.gang, w);
+      n.after = 'gang';
+      return;
+    }
     if (n.type === 'cana') {
       n.state = n.state === 'down' ? 'down' : 'chase';
       n.after = 'chase';
@@ -539,7 +549,7 @@ export class Npcs {
         n.knockT -= dt;
         if (n.knockT <= 0) {
           n.getupT = 0.6;
-          n.state = n.after || (n.type === 'mendigo' ? 'sit' : n.type === 'cana' ? 'chase' : n.ev && !n.ev.leaving ? 'protest' : n.home ? 'idle' : 'walk');
+          n.state = n.after || (n.type === 'mendigo' ? 'sit' : n.type === 'cana' ? 'chase' : n.type === 'banda' ? 'gang' : n.ev && !n.ev.leaving ? 'protest' : n.home ? 'idle' : 'walk');
           n.after = null;
           if (n.state === 'walk') this.attach(n);
           if (n.state === 'flee') this.setState(n, 'flee', player);
@@ -674,6 +684,10 @@ export class Npcs {
           if (Math.hypot(n.target.x - n.x, n.target.z - n.z) < 1) this.nextLeg(n);
         }
         if (!night && dp > 150 && this.count('zombie') > 7) n.dead = true;
+      } else if (n.type === 'banda') {
+        const r = world.gangs?.brain(n, dt, world, dp) ?? { want: 0, pose: 'guard' };
+        want = r.want;
+        pose = r.pose;
       } else if (n.type === 'cana') {
         const r = world.police?.copBrain(n, dt, world, dp);
         want = r?.want ?? 0;
