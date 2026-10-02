@@ -1,0 +1,44 @@
+{
+ "visto": {
+  "file": "fachada_visto.webp",
+  "asset": "red_bricks_04",
+  "name": "Red Bricks 04",
+  "authors": [
+   "Rob Tuytel"
+  ],
+  "meters": 2.5,
+  "avg": [
+   0.1254,
+   0.0503,
+   0.0192
+  ]
+ },
+ "hueco": {
+  "file": "fachada_hueco.webp",
+  "asset": "large_red_bricks",
+  "name": "Large Red Bricks",
+  "authors": [
+   "Rob Tuytel"
+  ],
+  "meters": 2.0,
+  "avg": [
+   0.4075,
+   0.1928,
+   0.104
+  ]
+ },
+ "revoque": {
+  "file": "fachada_revoque.webp",
+  "asset": "plaster_grey_04",
+  "name": "Plaster Grey 04",
+  "authors": [
+   "Rob Tuytel"
+  ],
+  "meters": 1.5,
+  "avg": [
+   0.2978,
+   0.2764,
+   0.2197
+  ]
+ }
+}

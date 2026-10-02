@@ -37,6 +37,17 @@ dibujadas. Materiales CC0 de Poly Haven: [Asphalt 02](https://polyhaven.com/a/as
 de Rob Tuytel y [Concrete Pavement](https://polyhaven.com/a/concrete_pavement) de Charlotte
 Baglioni. Fuentes y presupuesto de memoria en `public/textures/CREDITS.md`.
 
+### Ladrillo y revoque de foto en las fachadas
+
+Las paredes de ladrillo a la vista (la estación, las casas de ladrillo, las sin revocar) usan una
+foto de ladrillo de verdad, apoyada en metros sobre cada pared y con el tono de cada casa; las
+revocadas suman las manchas y el grano de un revoque gastado. El relieve sale de la misma foto
+(el sol marca las juntas). Las ventanas, puertas, carteles y pintadas siguen dibujadas encima.
+Fotos CC0 de Poly Haven, todas de Rob Tuytel: [Red Bricks 04](https://polyhaven.com/a/red_bricks_04),
+[Large Red Bricks](https://polyhaven.com/a/large_red_bricks) y
+[Plaster Grey 04](https://polyhaven.com/a/plaster_grey_04). Pesan 820 KB en total
+(`python3 scripts/fachadas.py` las rearma); si no cargan, las fachadas quedan como antes.
+
 Para comparar la misma calle de día, al atardecer y con lluvia: `npm run dev` y abrir
 `/tools/graphics.html`. La herramienta es solo de desarrollo.
 

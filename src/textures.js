@@ -82,6 +82,36 @@ function record(kind, x, y, w, h) {
   if (!CUR) return;
   CUR.list.push({ kind, x0: (x - CUR.ox) / CELL_W, x1: (x + w - CUR.ox) / CELL_W, y0: (y - CUR.oy) / CELL_H, y1: (y + h - CUR.oy) / CELL_H });
 }
+// Ladrillo a la vista: se guarda cómo quedó dibujado y, al terminar la celda, lo que siga igual
+// (lo que no tapó una ventana, una pintada o un cartel) se marca en el canal rojo del mapa de
+// aspereza (0 = ladrillo); el hueco además baja un poco la aspereza (verde 226 en vez de 236).
+// Ahí el juego pone la foto (src/facade-photo.js).
+function markBrick(ctx, x, y, w, h, kind) {
+  if (!CUR || !OR) return;
+  const x0 = Math.max(Math.round(x), CUR.ox);
+  const y0 = Math.max(Math.round(y), CUR.oy);
+  const x1 = Math.min(Math.round(x + w), CUR.ox + CELL_W);
+  const y1 = Math.min(Math.round(y + h), CUR.oy + CELL_H);
+  if (x1 <= x0 || y1 <= y0) return;
+  (CUR.bricks ??= []).push({ x: x0, y: y0, w: x1 - x0, h: y1 - y0, kind, snap: ctx.getImageData(x0, y0, x1 - x0, y1 - y0).data });
+}
+function applyBrickMarks(ctx) {
+  for (const b of CUR?.bricks || []) {
+    const now = ctx.getImageData(b.x, b.y, b.w, b.h).data;
+    const img = OR.getImageData(b.x, b.y, b.w, b.h);
+    const o = img.data;
+    const hueco = b.kind === 'hueco';
+    for (let i = 0; i < now.length; i += 4) {
+      const d = Math.max(Math.abs(now[i] - b.snap[i]), Math.abs(now[i + 1] - b.snap[i + 1]), Math.abs(now[i + 2] - b.snap[i + 2]));
+      // manchas y humedad suaves siguen siendo ladrillo; lo pintado encima, no
+      if (d > 40 || o[i + 1] < 200) continue;
+      o[i] = 0;
+      if (hueco) o[i + 1] = 226;
+    }
+    OR.putImageData(img, b.x, b.y);
+  }
+}
+
 // ¿El rectángulo pisa alguna abertura ya dibujada en la celda?
 function overlapsOpening(x, y, w, h) {
   if (!CUR) return false;
@@ -93,7 +123,12 @@ function overlapsOpening(x, y, w, h) {
 }
 
 // Pared de ladrillos: "visto" (el de las casas prolijas) u "hueco" (la casa sin revocar, con columnas y viga de hormigón)
-function brickWall(ctx, x, y, w, h, rng, type) {
+function brickWall(ctx, x, y, w, h, rng, type, mark = true) {
+  const out = paintBricks(ctx, x, y, w, h, rng, type);
+  if (mark) markBrick(ctx, x, y, w, h, type);
+  return out;
+}
+function paintBricks(ctx, x, y, w, h, rng, type) {
   if (type === 'hueco') {
     ctx.fillStyle = '#9d948a';
     ctx.fillRect(x, y, w, h);
@@ -181,7 +216,8 @@ function peel(ctx, x, y, w, h, rng, count) {
     ctx.strokeStyle = 'rgba(255,255,255,0.25)';
     ctx.stroke();
     ctx.clip();
-    brickWall(ctx, px - 6, py - 6, pw + 12, ph + 12, rng, 'visto');
+    // (los parches chicos quedan dibujados: la foto no se recorta con la forma del revoque caído)
+    brickWall(ctx, px - 6, py - 6, pw + 12, ph + 12, rng, 'visto', false);
     ctx.fillStyle = 'rgba(40,30,25,0.2)';
     ctx.fillRect(px - 6, py - 6, pw + 12, ph + 12);
     ctx.restore();
@@ -660,6 +696,8 @@ function drawLadrillo(ctx, x, y, rng) {
       ctx.fillRect(x + c * bw + off + 20, y + r * bh + 5, 6, 6);
     }
   }
+  // ladrillo hueco con los agujeritos a la vista
+  markBrick(ctx, x, y, W, H, 'hueco');
 }
 
 function drawEstacion(ctx, x, y, rng, upper) {
@@ -677,6 +715,7 @@ function drawEstacion(ctx, x, y, rng, upper) {
       ctx.fillRect(x + k * bw + off + 1, y + r * bh + 1, bw - 2, bh - 2);
     }
   }
+  markBrick(ctx, x, y, W, H, 'visto');
   ctx.fillStyle = '#e7dcc3';
   ctx.fillRect(x, y + (upper ? 0 : H - 10), W, 8);
   ctx.fillRect(x, y + (upper ? H - 16 : 0), W, 10);
@@ -833,6 +872,7 @@ export function buildAtlas() {
     }
     fn(col * CELL_W, row * CELL_H);
     for (const target of [ctx, EM, OR]) target.restore();
+    applyBrickMarks(ctx);
     const r = uvRect(i++);
     r.open = CUR.list;
     r.base = CUR.base;

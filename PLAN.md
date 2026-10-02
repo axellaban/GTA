@@ -136,7 +136,18 @@ halo (`src/sky.js`); ✅ rejas. Falta: foto del relevamiento en las fachadas.
   `public/textures/CREDITS.md`. Sin geometría extra. `usePhoto` conserva el material dibujado
   completo si falla una descarga. Prueba visual local: `/tools/graphics.html` con Vite
   (día, atardecer y noche con lluvia); no se incluye en el build de producción.
-  Falta para otra entrega: fachadas y prueba en iPhone real.
+  Falta para otra entrega: prueba en iPhone real.
+- ✅ 2026-10-02: ladrillo y revoque de foto en las fachadas (`src/facade-photo.js`). Fotos CC0 de
+  Poly Haven (Red Bricks 04, Large Red Bricks, Plaster Grey 04; `python3 scripts/fachadas.py` →
+  `public/textures/fachada_*.webp` + `fachada.json`): color en RGB y altura en la transparencia
+  (0,5–1, por Safari), un solo archivo por material. Dónde va cada una: `markBrick` en
+  `src/textures.js` guarda cómo quedó dibujado el ladrillo y al cerrar la celda marca en el mapa de
+  aspereza (rojo 0; hueco con verde 226) lo que siga igual (no lo tapado por ventanas, pintadas o
+  carteles). El shader apoya las fotos en metros sobre cada pared (a lo largo y en altura), tiñe el
+  ladrillo con el atlas desenfocado (cada casa con su tono), suma manchas y grano al revoque, y
+  saca el relieve de la altura (se apaga entre 25 y 60 m); en esas zonas el relieve dibujado del
+  atlas cede (antes el revoque parecía un queso). 11 texturas en el shader de fachadas (límite 16).
+  Prueba: capturas de paredes al sol (hora 17,5 para la estación).
 
 **R9 — Mapa real (B1)**: ✅ negocios de OSM (`scripts/map/osm_pois.py` -> `src/data/osm.json`, 117
 lugares; `src/map.js` los asigna a las huellas): 129 locales con cartel real (antes 60). Overpass:

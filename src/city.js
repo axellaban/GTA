@@ -22,6 +22,7 @@ import {
   usePhoto,
 } from './textures.js';
 import { addWorldDetail } from './detail.js';
+import { addFacadePhotos } from './facade-photo.js';
 import { addWind } from './atmosphere.js';
 import { Colliders } from './physics.js';
 import { FastBoxes } from './builder.js';
@@ -637,6 +638,8 @@ function addBuildings(scene, atlas, colliders, rng, city) {
     vertexColors: true,
   });
   addWorldDetail(mat);
+  // ladrillo y revoque de foto (Poly Haven) cuando cargan
+  addFacadePhotos(mat);
   city.windowMat = mat;
   const mesh = new THREE.Mesh(g, mat);
   mesh.castShadow = true;
