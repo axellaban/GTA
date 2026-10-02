@@ -244,6 +244,14 @@ vértices de su huella en las mallas fijas (y sus pedazos de `chunks.js`), las i
 desaparecen, las paredes dejan de chocar (`gone` en `Colliders.query`), polvo, escombros y fuego.
 No se caen la estación ni los edificios con puerta de interior ni el gym.
 
+**R18 — ✅ Chapa y pintura con portón** (`src/garage.js`, pedido del dueño): en el frente del local
+(`pickups.shops[6]` y el del 60 %) hay boca oscura, marco, persiana de chapa que sube al acercarte con
+un auto y cartel. En el marcador (despacio y con la persiana arriba) arranca la secuencia: el auto entra
+solo y desaparece al pasar el frente, baja la persiana, trabajan 2,6 s (ruido, chispas, baliza), se
+arregla y pinta (`fix`, igual que antes), sube la persiana y el auto sale de trompa. `Player.cutscene`
+congela el control; `Garages.camera` pone la cámara en la calle. `main.js` saca los autos estacionados
+a menos de 7,5 m del portón.
+
 **R11 — Pruebas en celu real**: el dueño prueba en iPhone/Android y manda capturas; se ajusta.
 
 **R12 — Acercarse al look del video de Higgsfield** (Gaspi de traje y corbata roja en una vereda a lo

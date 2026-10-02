@@ -409,6 +409,11 @@ export class Player {
     this.camPitch = Math.max(-0.35, Math.min(1.1, this.camPitch + input.look.dy * sens));
     if (input.wheel) this.zoom = Math.max(0.45, Math.min(1.8, (this.zoom ?? 1) * (1 + input.wheel * 0.001)));
 
+    // en el taller de chapa y pintura: el auto lo mueve src/garage.js
+    if (this.cutscene) {
+      this.place();
+      return;
+    }
     // a bordo del plato volador: lo maneja src/ufo.js
     if (this.ufo) {
       this.ufo.fly(dt, world);

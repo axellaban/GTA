@@ -30,6 +30,7 @@ import { Nafta } from './nafta.js';
 import { Stunts, RAMPS } from './stunts.js';
 import { chunkScene, updateChunks } from './chunks.js';
 import { Gangs } from './gangs.js';
+import { Garages } from './garage.js';
 import { Destroy } from './destroy.js';
 import { Tanks } from './tank.js';
 import { addPalms } from './palms.js';
@@ -421,22 +422,18 @@ function updateCop(dt) {
 }
 
 // ---------- Chapa y pintura: entrás con el auto, sale arreglado, de otro color y la cana te pierde ----------
-const GARAGE_COST = 1500;
-const garages = [];
-{
-  const shops = pickups.shops || [];
-  for (const s of [shops[6], shops[Math.floor(shops.length * 0.6)]]) {
-    if (!s) continue;
-    const gar = { x: s.x + s.nx * 2.4, z: s.z + s.nz * 2.4, used: false, mesh: makeMarker() };
-    gar.mesh.userData.tube.material.color.set(0x3ddc84);
-    gar.mesh.userData.ring.material.color.set(0x7dffb0);
-    gar.mesh.scale.set(2.2, 1.4, 2.2);
-    gar.mesh.position.set(gar.x, heightAt(gar.x, gar.z), gar.z);
-    scene.add(gar.mesh);
-    garages.push(gar);
+// chapa y pintura: talleres con portón, a lo Pay 'n' Spray (src/garage.js)
+const garages = new Garages(scene, [pickups.shops?.[6], pickups.shops?.[Math.floor((pickups.shops?.length || 0) * 0.6)]]);
+world.garages = garages.list;
+world.talleres = garages;
+// la entrada de los talleres queda libre: nada estacionado adelante del portón
+for (const gar of garages.list) {
+  for (const v of [...traffic.parked]) {
+    if (Math.hypot(v.x - gar.x, v.z - gar.z) > 7.5) continue;
+    scene.remove(v.mesh);
+    traffic.parked.splice(traffic.parked.indexOf(v), 1);
   }
 }
-world.garages = garages;
 // lavadero de autos (sale de otro color; con hasta dos estrellas la cana te pierde)
 const carwash = new CarWash(scene, city, pickups);
 world.carwash = carwash;
@@ -508,39 +505,6 @@ function checkCheats() {
   hud.flash('FIERROS', 'Arsenal completo. La cana ya se enteró.', 'ok', 2.6);
   audio.plata();
 }
-function updateGarages() {
-  const v = player.vehicle;
-  for (const gar of garages) {
-    gar.mesh.visible = Math.hypot(gar.x - player.x, gar.z - player.z) < 180;
-    const d = v ? Math.hypot(gar.x - v.x, gar.z - v.z) : 99;
-    if (d > 7) gar.used = false;
-    if (!v || gar.used || d > 4.5 || Math.abs(v.speed) > 3) continue;
-    gar.used = true;
-    if (!police.stars && !v.damage && !v.flat) {
-      hud.flash('CHAPA Y PINTURA', 'Está impecable. Volvé cuando lo choques o te busque la cana', 'ok', 2.4);
-      continue;
-    }
-    if (player.money < GARAGE_COST) {
-      hud.flash('CHAPA Y PINTURA', `Son $${GARAGE_COST.toLocaleString('es-AR')} y no te alcanza`, 'bad', 2.4);
-      continue;
-    }
-    const wanted = police.stars > 0;
-    player.addMoney(-GARAGE_COST);
-    police.clear();
-    Object.assign(v, { damage: 0, burning: 0, flat: false, warned: false });
-    repairCar(v);
-    if (!['taxi', 'remis', 'patrullero'].includes(v.model)) {
-      // un solo color para todo lo pintado (carrocería, puerta, capó)
-      let mat = null;
-      v.mesh.traverse((o) => {
-        if (o.userData.paint) o.material = mat ??= paintMat(R.pick(CAR_COLORS.filter((c) => c !== o.material.color.getHex())));
-      });
-    }
-    audio.plata();
-    hud.flash('CHAPA Y PINTURA', wanted ? 'Color nuevo: la cana ya no te reconoce' : 'Quedó como nuevo', 'ok', 2.8);
-  }
-}
-
 // ---------- Robar un negocio (con un fierro en la mano) ----------
 function robShop(shop) {
   shop.cool = 240;
@@ -1184,7 +1148,7 @@ function frame(now) {
   pickups.update(dt, world);
   for (const s of pickups.shops || []) if (s.cool > 0) s.cool -= dt;
   updateJob(dt);
-  updateGarages();
+  garages.update(dt, world);
   carwash.update(dt, world);
   gangs.update(dt, world);
   tanks.update(dt, world);
@@ -1199,7 +1163,8 @@ function frame(now) {
   missions.update(dt, step >= steps.length - 1 && !job.active && !fare.active && !cop.active && !rescue.active);
   updateObjective();
   updateGps(dt);
-  player.updateCamera(camera, dt, city.colliders, fx);
+  // adentro del taller la cámara queda afuera, mirando el portón
+  if (!garages.camera(camera)) player.updateCamera(camera, dt, city.colliders, fx);
   fx.update(dt);
   smash.update(dt);
   SIGNS.update(dt, world);

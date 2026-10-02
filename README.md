@@ -159,7 +159,7 @@ Al cumplirlas: plata, respeto y la próxima llamada. Cuando se terminan, vuelven
 
 ## Chapa y pintura (0.8)
 
-Dos talleres marcados con un cuadrado verde en el radar y en el mapa. Entrás despacio con el auto y por $1.500 te lo arreglan (daño, fuego y gomas pinchadas), te lo pintan de otro color y la cana te pierde: se van todas las estrellas. Es el Pay 'n' Spray del conurbano.
+Dos talleres marcados con un cuadrado verde en el radar y en el mapa, cada uno con su portón verde y el cartel. Cuando te acercás con un auto sube la persiana; entrás despacio al marcador y el auto se mete solo en el taller, la cámara queda en la calle, baja la persiana y se escucha el soplete y el compresor (con chispas que se escapan por abajo). Al rato sube la persiana y sale el auto arreglado (daño, fuego y gomas pinchadas) y de otro color, por $1.500, y la cana te pierde: se van todas las estrellas. Es el Pay 'n' Spray del conurbano.
 
 ## Changa de remís (0.9)
 
