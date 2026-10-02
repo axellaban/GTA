@@ -212,6 +212,16 @@ Sueltan `dropGun`/`dropHealth`; reaparecen a los 90 s si Gaspi está a más de 1
 `arbolitos`/`jubilados` en `src/icons.js`. La noche dura menos: reloj ×3 de noche y ×1,7 en el
 amanecer/atardecer oscuros (`updateTime` en `src/main.js`).
 
+**R16 — ✅ Armería con interior** (pedido del dueño, a lo Ammu-Nation): `buildArmeria` en
+`src/interiors.js` (ambiente en x 1740): 11 exhibiciones (`STOCK`) en paredes con cartel de precio;
+parado enfrente, E compra (o "Llevarte ... gratis" si el armero está muerto: la exhibición queda vacía).
+El Tano es un `Npc` de tipo `armero` (`spawnArmero`, lo llama `main.js`; cerebro `armeroBrain`): se
+enoja si le apuntás 0,7 s o lo lastimás (`Npcs.react`) y tira 5 perdigones cada 1–1,5 s; culatazo de
+cerca. Se calma a los 60 s afuera; si lo matan, a los 150 s (sin estrellas) aparece otro y reponen.
+El marcador viejo de la calle y el diálogo se sacaron; `world.armeria` sigue para el ícono.
+También: panchero en el carrito (`spawnPanchero`, tipo `panchero`; sin él no hay venta) y chorro de
+agua de la autobomba (`Rescue.waterJet`: tubo en arco que se rehace cada cuadro, gotas y vapor).
+
 **R11 — Pruebas en celu real**: el dueño prueba en iPhone/Android y manda capturas; se ajusta.
 
 **R12 — ✅ Rendimiento en la compu** (el dueño la notó lenta). Medido con un cuadro en la vereda de

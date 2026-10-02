@@ -473,29 +473,10 @@ if (gym.x != null) {
 }
 world.stunts = stunts;
 
-// ---------- Armería "El Tano": entrás a pie y elegís qué comprar ----------
-const armeria = (() => {
-  const shops = pickups.shops || [];
-  const s = shops[Math.floor(shops.length * 0.3)];
-  if (!s) return null;
-  const a = { x: s.x, z: s.z, used: false, mesh: makeMarker() };
-  a.mesh.userData.tube.material.color.set(0xff5a36);
-  a.mesh.userData.ring.material.color.set(0xff8a66);
-  a.mesh.position.set(a.x, heightAt(a.x, a.z), a.z);
-  scene.add(a.mesh);
-  return a;
-})();
+// ---------- Armería "El Tano": un local con interior (src/interiors.js) ----------
+interiors.spawnArmero(npcs);
+const armeria = interiors.armeriaDoor ? { x: interiors.armeriaDoor.outside.x, z: interiors.armeriaDoor.outside.z } : null;
 world.armeria = armeria;
-const ARMERIA = [
-  { label: 'Metra · $7.000', cost: 7000, give: () => combat.give(player, 'metra') },
-  { label: '3 molotov · $3.000', cost: 3000, give: () => combat.give(player, 'molotov') },
-  { label: 'Balas para todo · $2.000', cost: 2000, give: () => {
-    for (const [id, a] of Object.entries(player.ammo)) if (WEAPONS[id]?.gun) a.res += WEAPONS[id].ammoPickup;
-  } },
-  { label: 'Bastón presidencial · $9.000', cost: 9000, give: () => combat.give(player, 'baston') },
-  { label: 'Ametralladora · $14.000', cost: 14000, give: () => combat.give(player, 'ametralladora') },
-  { label: 'Bazuca · $25.000', cost: 25000, give: () => combat.give(player, 'bazuca') },
-];
 // truco a lo GTA: escribir FIERROS en cualquier momento da todo el arsenal
 const ARSENAL = ['revolver', 'pistola', 'metra', 'ametralladora', 'escopeta', 'molotov', 'bazuca', 'baston'];
 function checkCheats() {
@@ -514,28 +495,6 @@ function checkCheats() {
   }
   hud.flash('FIERROS', 'Arsenal completo. La cana ya se enteró.', 'ok', 2.6);
   audio.plata();
-}
-function updateArmeria() {
-  const a = armeria;
-  if (!a) return;
-  a.mesh.visible = Math.hypot(a.x - player.x, a.z - player.z) < 180;
-  const d = Math.hypot(a.x - player.x, a.z - player.z);
-  if (d > 3) a.used = false;
-  if (a.used || d > 1.6 || player.vehicle || player.dead || hud.dialog) return;
-  a.used = true;
-  hud.ask(`🔫 Armería "El Tano": ¿qué llevás? (tenés $${player.money.toLocaleString('es-AR')})`, [
-    ...ARMERIA.map((o) => ({
-      label: o.label,
-      run: () => {
-        if (player.money < o.cost) return hud.toast('No te alcanza, pibe', 1.8);
-        player.addMoney(-o.cost);
-        o.give();
-        audio.recarga?.();
-        hud.toast('¡Llevalo, es tuyo!', 1.6);
-      },
-    })),
-    { label: 'Nada', run: () => {} },
-  ], 12);
 }
 function updateGarages() {
   const v = player.vehicle;
@@ -1216,7 +1175,6 @@ function frame(now) {
   updateGarages();
   carwash.update(dt, world);
   gangs.update(dt, world);
-  updateArmeria();
   checkCheats();
   gym.update(dt, world);
   stunts.update(dt, world);

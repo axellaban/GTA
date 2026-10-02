@@ -13,11 +13,30 @@ import { FastBoxes } from './builder.js';
 import { makeHuman, animateHuman, randomCivilian } from './human.js';
 import { makePerson, PEOPLE } from './people.js';
 import { R } from './rng.js';
+import { Npc } from './npcs.js';
+import { WEAPONS, pickupWeapon, handWeapon } from './weapons.js';
 
 const HALL = { x: 1500, z: 1500 };
 const KIOSCO = { x: 1560, z: 1500 };
 const BAR = { x: 1620, z: 1500 };
 const PIZZA = { x: 1680, z: 1500 };
+const ARMERIA = { x: 1740, z: 1500 };
+
+// lo que se exhibe en la armería: [arma, precio] (chaleco y balas son especiales)
+const STOCK = [
+  ['revolver', 3500],
+  ['pistola', 5000],
+  ['escopeta', 6000],
+  ['metra', 7000],
+  ['molotov', 3000],
+  ['ametralladora', 14000],
+  ['lanzallamas', 18000],
+  ['bazuca', 25000],
+  ['baston', 9000],
+  ['chaleco', 4000],
+  ['balas', 2000],
+];
+const STOCK_NAME = { chaleco: 'Chaleco antibalas', balas: 'Balas para todo', molotov: '3 molotov' };
 
 // lo que se vende en cada lugar: [texto, precio, vida]
 const MENUS = {
@@ -150,6 +169,7 @@ export class Interiors {
     this.buildKiosco(colliders, pickups);
     this.buildBar(colliders, pickups);
     this.buildPizzeria(colliders, pickups);
+    this.buildArmeria(colliders, pickups);
     this.fade = document.createElement('div');
     Object.assign(this.fade.style, { position: 'fixed', inset: '0', background: '#000', opacity: '0', pointerEvents: 'none', transition: 'opacity 0.4s', zIndex: '40' });
     document.body.appendChild(this.fade);
@@ -529,6 +549,153 @@ export class Interiors {
     this.doors.push({ room: 'pizza', label: `Entrar a la pizzería "${this.pizzaName}"`, outside: { x: real.shop.x, z: real.shop.z, face: Math.atan2(real.shop.nx, real.shop.nz) }, inside: { x: PIZZA.x, z: PIZZA.z + D / 2 - 1.1, face: Math.PI }, exit: 'Salir a la calle' });
   }
 
+  // ---------- Armería "El Tano" (a lo Ammu-Nation) ----------
+  // Las armas en exhibición en las paredes: te parás enfrente y la comprás. El Tano atiende atrás del
+  // mostrador con la escopeta abajo: si le apuntás, le pegás o le tirás, es bravo y te recaga a
+  // escopetazos. Si lo bajás, te llevás lo que quieras gratis (y la cana se entera).
+  buildArmeria(colliders, pickups) {
+    const shops = pickups.shops || [];
+    const shop = shops[Math.floor(shops.length * 0.3)];
+    if (!shop) return;
+    const g = new THREE.Group();
+    g.position.set(ARMERIA.x, 0, ARMERIA.z);
+    const F = new FastBoxes();
+    const W = 9;
+    const D = 7;
+    const H = 3.4;
+    roomBox(F, W, D, H, 0x5d6b5a, 0xcfcfcf);
+    // zócalo oscuro y paneles perforados donde cuelgan las armas
+    for (const [w, d, x, z] of [[W, 0.04, 0, -D / 2 + 0.1], [W, 0.04, 0, D / 2 - 0.1], [0.04, D, -W / 2 + 0.1, 0], [0.04, D, W / 2 - 0.1, 0]]) F.box(w, 0.9, d, 0x2b2f2a, x, 0.45, z);
+    F.box(W - 3.2, 1.5, 0.05, 0xc8b28a, 1.2, 1.75, -D / 2 + 0.11);
+    F.box(0.05, 1.5, D - 2.4, 0xc8b28a, W / 2 - 0.11, 1.75, -0.4);
+    // mostrador en L a la izquierda, con vidrio arriba (y cajas de balas adentro)
+    const cx = -W / 2 + 1.7;
+    F.box(0.7, 1.0, 4.2, 0x3e2b1c, cx, 0.5, -D / 2 + 2.3);
+    F.box(0.74, 0.05, 4.24, 0x1c1c1c, cx, 1.02, -D / 2 + 2.3);
+    F.box(0.05, 0.3, 4.1, 0xbcd6e0, cx + 0.36, 1.2, -D / 2 + 2.3);
+    for (let k = 0; k < 8; k++) F.box(0.22, 0.14, 0.3, [0x8d6e63, 0x2e7d32, 0xc62828, 0xffb300][k % 4], cx, 0.85, -D / 2 + 0.7 + k * 0.45);
+    // caja registradora y alfombra
+    F.box(0.4, 0.25, 0.35, 0x222222, cx, 1.17, -D / 2 + 3.8);
+    F.box(2.4, 0.02, 1.4, 0x6b1b1b, 0.3, 0.02, D / 2 - 1.1);
+    g.add(shaded(F));
+    const fl = new THREE.Mesh(new THREE.PlaneGeometry(W, D).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: floorTex('#5a5a55', '#4a4a46', 8) }));
+    fl.material.map.repeat.set(W / 2, D / 2);
+    fl.position.y = 0.01;
+    g.add(fl);
+    sign(g, 'ARMERÍA EL TANO', { w: 3.4, h: 0.55, x: 1.2, y: 2.85, z: -D / 2 + 0.09, bg: '#7a1c12', fg: '#ffd27a', font: 66 });
+    sign(g, 'PROHIBIDO APUNTAR AL VENDEDOR', { w: 2.6, h: 0.32, x: -W / 2 + 0.09, y: 2.5, z: -0.8, rot: Math.PI / 2, bg: '#111111', fg: '#ff5252', font: 40 });
+    sign(g, 'NO SE FÍA', { w: 1.2, h: 0.3, x: cx + 0.37, y: 1.6, z: -D / 2 + 3.9, rot: Math.PI / 2, bg: '#f5f1e6', fg: '#b71c1c', font: 60 });
+    // las armas en exhibición: fondo del local y pared derecha
+    this.displays = [];
+    const spots = [];
+    for (let k = 0; k < 5; k++) spots.push({ x: -1.0 + k * 1.1, z: -D / 2 + 0.16, rot: 0 });
+    for (let k = 0; k < 4; k++) spots.push({ x: W / 2 - 0.16, z: -D / 2 + 1.2 + k * 1.15, rot: -Math.PI / 2 });
+    spots.push({ x: 2.6, z: D / 2 - 0.16, rot: Math.PI }, { x: 3.7, z: D / 2 - 0.16, rot: Math.PI });
+    STOCK.forEach(([id, price], i) => {
+      const sp = spots[i];
+      if (!sp) return;
+      const holder = new THREE.Group();
+      holder.position.set(sp.x, 0, sp.z);
+      holder.rotation.y = sp.rot;
+      let m;
+      if (id === 'chaleco' || id === 'balas') {
+        const B = new FastBoxes();
+        if (id === 'chaleco') {
+          B.box(0.5, 0.6, 0.12, 0x283a5a, 0, 1.65, 0.12);
+          B.box(0.3, 0.07, 0.13, 0xf2f2f2, 0, 1.8, 0.13);
+        } else for (let k = 0; k < 6; k++) B.box(0.16, 0.12, 0.14, [0x2e7d32, 0xc62828, 0xffb300][k % 3], -0.2 + (k % 3) * 0.2, 1.45 + Math.floor(k / 3) * 0.14, 0.12);
+        m = shaded(B);
+      } else {
+        m = pickupWeapon(id);
+        m.scale.setScalar(['palo', 'baston', 'ametralladora', 'bazuca', 'lanzallamas'].includes(id) ? 1 : 1.6);
+        // colgada de costado contra el panel
+        m.rotation.set(0, Math.PI / 2, 0);
+        m.position.set(0, 1.65, 0.14);
+      }
+      holder.add(m);
+      const label = `${STOCK_NAME[id] ?? WEAPONS[id]?.name ?? id}`;
+      sign(holder, `${label} $${price.toLocaleString('es-AR')}`, { w: 0.95, h: 0.2, x: 0, y: 1.18, z: 0.12, bg: '#f5f1e6', fg: '#1a1a1a', font: 34 });
+      g.add(holder);
+      // dónde se para Gaspi para comprarla (en el mundo)
+      const nx = Math.sin(sp.rot);
+      const nz = Math.cos(sp.rot);
+      this.displays.push({ id, price, label, x: ARMERIA.x + sp.x + nx * 0.85, z: ARMERIA.z + sp.z + nz * 0.85, mesh: m });
+    });
+    this.scene.add(g);
+    roomWalls(colliders, ARMERIA, W, D);
+    // el mostrador no se cruza
+    colliders.addSegment(ARMERIA.x + cx + 0.36, ARMERIA.z - D / 2, ARMERIA.x + cx + 0.36, ARMERIA.z - D / 2 + 4.4, 1, 'wall');
+    colliders.addSegment(ARMERIA.x + cx - 0.36, ARMERIA.z - D / 2 + 4.4, ARMERIA.x + cx + 0.36, ARMERIA.z - D / 2 + 4.4, 1, 'wall');
+    this.armeroAt = { x: ARMERIA.x + cx - 0.75, z: ARMERIA.z - D / 2 + 2.4, face: Math.PI / 2 };
+    this.armeriaDoor = { room: 'armeria', label: 'Entrar a la armería "El Tano"', outside: { x: shop.x, z: shop.z, face: Math.atan2(shop.nx, shop.nz) }, inside: { x: ARMERIA.x + 0.3, z: ARMERIA.z + D / 2 - 1.1, face: Math.PI }, exit: 'Salir a la calle' };
+    this.doors.push(this.armeriaDoor);
+  }
+  // El Tano: un vecino de verdad (se le puede pegar, y pega)
+  spawnArmero(npcs) {
+    this.npcs = npcs;
+    const at = this.armeroAt;
+    if (!at) return;
+    const h = makeHuman({ skin: 0xd9a882, hair: 0x9e9e9e, hairStyle: 'short', mustache: true, top: 'tank', shirt: 0x4e5b3a, pants: 0x2b2f2a, shoes: 0x2a1a10, belly: true, muscle: true, scale: 1.08 });
+    const n = npcs.add(new Npc('armero', h, at.x, at.z));
+    n.state = 'idle';
+    n.home = { x: at.x, z: at.z };
+    n.heading = at.face;
+    n.hp = 340;
+    n.money = 30000;
+    n.mission = true;
+    n.dropGun = 'escopeta';
+    n.gun = handWeapon('escopeta');
+    n.h.bones.handR.add(n.gun);
+    this.armero = n;
+    this.armeroGone = 0;
+  }
+  // lo que hace El Tano (lo llama Npcs.update)
+  armeroBrain(n, dt, world, dp) {
+    const P = world.player;
+    const inside = this.inside?.room === 'armeria';
+    if (!n.angry) {
+      n.target = Math.hypot(n.home.x - n.x, n.home.z - n.z) > 0.4 ? { x: n.home.x, z: n.home.z } : null;
+      if (inside && dp < 9) {
+        n.heading += (((Math.atan2(P.x - n.x, P.z - n.z) - n.heading + Math.PI * 3) % (Math.PI * 2)) - Math.PI) * Math.min(1, dt * 3);
+        // apuntarle es buscarlo
+        if (P.aiming && world.npcs.inSights(P, n)) {
+          n.aimedT = (n.aimedT || 0) + dt;
+          if (n.aimedT > 0.7) this.armeroAngry(n, world, '¿Me apuntás a mí? ¡En mi local no, pibe!');
+        } else n.aimedT = 0;
+        if (n.cool <= 0) {
+          n.say(R.pick(['¿Qué buscás, pibe?', 'Mirá todo lo que quieras, pero no toques.', 'Lo que ves, se paga.', 'Acá no se fía, eh.']), 2.6);
+          n.cool = R.range(10, 16);
+        }
+      }
+      return { want: n.target ? 1.4 : 0, pose: inside && dp < 9 ? 'holdGun' : 'walk' };
+    }
+    // bravo: escopetazos de cerca, culatazo si lo tenés encima
+    if (!inside || P.dead) return { want: 0, pose: 'aimLong' };
+    n.heading = Math.atan2(P.x - n.x, P.z - n.z);
+    n.target = null;
+    n.cd = (n.cd ?? 0.5) - dt;
+    if (dp < 1.4 && n.fightCd <= 0) {
+      n.act = { pose: 'cross', t: 0, dur: 0.35 };
+      n.fightCd = 1.2;
+      P.hurt(16, 'El Tano te dio un culatazo');
+      P.hitReact?.(n.x, n.z);
+      world.audio.golpe(0.8);
+    } else if (n.cd <= 0) {
+      for (let k = 0; k < 5; k++) world.combat.enemyShoot(world, n, 0.62, 'escopeta');
+      world.fx.shake += 0.15;
+      n.cd = R.range(1.0, 1.5);
+      if (!n.bubble && R.chance(0.4)) n.say(R.pick(['¡Fuera de mi local!', '¡Tomá, chorro!', '¡Acá no robás!']), 1.8);
+    }
+    return { want: 0, pose: 'aimLong' };
+  }
+  armeroAngry(n, world, line) {
+    if (n.angry || n.killed) return;
+    n.angry = true;
+    n.cd = 0.5;
+    n.say(line ?? '¡Ah, te hacés el loco en mi local!', 2.2);
+    world.hud.flash('ARMERÍA', '¡El Tano es bravo! Cubrite', 'bad', 1.8);
+  }
+
   // ---------- Entrar y salir ----------
   // dónde "está" Gaspi para la ciudad (para que no se vacíen las calles mientras está adentro)
   focus(P) {
@@ -546,6 +713,16 @@ export class Interiors {
       return { text: d.label, run: () => this.go(world, d, true) };
     }
     const d = this.inside;
+    if (d.room === 'armeria') {
+      const it = this.displays.find((o) => near(o, 0.95) && o.mesh.visible);
+      if (it) {
+        const n = this.armero;
+        const dead = !n || n.killed || n.state === 'ko';
+        if (!dead && n.angry) return null;
+        if (dead) return { text: `Llevarte ${it.label} (gratis)`, run: () => this.takeItem(world, it, true) };
+        return { text: `Comprar ${it.label} · $${it.price.toLocaleString('es-AR')}`, run: () => this.takeItem(world, it, false) };
+      }
+    }
     if (d.room === 'kiosco' && near(this.counter, 0.9)) return { text: 'Comprar en el kiosco', run: () => this.shop(world, 'kiosco') };
     if (d.room === 'bar' && near(this.barCounter, 1.1)) return { text: 'Pedir en la barra', run: () => this.shop(world, 'bar') };
     if (d.room === 'pizza' && near(this.pizzaCounter, 1.1)) return { text: 'Pedir en el mostrador', run: () => this.shop(world, 'pizza') };
@@ -594,6 +771,26 @@ export class Interiors {
     }, 420);
   }
 
+  takeItem(world, it, free) {
+    const { player: P, hud, audio, combat } = world;
+    if (!free) {
+      if (P.money < it.price) return hud.toast('No te alcanza, pibe', 1.8);
+      P.addMoney(-it.price);
+      this.armero?.say(R.pick(['¡Buena elección!', 'Llevalo, es tuyo. Y no lo usés acá adentro.', 'Con eso no te para nadie.']), 2.2);
+      audio.plata();
+    } else {
+      audio.recarga?.();
+      // lo robado no vuelve a la pared hasta que repongan
+      it.mesh.visible = false;
+    }
+    if (it.id === 'chaleco') P.armor = 100;
+    else if (it.id === 'balas') {
+      for (const [id, a] of Object.entries(P.ammo)) if (WEAPONS[id]?.gun) a.res += WEAPONS[id].ammoPickup;
+    } else combat.give(P, it.id);
+    audio.recarga?.();
+    hud.toast(free ? `Te llevaste: ${it.label}` : `Compraste: ${it.label}`, 1.8);
+  }
+
   shop(world, kind = 'kiosco') {
     const { player: P, hud, audio } = world;
     const menu = MENUS[kind];
@@ -609,6 +806,21 @@ export class Interiors {
   }
 
   update(dt, world) {
+    // al Tano, si lo bajaron, lo reemplaza otro al rato (con Gaspi afuera) y reponen lo robado
+    const n = this.armero;
+    if (n && (n.killed || n.dead) && this.inside?.room !== 'armeria') {
+      this.armeroGone += dt;
+      if (this.armeroGone > 150 && world.police.stars === 0) {
+        n.dead = true;
+        for (const it of this.displays) it.mesh.visible = true;
+        this.spawnArmero(this.npcs);
+      }
+    }
+    if (n && n.angry && !this.inside && !n.killed) {
+      // se le pasa cuando te vas
+      n.calmT = (n.calmT || 0) + dt;
+      if (n.calmT > 60) n.angry = false;
+    } else if (n) n.calmT = 0;
     if (!this.inside) return;
     for (const p of this.people) if (!p.room || p.room === this.inside.room) animateHuman(p.h, dt, 0, p.pose === 'idle' ? 'walk' : p.pose);
     this.boardT -= dt;

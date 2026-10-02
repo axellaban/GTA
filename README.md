@@ -183,7 +183,7 @@ La gente dice en voz alta lo que aparece en los globitos: vecinos, la cana, los 
 - **Bastón presidencial**: puño de oro con borlas celeste y blanca, y hoja de espada. Hay uno en una plaza cerca de la estación y se compra en la armería.
 - **Metra**: automática, 30 balas por cargador.
 - **Molotov**: la botella vuela en arco y deja fuego en el piso unos segundos (quema gente y autos, y a vos si te quedás adentro).
-- **Armería "El Tano"** (cuadrado rojo en el mapa): entrás a pie y comprás metra, molotovs, balas para todas tus armas o el bastón.
+- **Armería "El Tano"** (cuadrado rojo en el mapa), a lo Ammu-Nation: entrás a pie al local y las armas están colgadas en las paredes con el precio; te parás enfrente y la comprás (revólver, pistola, tumbera, metra, molotovs, ametralladora, lanzallamas, bazuca, bastón, chaleco y balas). El Tano atiende atrás del mostrador con la escopeta: si le apuntás, le pegás o le tirás, es bravo y te recaga a escopetazos (y culatazos de cerca). Si lo bajás, te llevás lo que quieras gratis; al rato ponen otro y reponen.
 
 ## Changa de patrullero (0.14)
 

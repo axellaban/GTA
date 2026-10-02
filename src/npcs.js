@@ -460,6 +460,12 @@ export class Npcs {
 
   // qué hace cuando lo lastima Gaspi
   react(n, w, gun) {
+    // al armero no se lo toca: es bravo
+    if (n.type === 'armero') {
+      w?.interiors?.armeroAngry(n, w);
+      n.after = 'idle';
+      return;
+    }
     // a uno de la banda no se lo toca: salen todos a los tiros
     if (n.type === 'banda') {
       w?.gangs?.provoke(n.gang, w);
@@ -721,6 +727,10 @@ export class Npcs {
           if (Math.hypot(n.target.x - n.x, n.target.z - n.z) < 1) this.nextLeg(n);
         }
         if (!night && dp > 150 && this.count('zombie') > 7) n.dead = true;
+      } else if (n.type === 'armero') {
+        const r = world.interiors?.armeroBrain(n, dt, world, dp) ?? { want: 0, pose: 'walk' };
+        want = r.want;
+        pose = r.pose;
       } else if (n.type === 'banda') {
         const r = world.gangs?.brain(n, dt, world, dp) ?? { want: 0, pose: 'guard' };
         want = r.want;
