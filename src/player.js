@@ -169,7 +169,7 @@ export class Player {
       const dz = door.z - this.z;
       const d = Math.hypot(dx, dz);
       if (d < 0.35 || j.t > 1.4) {
-        j.phase = v.ai || v.rider ? 'pull' : 'enter';
+        j.phase = v.ai || v.rider || v.tankAI ? 'pull' : 'enter';
         j.t = 0;
         this.heading = Math.atan2(v.x - this.x, v.z - this.z);
       } else {
@@ -373,7 +373,7 @@ export class Player {
   nearestVehicle(world, r = 3.4) {
     let best = null;
     let bd = r;
-    const list = world.traffic.all().concat(world.police.cars);
+    const list = world.traffic.all().concat(world.police.cars, world.tanks?.list ?? []);
     for (const v of list) {
       if (v.kind === 'bus' || v.wreck) continue;
       for (const c of v.circles()) {
@@ -748,7 +748,7 @@ export class Player {
     // en el aire se pueden saltar rejas bajas
     const airborne = this.y > this.heightAt(this.x, this.z) + 0.6;
     colliders.resolveCircle(p, this.r, airborne ? (b) => b.h > 1.3 : null);
-    const cars = traffic.all().concat(police.cars);
+    const cars = traffic.all().concat(police.cars, world.tanks?.list ?? []);
     for (const v of cars) {
       if (Math.abs(v.x - p.x) > 8 || Math.abs(v.z - p.z) > 8) continue;
       for (const c of v.circles()) {
@@ -799,6 +799,11 @@ export class Player {
     const hb = input.down(' ');
     if (v.wreck) {
       this.exitVehicle(world, true);
+      return;
+    }
+    // el tanque se maneja aparte (src/tank.js): orugas, torreta y cañón
+    if (v.kind === 'tank') {
+      world.tanks.drive(dt, world, v);
       return;
     }
     const vmax = st.vmax * (v.flat ? 0.55 : 1) * (1 - (v.damage || 0) / 260) * (v.burning > 0 ? 0.7 : 1);
@@ -922,7 +927,7 @@ export class Player {
     }
     v.heading += v.spin * dt;
     // choques con otros vehículos
-    const others = traffic.all().concat(police.cars);
+    const others = traffic.all().concat(police.cars, world.tanks?.list ?? []);
     for (const o of others) {
       if (o === v || Math.abs(o.x - v.x) > 12 || Math.abs(o.z - v.z) > 12) continue;
       for (const a of v.circles()) {
@@ -935,10 +940,14 @@ export class Player {
             const pen = (min - d) / 2;
             const nx = dx / d;
             const nz = dz / d;
-            v.x += nx * pen;
-            v.z += nz * pen;
-            o.x -= nx * pen;
-            o.z -= nz * pen;
+            // contra un tanque: el que rebota es uno
+            const heavy = o.kind === 'tank' ? 2 : 1;
+            v.x += nx * pen * heavy;
+            v.z += nz * pen * heavy;
+            if (heavy === 1) {
+              o.x -= nx * pen;
+              o.z -= nz * pen;
+            }
             const ovx = o.fx * (o.speed || 0);
             const ovz = o.fz * (o.speed || 0);
             const rel = (v.vx - ovx) * nx + (v.vz - ovz) * nz;

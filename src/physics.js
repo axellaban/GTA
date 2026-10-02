@@ -30,11 +30,13 @@ export class Colliders {
     return this.insert({ s: true, ax, az, bx, bz, h, kind }, ax, az, bx, bz);
   }
   addRing(ring, h = 3, kind = 'building') {
+    const out = [];
     for (let i = 0; i < ring.length; i++) {
       const [ax, az] = ring[i];
       const [bx, bz] = ring[(i + 1) % ring.length];
-      this.addSegment(ax, az, bx, bz, h, kind);
+      out.push(this.addSegment(ax, az, bx, bz, h, kind));
     }
+    return out;
   }
   addCircle(x, z, r, h = 3, kind = 'tree') {
     return this.insert({ c: true, x, z, r, h, kind }, x - r, z - r, x + r, z + r);
@@ -59,7 +61,8 @@ export class Colliders {
     for (let i = i0; i <= i1; i++) {
       for (let j = j0; j <= j1; j++) {
         const list = this.grid.get(this.key(i, j));
-        if (list) for (const b of list) out.add(b);
+        // (gone: la pared de una casa que se derrumbó)
+        if (list) for (const b of list) if (!b.gone) out.add(b);
       }
     }
     return out;

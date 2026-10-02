@@ -480,8 +480,8 @@ function addBuildings(scene, atlas, colliders, rng, city) {
     }
     const shade = 0.85 + ((v % 13) / 13) * 0.2;
     const pitched = (kind === 'casa' && ring.length === 4 && v % 10 < 3) || kind === 'estacion';
-    colliders.addRing(ring, h, 'building');
-    city.buildingList.push({ ring, h, kind, b });
+    const segs = colliders.addRing(ring, h, 'building');
+    city.buildingList.push({ ring, h, kind, b, segs });
     const front = (floor) => {
       if (kind === 'local') return floor === 0 ? ATLAS.local[v % ATLAS.local.length] : ATLAS.alto[(v + floor) % ATLAS.alto.length];
       if (kind === 'edificio') return floor === 0 ? ATLAS.entrada[v % ATLAS.entrada.length] : ATLAS.edificio[(v + floor) % ATLAS.edificio.length];

@@ -29,6 +29,8 @@ import { Gym } from './gym.js';
 import { Stunts, RAMPS } from './stunts.js';
 import { chunkScene, updateChunks } from './chunks.js';
 import { Gangs } from './gangs.js';
+import { Destroy } from './destroy.js';
+import { Tanks } from './tank.js';
 import { addPalms } from './palms.js';
 import { Laban } from './laban.js';
 import { loadPeople, loadAnimals, makeStar, swapHuman } from './people.js';
@@ -436,6 +438,11 @@ world.carwash = carwash;
 // bandas: los arbolitos en los bancos y los jubilados en la ANSES (src/gangs.js)
 const gangs = new Gangs(scene, npcs, city, pickups);
 world.gangs = gangs;
+// casas que se derrumban y el tanque del Ejército (6 estrellas)
+const destroy = new Destroy(scene, city);
+world.destroy = destroy;
+const tanks = new Tanks(scene);
+world.tanks = tanks;
 
 // ---------- Gym El Kaiser, a pasos de la estación ----------
 const gym = new Gym(scene, city.colliders, npcs, heightAt);
@@ -1175,6 +1182,8 @@ function frame(now) {
   updateGarages();
   carwash.update(dt, world);
   gangs.update(dt, world);
+  tanks.update(dt, world);
+  destroy.update(dt, world);
   checkCheats();
   gym.update(dt, world);
   stunts.update(dt, world);

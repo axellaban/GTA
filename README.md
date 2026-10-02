@@ -234,6 +234,11 @@ Además hay 13 vecinos y vecinas de [Quaternius](https://quaternius.com) (Ultima
 
 Los perros también son un modelo CC0 de Mesh2Motion, con animaciones de verdad (quieto, caminar, correr, ladrar) y distintos tonos de pelo, y el caballo del carro del cartonero también.
 
+## Tanque y casas que se derrumban (0.26)
+
+- **Tanque del Ejército** (un TAM): con **6 estrellas** sale uno a buscarte. Pasa por arriba de los autos, voltea postes y árboles, atropella a la gente y tira cañonazos (que pueden voltear la casa que haya en el medio). Como en GTA, **se lo podés robar**: acercate y apretá F para sacar al tanquista. Lo manejás con las orugas (gira sobre sí mismo), la torreta sigue a la cámara y con **clic** disparás el cañón. Aguanta tiros; con cohetes o cañonazos se rompe.
+- **Casas que se vienen abajo**: los cañonazos del tanque y el láser del plato volador (y, de a poco, la bazuca) le sacan vida a la casa donde pegan; cuando no aguanta más, se derrumba con una nube de polvo y quedan los escombros humeando (y se puede pasar por arriba). La estación y los locales donde se entra no se caen.
+
 ## Bandas (0.25)
 
 Como las pandillas de GTA, dos bandas con su territorio (íconos en el mapa):

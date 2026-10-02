@@ -222,6 +222,21 @@ El marcador viejo de la calle y el diálogo se sacaron; `world.armeria` sigue pa
 También: panchero en el carrito (`spawnPanchero`, tipo `panchero`; sin él no hay venta) y chorro de
 agua de la autobomba (`Rescue.waterJet`: tubo en arco que se rehace cada cuadro, gotas y vapor).
 
+**R17 — ✅ Tanque y casas destructibles** (pedido del dueño). `src/tank.js`: `makeTank` (TAM con
+casco, orugas, ruedas que giran, torreta y cañón como grupos; `userData.kind = 'tank'`), `Tanks`:
+con 6 estrellas aparece uno (cada 45 s si no hay) en una calle a 130–230 m; `brain` va derecho
+hacia Gaspi, se destraba en marcha atrás, apunta la torreta y tira cada ~5 s (`fireRocket(...,
+{ shell: true })`: más rápido, sin estela, explosión 1,8). `moveAndCrush` (IA y jugador) empuja y
+rompe autos, atropella gente. Robo: `v.tankAI` fuerza la fase "pull" del asalto y `v.eject`
+(`Traffic.ejectDriver`) saca al tanquista. Manejo: `Player.drive` deriva a `Tanks.drive` (orugas,
+torreta con `camYaw`, clic = cañón). Blindaje en `damageVehicle` (balas ×0,04, resto ×0,35); un
+cohete o el láser le hacen 34–45. Los tanques entran en `Combat.vehicles` y en las listas de
+choque/robo del jugador. `src/destroy.js`: cada casa tiene vida (60 + área×0,35 + altura×6); los
+impactos (`Destroy.hit`: cañonazo 80, láser 38, cohete 20) la bajan; al llegar a 0 se hunden los
+vértices de su huella en las mallas fijas (y sus pedazos de `chunks.js`), las instancias del techo
+desaparecen, las paredes dejan de chocar (`gone` en `Colliders.query`), polvo, escombros y fuego.
+No se caen la estación ni los edificios con puerta de interior ni el gym.
+
 **R11 — Pruebas en celu real**: el dueño prueba en iPhone/Android y manda capturas; se ajusta.
 
 **R12 — ✅ Rendimiento en la compu** (el dueño la notó lenta). Medido con un cuadro en la vereda de

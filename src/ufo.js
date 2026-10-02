@@ -637,10 +637,17 @@ export class Ufo {
     world.audio.zap?.();
     if (hit.type) {
       if (hit.type === 'veh' && !hit.obj.wreck) {
-        hit.obj.damage = 100;
         hit.obj.lastHitByPlayer = true;
-        combat.explodeVehicle(world, hit.obj);
-      } else combat.explode(world, hit.x, hit.z, 0.8, true, hit.y);
+        if (hit.obj.kind === 'tank') combat.damageVehicle(world, hit.obj, 40, true, hit.x, hit.z);
+        else {
+          hit.obj.damage = 100;
+          combat.explodeVehicle(world, hit.obj);
+        }
+      } else {
+        combat.explode(world, hit.x, hit.z, 0.8, true, hit.y);
+        // el láser también voltea casas (src/destroy.js)
+        if (hit.type === 'wall' || hit.type === 'ground') world.destroy?.hit(world, hit.x, hit.z, 38);
+      }
     }
   }
   updateLaser(dt) {

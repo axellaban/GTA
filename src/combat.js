@@ -415,18 +415,20 @@ export class Combat {
   }
 
   // ---------- Bazuca ----------
-  fireRocket(world, o, d, shooter) {
+  // shell: cañonazo del tanque (más rápido, sin estela de cohete, explota más fuerte y voltea casas)
+  fireRocket(world, o, d, shooter, { shell = false } = {}) {
     const m = rocketMesh();
     m.position.set(o.x, o.y, o.z);
     m.lookAt(o.x + d.x, o.y + d.y, o.z + d.z);
+    if (shell) m.scale.setScalar(1.3);
     this.scene.add(m);
-    this.rockets.push({ m, x: o.x, y: o.y, z: o.z, dx: d.x, dy: d.y, dz: d.z, speed: 30, life: 0, shooter, trail: 0 });
+    this.rockets.push({ m, x: o.x, y: o.y, z: o.z, dx: d.x, dy: d.y, dz: d.z, speed: shell ? 85 : 30, max: shell ? 90 : 55, life: 0, shooter, trail: 0, shell, power: shell ? 1.8 : 1.3, bdmg: shell ? 80 : 20 });
   }
   updateRockets(dt, world) {
     for (const r of this.rockets) {
       r.life += dt;
       // el motor lo va acelerando; tiembla un poquito en el aire
-      r.speed = Math.min(55, r.speed + dt * 40);
+      r.speed = Math.min(r.max ?? 55, r.speed + dt * 40);
       const step = r.speed * dt;
       const hit = this.trace(world, { x: r.x, y: r.y, z: r.z }, { x: r.dx, y: r.dy, z: r.dz }, step, r.shooter);
       if (hit.type || r.life > 4 || r.y < -1) {
@@ -444,7 +446,7 @@ export class Combat {
       r.m.lookAt(r.x + r.dx, r.y + r.dy, r.z + r.dz);
       r.m.rotateZ(r.life * 18);
       // estela: bocanadas de humo cada 40 cm y la llama del motor atrás
-      r.trail += step;
+      r.trail += r.shell ? 0 : step;
       while (r.trail >= 0.4) {
         r.trail -= 0.4;
         const k = r.trail / step;
@@ -464,21 +466,30 @@ export class Combat {
     if (hit.type === 'veh' && !hit.obj.wreck) {
       const v = hit.obj;
       v.lastHitByPlayer = v.lastHitByPlayer || byPlayer;
+      // el tanque aguanta unos cuantos
+      if (v.kind === 'tank') {
+        this.damageVehicle(world, v, r.shell ? 45 : 34, byPlayer, hit.x, hit.z);
+        this.fx.explosion(hit.x, hit.z, 0.8, hit.y);
+        this.audio.explosion(0.8);
+        return;
+      }
       v.damage = 100;
       this.explodeVehicle(world, v);
       return;
     }
+    // cañonazos y cohetes le pegan a la casa donde explotan (src/destroy.js)
+    if (hit.type === 'wall' || hit.type === 'ground' || !hit.type) world.destroy?.hit(world, hit.x, hit.z, r.bdmg ?? 20);
     if (hit.type === 'moto' && hit.obj.state !== 'down') world.crime.knockDown(hit.obj, world);
     if (hit.type === 'wall') {
       this.fx.chips(hit.x, hit.y, hit.z, hit.nx, hit.nz, [0.62, 0.58, 0.52], 14);
       this.fx.dust(hit.x + hit.nx * 0.3, hit.y, hit.z + hit.nz * 0.3, 10, [0.6, 0.56, 0.5], 1.6);
     }
-    this.explode(world, hit.x, hit.z, 1.3, byPlayer, hit.y);
+    this.explode(world, hit.x, hit.z, r.power ?? 1.3, byPlayer, hit.y);
   }
 
   // ---------- Tiros ----------
   vehicles(world) {
-    const list = world.traffic.cars.concat(world.traffic.parked, world.police.cars);
+    const list = world.traffic.cars.concat(world.traffic.parked, world.police.cars, world.tanks?.list.filter((t) => !world.traffic.parked.includes(t)) ?? []);
     if (world.player.vehicle && !list.includes(world.player.vehicle)) list.push(world.player.vehicle);
     return list;
   }
@@ -693,6 +704,8 @@ export class Combat {
   // hx, hz: dónde pegó (si se sabe), para abollar ahí
   damageVehicle(world, v, dmg, byPlayer, hx = null, hz = null, bullet = false) {
     if (v.wreck) return;
+    // blindado: las balas casi no le hacen nada
+    if (v.kind === 'tank') dmg *= bullet ? 0.04 : 0.35;
     const before = v.damage || 0;
     v.damage = Math.min(100, before + dmg);
     if (hx != null) {
@@ -1016,7 +1029,7 @@ export class Combat {
         this.damageVehicle(world, v, (1 - dd / 7) * 75 * power, byPlayer, x, z);
         // explosión en cadena: el de al lado se prende fuego y revienta a los pocos segundos
         const near = dd < 4 || (dd < 6.5 && R.chance(0.55));
-        if (near && v.kind !== 'moto' && (v !== P.vehicle || dd < 4)) {
+        if (near && v.kind !== 'moto' && v.kind !== 'tank' && (v !== P.vehicle || dd < 4)) {
           v.damage = 100;
           v.burning = Math.min(v.burning > 0 ? v.burning : 99, R.range(1.2, 3.5));
           v.lastHitByPlayer = v.lastHitByPlayer || byPlayer;
