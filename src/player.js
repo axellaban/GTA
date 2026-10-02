@@ -295,7 +295,32 @@ export class Player {
     this.hooks.enter?.(v);
   }
 
-  exitVehicle(world, forced = false) {
+  // Tirarse del auto andando: sale por la puerta con el envión del auto, rueda por el piso y se
+  // golpea más cuanto más rápido iba. El auto sigue de largo sin nadie (Combat.coastStep).
+  bailOut(world) {
+    const v = this.vehicle;
+    if (!v) return;
+    if (v.kind === 'moto') return this.exitVehicle(world, true);
+    const sp = Math.abs(v.speed);
+    const vx = v.vx ?? v.fx * v.speed;
+    const vz = v.vz ?? v.fz * v.speed;
+    this.exitVehicle(world, true, true);
+    // la puerta del conductor da a la izquierda del auto
+    const lx = -Math.cos(v.heading);
+    const lz = Math.sin(v.heading);
+    const mx = vx * 0.55 + lx * 2.6;
+    const mz = vz * 0.55 + lz * 2.6;
+    const m = Math.hypot(mx, mz) || 1;
+    this.knockDown(Math.min(2.6, 1.3 + sp * 0.035), mx / 5, mz / 5);
+    // rueda de costado: acostado a lo ancho del camino que lleva
+    this.heading = Math.atan2(-mz / m, mx / m);
+    this.roll = { a: 0, settle: false };
+    world.audio.golpe(Math.min(1, 0.4 + sp * 0.025));
+    world.fx.dust(this.x, 0.2, this.z, 6, [0.55, 0.52, 0.47], 1.2);
+    this.hurt(Math.min(62, 4 + sp * 1.7), 'Te tiraste del auto andando');
+  }
+
+  exitVehicle(world, forced = false, rolling = false) {
     const v = this.vehicle;
     if (!v) return;
     this.mvx = this.mvz = 0;
@@ -332,8 +357,15 @@ export class Player {
       world.combat.syncHand(this);
       world.audio.chirrido?.(0);
     }
-    v.speed = 0;
-    v.vx = v.vz = 0;
+    if (rolling) {
+      // sin conductor sigue de largo, frenando solo, hasta que pare o se la dé contra algo
+      v.coast = true;
+      v.vx = v.fx * v.speed;
+      v.vz = v.fz * v.speed;
+    } else {
+      v.speed = 0;
+      v.vx = v.vz = 0;
+    }
     v.sync(0);
     this.hooks.exit?.(v);
   }
@@ -385,7 +417,9 @@ export class Player {
     }
     if (input.hit('f') && !this.jack && !this.exitAnim && this.downT <= 0 && this.getupT <= 0) {
       if (this.vehicle) {
-        if (Math.abs(this.vehicle.speed) < 3 || this.vehicle.burning > 0) this.exitVehicle(world);
+        if (Math.abs(this.vehicle.speed) < 3) this.exitVehicle(world);
+        // andando: se tira y sale rodando (como en GTA); el auto sigue solo
+        else this.bailOut(world);
       } else {
         const v = this.nearestVehicle(world);
         if (v) this.startJack(v);
@@ -440,9 +474,25 @@ export class Player {
       this.downT -= dt;
       this.x += (this.pushX || 0) * dt;
       this.z += (this.pushZ || 0) * dt;
-      this.pushX = (this.pushX || 0) * Math.exp(-dt * 4);
-      this.pushZ = (this.pushZ || 0) * Math.exp(-dt * 4);
-      if (this.fallT > 0) {
+      // rodando frena más despacio que cayéndose de una piña
+      const fr = Math.exp(-dt * (this.roll ? 2.4 : 4));
+      this.pushX = (this.pushX || 0) * fr;
+      this.pushZ = (this.pushZ || 0) * fr;
+      if (this.roll) {
+        // se acuesta de una y gira sobre sí mismo como un tronco; al frenar termina boca arriba
+        const sp = Math.hypot(this.pushX, this.pushZ);
+        const r = this.roll;
+        if (!r.settle && sp < 2.2) r.settle = true;
+        if (r.settle) {
+          const end = Math.ceil(r.a / (Math.PI * 2) - 0.05) * Math.PI * 2;
+          r.a = Math.min(end, r.a + dt * 7);
+        } else r.a += (sp * dt) / 0.2;
+        if (sp > 3 && Math.random() < dt * 10) world.fx.dust(this.x, 0.15, this.z, 1, [0.55, 0.52, 0.47], 0.6);
+        this.fallT = 0;
+        animateHuman(this.h, dt, 0, 'knocked');
+        this.h.bones.root.rotation.y += r.a;
+        if (r.settle && r.a >= Math.ceil(r.a / (Math.PI * 2) - 0.05) * Math.PI * 2 - 1e-3) this.roll = null;
+      } else if (this.fallT > 0) {
         this.fallT -= dt;
         animateHuman(this.h, dt, 0, 'getup', Math.max(0, this.fallT / 0.3));
       } else animateHuman(this.h, dt, 0, 'knocked');

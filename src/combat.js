@@ -676,6 +676,7 @@ export class Combat {
         continue;
       }
       if (v.shove) this.shoveStep(v, dt);
+      if (v.coast) this.coastStep(v, dt, world);
       if (vis && v.damage > 55 && Math.random() < dt * (v.damage - 50) * 0.15) this.fx.smoke(hx, 1.1, hz, 1, { black: v.damage > 82, s0: 0.5, s1: 2.5, vx: -v.fx * v.speed * 0.3, vz: -v.fz * v.speed * 0.3 });
       if (v.burning > 0) {
         v.burning -= dt;
@@ -773,6 +774,72 @@ export class Combat {
     v.sync(0);
   }
   // empujón de una explosión cercana: se corre, salta un poco y se sacude
+  // El auto del que se tiró Gaspi: sigue de largo frenando solo; si se la da contra una pared,
+  // otro auto o alguien, choca como si lo manejaran.
+  coastStep(v, dt, world) {
+    if (v.driver || v.ai || v.wreck || v.blast) {
+      v.coast = false;
+      return;
+    }
+    const sp = Math.abs(v.speed);
+    const s = Math.sign(v.speed) || 1;
+    if (sp < 0.25) {
+      v.coast = false;
+      v.speed = 0;
+      v.vx = v.vz = 0;
+      v.settle?.();
+      return;
+    }
+    const step = v.speed * dt;
+    // la trompa (o la cola, si iba marcha atrás) contra las paredes
+    const ax = v.x + v.fx * (v.L / 2) * s;
+    const az = v.z + v.fz * (v.L / 2) * s;
+    const wall = world.colliders.blockedHit(ax, az, ax + v.fx * step, az + v.fz * step, 0.9);
+    let crash = wall ? { x: ax, z: az, k: 2.4 } : null;
+    if (!crash) {
+      for (const o of world.traffic.cars.concat(world.traffic.parked, world.police.cars)) {
+        if (o === v || o.wreck || Math.abs(o.x - ax) > 6 || Math.abs(o.z - az) > 6) continue;
+        if (o.circles().some((c) => Math.hypot(c.x - ax, c.z - az) < c.r + 0.3)) {
+          crash = { x: ax, z: az, k: 2, other: o };
+          break;
+        }
+      }
+    }
+    if (crash) {
+      const dmg = sp * crash.k;
+      this.damageVehicle(world, v, dmg, true, crash.x, crash.z);
+      if (crash.other) {
+        this.damageVehicle(world, crash.other, dmg * 0.8, true, crash.x, crash.z);
+        crash.other.lastHitByPlayer = true;
+        if (crash.other.ai) crash.other.speed *= 0.2;
+      }
+      this.fx.sparks(crash.x, 0.6, crash.z, Math.min(16, 4 + sp), 5);
+      this.audio.metal(Math.min(1, sp / 14));
+      this.audio.golpe(Math.min(1, sp / 18));
+      this.fx.shake += Math.min(0.5, sp * 0.02) * Math.max(0, 1 - Math.hypot(world.player.x - v.x, world.player.z - v.z) / 40);
+      v.speed = -v.speed * 0.12;
+      if (Math.abs(v.speed) < 0.6) v.speed = 0;
+    } else {
+      v.x += v.fx * step;
+      v.z += v.fz * step;
+      // la gente que está en el medio sale volando
+      for (const n of world.npcs.list) {
+        if (n.down || Math.abs(n.x - ax) > 2.5 || Math.abs(n.z - az) > 2.5) continue;
+        const lx = (n.x - v.x) * v.fz - (n.z - v.z) * v.fx;
+        const lz = (n.x - v.x) * v.fx + (n.z - v.z) * v.fz;
+        if (Math.abs(lx) < v.W / 2 + 0.3 && lz * s > 0 && Math.abs(lz) < v.L / 2 + 0.5 && sp > 2.5) {
+          const res = world.npcs.hurt(n, sp * 3.2, v.fx * s, v.fz * s, { knock: true, knockT: 3, byPlayer: true, world, blast: Math.min(6, sp * 0.3) });
+          if (res === 'muerte') world.police.crime('muerte', n.x, n.z);
+          v.speed *= 0.85;
+        }
+      }
+    }
+    // sin nadie al volante frena de a poco (motor y rozamiento)
+    v.speed = Math.sign(v.speed) * Math.max(0, Math.abs(v.speed) - (2.4 + Math.abs(v.speed) * 0.04) * dt);
+    v.vx = v.fx * v.speed;
+    v.vz = v.fz * v.speed;
+    v.sync(dt);
+  }
   shoveStep(v, dt) {
     const s = v.shove;
     s.t += dt;

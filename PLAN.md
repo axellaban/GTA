@@ -194,6 +194,12 @@ cromadas, bajado (`u.ride`, lo respeta la suspensión de `traffic.js`) y neón a
 noche (`setUnderglow`, lo llama `main.js` con la intensidad del neón). Prueba: `pj4.html?tune=1&view=noche`
 (copiar de la sesión; no se sube).
 
+**R14 — ✅ Tirarse del auto andando** (pedido del dueño): F a más de 3 m/s → `Player.bailOut`: sale por
+la puerta con el 55 % del envión del auto, rueda de costado como un tronco (`roll`: gira el hueso `root`
+del cuerpo acostado y termina boca arriba) y pierde salud según la velocidad (4 + 1,7 por m/s, tope 62).
+El auto queda con `coast` y lo mueve `Combat.coastStep`: frena solo, choca paredes y autos (daño y
+chispas) y voltea a la gente que se cruza.
+
 **R11 — Pruebas en celu real**: el dueño prueba en iPhone/Android y manda capturas; se ajusta.
 
 **R12 — ✅ Rendimiento en la compu** (el dueño la notó lenta). Medido con un cuadro en la vereda de
