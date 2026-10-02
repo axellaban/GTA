@@ -164,6 +164,27 @@ export const ICONS = {
       g.fill();
     },
   },
+  nafta: {
+    bg: '#d23a1e',
+    label: 'Estación de servicio',
+    draw(g, bg) {
+      // surtidor con la manguera
+      g.fillStyle = WHITE;
+      rrect(g, 17, 14, 20, 36, 3);
+      g.fill();
+      g.fillRect(14, 48, 26, 4);
+      g.fillStyle = bg;
+      g.fillRect(21, 19, 12, 9);
+      g.strokeStyle = WHITE;
+      g.lineWidth = 3.5;
+      g.beginPath();
+      g.moveTo(37, 22);
+      g.lineTo(45, 26);
+      g.lineTo(45, 42);
+      g.lineTo(41, 46);
+      g.stroke();
+    },
+  },
   tren: {
     bg: '#2c5fa8',
     label: 'Estación (tren)',
@@ -429,6 +450,6 @@ export function drawIcon(g, kind, x, y, size, letter = null) {
 }
 
 // lo que se muestra en la leyenda del mapa de pausa, en orden
-export const LEGEND = ['mision', 'armeria', 'arbolitos', 'jubilados', 'pintura', 'gym', 'comisaria', 'hospital', 'tren', 'pancho', 'medias', 'kiosco', 'picada', 'corte', 'ambulancia', 'bombero', 'delivery', 'ovni', 'arma', 'vida', 'chaleco', 'coima'];
+export const LEGEND = ['mision', 'armeria', 'arbolitos', 'jubilados', 'pintura', 'gym', 'nafta', 'comisaria', 'hospital', 'tren', 'pancho', 'medias', 'kiosco', 'picada', 'corte', 'ambulancia', 'bombero', 'delivery', 'ovni', 'arma', 'vida', 'chaleco', 'coima'];
 // de los objetos del piso (pickups) al ícono
 export const PICKUP_ICON = { weapon: 'arma', health: 'vida', armor: 'chaleco', coima: 'coima' };

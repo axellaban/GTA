@@ -448,7 +448,7 @@ function addBuildings(scene, atlas, colliders, rng, city) {
   const gables = [];
   const tanks = [];
   // carteles: nombres reales primero, después genéricos
-  const real = [...new Set(D.buildings.filter((b) => b.k === 'local' && b.n).map((b) => b.n))];
+  const real = [...new Set(D.buildings.filter((b) => (b.k === 'local' || b.k === 'escuela') && b.n).map((b) => b.n))];
   // todos los nombres reales (el atlas crece según cuántos haya) y los genéricos para el resto
   const names = real.concat(GENERIC_SHOPS);
   const signs = signAtlas(names, SIGN_COLORS_REAL);
@@ -579,6 +579,18 @@ function addBuildings(scene, atlas, colliders, rng, city) {
         city.shopSigns.push({ x: cx, z: cz, nx: e.nx, nz: e.nz, name: nm });
         if (v % 2 === 0) city.neon.push({ cx, cz, ux, uz, nx: e.nx, nz: e.nz, sw, v });
       }
+    }
+    // la escuela con nombre (ver src/map.js): cartel azul sobre la entrada
+    if (kind === 'escuela' && b.n && bestFront && signs.uv(b.n)) {
+      const e = bestFront;
+      const ux = (e.bx - e.ax) / e.L;
+      const uz = (e.bz - e.az) / e.L;
+      const sw = Math.min(e.L - 1, 9);
+      const cx = (e.ax + e.bx) / 2 + e.nx * 0.2;
+      const cz = (e.az + e.bz) / 2 + e.nz * 0.2;
+      signQ.vert(cx - (ux * sw) / 2, cz - (uz * sw) / 2, cx + (ux * sw) / 2, cz + (uz * sw) / 2, 3.25, 4.15, signs.uv(b.n));
+      det.rbox(sw + 0.1, 1.0, 0.16, 0x1b2333, cx - e.nx * 0.09, 3.7, cz - e.nz * 0.09, angOf(ux, uz));
+      city.shopSigns.push({ x: cx, z: cz, nx: e.nx, nz: e.nz, name: b.n });
     }
     // techo plano (triangulado), con el material que le toca
     const hv = (v * 2654435761) >>> 0;

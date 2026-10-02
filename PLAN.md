@@ -88,8 +88,15 @@ sube a `main` apenas anda, así si se corta la sesión otra IA sigue desde acá.
   corte (`breakEv` en `src/player.js`).
 
 **R2 — ✅ Gym El Kaiser en su dirección real: Rivadavia 321** (confirmada en el Instagram/Facebook
-oficiales). `GYM_LOT` en `src/map.js` reserva el frente (≈ 403, 2; vereda impar) antes de armar la
-ciudad y saca las huellas de Overture, cercos y árboles que lo pisaban; `src/gym.js` lo usa.
+oficiales; el dueño aclaró que es la vereda de enfrente del Colegio Eccleston). `GYM_LOT` en
+`src/map.js` reserva el frente (≈ 419, 21) antes de armar la ciudad y saca la huella de Overture que lo
+pisaba (un local de 9 m, el galpón real); `src/gym.js` lo usa.
+
+**R2b — ✅ Lugares que pidió el dueño**: Colegio Eccleston (escuelas con nombre en `src/map.js`: los
+edificios dentro del predio de OSM pasan a `escuela` y el más grande lleva el cartel) y la Shell de
+Av. Eva Perón y Almirante Brown (`NAFTA` en `src/map.js`, `src/nafta.js`; surtidores que explotan,
+`blast`/`hit`; ícono `nafta`). Calles: `scripts/map/osm_streets.py` las compara con OSM (248 de 250
+tramos ya coincidían) y corrigió 3 (Alemandri/Ituzaingó, 25 de Mayo/Péreuilh, un tramo de Guido).
 
 **R3 — ✅ Misiones con lo nuevo** (`src/missions.js`, al final de `DEFS`):
 - `panchos`: salchichas para el panchero antes de que baje el marciano (`Ufo.summon`); se cumple
@@ -238,6 +245,14 @@ desaparecen, las paredes dejan de chocar (`gone` en `Colliders.query`), polvo, e
 No se caen la estación ni los edificios con puerta de interior ni el gym.
 
 **R11 — Pruebas en celu real**: el dueño prueba en iPhone/Android y manda capturas; se ajusta.
+
+**R12 — Acercarse al look del video de Higgsfield** (Gaspi de traje y corbata roja en una vereda a lo
+GTA V; el video es IA pre-renderizada, no se puede generar así en tiempo real en un celu). Pasos:
+1. Cinemáticas con videos de Higgsfield del dueño (intro, entre misiones), comprimidos a 1–2 MB.
+2. Gaspi en 3D desde una imagen suya en pose A (Higgsfield `generate_3d`), simplificado a ≤ 5.000
+   triángulos con textura de 1024 y animado con `src/rig.js` (hay que pesarle los huesos).
+3. Más texturas de foto CC0 en fachadas, veredas y asfalto (ya empezado: Poly Haven).
+4. Luz de día más nítida y cálida, sombras más definidas y menos bruma (gradeo en `src/post.js`).
 
 **R12 — ✅ Rendimiento en la compu** (el dueño la notó lenta). Medido con un cuadro en la vereda de
 Meeks (`onBeforeRender`/`onBeforeShadow` por malla): antes 4,77 M triángulos y 1.057 dibujos por cuadro

@@ -249,13 +249,14 @@ for (const b of D.buildings) {
 // ---------- Gym El Kaiser en su dirección real: Rivadavia 321 ----------
 // (Instagram y Facebook de @elkaisergym). La numeración se calibró con las esquinas del mapa: Santa
 // María de Oro = 100, Obligado = 200, Almirante Brown = 300 (y un negocio de Overture en Rivadavia
-// 163). El 321 queda pasando Almirante Brown, del lado impar. El lote se reserva acá, antes de armar
-// la ciudad: las huellas de Overture que lo pisan (un local y una casa) no se levantan, y el gym
+// 163). El 321 queda pasando Almirante Brown, en la vereda de enfrente del Colegio Eccleston (lo
+// confirmó el dueño). El lote se reserva acá, antes de armar la ciudad: la huella de Overture que
+// lo pisa (el local de 9 m de frente, que es el galpón del gym) no se levanta, y el gym
 // (src/gym.js) ocupa ese frente.
 export const GYM_SIZE = { W: 12, DP: 9 };
 export const GYM_LOT = (() => {
-  const A = { x: 410.3, z: 12.5 }; // frente del 321
-  const ODD = { x: -0.556, z: -0.831 }; // hacia la vereda de los impares
+  const A = { x: 412.3, z: 11.0 }; // frente del 321
+  const SIDE = { x: 0.556, z: 0.831 }; // hacia la vereda del gym (la de enfrente del colegio)
   let road = null;
   let p = null;
   for (const r of ROADS) {
@@ -269,7 +270,7 @@ export const GYM_LOT = (() => {
   if (!road || p.dist > 6) return null;
   let nx = -p.dz;
   let nz = p.dx;
-  if (nx * ODD.x + nz * ODD.z < 0) {
+  if (nx * SIDE.x + nz * SIDE.z < 0) {
     nx = -nx;
     nz = -nz;
   }
@@ -315,6 +316,67 @@ if (GYM_LOT) {
   D.fences = D.fences.filter((f) => !touchesLot([[f[0], f[1]], [f[2], f[3]]], false));
   D.trees = D.trees.filter((t) => !GYM_LOT.inLot(t[0], t[1], 1));
 }
+
+// ---------- Escuelas con nombre (Colegio Eccleston, Almirante Brown 3342, y las demás) ----------
+// En OSM el colegio es un predio (D.parks, clase school); adentro Overture trae sus edificios como casas
+// sueltas. Los que caen casi enteros dentro del predio pasan a ser la escuela (dos pisos), y el más
+// grande con frente a la calle lleva el nombre: city.js le pone el cartel.
+function inRing(r, x, z) {
+  let c = false;
+  for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
+    const [xi, zi] = r[i];
+    const [xj, zj] = r[j];
+    if (zi > z !== zj > z && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) c = !c;
+  }
+  return c;
+}
+const ringArea = (r) => Math.abs(r.reduce((s, [x, z], i) => s + x * r[(i + 1) % r.length][1] - r[(i + 1) % r.length][0] * z, 0)) / 2;
+for (const pk of D.parks) {
+  if ((pk.c !== 'school' && pk.c !== 'college') || !pk.n) continue;
+  const ring = pk.r[0][0];
+  let main = null;
+  for (const b of D.buildings) {
+    if (b.rel) continue;
+    const inside = b.r.filter(([x, z]) => inRing(ring, x, z)).length;
+    if (inside < b.r.length * 0.75) continue;
+    if (b.k === 'casa' || b.k === 'local' || b.k === 'edificio') {
+      b.k = 'escuela';
+      b.f = Math.max(2, Math.min(3, b.f));
+    }
+    if (b.k === 'escuela' && b.fr.length && (!main || ringArea(b.r) > ringArea(main.r))) main = b;
+  }
+  if (main) {
+    main.n = pk.n;
+    SIGN_COLORS_REAL.set(pk.n, { bg: '#1d3a6b', fg: '#ffffff' });
+  }
+}
+
+// ---------- Estación de servicio Shell (Av. Eva Perón 402, esquina Almirante Brown) ----------
+// OSM marca la estación y sus dos techos (roof); Overture los trae como edificios cerrados. Los techos
+// pasan a ser marquesinas sobre columnas (src/nafta.js) y el local de al lado queda como el minimercado.
+export const NAFTA = (() => {
+  const near = (b, x, z, r) => {
+    let cx = 0;
+    let cz = 0;
+    for (const [px, pz] of b.r) {
+      cx += px;
+      cz += pz;
+    }
+    return Math.hypot(cx / b.r.length - x, cz / b.r.length - z) < r;
+  };
+  const roofs = D.buildings.filter((b) => near(b, 444, 86, 4) || near(b, 433, 65, 4));
+  if (roofs.length !== 2) return null;
+  D.buildings = D.buildings.filter((b) => !roofs.includes(b));
+  const shop = D.buildings.find((b) => near(b, 449, 74, 3));
+  if (shop && !shop.rel) {
+    shop.k = 'local';
+    shop.n = 'Shell Select';
+    shop.f = 1;
+    SIGN_COLORS_REAL.set(shop.n, { bg: '#f6c90e', fg: '#d71920' });
+  }
+  // el cartel alto, en la vereda de Almirante Brown, de cara a los que vienen por la avenida
+  return { name: 'Shell', roofs: roofs.map((b) => b.r), totem: { x: 437.5, z: 95.5, face: Math.atan2(0.511, 0.86) } };
+})();
 
 // "Av. Meeks y 25 de Mayo": las dos calles con nombre distinto más cercanas
 export function cornerName(x, z) {
