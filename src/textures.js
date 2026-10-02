@@ -12,8 +12,46 @@ function canvas(w, h) {
   return c;
 }
 
+// Safari del iPhone corta cuando los lienzos (canvas) suman más de ~224 MB y ahí el juego no arranca.
+// Las texturas dibujadas que no cambian más se marcan con freeAfterUpload; en flushTextures (main.js lo
+// llama en puntos seguros del arranque, cuando ya nadie relee esos lienzos) se suben a la placa y el
+// lienzo se achica a 1×1 y libera su memoria (la textura sigue en la placa). Si no hubo vaciado, se
+// libera igual después de la primera subida.
+export const GPU = { renderer: null };
+const pending = [];
+const shrink = (t) => {
+  const c = t.image;
+  if (c && typeof HTMLCanvasElement !== 'undefined' && c instanceof HTMLCanvasElement && c.width > 1) {
+    c.width = 1;
+    c.height = 1;
+  }
+};
+export function freeAfterUpload(t) {
+  const prev = t.onUpdate;
+  t.onUpdate = (tt) => {
+    prev?.(tt);
+    shrink(t);
+    t.onUpdate = prev ?? null;
+  };
+  pending.push(t);
+  return t;
+}
+export function flushTextures() {
+  const r = GPU.renderer;
+  const list = pending.splice(0);
+  if (!r?.initTexture) return 0;
+  let n = 0;
+  for (const t of list) {
+    if (!(t.image?.width > 1)) continue;
+    r.initTexture(t);
+    shrink(t);
+    n++;
+  }
+  return n;
+}
+
 function tex(c, repeat = false) {
-  const t = new THREE.CanvasTexture(c);
+  const t = freeAfterUpload(new THREE.CanvasTexture(c));
   t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 4;
   if (repeat) t.wrapS = t.wrapT = THREE.RepeatWrapping;
@@ -910,7 +948,7 @@ export function buildAtlas() {
   const t = tex(c);
   t.generateMipmaps = true;
   const e = tex(ec);
-  const orm = new THREE.CanvasTexture(oc);
+  const orm = freeAfterUpload(new THREE.CanvasTexture(oc));
   orm.colorSpace = THREE.NoColorSpace;
   orm.anisotropy = 4;
   EM = null;
@@ -961,7 +999,7 @@ export function normalMapFrom(src, strength = 2, repeat = false) {
     }
   }
   octx.putImageData(img, 0, 0);
-  const t = new THREE.CanvasTexture(out);
+  const t = freeAfterUpload(new THREE.CanvasTexture(out));
   t.colorSpace = THREE.NoColorSpace;
   if (repeat) t.wrapS = t.wrapT = THREE.RepeatWrapping;
   return t;

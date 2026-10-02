@@ -1500,3 +1500,18 @@ body {
   font-size: 15px;
   cursor: pointer;
 }
+
+/* mientras carga el juego el botón no responde (un toque apurado en el celu no se pierde en silencio) */
+#play:disabled {
+  opacity: 0.75;
+  cursor: progress;
+  animation: play-loading 1.2s ease-in-out infinite alternate;
+}
+@keyframes play-loading {
+  from {
+    opacity: 0.55;
+  }
+  to {
+    opacity: 0.9;
+  }
+}

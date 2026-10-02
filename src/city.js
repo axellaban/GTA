@@ -20,6 +20,7 @@ import {
   cazuelaTexture,
   grassTexture,
   usePhoto,
+  flushTextures,
 } from './textures.js';
 import { addWorldDetail } from './detail.js';
 import { addFacadePhotos } from './facade-photo.js';
@@ -46,6 +47,8 @@ export function buildCity(scene) {
   const rng = new Rng(1400);
   const colliders = new Colliders();
   const atlas = buildAtlas();
+  // a la placa ya: los lienzos del atlas (los más grandes) se liberan antes de seguir (tope del iPhone)
+  flushTextures();
   const city = { colliders, lamps: [], lampMats: [], parking: [], spots: {}, balconyRails: [], shopSigns: [], neon: [] };
   addGround(scene, city);
   addRoadMarkings(scene);
@@ -195,6 +198,7 @@ function addGround(scene, city) {
 
   const at = asphaltTexture();
   const roadMat = new THREE.MeshStandardMaterial({ map: at, normalMap: normalMapFrom(at.image, 3, true), normalScale: new THREE.Vector2(0.7, 0.7), roughness: 0.92, metalness: 0, envMapIntensity: 0.5 });
+  flushTextures();
   const road = new THREE.Mesh(flat(D.roadPoly, 0.02, 9), addWorldDetail(roadMat, { strength: 0.28, scale: 0.035, damp: 0, wet: true }));
   road.receiveShadow = true;
   scene.add(road);

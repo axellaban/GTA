@@ -261,6 +261,20 @@ salto y `airborne`. Barandas y costados de escalera son paredes con `y0` (`Colli
 jugador las respeta según su altura; el resto (vecinos, autos, tiros) ignora las que arrancan arriba
 de 1 m. Falta: que los vecinos usen el puente.
 
+**R20 — ✅ iPhone: "Jugar no anda"** (reporte del dueño, Safari y web app). Medido en Chromium con
+UA de iPhone: el arranque creaba 220 MB de lienzos (canvas) y Safari del iPhone corta en ~224 MB
+(en otros modelos 384): `getContext` devuelve null, el arranque se rompe y el botón queda muerto.
+Ahora las texturas dibujadas fijas se marcan con `freeAfterUpload` (`src/textures.js`: atlas de
+fachadas, relieves, carteles de calles, mapas de luz, carteles de interiores) y `flushTextures` las
+sube a la placa (`renderer.initTexture`) y achica el lienzo a 1×1 en puntos seguros del arranque
+(`city.js` después del atlas y del piso, `main.js` después de la ciudad, los carteles, los
+interiores, los faroles y al final). El raster de alturas (`makeGround`) se suelta al leerlo y el
+minimapa base pasó de 2048 a 1536. Pico de lienzos durante la carga: 50 MB (antes 220); vivos al
+jugar: 32 MB. **Regla: textura de canvas nueva y fija → `freeAfterUpload`; no releer `.image` de una
+textura después de un `flushTextures`.** Además, "Jugar" arranca deshabilitado ("Cargando…") hasta
+que el juego terminó de armarse. Prueba: `canvasmem.mjs` (copiar de la sesión) y la emulación de
+iPhone con `hasTouch`/`isMobile`. Falta probar en un iPhone de verdad.
+
 **R11 — Pruebas en celu real**: el dueño prueba en iPhone/Android y manda capturas; se ajusta.
 
 **R12 — Acercarse al look del video de Higgsfield** (Gaspi de traje y corbata roja en una vereda a lo

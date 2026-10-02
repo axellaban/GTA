@@ -30,6 +30,7 @@ import { Nafta } from './nafta.js';
 import { playCine, CINE } from './cine.js';
 import { Stunts, RAMPS } from './stunts.js';
 import { chunkScene, updateChunks } from './chunks.js';
+import { GPU, flushTextures } from './textures.js';
 import { Gangs } from './gangs.js';
 import { Garages } from './garage.js';
 import { Destroy } from './destroy.js';
@@ -54,6 +55,8 @@ setupInstall();
 
 const canvas = document.getElementById('game');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+// las texturas dibujadas se suben apenas están listas y sueltan su lienzo (tope de memoria del iPhone)
+GPU.renderer = renderer;
 renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -159,6 +162,7 @@ function showFps(dt) {
 
 // ---------- Mundo ----------
 const city = buildCity(scene);
+flushTextures();
 const heightAt = makeGround();
 
 // Gaspi arranca en la vereda de Av. Meeks, del lado de la estación
@@ -205,6 +209,7 @@ const events = new Events(scene, traffic, audio, npcs);
 const trains = new Trains(scene, audio);
 glows = new Glows(scene, city);
 buildProps(scene, city);
+flushTextures();
 const lights = new TrafficLights(scene, { colliders: city.colliders, fx, audio });
 const blobs = new BlobShadows(scene);
 fx.ground = heightAt;
@@ -214,6 +219,7 @@ pickups.placeWorld(city, heightAt);
 const nafta = new Nafta(scene, city.colliders);
 LAMPS.extra = nafta.lights;
 buildLampMap(city.lamps, pickups.shops, city.neon);
+flushTextures();
 // postes que se caen al chocarlos: se apaga el halo y la luz que tiraban al piso
 const smash = new Smash(city, fx, audio);
 smash.onLampOff = (i) => {
@@ -243,6 +249,7 @@ Vehicle.onSlam = (v, k) => {
 const transit = new Transit(city, trains, traffic);
 world.transit = transit;
 const interiors = new Interiors(scene, city, city.colliders, pickups);
+flushTextures();
 world.interiors = interiors;
 const races = new Races(scene, traffic, nav, city.colliders);
 world.races = races;
@@ -1200,6 +1207,7 @@ function frame(now) {
 }
 
 // la ciudad fija en pedazos de 120 m: lo que no se ve (ni proyecta sombra cerca) no se dibuja
+flushTextures();
 chunkScene(scene);
 
 function start(data = {}) {
@@ -1256,6 +1264,13 @@ document.getElementById('play').addEventListener('click', async () => {
   if (noGpu) setTimeout(() => hud.flash('SIN PLACA DE VIDEO', 'El navegador tiene apagada la aceleración por hardware: activala en la configuración para que ande fluido.', 'bad', 7), 3500);
   hud.flash('TEMPERLEY', loaded ? `Partida recuperada. ${mapHint}` : `Av. Meeks · Estación del Roca. ${mapHint}`, 'warn', 3);
 });
+// ya está todo cargado: el botón se puede tocar
+{
+  const play = document.getElementById('play');
+  play.disabled = false;
+  play.removeAttribute('aria-busy');
+  play.textContent = 'Jugar';
+}
 document.getElementById('mute').addEventListener('click', () => {
   const muted = audio.toggleMute();
   document.getElementById('mute').textContent = muted ? 'Sin sonido' : 'Sonido';

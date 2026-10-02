@@ -413,6 +413,8 @@ export function makeGround() {
   const data = g.getImageData(0, 0, N, N).data;
   const H = new Float32Array(N * N);
   for (let i = 0; i < N * N; i++) H[i] = data[i * 4] / 100;
+  // el lienzo ya no hace falta (en iPhone los lienzos tienen un tope de memoria)
+  c.width = c.height = 1;
   return function heightAt(x, z) {
     const i = Math.floor((x + HALF) / RES);
     const j = Math.floor((z + HALF) / RES);

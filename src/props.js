@@ -2,6 +2,7 @@
 // canastos de basura elevados, contenedores, antenas, parabólicas, hierros en las terrazas,
 // ropa tendida, catenaria del Roca y sombras de contacto.
 import * as THREE from 'three';
+import { freeAfterUpload } from './textures.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { DATA as D, TRACKS, CORNERS, ROADS, nearestRoad } from './map.js';
 import { outward, pointInRing, fixed } from './city.js';
@@ -271,7 +272,7 @@ function streetSigns(scene, colliders) {
     g.textBaseline = 'middle';
     g.fillText(n.toUpperCase(), 512, i * rowH + rowH / 2 + 1, 980);
   });
-  const tex = new THREE.CanvasTexture(c);
+  const tex = freeAfterUpload(new THREE.CanvasTexture(c));
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = 4;
   const pos = [];

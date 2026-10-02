@@ -331,7 +331,8 @@ export class Hud {
 
   // ---------- Minimapa ----------
   drawBaseMap() {
-    const S = 2048;
+    // 1536: en iPhone los lienzos tienen tope de memoria (2048 eran 16 MB solo para esto)
+    const S = 1536;
     const c = document.createElement('canvas');
     c.width = c.height = S;
     const g = c.getContext('2d');

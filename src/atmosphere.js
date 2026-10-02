@@ -1,6 +1,7 @@
 // Atmósfera: bruma que se espesa a ras del piso y se tiñe de dorado mirando al sol,
 // como en los GTA nuevos. Reemplaza la niebla de three en todos los materiales.
 import * as THREE from 'three';
+import { freeAfterUpload } from './textures.js';
 
 // valores compartidos por todos los shaders (se actualizan una vez por cuadro)
 export const ATMO = {
@@ -152,7 +153,7 @@ function lampCanvas(N, S, O, draw) {
     g.fillRect(cx - R, cy - R, R * 2, R * 2);
   };
   draw(blob);
-  const t = new THREE.CanvasTexture(c);
+  const t = freeAfterUpload(new THREE.CanvasTexture(c));
   t.flipY = false;
   t.colorSpace = THREE.NoColorSpace;
   t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;

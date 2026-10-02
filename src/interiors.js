@@ -10,6 +10,7 @@
 // cara ya puesto en los colores) y paredes con colisión.
 import * as THREE from 'three';
 import { FastBoxes } from './builder.js';
+import { freeAfterUpload } from './textures.js';
 import { makeHuman, animateHuman, randomCivilian } from './human.js';
 import { makePerson, PEOPLE } from './people.js';
 import { R } from './rng.js';
@@ -110,7 +111,7 @@ function canvasTex(w, h, draw) {
   c.width = w;
   c.height = h;
   draw(c.getContext('2d'), w, h);
-  const t = new THREE.CanvasTexture(c);
+  const t = freeAfterUpload(new THREE.CanvasTexture(c));
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }
