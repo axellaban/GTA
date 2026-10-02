@@ -1,5 +1,25 @@
 // Colisiones en planta contra segmentos (paredes de casas giradas, rejas) y círculos (árboles),
-// con grilla espacial.
+// con grilla espacial. Algunas paredes arrancan en altura (y0: barandas del puente peatonal).
+
+// altura del piso caminable en (x, z) para alguien que está a la altura y: el puente peatonal y sus
+// escaleras (city.walkways) cuentan si se puede subir hasta ahí de un paso (o se cae desde arriba)
+export function walkwayHeight(walkways, x, z, y) {
+  let best = -Infinity;
+  for (const w of walkways || []) {
+    const dx = w.bx - w.ax;
+    const dz = w.bz - w.az;
+    const l2 = dx * dx + dz * dz;
+    if (!l2) continue;
+    const t = ((x - w.ax) * dx + (z - w.az) * dz) / l2;
+    if (t < -0.02 || t > 1.02) continue;
+    const l = Math.sqrt(l2);
+    const across = Math.abs(((x - w.ax) * dz - (z - w.az) * dx) / l);
+    if (across > w.w / 2) continue;
+    const h = w.y0 + (w.y1 - w.y0) * Math.max(0, Math.min(1, t));
+    if (h <= y + 0.7 && h > best) best = h;
+  }
+  return best;
+}
 const CELL = 8;
 
 export class Colliders {
@@ -38,6 +58,11 @@ export class Colliders {
     }
     return out;
   }
+  // pared que arranca en altura (baranda de un puente, costado de una escalera): solo frena a
+  // quien está a esa altura
+  add3d(ax, az, bx, bz, y0, h, kind = 'rail') {
+    return this.insert({ s: true, ax, az, bx, bz, h: y0 + h, y0, kind }, ax, az, bx, bz);
+  }
   addCircle(x, z, r, h = 3, kind = 'tree') {
     return this.insert({ c: true, x, z, r, h, kind }, x - r, z - r, x + r, z + r);
   }
@@ -73,7 +98,7 @@ export class Colliders {
     let best = 0;
     for (let iter = 0; iter < 2; iter++) {
       for (const b of this.query(pos.x, pos.z, r + 0.5)) {
-        if (filter && !filter(b)) continue;
+        if (filter ? !filter(b) : b.y0 > 1) continue;
         let cx;
         let cz;
         let rr = r;
@@ -125,7 +150,7 @@ export class Colliders {
     let best = null;
     const r = Math.hypot(bx - ax, bz - az) / 2 + 1;
     for (const s of this.query((ax + bx) / 2, (az + bz) / 2, r)) {
-      if (!s.s || s.h < minH) continue;
+      if (!s.s || s.h < minH || s.y0 > 1) continue;
       const t = segT(ax, az, bx, bz, s.ax, s.az, s.bx, s.bz);
       if (t === null || (best && t >= best.t)) continue;
       const l = Math.hypot(s.bx - s.ax, s.bz - s.az) || 1;
@@ -144,7 +169,7 @@ export class Colliders {
     const r = Math.hypot(bx - ax, bz - az) / 2 + 1;
     const cand = this.query((ax + bx) / 2, (az + bz) / 2, r);
     for (const s of cand) {
-      if (!s.s || s.h < minH) continue;
+      if (!s.s || s.h < minH || s.y0 > 1) continue;
       const t = segT(ax, az, bx, bz, s.ax, s.az, s.bx, s.bz);
       if (t !== null && t < tmin) tmin = t;
     }

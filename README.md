@@ -236,6 +236,10 @@ Además hay 13 vecinos y vecinas de [Quaternius](https://quaternius.com) (Ultima
 
 Los perros también son un modelo CC0 de Mesh2Motion, con animaciones de verdad (quieto, caminar, correr, ladrar) y distintos tonos de pelo, y el caballo del carro del cartonero también.
 
+## El puente de la estación (0.27)
+
+La pasarela que cruza las vías frente a la estación Temperley (y las otras de la estación) se puede subir: en cada punta hay un descanso y una escalera hasta la calle. Arriba se camina a 7 m sobre los trenes, con barandas a los costados (y si te tirás por la punta, caés).
+
 ## Tanque y casas que se derrumban (0.26)
 
 - **Tanque del Ejército** (un TAM): con **6 estrellas** sale uno a buscarte. Pasa por arriba de los autos, voltea postes y árboles, atropella a la gente y tira cañonazos (que pueden voltear la casa que haya en el medio). Como en GTA, **se lo podés robar**: acercate y apretá F para sacar al tanquista. Lo manejás con las orugas (gira sobre sí mismo), la torreta sigue a la cámara y con **clic** disparás el cañón. Aguanta tiros; con cohetes o cañonazos se rompe.

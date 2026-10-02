@@ -994,10 +994,84 @@ function addStation(scene, colliders, city) {
     hs.vert(x, z - 0.8, x, z + 0.8, 3.4, 3.9);
   });
   scene.add(new THREE.Mesh(hs.geometry(), new THREE.MeshBasicMaterial({ map: textTexture('TEMPERLEY', { w: 512, h: 96, bg: '#10306e', fg: '#ffffff', font: 60, border: '#ffffff' }), side: THREE.DoubleSide })));
-  // puentes peatonales sobre las vías
+  // puentes peatonales sobre las vías: se puede subir (escaleras en las dos puntas, descanso arriba)
   const steel = 0x3f5563;
   const F = new FastBoxes();
+  city.walkways ??= [];
+  const DECK = 7.375;
+  const free = (x, z) => !colliders.query(x, z, 1.4).size;
   for (const line of D.bridges) {
+    // solo las pasarelas de la estación (las curvas largas son de calles)
+    const near = line.some(([x, z]) => Math.hypot(x - STATION.x, z - STATION.z) < 160);
+    if (near) {
+      for (let i = 0; i < line.length - 1; i++) {
+        const [ax, az] = line[i];
+        const [bx, bz] = line[i + 1];
+        city.walkways.push({ ax, az, bx, bz, w: 3.0, y0: DECK, y1: DECK });
+        // barandas (a la altura del piso del puente)
+        const l = Math.hypot(bx - ax, bz - az) || 1;
+        const px = -(bz - az) / l;
+        const pz = (bx - ax) / l;
+        for (const s of [-1, 1]) colliders.add3d(ax + px * 1.52 * s, az + pz * 1.52 * s, bx + px * 1.52 * s, bz + pz * 1.52 * s, DECK, 1.1);
+      }
+      // en cada punta: descanso y escalera hacia el lado que esté libre
+      for (const end of [0, 1]) {
+        const [ex, ez] = end ? line[line.length - 1] : line[0];
+        const [qx, qz] = end ? line[line.length - 2] : line[1];
+        const l = Math.hypot(ex - qx, ez - qz) || 1;
+        const ux = (ex - qx) / l;
+        const uz = (ez - qz) / l;
+        const cx = ex + ux * 1.6;
+        const cz = ez + uz * 1.6;
+        const RUN = DECK / 0.62;
+        let side = 1;
+        let best = -1;
+        for (const s of [1, -1]) {
+          let ok = 0;
+          for (let k = 1; k <= 6; k++) {
+            const t = 1.6 + (RUN * k) / 6;
+            if (free(cx - uz * s * t, cz + ux * s * t)) ok++;
+          }
+          if (ok > best) {
+            best = ok;
+            side = s;
+          }
+        }
+        const sx = -uz * side;
+        const sz = ux * side;
+        // el descanso
+        F.rbox(3.4, 0.35, 3.4, 0xb9b2a4, cx, 7.2, cz, angOf(ux, uz));
+        city.walkways.push({ ax: ex, az: ez, bx: cx + ux * 1.7, bz: cz + uz * 1.7, w: 3.4, y0: DECK, y1: DECK });
+        // baranda del fondo y del lado sin escalera
+        colliders.add3d(cx + ux * 1.68 - sx * 1.7, cz + uz * 1.68 - sz * 1.7, cx + ux * 1.68 + sx * 1.7, cz + uz * 1.68 + sz * 1.7, DECK, 1.1);
+        colliders.add3d(cx - sx * 1.68 - ux * 1.7, cz - sz * 1.68 - uz * 1.7, cx - sx * 1.68 + ux * 1.7, cz - sz * 1.68 + uz * 1.7, DECK, 1.1);
+        F.rbox(0.06, 1.1, 3.4, steel, cx + ux * 1.68, 7.9, cz + uz * 1.68, angOf(sx, sz));
+        F.rbox(0.06, 1.1, 3.4, steel, cx - sx * 1.68, 7.9, cz - sz * 1.68, angOf(ux, uz));
+        // la escalera: escalones de 18 cm, zancas a los costados y pasamanos
+        const bx0 = cx + sx * 1.7;
+        const bz0 = cz + sz * 1.7;
+        const n = Math.ceil(DECK / 0.18);
+        const run = RUN / n;
+        for (let k = 0; k < n; k++) {
+          const y = DECK - (k + 1) * (DECK / n);
+          const t = (k + 0.5) * run;
+          F.rbox(2.2, 0.08, run + 0.02, 0xa9a294, bx0 + sx * t, y + 0.04, bz0 + sz * t, angOf(sx, sz));
+        }
+        for (const s of [-1, 1]) {
+          const ox = ux * 1.15 * s;
+          const oz = uz * 1.15 * s;
+          // zanca inclinada (en cajitas) y pasamanos
+          for (let k = 0; k < 8; k++) {
+            const t = ((k + 0.5) / 8) * RUN;
+            const y = DECK * (1 - (k + 0.5) / 8);
+            F.rbox(0.12, 0.5, RUN / 8 + 0.05, steel, bx0 + sx * t + ox, y - 0.1, bz0 + sz * t + oz, angOf(sx, sz));
+            F.rbox(0.05, 0.05, RUN / 8 + 0.05, steel, bx0 + sx * t + ox, y + 0.95, bz0 + sz * t + oz, angOf(sx, sz));
+          }
+          colliders.add3d(bx0 + ox, bz0 + oz, bx0 + sx * RUN + ox, bz0 + sz * RUN + oz, 0, DECK + 1);
+        }
+        city.walkways.push({ ax: bx0 + sx * RUN, az: bz0 + sz * RUN, bx: bx0, bz: bz0, w: 2.2, y0: 0.15, y1: DECK });
+      }
+    }
     for (let i = 0; i < line.length - 1; i++) {
       const [ax, az] = line[i];
       const [bx, bz] = line[i + 1];

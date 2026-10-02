@@ -5,6 +5,7 @@ import { WEAPONS } from './weapons.js';
 import { R } from './rng.js';
 import { carEffects } from './carfx.js';
 import { SIGNS } from './props.js';
+import { walkwayHeight } from './physics.js';
 
 const WALK = 2.3;
 const RUN = 6.3;
@@ -36,6 +37,8 @@ export class Player {
     this.scene = scene;
     this.city = city;
     this.heightAt = heightAt;
+    // pisos en altura (el puente peatonal de la estación y sus escaleras)
+    this.walkways = city.walkways || [];
     this.spawn = { x: 0, z: 0, face: 0 };
     this.x = 0;
     this.z = 0;
@@ -564,7 +567,7 @@ export class Player {
     // apuntando: mira hacia donde mira la cámara
     if (this.aiming) this.heading = this.camYaw + Math.PI;
     // salto
-    const ground = this.heightAt(this.x, this.z);
+    const ground = this.groundAt();
     if (input.hit(' ', 'jump') && this.y <= ground + 0.05 && !this.attack) {
       this.vy = 4.6;
       world.audio.whoosh(0.15);
@@ -751,8 +754,10 @@ export class Player {
     this.nearCars = traffic.parked;
     const p = { x: this.x, z: this.z };
     // en el aire se pueden saltar rejas bajas
-    const airborne = this.y > this.heightAt(this.x, this.z) + 0.6;
-    colliders.resolveCircle(p, this.r, airborne ? (b) => b.h > 1.3 : null);
+    const airborne = this.y > this.groundAt() + 0.6;
+    // las barandas del puente frenan solo arriba; abajo, las paredes comunes (y no las de más bajas que uno)
+    const y = this.y;
+    colliders.resolveCircle(p, this.r, (b) => (b.y0 ? y > b.y0 - 0.6 && y < b.h : y < 1 || y < b.h - 0.3) && (!airborne || b.h > 1.3));
     const cars = traffic.all().concat(police.cars, world.tanks?.list ?? []);
     for (const v of cars) {
       if (Math.abs(v.x - p.x) > 8 || Math.abs(v.z - p.z) > 8) continue;
@@ -1105,6 +1110,12 @@ export class Player {
     this.speed = v.speed;
   }
 
+  // el piso bajo los pies: el terreno o, si está subido, el puente peatonal y sus escaleras
+  groundAt() {
+    const g = this.heightAt(this.x, this.z);
+    const w = walkwayHeight(this.walkways, this.x, this.z, this.y);
+    return Math.max(g, w);
+  }
   place() {
     if (this.ufo) {
       this.h.root.visible = false;
@@ -1115,7 +1126,7 @@ export class Player {
       return;
     }
     const dt = this.dt || 1 / 60;
-    const ground = this.vehicle ? 0 : this.heightAt(this.x, this.z);
+    const ground = this.vehicle ? 0 : this.groundAt();
     if (!this.vehicle && (this.vy !== 0 || this.y > ground + 0.3)) {
       // gravedad
       this.vy -= 13 * dt;

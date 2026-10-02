@@ -252,6 +252,15 @@ arregla y pinta (`fix`, igual que antes), sube la persiana y el auto sale de tro
 congela el control; `Garages.camera` pone la cámara en la calle. `main.js` saca los autos estacionados
 a menos de 7,5 m del portón.
 
+**R19 — ✅ Puente peatonal caminable** (pedido del dueño). `addStation` en `src/city.js`: a las
+pasarelas a menos de 160 m de la estación les agrega descanso (3,4 m) y escalera en cada punta (hacia el
+lado con menos colisiones; escalones de 18 cm, zancas y pasamanos), y registra `city.walkways` (tramos
+con ancho y altura de inicio y fin). `walkwayHeight` en `src/physics.js` da el piso en (x, z) para quien
+está a la altura y (solo cuenta si se sube de un paso, 0,7 m): `Player.groundAt` lo usa en `place`, el
+salto y `airborne`. Barandas y costados de escalera son paredes con `y0` (`Colliders.add3d`): el
+jugador las respeta según su altura; el resto (vecinos, autos, tiros) ignora las que arrancan arriba
+de 1 m. Falta: que los vecinos usen el puente.
+
 **R11 — Pruebas en celu real**: el dueño prueba en iPhone/Android y manda capturas; se ajusta.
 
 **R12 — Acercarse al look del video de Higgsfield** (Gaspi de traje y corbata roja en una vereda a lo
