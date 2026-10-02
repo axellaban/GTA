@@ -74,6 +74,7 @@ export class Hud {
     add('armeria', world.armeria);
     for (const g of world.garages || []) add('pintura', g);
     if (world.gym?.x != null) add('gym', world.gym);
+    if (world.nafta?.x != null) add('nafta', world.nafta);
     add('comisaria', world.comisaria);
     for (const h of world.rescue?.hospitals || []) add('hospital', h);
     add('tren', world.city?.spots.stationDoor);

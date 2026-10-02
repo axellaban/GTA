@@ -88,8 +88,15 @@ sube a `main` apenas anda, así si se corta la sesión otra IA sigue desde acá.
   corte (`breakEv` en `src/player.js`).
 
 **R2 — ✅ Gym El Kaiser en su dirección real: Rivadavia 321** (confirmada en el Instagram/Facebook
-oficiales). `GYM_LOT` en `src/map.js` reserva el frente (≈ 403, 2; vereda impar) antes de armar la
-ciudad y saca las huellas de Overture, cercos y árboles que lo pisaban; `src/gym.js` lo usa.
+oficiales; el dueño aclaró que es la vereda de enfrente del Colegio Eccleston). `GYM_LOT` en
+`src/map.js` reserva el frente (≈ 419, 21) antes de armar la ciudad y saca la huella de Overture que lo
+pisaba (un local de 9 m, el galpón real); `src/gym.js` lo usa.
+
+**R2b — ✅ Lugares que pidió el dueño**: Colegio Eccleston (escuelas con nombre en `src/map.js`: los
+edificios dentro del predio de OSM pasan a `escuela` y el más grande lleva el cartel) y la Shell de
+Av. Eva Perón y Almirante Brown (`NAFTA` en `src/map.js`, `src/nafta.js`; surtidores que explotan,
+`blast`/`hit`; ícono `nafta`). Calles: `scripts/map/osm_streets.py` las compara con OSM (248 de 250
+tramos ya coincidían) y corrigió 3 (Alemandri/Ituzaingó, 25 de Mayo/Péreuilh, un tramo de Guido).
 
 **R3 — ✅ Misiones con lo nuevo** (`src/missions.js`, al final de `DEFS`):
 - `panchos`: salchichas para el panchero antes de que baje el marciano (`Ufo.summon`); se cumple

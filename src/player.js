@@ -892,6 +892,8 @@ export class Player {
           police.crime('choque', v.x, v.z);
           continue;
         }
+        // un surtidor de nafta: el golpe le saca vida (fuerte, revienta)
+        if (hit.box.kind === 'pump' && hit.box.pump && vel > 3) world.nafta?.hit(world, hit.box.pump, vel * 6, true);
         v.x += p.x - c.x;
         v.z += p.z - c.z;
         const into = v.vx * hit.nx + v.vz * hit.nz;

@@ -103,6 +103,8 @@ export const LAMPS = {
   // los carteles de neón vistos desde arriba (a 3,4 m) y cuánto brillan
   neonSpot: { value: null },
   neonOn: { value: 0 },
+  // otras luces fijas (no son uniforms): marquesina de la estación de servicio {x, z, r}
+  extra: [],
 };
 
 // Intensidades de la noche. Se pueden probar en vivo desde la consola: __gta.night.faroles = 3
@@ -176,6 +178,9 @@ export function buildLampMap(lamps, shops = [], neon = null) {
     // luz blanca que sale de las vidrieras a la vereda
     const shop = lampFalloff(7, 2.6);
     for (const s of shops) blob(s.x + s.nx * 1.8, s.z + s.nz * 1.8, 7, [150, 140, 120], [120, 104, 80], shop);
+    // luz blanca de tubos (la marquesina de la estación de servicio): LAMPS.extra
+    const tube = lampFalloff(7, 3);
+    for (const l of LAMPS.extra) blob(l.x, l.z, l.r, [120, 126, 136], [70, 76, 88], tube);
   });
   // lo que se refleja en la calle mojada: el cabezal del farol, chico y fuerte
   LAMPS.lampSpot.value = lampCanvas(1024, S, O, (blob) => {

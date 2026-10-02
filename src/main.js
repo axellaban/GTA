@@ -26,6 +26,7 @@ import { Fx } from './fx.js';
 import { Pickups, FIGUS } from './pickups.js';
 import { WEAPONS } from './weapons.js';
 import { Gym } from './gym.js';
+import { Nafta } from './nafta.js';
 import { Stunts, RAMPS } from './stunts.js';
 import { chunkScene, updateChunks } from './chunks.js';
 import { Gangs } from './gangs.js';
@@ -205,6 +206,9 @@ const blobs = new BlobShadows(scene);
 fx.ground = heightAt;
 const pickups = new Pickups(scene, audio);
 pickups.placeWorld(city, heightAt);
+// la estación de servicio (Shell de Eva Perón y Almirante Brown): su luz entra en el mapa de faroles
+const nafta = new Nafta(scene, city.colliders);
+LAMPS.extra = nafta.lights;
 buildLampMap(city.lamps, pickups.shops, city.neon);
 // postes que se caen al chocarlos: se apaga el halo y la luz que tiraban al piso
 const smash = new Smash(city, fx, audio);
@@ -225,6 +229,7 @@ const time = { hour: 17.5, night: false, label: '17:30' };
 const weather = { rain: 0, target: 0, wet: 0, slick: false, next: R.range(200, 320), t: 0, boltT: R.range(10, 25), flash: 0 };
 const world = { scene, camera, city, input, audio, hud, player, traffic, npcs, crime, events, trains, time, lights, colliders: city.colliders, fx, pickups, combat, police, nav, radio, weather, night: NIGHT, heightAt };
 world.smash = smash;
+world.nafta = nafta;
 world.comisaria = comisaria;
 // portazo: se oye si Gaspi está cerca
 Vehicle.onSlam = (v, k) => {
@@ -1189,6 +1194,7 @@ function frame(now) {
   fx.update(dt);
   smash.update(dt);
   SIGNS.update(dt, world);
+  nafta.update(dt, world);
   radio.update();
   const moto = crime.nearestMoto(player.x, player.z, 80);
   audio.update(player.vehicle?.speed ?? 0, !!player.vehicle, moto ? Math.hypot(moto.x - player.x, moto.z - player.z) : 999, player.vehicle?.kind === 'moto');

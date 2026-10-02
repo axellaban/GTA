@@ -61,6 +61,7 @@ Para comparar la misma calle de día, al atardecer y con lluvia: `npm run dev` y
 ## Estilo GTA (0.4)
 
 - **Piñas**: combo de jab, directo, gancho y patada, con apuntado automático al más cercano. La gente se defiende, sale corriendo o queda nocaut (y se le cae la plata).
+- **Lugares del barrio**: el **Colegio Eccleston** (Almirante Brown 3342: los edificios dentro del predio de OSM son la escuela, con su cartel; lo mismo para cualquier escuela con nombre) y la **estación de servicio Shell** de Av. Eva Perón y Almirante Brown (`src/nafta.js`): marquesinas con la banda amarilla y roja sobre columnas, surtidores, el cartel alto con los precios, minimercado y luces de noche. Como en GTA, los surtidores explotan si les tirás, los chocás fuerte o les cae una explosión, y prenden al de al lado. Del nombre real va solo el texto, sin logo.
 - **Mapa con íconos a lo GTA**: armería, chapa y pintura, gym, comisaría, hospitales, estación, panchos, medias, kiosco, picadas, cortes, changas (paramédico, bombero, delivery), el plato volador y los objetos del piso, cada uno con su ícono. En el minimapa quedan derechos aunque el mapa gire, y la misión ofrecida (con la inicial de quien la da) y el OVNI se pegan al borde si están lejos. El mapa de pausa (P) trae la leyenda.
 - **Plato volador**: cada tanto baja un OVNI al lado del carrito de panchos de la estación (luces que giran, zumbido de theremin, la gente lo filma). Se baja un marciano verde, pide "dos completos" y se pone a comer. Mientras come, acercate y robale la nave (F): volás con WASD (o el joystick) mirando con el mouse, Espacio sube, Shift baja; clic tira un rayo que hace volar lo que toca y clic derecho (o R) prende el rayo tractor, que levanta autos y gente: soltalos desde arriba. Para bajarte, aterrizá y F. El marciano te putea y, si dejás la nave, se la lleva. ¿Apurado? Escribí OVNI.
 - **Armas**: palo, revólver 38, pistola 9 mm, tumbera, ametralladora (cinta de 100, patea y voltea) y bazuca (cohete con estela que hace volar autos). En la armería, escondidas en el mapa o con el truco: escribí FIERROS. Clic derecho apunta sobre el hombro; sin apuntar, apunta solo. Fogonazo, trazas, chispas en las paredes, gente que se tira al piso o levanta las manos. Casquillos que rebotan en el piso, recarga animada, la mira que salta con cada tiro, agujeros de bala que quedan en paredes y veredas y astillas de revoque.
@@ -119,6 +120,7 @@ python3 fetch.py                                   # baja de Overture Maps el cu
 python3 preprocess.py ../../src/data/temperley.json  # calles, veredas, manzanas, edificios, árboles, etc.
 python3 osm_pois.py                                # negocios con nombre de OpenStreetMap -> src/data/osm.json
 python3 places_extra.py                            # más negocios de Overture (confianza media) -> src/data/places.json
+python3 osm_streets.py                             # revisa los nombres de las calles contra OSM y los corrige
 ```
 
 `src/map.js` le pone a cada local el nombre real de OSM (la huella que contiene el punto, o la más
@@ -249,7 +251,7 @@ Entre los clásicos hechos por código (Duna, Falcon, Gol, 504...) ahora andan a
 
 ## Gym El Kaiser (0.13)
 
-Box de CrossFit en su dirección real, **Rivadavia 321** (a unas cuatro cuadras de la estación; ícono en el mapa). El lote se reserva en `src/map.js` (`GYM_LOT`) y las huellas de Overture que lo pisaban no se levantan: galpón negro con el portón levantado, el cartel del lobo arriba y el mismo logo en la pared del fondo, racks rojos, discos, cajones y kettlebells. Adentro entrenan los musculosos (dominadas, sentadilla y press) y El Kaiser te recibe en la puerta. Si les pegás, se defienden, y aguantan más que un vecino.
+Box de CrossFit en su dirección real, **Rivadavia 321**, en la vereda de enfrente del Colegio Eccleston (a unas cuatro cuadras de la estación; ícono en el mapa). El lote se reserva en `src/map.js` (`GYM_LOT`) y la huella de Overture que lo pisaba no se levanta: galpón negro con el portón levantado, el cartel del lobo arriba y el mismo logo en la pared del fondo, racks rojos, discos, cajones y kettlebells. Adentro entrenan los musculosos (dominadas, sentadilla y press) y El Kaiser te recibe en la puerta. Si les pegás, se defienden, y aguantan más que un vecino.
 
 **Las chicas fit**: cinco chicas entrenando entre los musculosos (sentadilla, press y dominadas), con musculosa, calzas de colores y colita o rodete.
 

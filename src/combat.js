@@ -507,6 +507,7 @@ export class Combat {
       test(n.x, n.z, n.down ? 0.6 : 0.36, n.y, n.y + h, 'npc', n);
     }
     for (const m of world.crime.motos) if (near(m.v.x, m.v.z)) test(m.v.x, m.v.z, 0.75, 0, 1.9, 'moto', m);
+    for (const p of world.nafta?.pumps || []) if (!p.dead && near(p.x, p.z)) test(p.x, p.z, 0.45, 0, 2.1, 'pump', p);
     for (const v of this.vehicles(world)) {
       if (v === shooter?.vehicle || !near(v.x, v.z)) continue;
       const h = v.kind === 'bus' ? 3.2 : v.kind === 'moto' ? 1.7 : v.tall ?? 1.5;
@@ -637,6 +638,9 @@ export class Combat {
         world.police.crime(n.type === 'cana' ? 'cana' : res === 'muerte' || res === 'ko' ? 'muerte' : 'herido', n.x, n.z);
         if (res === 'muerte') world.social?.('muerte', n.x, n.z);
       }
+    } else if (hit.type === 'pump') {
+      this.audio.metal(0.6);
+      world.nafta.hit(world, hit.obj, w.rocket ? 999 : dmg, byPlayer);
     } else if (hit.type === 'moto') {
       this.fx.sparks(hit.x, hit.y, hit.z, 5, 4);
       if (hit.obj.state !== 'down') world.crime.knockDown(hit.obj, world);
@@ -1031,6 +1035,7 @@ export class Combat {
     }
     for (const m of world.crime.motos) if (m.state !== 'down' && Math.hypot(m.v.x - x, m.v.z - z) < 7) world.crime.knockDown(m, world);
     world.events?.knock(x, z, 7);
+    world.nafta?.blast(x, z, byPlayer);
     world.npcs.panic(x, z, 70);
     if (byPlayer) world.police.crime('explosion', x, z);
     world.social?.('boom', x, z);
