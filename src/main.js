@@ -15,7 +15,7 @@ import { Crime } from './crime.js';
 import { Events } from './events.js';
 import { Trains } from './trains.js';
 import { Hud } from './hud.js';
-import { lightMat, tailMat, brakeMat, paintMat, repairCar, makeFerrucho } from './cars.js';
+import { lightMat, tailMat, brakeMat, paintMat, repairCar, makeFerrucho, setUnderglow } from './cars.js';
 import { CAR_COLORS, makeCar } from './vehicles.js';
 import { loadGaspiPhoto, updateHumanLod } from './human.js';
 import { Sky } from './sky.js';
@@ -710,6 +710,8 @@ function updateTime(dt) {
     city.neonMesh.material.opacity = on;
     // y su reflejo en la calle mojada
     LAMPS.neonOn.value = on * NIGHT.reflejo;
+    // el neón abajo de los autos tuneados
+    setUnderglow(on * 0.9);
   }
   city.lampPools.material.opacity = THREE.MathUtils.clamp((0.35 - lit) * 0.8, 0, 0.2);
   renderer.toneMappingExposure = 0.95 + (1 - day) * 0.35;

@@ -165,6 +165,14 @@ vestido de `qf_formal`) y del gym (`makeGirl('gym')`, top y calzas sobre `qf_cas
 de su look; cambian al cargar (`Laban.upgrade`, `Gym.upgrade`). La pintura acepta una función de la
 altura (pelo y zapatos tienen el mismo color en el original). Falta: autos de artista.
 
+**R13 — ✅ Autos con más onda** (`src/cars.js`): vidrios polarizados que dejan ver tablero, volante y
+butacas (`glassMat` transparente; interior en `detailGeo`); espejos con brazo; el capó suelto solo se ve
+cuando salta (cerrado lo dibuja la carrocería). Tuning al azar (`makeCar(..., { tune })`: tránsito 22 %,
+estacionados 18 %, picadas 85 %): franjas en capó y techo, alerón del color del auto, llantas doradas o
+cromadas, bajado (`u.ride`, lo respeta la suspensión de `traffic.js`) y neón abajo que se prende de
+noche (`setUnderglow`, lo llama `main.js` con la intensidad del neón). Prueba: `pj4.html?tune=1&view=noche`
+(copiar de la sesión; no se sube).
+
 **R11 — Pruebas en celu real**: el dueño prueba en iPhone/Android y manda capturas; se ajusta.
 
 **R12 — ✅ Rendimiento en la compu** (el dueño la notó lenta). Medido con un cuadro en la vereda de

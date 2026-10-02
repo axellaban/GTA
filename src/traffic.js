@@ -147,7 +147,7 @@ export class Vehicle {
     const c = u.chassis;
     c.rotation.x = clamp(s.p, -0.09, 0.09);
     c.rotation.z = clamp(s.r, -0.11, 0.11);
-    c.position.y = clamp(s.y, -0.12, 0.08) + buzz;
+    c.position.y = clamp(s.y, -0.12, 0.08) + buzz + (u.ride || 0);
     // luces de freno: pie en el freno o parado con alguien al volante
     if (u.tail && !this.wreck) {
       const driven = this.driver || this.ai || this.police;
@@ -187,7 +187,7 @@ export class Vehicle {
     if (this.sus) Object.assign(this.sus, { p: 0, pv: 0, r: 0, rv: 0, y: 0, yv: 0, aLong: 0 });
     if (u.chassis) {
       u.chassis.rotation.set(0, 0, 0);
-      u.chassis.position.y = 0;
+      u.chassis.position.y = u.ride || 0;
     }
     if (u.tail && !this.wreck) u.tail.material = tailMat;
   }
@@ -262,7 +262,7 @@ export class Traffic {
   // un auto del parque automotor del conurbano
   randomCar() {
     const model = R.pick(['duna', 'duna', 'gol', 'gol', 'gol', 'falcon', 'p504', 'p504', 'fiat600', 'pickup', 'pickup', 'remis', 'taxi', 'trafic', 'trafic']);
-    return makeCar(model, R.pick(CAR_COLORS));
+    return makeCar(model, R.pick(CAR_COLORS), { tune: 0.22 });
   }
   randomMoto() {
     const delivery = R.chance(0.45);
@@ -315,7 +315,7 @@ export class Traffic {
     for (const c of spots) {
       if (used.some((u) => Math.hypot(u.x - c.x, u.z - c.z) < 6)) continue;
       used.push(c);
-      this.addParked(makeCar(R.pick(['duna', 'falcon', 'gol', 'pickup', 'gol']), R.pick(CAR_COLORS)), c.x, c.z, c.heading);
+      this.addParked(makeCar(R.pick(['duna', 'falcon', 'gol', 'pickup', 'gol']), R.pick(CAR_COLORS), { tune: 0.18 }), c.x, c.z, c.heading);
       if (used.length > 110) break;
     }
   }

@@ -19,7 +19,8 @@ export function paintMat(color) {
 }
 // cromados (color por vértice) y vidrios polarizados
 export const shinyMat = new THREE.MeshStandardMaterial({ vertexColors: true, metalness: 1, roughness: 0.14, envMapIntensity: 1.6 });
-export const glassMat = new THREE.MeshPhysicalMaterial({ color: 0x0b1015, metalness: 0.1, roughness: 0.04, clearcoat: 1, clearcoatRoughness: 0.02, envMapIntensity: 1.7 });
+// (polarizados pero no negros: se ven las butacas y el volante, como en los GTA)
+export const glassMat = new THREE.MeshPhysicalMaterial({ color: 0x0b1015, metalness: 0.1, roughness: 0.04, clearcoat: 1, clearcoatRoughness: 0.02, envMapIntensity: 1.7, transparent: true, opacity: 0.62 });
 export const detailMat = new THREE.MeshLambertMaterial({ vertexColors: true });
 // ruedas: goma casi negra y llanta plateada (un solo material, el color por vértice decide)
 export const wheelMat = new THREE.MeshStandardMaterial({ vertexColors: true, metalness: 0.55, roughness: 0.38 });
@@ -272,7 +273,9 @@ function buildModel(name) {
     D.box(0.3, 0.035, 0.024, 0x1a1a1a, 0, 0.565, z);
   }
   for (const s of [-1, 1]) {
-    D.box(0.12, 0.08, 0.06, 0x1a1a1a, s * (W / 2 + 0.05), belt + 0.1, cab[3][0] - 0.1);
+    // espejo con su brazo, pegado a la puerta (antes flotaba al costado)
+    D.box(0.13, 0.09, 0.05, 0x1a1a1a, s * (W / 2 + 0.03), belt + 0.11, cab[3][0] - 0.12);
+    D.box(0.12, 0.03, 0.035, 0x1a1a1a, s * (W / 2 - 0.05), belt + 0.06, cab[3][0] - 0.1);
     // líneas de puertas
     // líneas de puertas y franja de abajo, pegadas a la carrocería (que se mete hacia el zócalo)
     D.box(0.012, belt - 0.5, 0.015, 0x222222, s * (W / 2 - 0.004), (belt + 0.48) / 2, cab[3][0] - 0.05);
@@ -306,6 +309,25 @@ function buildModel(name) {
     for (let i = 0; i < 4; i++) D.box(W * 0.84, 0.012, 0.035, 0x5a5a5a, 0, m.tail - 0.24 + i * 0.05, -L / 2 - 0.014);
     // faros escamoteables (las tapas cerradas sobre la trompa)
     for (const s of [-1, 1]) D.box(0.34, 0.035, 0.26, 0x222222, s * (W / 2 - 0.36), m.nose + 0.04, L / 2 - 0.38);
+  }
+  if (!m.open) {
+    // adentro (se ve por los vidrios): tablero, volante, dos butacas y el asiento de atrás
+    const zf = cab[3][0];
+    const zr = cab[0][0];
+    const seat = name === 'trafic' ? 0x2a2a2a : [0x5b3a29, 0x2b2b2b, 0x6b5a48, 0x3a3f5a][Math.round(L * 10) % 4];
+    D.box(W * 0.82, 0.16, 0.3, 0x141414, 0, belt + 0.02, zf - 0.22);
+    D.add(new THREE.TorusGeometry(0.17, 0.025, 6, 18).rotateX(-0.35), 0x111111, -W * 0.22, belt + 0.12, zf - 0.48);
+    for (const s of [-1, 1]) {
+      D.box(0.46, 0.12, 0.46, seat, s * W * 0.22, belt - 0.22, zf - 0.85);
+      // respaldo y apoyacabezas, siempre por debajo del techo (los autos bajos tienen poca cabina)
+      const top = Math.min(belt + 0.54, roof - 0.12);
+      D.box(0.46, top - 0.16 - (belt - 0.22), 0.1, seat, s * W * 0.22, (top - 0.16 + belt - 0.22) / 2, zf - 1.12);
+      D.box(0.24, 0.14, 0.08, seat, s * W * 0.22, top - 0.07, zf - 1.14);
+    }
+    if (zf - zr > 1.9) {
+      D.box(W * 0.78, 0.12, 0.45, seat, 0, belt - 0.22, zr + 0.45);
+      D.box(W * 0.78, Math.min(0.55, roof - 0.16 - (belt - 0.22)), 0.1, seat, 0, (Math.min(belt + 0.33, roof - 0.16) + belt - 0.22) / 2, zr + 0.2);
+    }
   }
   if (m.open) {
     // adentro: piso, tablero y dos butacas de cuero
@@ -444,6 +466,8 @@ function makeHood(m, paint) {
   const bay = new THREE.Group();
   bay.add(new THREE.Mesh(H.bayGeo, bayMat), new THREE.Mesh(H.blockGeo, engineMat));
   bay.visible = false;
+  // cerrado no se ve (la carrocería ya tiene la forma del capó); aparece cuando salta la traba
+  pivot.visible = false;
   return { pivot, bay, k: 0 };
 }
 
@@ -481,7 +505,112 @@ function farWheels(M) {
   return M.farWheels;
 }
 
-export function makeCar(model = 'duna', color = 0xd8d4c8, { parked = false } = {}) {
+// ---------- Tuning, para que haya autos con onda (franjas, alerón, llantas, bajado y neón abajo) ----------
+const TUNABLE = new Set(['duna', 'falcon', 'gol', 'pickup', 'p504', 'fiat600']);
+const stripeMats = [0xf4f4f4, 0x111111, 0xffd21f].map((c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.32, metalness: 0.1 }));
+const rimMats = [
+  Object.assign(wheelMat.clone(), { metalness: 0.95, roughness: 0.18 }),
+  Object.assign(wheelMat.clone(), { metalness: 1, roughness: 0.06, envMapIntensity: 2.2 }),
+];
+rimMats[0].color.set(0xf0c050);
+// neón abajo del auto: un rectángulo de luz difusa en el piso, prendido de noche (setUnderglow)
+let glowTex = null;
+const UNDERGLOW = new Map();
+function underglowMat(color) {
+  if (!glowTex) {
+    const c = document.createElement('canvas');
+    c.width = 64;
+    c.height = 128;
+    const g = c.getContext('2d');
+    const img = g.createImageData(64, 128);
+    for (let y = 0; y < 128; y++)
+      for (let x = 0; x < 64; x++) {
+        const dx = Math.max(0, Math.abs(x - 31.5) - 16) / 16;
+        const dy = Math.max(0, Math.abs(y - 63.5) - 44) / 20;
+        const k = Math.max(0, 1 - Math.hypot(dx, dy)) ** 2;
+        img.data.set([255 * k, 255 * k, 255 * k, 255], (y * 64 + x) * 4);
+      }
+    g.putImageData(img, 0, 0);
+    glowTex = new THREE.CanvasTexture(c);
+  }
+  if (!UNDERGLOW.has(color)) UNDERGLOW.set(color, new THREE.MeshBasicMaterial({ color, map: glowTex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0, visible: false, toneMapped: false }));
+  return UNDERGLOW.get(color);
+}
+export function setUnderglow(k) {
+  for (const m of UNDERGLOW.values()) {
+    m.opacity = k;
+    m.visible = k > 0.01;
+  }
+}
+// tiras sobre el capó y el techo, siguiendo la pendiente de la carrocería
+function stripesGeo(M) {
+  if (M.stripes) return M.stripes;
+  const m = M.m;
+  const f = m.L / 2;
+  const cab = cabinPts(m);
+  const top = (z) => m.belt + ((z - (f - m.hood)) / (m.hood - 0.15)) * (m.nose + 0.05 - m.belt);
+  const parts = [];
+  for (const sx of [-0.12, 0.12]) {
+    const z0 = f - m.hood + 0.05;
+    const z1 = f - 0.2;
+    const y0 = top(z0) + 0.007;
+    const y1 = top(z1) + 0.007;
+    parts.push(new THREE.BoxGeometry(0.11, 0.008, Math.hypot(z1 - z0, y1 - y0)).rotateX(-Math.atan2(y1 - y0, z1 - z0)).translate(sx, (y0 + y1) / 2, (z0 + z1) / 2));
+    parts.push(new THREE.BoxGeometry(0.11, 0.008, cab[2][0] - cab[1][0] - 0.08).translate(sx, m.roof + 0.034, (cab[1][0] + cab[2][0]) / 2));
+  }
+  M.stripes = mergeGeometries(parts);
+  return M.stripes;
+}
+// alerón sobre la cola del baúl (los que tienen baúl)
+function spoilerGeo(M) {
+  if (M.spoiler !== undefined) return M.spoiler;
+  const m = M.m;
+  if (m.bed || m.trunk < 0.7) return (M.spoiler = null);
+  const f = m.L / 2;
+  const rearEnd = -f + m.trunk * 0.95;
+  const z = -f + 0.22;
+  const y = m.tail + 0.03 + ((z - (-f + 0.1)) / Math.max(0.01, rearEnd + f - 0.1)) * (m.belt - 0.02 - m.tail - 0.03);
+  const parts = [new THREE.BoxGeometry(m.W * 0.86, 0.035, 0.26).rotateX(0.12).translate(0, y + 0.17, z - 0.02)];
+  for (const s of [-1, 1]) parts.push(new THREE.BoxGeometry(0.05, 0.17, 0.12).translate(s * m.W * 0.3, y + 0.08, z));
+  for (const s of [-1, 1]) parts.push(new THREE.BoxGeometry(0.025, 0.12, 0.3).translate(s * m.W * 0.43, y + 0.19, z - 0.02));
+  M.spoiler = mergeGeometries(parts);
+  M.spoiler.computeVertexNormals();
+  return M.spoiler;
+}
+const NEON_UNDER = [0xff2fa0, 0x22e0ff, 0x8a4dff, 0x39ff7a];
+function tuneCar(g, M, u, rnd) {
+  const kit = { stripes: rnd() < 0.55, spoiler: rnd() < 0.5, rims: rnd() < 0.7 ? (rnd() < 0.5 ? 0 : 1) : -1, low: rnd() < 0.6, neon: rnd() < 0.55 };
+  if (kit.stripes) {
+    const s = new THREE.Mesh(stripesGeo(M), stripeMats[Math.floor(rnd() * stripeMats.length)]);
+    u.chassis.add(s);
+    u.lodParts.push(s);
+  }
+  const sp = kit.spoiler && spoilerGeo(M);
+  if (sp) {
+    const m = new THREE.Mesh(sp, u.body.material);
+    m.userData.paint = true;
+    m.castShadow = true;
+    u.chassis.add(m);
+  }
+  if (kit.rims >= 0) {
+    for (const w of u.wheels) w.material = rimMats[kit.rims];
+    u.wheelsFar.material = rimMats[kit.rims];
+  }
+  if (kit.low) {
+    u.ride = -0.055;
+    u.chassis.position.y = u.ride;
+  }
+  if (kit.neon) {
+    const n = new THREE.Mesh(new THREE.PlaneGeometry(M.m.W * 1.3, M.m.L * 1.08).rotateX(-Math.PI / 2), underglowMat(NEON_UNDER[Math.floor(rnd() * NEON_UNDER.length)]));
+    n.position.y = 0.04;
+    n.renderOrder = 2;
+    g.add(n);
+  }
+  u.tuned = kit;
+}
+
+// tune: probabilidad de que salga tuneado (el tránsito y las picadas lo piden; la cana y las misiones no)
+export function makeCar(model = 'duna', color = 0xd8d4c8, { parked = false, tune = 0 } = {}) {
   const M = buildModel(model);
   const { L, W, wheelR } = M.m;
   const g = new THREE.Group();
@@ -543,7 +672,8 @@ export function makeCar(model = 'duna', color = 0xd8d4c8, { parked = false } = {
     doorway.visible = false;
     chassis.add(door, doorway);
   }
-  g.userData = { L, W, wheels, kind: 'car', model, parkedBuild: parked, tall: M.m.roof + 0.1, body, shiny, glass, chassis, tail, door, doorway, hood, wheelsFar, lodParts: [shiny, detail, hood.pivot] };
+  g.userData = { L, W, wheels, kind: 'car', model, parkedBuild: parked, tall: M.m.roof + 0.1, body, shiny, glass, chassis, tail, door, doorway, hood, wheelsFar, lodParts: [shiny, detail] };
+  if (tune > 0 && TUNABLE.has(model) && Math.random() < tune) tuneCar(g, M, g.userData, Math.random);
   return g;
 }
 

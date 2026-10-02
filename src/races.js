@@ -118,7 +118,8 @@ export class Races {
       [0, -7],
       [1, -7],
     ]) {
-      const mesh = makeCar(R.pick(MODELS), R.pick(COLORS));
+      // los de las picadas, casi todos tuneados
+      const mesh = makeCar(R.pick(MODELS), R.pick(COLORS), { tune: 0.85 });
       const rv = new Vehicle(mesh, s.x + rx * side * 3.2 - fx * back * -1, s.z + rz * side * 3.2 - fz * back * -1, s.heading);
       rv.racer = true;
       rv.keep = true;

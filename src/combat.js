@@ -660,7 +660,7 @@ export class Combat {
         if (want > 0 && hd.k < 0.05) this.audio.metal(0.4);
         hd.k += (want - hd.k) * Math.min(1, dt * (want > hd.k ? 9 : 4));
         hd.pivot.rotation.x = -hd.k;
-        hd.bay.visible = hd.k > 0.03;
+        hd.pivot.visible = hd.bay.visible = hd.k > 0.03;
       }
       if (v.wreck) {
         v.wreckT = (v.wreckT || 0) + dt;
