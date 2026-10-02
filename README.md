@@ -75,6 +75,7 @@ Para comparar la misma calle de día, al atardecer y con lluvia: `npm run dev` y
 - **Changas**: robás un negocio con un fierro en la mano, hacés deliveries en la moto con caja, levantás armas, milanesas (vida) y chalecos.
 - **Los vecinos postean** lo que hacés: persecuciones, explosiones, willys.
 - **El vendedor de medias** en la estación: tres pares $2.000 y corrés más rápido un rato.
+- **El panchero** atiende el carrito de la puerta de la estación: un pancho $1.500 (vida). Si lo asustás o lo bajás, no hay panchos.
 - La partida se guarda sola en el navegador.
 
 ## Controles
@@ -219,7 +220,7 @@ Ahora hay **6 estrellas**. Desde 3, si vas en auto, la cana arma **retenes**: do
 
 ## Changas de paramédico y bombero (0.22)
 
-Como las misiones de ambulancia y bomberos de Vice City. La **ambulancia** está estacionada frente a un centro de salud real del mapa: subite y te avisan dónde hay un herido; frená al lado para subirlo y llevalo al centro de salud más cercano antes de que se acabe el tiempo. La **autobomba** está a una cuadra de la estación: te avisan de un auto prendido fuego; frená cerca y quedate unos segundos para apagarlo (si no llegás, explota). Cada viaje seguido sube el nivel y paga más. Vehículos del Car Kit de Kenney (CC0), sacados de [pmndrs/market-assets](https://github.com/pmndrs/market-assets).
+Como las misiones de ambulancia y bomberos de Vice City. La **ambulancia** está estacionada frente a un centro de salud real del mapa: subite y te avisan dónde hay un herido; frená al lado para subirlo y llevalo al centro de salud más cercano antes de que se acabe el tiempo. La **autobomba** está a una cuadra de la estación: te avisan de un auto prendido fuego; frená cerca y quedate unos segundos para apagarlo con el cañón de agua (se ve el chorro en arco, las gotas y el vapor; si no llegás, explota). Cada viaje seguido sube el nivel y paga más. Vehículos del Car Kit de Kenney (CC0), sacados de [pmndrs/market-assets](https://github.com/pmndrs/market-assets).
 
 ## Autos que se abollan (0.21)
 

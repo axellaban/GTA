@@ -900,7 +900,9 @@ function interactions() {
     };
   }
   const pancho = city.spots.pancho;
-  if (!action && dist(pancho) < 2.6) {
+  const panchero = npcs.panchero;
+  const atiende = panchero && !panchero.killed && !panchero.down && panchero.state !== 'flee' && Math.hypot(panchero.x - pancho.x, panchero.z - pancho.z) < 3.5;
+  if (!action && dist(pancho) < 2.6 && atiende) {
     action = {
       text: 'Comprar un pancho ($1.500)',
       run: () => {
@@ -911,6 +913,7 @@ function interactions() {
         player.addMoney(-1500);
         player.health = Math.min(100, player.health + 25);
         player.say('¡Uno con todo, jefe!', 2.5);
+        panchero.say(R.pick(['¡Sale uno con todo!', 'Tomá, ¿papitas arriba?', '¡Buen provecho, jefe!']), 2.5);
         audio.plata();
         flags.pancho = true;
       },

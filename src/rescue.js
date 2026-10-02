@@ -1,6 +1,7 @@
 // Changas de rescate como en Vice City: con la ambulancia llevás heridos al centro de salud y con
 // la autobomba apagás autos prendidos fuego. Vehículos del Car Kit de Kenney (CC0). Cada viaje
 // seguido paga más (nivel). Se cortan si te bajás o se acaba el tiempo.
+import * as THREE from 'three';
 import { loadKenney } from './models.js';
 import { DATA as D, STATION, nearestStreetName } from './map.js';
 import { R } from './rng.js';
@@ -100,6 +101,7 @@ export class Rescue {
   }
 
   end(msg) {
+    this.jetOff();
     const a = this.active;
     if (a?.n && !a.n.dead) a.n.mission = false;
     if (a?.car?.fireJob) {
@@ -164,20 +166,58 @@ export class Rescue {
     const d = Math.hypot(car.x - v.x, car.z - v.z);
     if (slow && d < 12) {
       a.spray += dt;
-      // chorro de agua: vapor blanco entre la autobomba y el auto
-      if (Math.random() < dt * 30) {
-        const k = Math.random();
-        w.fx.smoke(v.x + (car.x - v.x) * k, 1.6 - k * 0.6, v.z + (car.z - v.z) * k, 1, { s0: 0.3, s1: 1.2, life: 0.6 });
-      }
+      this.waterJet(w, v, car, dt);
       if (a.spray >= 3) {
+        this.jetOff();
         car.burning = 0;
         car.fireJob = false;
         car.damage = Math.min(car.damage || 0, 80);
         this.pay('¡FUEGO APAGADO!');
       }
     } else {
+      this.jetOff();
       a.spray = Math.max(0, a.spray - dt);
       if (a.t <= 0) this.end('Se quemó todo: llegaste tarde');
     }
+  }
+
+  // Chorro del cañón de agua de la autobomba: un arco de agua (tubo translúcido que se rehace cada
+  // cuadro), gotas que caen con la gravedad y vapor donde pega en el auto prendido fuego.
+  waterJet(w, v, car, dt) {
+    const o = new THREE.Vector3(v.x + v.fx * v.L * 0.18, (v.tall ?? 2.6) + 0.15, v.z + v.fz * v.L * 0.18);
+    const e = new THREE.Vector3(car.x, 1.1, car.z);
+    const d = o.distanceTo(e);
+    // la punta del arco sube según la distancia y tiembla un poco (la presión)
+    const mid = o.clone().lerp(e, 0.5);
+    mid.y += 1.2 + d * 0.12 + Math.sin(performance.now() * 0.02) * 0.08;
+    const curve = new THREE.QuadraticBezierCurve3(o, mid, e);
+    if (!this.jet) {
+      this.jetMat = new THREE.MeshBasicMaterial({ color: 0xd6ecff, transparent: true, opacity: 0.55, depthWrite: false });
+      this.jet = new THREE.Mesh(new THREE.BufferGeometry(), this.jetMat);
+      this.jet.frustumCulled = false;
+      w.scene.add(this.jet);
+    }
+    this.jet.geometry.dispose();
+    this.jet.geometry = new THREE.TubeGeometry(curve, 18, 0.07, 6, false);
+    this.jet.visible = true;
+    // gotas que se desprenden del chorro y caen
+    const n = Math.min(8, Math.round(dt * 120));
+    for (let i = 0; i < n; i++) {
+      const t = Math.random();
+      const p = curve.getPoint(t);
+      const tan = curve.getTangent(t);
+      w.fx.alpha.add({ x: p.x, y: p.y, z: p.z, vx: tan.x * 9 + R.range(-0.8, 0.8), vy: tan.y * 9 + R.range(-0.5, 0.5), vz: tan.z * 9 + R.range(-0.8, 0.8), grav: -9.8, drag: 0.4, life: 0, max: R.range(0.4, 0.8), s0: 0.16, s1: 0.32, c0: [0.82, 0.9, 1], a: 0.55, fadeIn: 0.02 });
+    }
+    // donde pega: salpicadura y vapor (el fuego se va apagando)
+    if (Math.random() < dt * 25) w.fx.spray(car.x + R.range(-0.8, 0.8), car.z + R.range(-0.8, 0.8), R.range(-1.5, 1.5), R.range(-1.5, 1.5), 1.6);
+    if (Math.random() < dt * 14) w.fx.smoke(car.x + R.range(-0.6, 0.6), 1.4, car.z + R.range(-0.6, 0.6), 1, { s0: 0.6, s1: 2.6, life: 0.9, a: 0.45 });
+    this.jetSnd = (this.jetSnd || 0) - dt;
+    if (this.jetSnd <= 0) {
+      this.jetSnd = 0.18;
+      w.audio.burst(0.25, 1800, 'highpass', 0.12, 0, 0.4);
+    }
+  }
+  jetOff() {
+    if (this.jet) this.jet.visible = false;
   }
 }

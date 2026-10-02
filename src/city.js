@@ -1055,6 +1055,8 @@ function addStation(scene, colliders, city) {
   scene.add(cart);
   colliders.addCircle(px, pz, 1.1, 1.5, 'prop');
   city.spots.pancho = { x: px + (sw ? sw.nx * 1.6 : 1.6), z: pz + (sw ? sw.nz * 1.6 : 0) };
+  // el panchero atiende del otro lado del carrito, mirando a la vereda
+  city.spots.panchero = { x: px - (sw ? sw.nx * 1.15 : 1.15), z: pz - (sw ? sw.nz * 1.15 : 0), heading: sw ? Math.atan2(sw.nx, sw.nz) : Math.PI / 2 };
 }
 
 // ---------- Faroles y cables ----------

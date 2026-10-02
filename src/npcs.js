@@ -48,6 +48,7 @@ const LINES = {
   susto: ['¡Aaah! ¡Tiros!', '¡Corré, corré!', '¡Llamen a la policía!', '¡Al piso, al piso!', '¡Está loco este!', '¡Mamita!'],
   pelea: ['¿Qué te pasa, gil?', '¡Vení, vení!', '¡Te voy a dar!', '¡A mí no me tocás!', '¿Querés cobrar?'],
   duele: ['¡Ay!', '¡Pará, animal!', '¡Eh! ¡Qué hacés!', '¡Me mataste, loco!', '¡Uuuf!'],
+  panchero: ['¡Panchos, panchos! ¡Con lluvia de papas!', '¿Con qué lo querés, jefe? ¿Mayo, ketchup, golf?', '¡Pancho y gaseosa, mil quinientos!', '¡Calentitos los panchos!', 'Pasá, pasá, que hay superpancho'],
   medias: ['¡Medias, medias! Tres pares dos mil', '¡Llevá medias, jefe! De algodón', '¡Soquetes, medias, tres por dos mil!', '¡Medias de toalla para el invierno!'],
   charla: ['¿Viste lo del Celeste?', 'Y bueno, qué le vas a hacer...', '¡Jajaja, no te puedo creer!', 'No, pará, escuchá...', 'El sábado hay asado en lo de Rubén', 'Está todo carísimo, loco', '¿Y tu vieja cómo anda?', 'Le dije: "así no se puede"', '¡Noooo! ¿En serio?', 'El Roca otra vez parado...'],
   cana: ['¡Alto, policía!', '¡Quieto ahí!', '¡Al piso, al piso!', '¡Las manos donde las vea!', '¡No te hagás el vivo!'],
@@ -192,6 +193,7 @@ export class Npcs {
       n.hp = 60;
     }
     this.spawnVendors();
+    this.spawnPanchero();
     for (let i = 0; i < 6; i++) this.spawnZombie(center);
     for (let i = 0; i < 8; i++) this.spawnDog(center);
   }
@@ -235,6 +237,20 @@ export class Npcs {
       n.hp = 80;
       this.vendors.push(n);
     }
+  }
+
+  // el panchero del carrito de la estación: chaqueta y gorro blancos, atrás del carrito
+  spawnPanchero() {
+    const at = this.city.spots.panchero;
+    if (!at) return;
+    const h = makeHuman({ skin: R.pick(SKINS), hair: 0x2b1d14, hairStyle: 'short', shirt: 0xf5f5f5, longSleeves: true, pants: 0x2d3440, cap: 0xf5f5f5, mustache: true, belly: true, scale: 1.02 });
+    const n = this.add(new Npc('panchero', h, at.x, at.z));
+    n.state = 'idle';
+    n.home = { x: at.x, z: at.z };
+    n.heading = at.heading;
+    n.hp = 90;
+    n.mission = true;
+    this.panchero = n;
   }
 
   // human: un personaje ya armado (por ejemplo el motochorro que se cae de la moto)
@@ -487,7 +503,7 @@ export class Npcs {
       if (n.down || n.type === 'cana' || n.state === 'fight') continue;
       const d = Math.hypot(n.x - x, n.z - z);
       if (d > r) continue;
-      if (n.type === 'mendigo' || n.type === 'medias' || n.type === 'trapito' || n.type === 'vecino' || n.type === 'piquetero') {
+      if (n.type === 'mendigo' || n.type === 'medias' || n.type === 'panchero' || n.type === 'trapito' || n.type === 'vecino' || n.type === 'piquetero') {
         if (n.state === 'flee' || n.state === 'cower') {
           n.fleeT = Math.max(n.fleeT || 0, 6);
           continue;
@@ -657,6 +673,27 @@ export class Npcs {
         if (dp < 3.5 && n.cool <= 0 && !player.vehicle) {
           n.say(R.pick(LINES.mendigo.slice(0, 2)), 3.5);
           n.cool = 25;
+        }
+      } else if (n.type === 'panchero') {
+        // atrás del carrito: si se fue (un susto), vuelve; con clientes cerca ofrece
+        const away = Math.hypot(n.home.x - n.x, n.home.z - n.z);
+        if (away > 0.4) {
+          n.target = { x: n.home.x, z: n.home.z };
+          want = 1.2;
+          pose = 'walk';
+        } else {
+          n.target = null;
+          if (dp < 9 && !player.vehicle) {
+            let d = Math.atan2(player.x - n.x, player.z - n.z) - n.heading;
+            while (d > Math.PI) d -= Math.PI * 2;
+            while (d < -Math.PI) d += Math.PI * 2;
+            n.heading += d * Math.min(1, dt * 3);
+          }
+          pose = dp < 9 ? 'talk' : n.t % 9 < 1.2 ? 'wave' : 'walk';
+          if (dp < 12 && n.cool <= 0 && !player.vehicle) {
+            n.say(R.pick(LINES.panchero), 3);
+            n.cool = R.range(9, 16);
+          }
         }
       } else if (n.type === 'medias') {
         want = this.wanderHome(n, 3, 0.7);
