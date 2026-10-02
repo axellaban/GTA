@@ -15,7 +15,7 @@ import { Crime } from './crime.js';
 import { Events } from './events.js';
 import { Trains } from './trains.js';
 import { Hud } from './hud.js';
-import { lightMat, tailMat, brakeMat, paintMat, repairCar, makeFerrucho, setUnderglow } from './cars.js';
+import { lightMat, tailMat, brakeMat, paintMat, repairCar, makeFerrucho, setUnderglow, loadQCars } from './cars.js';
 import { CAR_COLORS, makeCar } from './vehicles.js';
 import { loadGaspiPhoto, updateHumanLod } from './human.js';
 import { Sky } from './sky.js';
@@ -189,6 +189,8 @@ player.setSpawn(spawnPoint());
 loadGaspiPhoto();
 const traffic = new Traffic(scene, audio);
 traffic.populate(city, player);
+// autos de artista (Quaternius, CC0): se mezclan con los clásicos cuando terminan de cargar
+loadQCars().then(() => traffic.mixArtistCars(player));
 const nav = new Nav(traffic.graph);
 const npcs = new Npcs(scene, city, traffic.graph, heightAt, audio);
 npcs.populate(player);

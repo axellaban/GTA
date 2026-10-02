@@ -163,7 +163,17 @@ eso caminaban sin mover las piernas (lo reportó el dueño: "se arrastra"). `q_s
 la mano: se sacó con `tools/models/sinarma.mjs`. ✅ Chicas del Ferrucho (`makeGirl('fiesta')`,
 vestido de `qf_formal`) y del gym (`makeGirl('gym')`, top y calzas sobre `qf_casual`), con los colores
 de su look; cambian al cargar (`Laban.upgrade`, `Gym.upgrade`). La pintura acepta una función de la
-altura (pelo y zapatos tienen el mismo color en el original). Falta: autos de artista.
+altura (pelo y zapatos tienen el mismo color en el original). ✅ Autos de artista: "Realistic Car Pack"
+de Quaternius (CC0; quaternius.com/packs/cars.html, carpeta de Drive con `gdown --folder`). Se usan 5
+(sedán, compacto, SUV y dos deportivos; el taxi y el patrullero yanquis no). `tools/models/qcars.mjs
+<carpeta OBJ> public/models/vehicles/qcars.glb` los junta en un GLB (escala real, más altos ×1,08 y
+angostos ×0,93, frente a +z; mallas `paint`, `glass`, `detail`, `lights`, `tail` y una `wheel`; en
+`extras` dónde va cada rueda). `loadQCars` en `src/cars.js` los carga (suaviza la chapa con
+`toCreasedNormals`) y `makeCar('q_sedan'...)` arma uno con el mismo `userData` que los nuestros (sin
+puerta ni capó; vidrio opaco porque no tienen interior). Si no cargaron, `makeCar` cae en el Duna.
+`Traffic.randomCar` saca uno de cada cuatro moderno y `Traffic.mixArtistCars` (lo llama `main.js` al
+cargar) cambia el 30 % de los comunes ya armados (`Vehicle.reshape`), lejos de la cámara. Manejo en
+`stats` de `src/player.js`. Prueba: `pj6.html` (fila de autos; `?cam=x,y,z&rot=`; copiar de la sesión, no se sube).
 
 **R13 — ✅ Autos con más onda** (`src/cars.js`): vidrios polarizados que dejan ver tablero, volante y
 butacas (`glassMat` transparente; interior en `detailGeo`); espejos con brazo; el capó suelto solo se ve
@@ -395,11 +405,12 @@ CC0 con animaciones, autos que se abollan (`dentCar`), changas de paramédico y 
 5. ✅ Tres misiones más (`src/missions.js`): la recaudación del Turco (motochorros), el Roca de las seis
    (escaparse de la cana en tren) y la proteína de Ciro (ida y vuelta a una dietética; `ciroPeace`
    evita que Ciro pelee mientras dura).
-Lo que espera al dueño: relevamiento cargado (JSON) y red para Quaternius / Overpass (ver §7).
+Lo que espera al dueño: relevamiento cargado (JSON) (ver §7).
 
 ## 7. Preguntas abiertas para el dueño
 
-1. ¿Habilita en el entorno `quaternius.com`, `kenney.nl`, `opengameart.org`, `poly.pizza` y
-   `overpass-api.de`, o sube él los archivos?
+1. ✅ Red habilitada (2026-10-02). Andan: quaternius.com, drive.google.com, kenney.nl, opengameart.org,
+   polyhaven.com y api.polyhaven.com, ambientcg.com, overpass.kumi.systems y maps.mail.ru. No andan:
+   poly.pizza (403; su API pide clave) ni overpass-api.de.
 2. ✅ Dirección del gym: Rivadavia 321 (sacada de sus redes oficiales).
 3. Cuando cargue el relevamiento, subir el JSON exportado (o pasarlo) para integrarlo.

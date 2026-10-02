@@ -222,6 +222,10 @@ Además hay 13 vecinos y vecinas de [Quaternius](https://quaternius.com) (Ultima
 
 Los perros también son un modelo CC0 de Mesh2Motion, con animaciones de verdad (quieto, caminar, correr, ladrar) y distintos tonos de pelo, y el caballo del carro del cartonero también.
 
+## Autos de artista (0.24)
+
+Entre los clásicos hechos por código (Duna, Falcon, Gol, 504...) ahora andan autos modernos del [Realistic Car Pack de Quaternius](https://quaternius.com/packs/cars.html) (CC0): un sedán, un compacto, una SUV y dos deportivos. Son uno de cada cuatro en el tránsito y algunos de los estacionados, con el color del auto al azar, la chapa con laca, vidrios polarizados, ruedas que giran y doblan, abolladuras, luces de freno y el mismo nivel de detalle por distancia que los demás. Los deportivos tiran más y la SUV es más pesada. `tools/models/qcars.mjs` arma `public/models/vehicles/qcars.glb` desde los OBJ del pack (escala real, piso en 0, frente a +z y las partes separadas); unos 3.000 triángulos por auto.
+
 ## Gym El Kaiser (0.13)
 
 Box de CrossFit en su dirección real, **Rivadavia 321** (a unas cuatro cuadras de la estación; ícono en el mapa). El lote se reserva en `src/map.js` (`GYM_LOT`) y las huellas de Overture que lo pisaban no se levantan: galpón negro con el portón levantado, el cartel del lobo arriba y el mismo logo en la pared del fondo, racks rojos, discos, cajones y kettlebells. Adentro entrenan los musculosos (dominadas, sentadilla y press) y El Kaiser te recibe en la puerta. Si les pegás, se defienden, y aguantan más que un vecino.
@@ -253,6 +257,7 @@ Box de CrossFit en su dirección real, **Rivadavia 321** (a unas cuatro cuadras 
 | `src/rescue.js` | Changas de paramédico y bombero (ambulancia y autobomba) |
 | `src/laban.js` | Laban the Creator y su Ferrucho descapotable |
 | `src/models.js` | Modelos bajados de internet (ambulancia y autobomba de Kenney, CC0) |
+| `public/models/vehicles/qcars.glb` | Autos modernos de Quaternius (CC0), los carga `loadQCars` en `src/cars.js` |
 | `src/palms.js` | Palmeras de las plazas (instanciadas) |
 | `src/stunts.js` | Rampas y saltos insólitos con cámara lenta |
 | `src/gym.js` | Gym El Kaiser: galpón, cartel, racks y los musculosos entrenando |

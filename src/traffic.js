@@ -2,13 +2,15 @@
 import { ROADS, HALF } from './map.js';
 import { makeCar, makeBus, makeMoto, makeTruck, makeCarro, CAR_COLORS } from './vehicles.js';
 import { ANIMALS, makeAnimal, animalPlay } from './people.js';
-import { repairCar, tailMat, brakeMat, carLod } from './cars.js';
+import { repairCar, tailMat, brakeMat, carLod, QMODELS } from './cars.js';
 import * as THREE from 'three';
 import { makeHuman, animateHuman, randomCivilian } from './human.js';
 import { R } from './rng.js';
 import { carEffects } from './carfx.js';
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+// los del montón, que pueden pasar a ser un auto de artista
+const COMMON = new Set(['duna', 'gol', 'falcon', 'p504', 'pickup']);
 
 export class Vehicle {
   constructor(mesh, x, z, heading) {
@@ -38,6 +40,23 @@ export class Vehicle {
       u.chassis = c;
     }
     this.sync(0);
+  }
+  // cambia de carrocería (cuando llegan los autos de artista): mismo lugar, misma IA
+  reshape(mesh) {
+    const old = this.mesh;
+    old.parent?.add(mesh);
+    old.parent?.remove(old);
+    mesh.visible = old.visible;
+    this.mesh = mesh;
+    const u = mesh.userData;
+    this.kind = u.kind;
+    this.model = u.model;
+    this.tall = u.tall;
+    this.L = u.L;
+    this.W = u.W;
+    this.sus = null;
+    this.sync(0);
+    if (this.parked) this.settle();
   }
   get fx() {
     return Math.sin(this.heading);
@@ -260,9 +279,23 @@ export class Traffic {
   }
 
   // un auto del parque automotor del conurbano
+  // (y, cuando cargaron, los modernos de artista: uno de cada cuatro)
   randomCar() {
-    const model = R.pick(['duna', 'duna', 'gol', 'gol', 'gol', 'falcon', 'p504', 'p504', 'fiat600', 'pickup', 'pickup', 'remis', 'taxi', 'trafic', 'trafic']);
+    const model = QMODELS.length && R.chance(0.25) ? R.pick(QMODELS) : R.pick(['duna', 'duna', 'gol', 'gol', 'gol', 'falcon', 'p504', 'p504', 'fiat600', 'pickup', 'pickup', 'remis', 'taxi', 'trafic', 'trafic']);
     return makeCar(model, R.pick(CAR_COLORS), { tune: 0.22 });
+  }
+  // los autos de artista cargan después de armar el tránsito: algunos comunes pasan a ser de esos
+  mixArtistCars(player) {
+    if (!QMODELS.length) return 0;
+    let n = 0;
+    for (const v of [...this.cars, ...this.parked]) {
+      if (v.keep || v.wreck || v.damage || v === player.vehicle || !COMMON.has(v.model) || v.mesh.userData.tuned || !R.chance(0.3)) continue;
+      // que no cambie delante de la cámara
+      if (v.mesh.visible && Math.hypot(v.x - player.x, v.z - player.z) < 70) continue;
+      v.reshape(makeCar(R.pick(QMODELS), R.pick(CAR_COLORS)));
+      n++;
+    }
+    return n;
   }
   randomMoto() {
     const delivery = R.chance(0.45);

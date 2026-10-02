@@ -2,7 +2,8 @@
 // El perfil lateral se extruye a lo ancho con bordes redondeados; pintura con laca (clearcoat),
 // vidrios polarizados y cromados que reflejan el cielo, llantas de revolución con rayos.
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { mergeGeometries, toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { BoxBuilder } from './builder.js';
 import { Mesher, loft } from './body.js';
 
@@ -472,16 +473,21 @@ function makeHood(m, paint) {
 }
 
 // las cuatro ruedas del modelo juntas (las de la izquierda espejadas, con la cara para afuera)
+// dónde va cada rueda (x, y del eje, z): delanteras primero, las que doblan
+function wheelSpots(M) {
+  if (M.wheelPos) return M.wheelPos;
+  const { W, L, wheelR } = M.m;
+  return [
+    [-W / 2 + 0.12, wheelR, L / 2 - 0.82],
+    [W / 2 - 0.12, wheelR, L / 2 - 0.82],
+    [-W / 2 + 0.12, wheelR, -L / 2 + 0.82],
+    [W / 2 - 0.12, wheelR, -L / 2 + 0.82],
+  ];
+}
 function farWheels(M) {
   if (M.farWheels) return M.farWheels;
-  const { W, L, wheelR } = M.m;
   const parts = [];
-  for (const [x, z] of [
-    [-W / 2 + 0.12, L / 2 - 0.82],
-    [W / 2 - 0.12, L / 2 - 0.82],
-    [-W / 2 + 0.12, -L / 2 + 0.82],
-    [W / 2 - 0.12, -L / 2 + 0.82],
-  ]) {
+  for (const [x, y, z] of wheelSpots(M)) {
     const g = M.wheelGeo.clone();
     if (x < 0) {
       g.scale(-1, 1, 1);
@@ -499,7 +505,7 @@ function farWheels(M) {
         }
       }
     }
-    parts.push(g.translate(x, wheelR, z));
+    parts.push(g.translate(x, y, z));
   }
   M.farWheels = mergeGeometries(parts);
   return M.farWheels;
@@ -611,8 +617,12 @@ function tuneCar(g, M, u, rnd) {
 
 // tune: probabilidad de que salga tuneado (el tránsito y las picadas lo piden; la cana y las misiones no)
 export function makeCar(model = 'duna', color = 0xd8d4c8, { parked = false, tune = 0 } = {}) {
+  if (model.startsWith('q_')) {
+    if (QCARS[model]) return makeQCar(model, color);
+    model = 'duna';
+  }
   const M = buildModel(model);
-  const { L, W, wheelR } = M.m;
+  const { L, W } = M.m;
   const g = new THREE.Group();
   const paintColor = model === 'remis' || model === 'taxi' ? 0x151515 : model === 'patrullero' ? 0x1d3f8c : color;
   const body = new THREE.Mesh(M.paintGeo, paintMat(paintColor));
@@ -637,14 +647,9 @@ export function makeCar(model = 'duna', color = 0xd8d4c8, { parked = false, tune
     chassis.add(doors);
   }
   const wheels = [];
-  for (const [x, z] of [
-    [-W / 2 + 0.12, L / 2 - 0.82],
-    [W / 2 - 0.12, L / 2 - 0.82],
-    [-W / 2 + 0.12, -L / 2 + 0.82],
-    [W / 2 - 0.12, -L / 2 + 0.82],
-  ]) {
+  for (const [x, y, z] of wheelSpots(M)) {
     const w = new THREE.Mesh(M.wheelGeo, wheelMat);
-    w.position.set(x, wheelR, z);
+    w.position.set(x, y, z);
     // la llanta mira para afuera de cada lado
     if (x < 0) w.scale.x = -1;
     w.castShadow = true;
@@ -680,6 +685,72 @@ export function makeCar(model = 'duna', color = 0xd8d4c8, { parked = false, tune
 // el Ferrucho (descapotable o no), rojo por defecto
 export function makeFerrucho(color = 0xc8102e, { convertible = false } = {}) {
   return makeCar(convertible ? 'ferrucho_open' : 'ferrucho', color);
+}
+
+// ---------- Autos de artista: "Realistic Car Pack" de Quaternius (CC0) ----------
+// Sedán, compacto, SUV y dos deportivos modernos que se mezclan en el tránsito con los clásicos
+// hechos por código. Vienen en un solo GLB (tools/models/qcars.mjs) ya a escala, con la chapa, los
+// vidrios, los detalles, las luces y una rueda en mallas separadas. Sin interior: vidrio polarizado.
+const QCARS = {};
+export const QMODELS = [];
+const qGlassMat = glassMat.clone();
+qGlassMat.transparent = false;
+qGlassMat.opacity = 1;
+qGlassMat.color.set(0x05080b);
+qGlassMat.envMapIntensity = 1.1;
+let qLoad = null;
+const CREASE = (38 * Math.PI) / 180;
+export function loadQCars() {
+  qLoad ??= new GLTFLoader()
+    .loadAsync('models/vehicles/qcars.glb')
+    .then((gltf) => {
+      for (const node of gltf.scene.children) {
+        const parts = {};
+        // el cargador numera los nombres repetidos (paint, paint_1...)
+        for (const c of node.children) if (c.isMesh) parts[c.name.replace(/_\d+$/, '')] = c.geometry;
+        const { wheels, wheelR, size } = node.userData;
+        if (!parts.paint || !parts.wheel || !wheels) continue;
+        // la chapa del pack es facetada: normales suaves salvo en los quiebres marcados (la laca refleja parejo)
+        parts.paint = toCreasedNormals(parts.paint, CREASE);
+        QCARS[node.name] = { parts, wheelPos: wheels, wheelGeo: parts.wheel, m: { W: size[0], roof: size[1], L: size[2], wheelR } };
+        QMODELS.push(node.name);
+      }
+    })
+    .catch(() => {});
+  return qLoad;
+}
+function makeQCar(model, color) {
+  const Q = QCARS[model];
+  const { L, W, roof } = Q.m;
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(Q.parts.paint, paintMat(color));
+  body.userData.paint = true;
+  const glass = new THREE.Mesh(Q.parts.glass ?? new THREE.BufferGeometry(), qGlassMat);
+  const detail = new THREE.Mesh(Q.parts.detail ?? new THREE.BufferGeometry(), detailMat);
+  const lights = new THREE.Mesh(Q.parts.lights ?? new THREE.BufferGeometry(), lightMat);
+  const tail = new THREE.Mesh(Q.parts.tail ?? new THREE.BufferGeometry(), tailMat);
+  for (const o of [body, glass, detail]) {
+    o.castShadow = true;
+    o.receiveShadow = true;
+  }
+  const chassis = new THREE.Group();
+  chassis.add(body, glass, detail, lights, tail);
+  g.add(chassis);
+  const wheels = [];
+  for (const [x, y, z] of Q.wheelPos) {
+    const w = new THREE.Mesh(Q.wheelGeo, wheelMat);
+    w.position.set(x, y, z);
+    if (x < 0) w.scale.x = -1;
+    w.castShadow = true;
+    g.add(w);
+    wheels.push(w);
+  }
+  const wheelsFar = new THREE.Mesh(farWheels(Q), wheelMat);
+  wheelsFar.visible = false;
+  g.add(wheelsFar);
+  // los detalles (paragolpes, molduras, parrilla) son grandes: se ven también de lejos
+  g.userData = { L, W, wheels, kind: 'car', model, tall: roof + 0.05, body, shiny: detail, glass, glassMat: qGlassMat, chassis, tail, door: null, doorway: null, hood: null, wheelsFar, lodParts: [] };
+  return g;
 }
 
 // ---------- Abolladuras (como en Vice City): la chapa se hunde donde pegó ----------
@@ -807,14 +878,14 @@ export function looseBumper(w) {
 export function repairCar(v) {
   const u = v.mesh.userData;
   if (!u.dented) {
-    if (u.glass && u.glass.material === crackedGlass) u.glass.material = glassMat;
+    if (u.glass && u.glass.material === crackedGlass) u.glass.material = u.glassMat ?? glassMat;
     return;
   }
   u.body.geometry.dispose();
   u.shiny.geometry.dispose();
   u.body.geometry = u.geo0.body;
   u.shiny.geometry = u.geo0.shiny;
-  u.glass.material = glassMat;
+  u.glass.material = u.glassMat ?? glassMat;
   u.dented = false;
   u.lostF = u.lostR = false;
   u.hitF = u.hitR = 0;

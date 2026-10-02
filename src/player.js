@@ -22,6 +22,9 @@ function stats(v) {
   if (v.model === 'ambulance') return { acc: 7, vmax: 31, rev: 4, turn: 1.7, grip: 8.5, brake: 14 };
   if (v.model?.startsWith('ferrucho')) return { acc: 15, vmax: 47, rev: 5, turn: 2.2, grip: 10.5, brake: 19 };
   if (v.model === 'falcon' || v.model === 'patrullero') return { acc: 9.5, vmax: 33, rev: 5, turn: 1.9, grip: 7.5, brake: 15 };
+  // los modernos de artista: los deportivos tiran más, la SUV es más pesada
+  if (v.model === 'q_coupe' || v.model === 'q_sport') return { acc: 12, vmax: 39, rev: 5, turn: 2.1, grip: 9.5, brake: 17 };
+  if (v.model === 'q_suv') return { acc: 8, vmax: 31, rev: 5, turn: 1.75, grip: 8, brake: 14 };
   return { acc: 8.5, vmax: 30, rev: 5, turn: 2.0, grip: 8.5, brake: 15 };
 }
 
