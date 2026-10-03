@@ -53,6 +53,7 @@ import { Races } from './races.js';
 import { Missions, makeMarker } from './missions.js';
 import { Matanzas, DEFS as MATANZAS } from './matanzas.js';
 import { Uver } from './uver.js';
+import { buildTower, Heli } from './heli.js';
 
 setupInstall();
 
@@ -265,6 +266,11 @@ world.missions = missions;
 const matanzas = new Matanzas(scene, npcs);
 world.matanzas = matanzas;
 world.uver = uver;
+// las torres de Temperley: escalera desde el callejón, terraza y helicóptero
+const tower = buildTower(scene, city);
+const heli = new Heli(scene, tower);
+world.tower = tower;
+world.heli = heli;
 world.transit = transit;
 world.streetName = nearestStreetName;
 world.save = () => saveGame();
@@ -828,8 +834,16 @@ function interactions() {
     hud.prompt(null);
     return;
   }
-  // a bordo del plato volador el cartel lo pone src/ufo.js
+  // a bordo del plato volador (o del helicóptero) el cartel lo pone src/ufo.js (src/heli.js)
   if (player.ufo) return;
+  if (heli.near(player)) {
+    hud.prompt('F', 'Subirte al helicóptero');
+    if (input.hit('f')) {
+      input.pressed.delete('f');
+      heli.board(world);
+    }
+    return;
+  }
   if (ufo.canSteal && !player.vehicle) {
     hud.prompt('F', ufo.state === 'parked' ? 'Subir al plato volador' : 'Robar el plato volador');
     return;
@@ -1190,6 +1204,7 @@ function frame(now) {
   races.update(dt, world);
   matanzas.update(dt, world);
   uver.update(dt, world);
+  heli.update(dt, world);
   crime.update(dt, world);
   police.update(dt, world);
   events.update(dt, world);

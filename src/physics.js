@@ -6,6 +6,13 @@
 export function walkwayHeight(walkways, x, z, y) {
   let best = -Infinity;
   for (const w of walkways || []) {
+    // terraza: un piso plano con la forma del edificio ({ ring, box, y0 })
+    if (w.ring) {
+      const b = w.box;
+      if (x < b.x0 || x > b.x1 || z < b.z0 || z > b.z1 || w.y0 > y + 0.7 || w.y0 <= best) continue;
+      if (inRing(x, z, w.ring)) best = w.y0;
+      continue;
+    }
     const dx = w.bx - w.ax;
     const dz = w.bz - w.az;
     const l2 = dx * dx + dz * dz;
@@ -19,6 +26,26 @@ export function walkwayHeight(walkways, x, z, y) {
     if (h <= y + 0.7 && h > best) best = h;
   }
   return best;
+}
+function inRing(x, z, r) {
+  let inside = false;
+  for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
+    const [xi, zi] = r[i];
+    const [xj, zj] = r[j];
+    if (zi > z !== zj > z && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) inside = !inside;
+  }
+  return inside;
+}
+// piso de una terraza con la forma del edificio
+export function roofWalkway(ring, y) {
+  const box = { x0: Infinity, x1: -Infinity, z0: Infinity, z1: -Infinity };
+  for (const [x, z] of ring) {
+    box.x0 = Math.min(box.x0, x);
+    box.x1 = Math.max(box.x1, x);
+    box.z0 = Math.min(box.z0, z);
+    box.z1 = Math.max(box.z1, z);
+  }
+  return { ring, box, y0: y, y1: y };
 }
 const CELL = 8;
 

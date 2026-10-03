@@ -77,6 +77,7 @@ export class Npcs {
     for (const r of this.routes) r.ok = r.ends.every((e) => heightAt(e.foot.x, e.foot.z) < 0.5 && !this.colliders.resolveCircle({ x: e.foot.x, z: e.foot.z }, 0.35));
     this.wb = { x0: Infinity, x1: -Infinity, z0: Infinity, z1: -Infinity };
     for (const w of this.walkways) {
+      if (w.ring) continue;
       this.wb.x0 = Math.min(this.wb.x0, w.ax - 3, w.bx - 3);
       this.wb.x1 = Math.max(this.wb.x1, w.ax + 3, w.bx + 3);
       this.wb.z0 = Math.min(this.wb.z0, w.az - 3, w.bz - 3);

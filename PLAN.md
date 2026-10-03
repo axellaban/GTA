@@ -325,6 +325,18 @@ subir caminando, NPC y autos chocan), paradas de colectivo (poste y refugio: par
 parantes), canastos de basura (poste), contenedores (`boxCollider`: caja girada como 4 paredes) y
 postes de la catenaria (`src/props.js`). Al sumar algo sólido nuevo: registrarle su colisión.
 
+**R26 — ✅ Torres de Temperley: escalera y helicóptero** (pedido del dueño). `src/heli.js`:
+`buildTower` toma la torre (h > 35, en H) más cerca de la estación; la "pared del callejón" es la arista
+cuyo frente (0,8 y 3,3 m) queda fuera del anillo pero dentro de su caja (el patio entre alas), la más
+cercana al centro. Escalera en zigzag: 2 carriles (0,95 y 2,35 m de la pared), tramos con
+`city.walkways` (pendiente ≤ 0,62) y descansos que cruzan los carriles; barandas `add3d` desde 1,2 m (abajo
+se entra por debajo). Terraza: `roofWalkway(ring, H)` (nuevo en `src/physics.js`: `walkwayHeight` acepta
+`{ ring, box, y0 }`) y parapeto de 1 m menos en la pared de la escalera. Helipuerto en el punto más
+lejos de los bordes. `Heli` usa el mismo enchufe que el OVNI (`P.ufo = heli`: `player.update` llama
+`fly`, la cámara y el HUD lo tratan igual); `floorAt` = calle o terraza del edificio (`destroy.buildingAt`);
+solo te bajás donde hay piso caminable. El ruido va por `world.heliVol` (lo mezcla `police.update`).
+La torre está protegida en `Destroy.protectedBuilding`.
+
 **R11 — Pruebas en celu real**: el dueño prueba en iPhone/Android y manda capturas; se ajusta.
 
 **R12 — Acercarse al look del video de Higgsfield** (Gaspi de traje y corbata roja en una vereda a lo

@@ -447,7 +447,8 @@ export class Police {
     let near = Infinity;
     for (const v of this.cars) if (v.mode === 'chase' || v.mode === 'stop') near = Math.min(near, Math.hypot(v.x - P.x, v.z - P.z));
     audio.sirena(near < 150 ? 1 - near / 150 : 0);
-    audio.helicoptero(this.heli ? Math.max(0, 1 - Math.hypot(this.heli.x - P.x, this.heli.z - P.z) / 120) * 0.6 : 0);
+    // (también suena el helicóptero de las torres si lo prendiste: src/heli.js)
+    audio.helicoptero(Math.max(world.heliVol || 0, this.heli ? Math.max(0, 1 - Math.hypot(this.heli.x - P.x, this.heli.z - P.z) / 120) * 0.6 : 0));
   }
 
   // pistola; con 5 estrellas la metra; los gendarmes (6 estrellas) bajan con ametralladora
