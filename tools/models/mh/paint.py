@@ -269,4 +269,49 @@ def repaint(clo, P, Wv, names, spec, size=1024):
             noise = 1 + (rng.random((size, size)) - 0.5) * 0.06
             new = col * (sh * noise)[..., None]
         out[m2] = new[m2]
+    for rc in spec.get('recolor', []):
+        out = recolor(out, rc)
     return Image.fromarray((np.clip(out, 0, 1) ** (1 / 2.2) * 255).astype(np.uint8)), ftop
+
+
+def recolor(lin, rc):
+    """Cambia el color de lo saturado dentro de un rectángulo de la textura (fracciones x0, y0, x1, y1),
+    conservando la luz: la corbata azul a rayas del traje pasa a roja a rayas."""
+    size = lin.shape[0]
+    x0, y0, x1, y1 = (int(v * size) for v in rc['box'])
+    reg = lin[y0:y1, x0:x1]
+    srgb = reg ** (1 / 2.2)
+    mx, mn = srgb.max(2), srgb.min(2)
+    sat = (mx - mn) / np.maximum(mx, 1e-4)
+    m = np.clip((sat - rc.get('min_sat', 0.12)) / 0.15, 0, 1)
+    lum = reg @ [0.2126, 0.7152, 0.0722]
+    col = hexrgb(rc['to']) ** 2.2
+    ref = col @ [0.2126, 0.7152, 0.0722]
+    new = col * np.clip(lum / max(ref, 1e-4) * rc.get('gain', 1.0), 0, 3)[..., None]
+    lin = lin.copy()
+    lin[y0:y1, x0:x1] = reg * (1 - m[..., None]) + np.clip(new, 0, 1) * m[..., None]
+    return lin
+
+
+def pad(img, clo, n=24):
+    """Corre el color de cada pieza hacia el fondo de la textura (n píxeles a 2048): al achicarla y con
+    el mipmap, los bordes (cuello de la camisa, puños) no se manchan con el fondo oscuro."""
+    size = 1024
+    big = img.size[0]
+    T = clo['T']
+    tris = []
+    for f, ft in zip(clo['F'], clo['FT']):
+        for k in range(1, len(f) - 1):
+            tris.append([T[ft[0]], T[ft[k]], T[ft[k + 1]]])
+    uvpx = np.array(tris) * size
+    uvpx[..., 1] = size - uvpx[..., 1]
+    _, m = raster_tris(uvpx, np.zeros((len(tris), 3, 1), np.float32), size)
+    mode = img.mode
+    arr = np.asarray(img.convert('RGBA').resize((size, size), Image.LANCZOS), np.float32) / 255
+    full = np.asarray(img.convert('RGBA'), np.float32) / 255
+    grown, m2 = dilate(arr, erode(m, 1), max(1, n * size // 2048))
+    # solo se toca el fondo: lo de adentro queda con la resolución original
+    up = np.asarray(Image.fromarray((grown * 255).astype(np.uint8)).resize((big, big), Image.BILINEAR), np.float32) / 255
+    inside = np.asarray(Image.fromarray(m.astype(np.uint8) * 255).resize((big, big), Image.NEAREST)) > 0
+    out = np.where(inside[..., None], full, up)
+    return Image.fromarray((out * 255).astype(np.uint8)).convert(mode if mode in ('RGB', 'RGBA') else 'RGBA')

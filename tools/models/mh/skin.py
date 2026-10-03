@@ -33,17 +33,72 @@ def body_faces(C):
     return _geo
 
 
-def cavity(C, V, size=2048, strength=1.0):
-    """Multiplicador (size × size) para la textura de piel: < 1 en los huecos, un poco > 1 en lo saliente."""
-    F, FT, T = body_faces(C)
-    nv = len(V)
-    # normales por vértice
+def vertex_normals(V, F):
     a, b, c, d = (V[F[:, k]] for k in range(4))
     fn = np.cross(c - a, d - b)
     N = np.zeros_like(V)
     for k in range(4):
         np.add.at(N, F[:, k], fn)
-    N /= np.linalg.norm(N, axis=1, keepdims=True) + 1e-12
+    return N / (np.linalg.norm(N, axis=1, keepdims=True) + 1e-12)
+
+
+def photo(C, V, skin, spec, eye_y, chin_y, head_uv):
+    """Pega una foto de frente (la cara de Gaspi) en la textura de la piel: cada texel de la cabeza se
+    proyecta de frente sobre la foto, alineando ojos y mentón; pesa más donde la cara mira para adelante
+    y se funde con el alfa de la foto. El resto de la piel toma el tono de la foto."""
+    from PIL import Image
+    F, FT, T = body_faces(C)
+    size = skin.shape[0]
+    N = vertex_normals(V, F)
+    uv = T[FT]
+    x0, y0, x1, y1 = head_uv
+    sel = ((uv[..., 0] >= x0) & (1 - uv[..., 1] >= y0) & (1 - uv[..., 1] <= y1)).all(1)
+    uvpx = uv[sel] * [size, size]
+    uvpx[..., 1] = size - uvpx[..., 1]
+    vals = np.concatenate([V[F[sel]], N[F[sel]]], axis=2).astype(np.float32)
+    tris = np.concatenate([uvpx[:, [0, 1, 2]], uvpx[:, [0, 2, 3]]])
+    tv = np.concatenate([vals[:, [0, 1, 2]], vals[:, [0, 2, 3]]])
+    img, m = raster_tris(tris, tv, size)
+    pos, nrm = img[..., :3], img[..., 3:]
+    nrm = nrm / (np.linalg.norm(nrm, axis=2, keepdims=True) + 1e-9)
+    # de la malla (dm) a la caja de la foto (m): ojos y mentón donde los espera
+    k = (spec['eye_y'] - spec['chin_y']) / ((eye_y - chin_y) * 0.1)
+    px = pos[..., 0] * 0.1 * k
+    py = spec['eye_y'] + (pos[..., 1] - eye_y) * 0.1 * k
+    ph = np.asarray(Image.open(spec['file']).convert('RGBA'), np.float32) / 255
+    H, W = ph.shape[:2]
+    fx = (px - spec['x0']) / (spec['x1'] - spec['x0']) * W - 0.5
+    fy = (spec['y1'] - py) / (spec['y1'] - spec['y0']) * H - 0.5
+    ix = np.clip(np.floor(fx).astype(int), 0, W - 2)
+    iy = np.clip(np.floor(fy).astype(int), 0, H - 2)
+    ax = np.clip(fx - ix, 0, 1)[..., None]
+    ay = np.clip(fy - iy, 0, 1)[..., None]
+    smp = ph[iy, ix] * (1 - ax) * (1 - ay) + ph[iy, ix + 1] * ax * (1 - ay) + ph[iy + 1, ix] * (1 - ax) * ay + ph[iy + 1, ix + 1] * ax * ay
+    inside = (fx >= 0) & (fx < W - 1) & (fy >= 0) & (fy < H - 1)
+    front = np.clip((nrm[..., 2] - 0.3) / 0.4, 0, 1)
+    # nada por debajo del mentón (ahí la foto tiene el saco y la sombra del cuello)
+    below = np.clip((py - (spec['chin_y'] - 0.004)) / 0.012, 0, 1)
+    w = smp[..., 3] * front * m * inside * below
+    w = w * w * (3 - 2 * w)
+    lin = skin ** 2.2
+    pc = np.clip(smp[..., :3], 0, 1)
+    g = pc.mean(2, keepdims=True)
+    pc = g + (pc - g) * spec.get('sat', 1.0)
+    plin = np.clip(pc * spec.get('gain', 1.0), 0, 1) ** 2.2
+    # tono: la piel entera se lleva al de la foto (medido en el centro de la cara)
+    core = w > 0.85
+    if core.sum() > 50:
+        ratio = plin[core].mean(0) / np.maximum(lin[core].mean(0), 1e-4)
+        lin = lin * np.clip(ratio, 0.6, 1.6)
+    out = lin * (1 - w[..., None]) + plin * w[..., None]
+    return np.clip(out, 0, 1) ** (1 / 2.2)
+
+
+def cavity(C, V, size=2048, strength=1.0):
+    """Multiplicador (size × size) para la textura de piel: < 1 en los huecos, un poco > 1 en lo saliente."""
+    F, FT, T = body_faces(C)
+    nv = len(V)
+    N = vertex_normals(V, F)
     # vecinos (aristas de los cuadriláteros)
     E = np.concatenate([F[:, [0, 1]], F[:, [1, 2]], F[:, [2, 3]], F[:, [3, 0]]])
     E = np.concatenate([E, E[:, ::-1]])

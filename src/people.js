@@ -1,8 +1,9 @@
 // Personas con modelo de artista: los vecinos, la policía y los clientes salen de MakeHuman (CC0,
 // makehumancommunity.org): cuerpo, cara, piel, ropa y pelo armados con tools/models/mh (build.py +
 // pack.mjs), cada uno con su cara y su ropa (camisetas de Banfield, Temperley, Boca, River…), ~5.000
-// triángulos y una textura de 1024. El SWAT es de Mesh2Motion (elbolilloduro, CC0) y Gaspi, Laban, Ciro y
-// las chicas de Quaternius (Ultimate Modular Men y Women, CC0; tools/models/quat.mjs).
+// triángulos y una textura de 1024. Gaspi también (con la cara de la foto). El SWAT es de Mesh2Motion
+// (elbolilloduro, CC0) y Laban, Ciro y las chicas de Quaternius (Ultimate Modular Men y Women, CC0;
+// tools/models/quat.mjs).
 // Se cargan una vez; cada persona es un clon animado con nuestras poses (src/rig.js).
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -19,7 +20,7 @@ const SETS = {
   police: ['mh_policia', 'mh_policia_f'],
   swat: ['swat_male'],
   // solo para Gaspi, Laban, Ciro y las chicas (makeStar, makeGirl): no salen como vecinos al azar
-  stars: ['q_suit', 'q_beach', 'qf_formal', 'qf_casual'],
+  stars: ['mh_gaspi', 'q_suit', 'q_beach', 'qf_formal', 'qf_casual'],
 };
 
 // Ropa de otro color para cada vecino: se gira el tono de lo que está saturado y no es piel
@@ -222,15 +223,9 @@ export function makePerson(kind) {
 // de src/gaspi.webp: enderezada y con borde suave); Laban lleva sombrero y anteojos negros, y Ciro es
 // el doble de alto y más ancho de hombros y brazos.
 const STARS = {
-  gaspi: {
-    file: 'q_suit',
-    height: 1.84,
-    // piel, pelo, saco, pantalón, camisa, corbata (la de la foto es roja)
-    paint: { '9d6b3d': 0xe39a82, '110702': 0x4a3120, '040507': 0x26282d, '040404': 0x1d1f23, '757575': 0xf4f4f4, '11141a': 0xc8102e, '0c0906': 0xe39a82, '080503': 0xe39a82 },
-    // las cejas del modelo (pelo sobre la cara) también van color piel
-    brows: 0xe39a82,
-    face: true,
-  },
+  // MakeHuman (tools/models/mh, 'mh_gaspi'): traje negro, camisa blanca, corbata roja a rayas y la cara de
+  // la foto horneada en la textura de la cabeza (src/gaspi-face.webp)
+  gaspi: { file: 'mh_gaspi', height: 1.84, hair: 'oscuro' },
   laban: {
     file: 'q_suit',
     height: 1.8,
@@ -397,7 +392,10 @@ function dress(st, key, star = key) {
   h.star = star;
   h.tall = st.height + 0.5; // donde va el globito de lo que dice
   h.rig.model.traverse((o) => {
-    if (o.isMesh) o.geometry = paintGeometry(key, o.geometry, st.paint, st.brows);
+    if (!o.isMesh) return;
+    // los de MakeHuman traen todo en la textura: solo se fija el color del pelo (gris neutro en el atlas)
+    if (/^mh_/.test(st.file)) o.material = tintMH(o.material, 0, 1, 1, [1, 1, 1], MH_HAIR[st.hair ?? 'oscuro']);
+    else o.geometry = paintGeometry(key, o.geometry, st.paint, st.brows);
   });
   if (st.bulk) {
     h.rig.model.scale.x *= st.bulk;

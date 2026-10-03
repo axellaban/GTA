@@ -408,9 +408,17 @@ personajes", iterar con capturas). En curso. Hecho:
   (antes se dibujaban todos los vecinos aunque estuvieran atrás de la cámara). `src/npcs.js`: los vecinos
   hechos por código antes de que cargaran los modelos pasan a uno de a poco cuando están a más de 35 m
   (`n.plain`). `world.people` expone `PEOPLE`, `makePerson` y `animateHuman` para las pruebas.
+- Gaspi (`mh_gaspi`, `STARS.gaspi` en `src/people.js`): traje de `male_elegantsuit01` con la corbata
+  pasada a roja (`recolor` en `paint.py`: lo saturado de un rectángulo de la textura, conservando la luz),
+  sin cejas de malla y con la cara de `src/gaspi-face.webp` horneada en la piel (`photo` en `skin.py`:
+  cada texel de la cabeza se proyecta de frente; ojos = hueso `eye.L`, mentón = punta de `jaw`; pesa por
+  la normal, el alfa de la foto y nada debajo del mentón; la piel entera toma el tono de la foto).
+- Detalles: `pad` en `paint.py` corre el color de cada pieza de ropa hacia el fondo de la textura (los
+  bordes del cuello y los puños no se manchan al achicar); el cuerpo se esconde solo donde la ropa lo tapa
+  entero (con "algún vértice tapado" se abrían agujeros en el cuello).
 Falta (en orden): gorra/insignia de la cana y SWAT propio; chicos (MakeHuman con edad ~12), trapitos,
-panchero, linyera, borrachos, bandas y zombis con el elenco (hoy siguen hechos por código); Gaspi con la
-cara de la foto horneada en la textura de la cabeza, Laban, Ciro y las chicas; LOD lejano.
+panchero, linyera, borrachos, bandas y zombis con el elenco (hoy siguen hechos por código); Laban, Ciro y
+las chicas; LOD lejano.
 Prueba: casting en el escenario (800, 800) mirando al este a las 9:30 (`mhcast.mjs` del scratchpad:
 fila de cuerpo entero, caras y primer plano).
 

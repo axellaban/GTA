@@ -14,8 +14,9 @@ import numpy as np
 from PIL import Image, ImageFilter
 
 from cast import CAST
-from paint import classify, repaint
+from paint import classify, pad, repaint
 from skin import cavity
+from skin import photo as photo_bake
 
 HERE = Path(__file__).resolve().parent
 C = HERE / 'cache'
@@ -460,11 +461,11 @@ def build(name, spec):
     sex = 'female' if spec['gender'] < 0.5 else 'male'
     px = read_clo(C / 'proxymeshes' / spec.get('proxy', 'female1605' if sex == 'female' else 'male1591') / ('%s.proxy' % spec.get('proxy', 'female1605' if sex == 'female' else 'male1591')))
     P = fit(px, V)
-    # un vértice del cuerpo se esconde si el de la malla base que más pesa quedó tapado; una cara
-    # se esconde si tiene alguno escondido (así la piel no asoma por la ropa al moverse)
+    # un vértice del cuerpo se esconde si el de la malla base que más pesa quedó tapado; una cara se
+    # esconde si quedó tapada entera (con "alguno tapado" se abrían agujeros en el cuello y los puños)
     main = px['refs'][np.arange(len(px['refs'])), np.argmax(px['w'], 1)]
     hid = deleted[main]
-    keep = np.array([not any(hid[v] for v in f) for f in px['F']])
+    keep = np.array([not all(hid[v] for v in f) for f in px['F']])
     pos, uv, wts, tris = part_mesh(px, P, clo_weights(px, W), keep)
     # la cara va a su zona ampliada del atlas; el resto del cuerpo a la de piel
     inhead = (uv[:, 0] >= HEAD[0]) & (1 - uv[:, 1] >= HEAD[1]) & (1 - uv[:, 1] <= HEAD[3])
@@ -479,6 +480,14 @@ def build(name, spec):
     # sombra de las cavidades (ojos, nariz, boca, orejas, dedos) horneada en la piel
     cv = cavity(C, V, skin.size[0], spec.get('cavity', 1.3))
     lin = (np.asarray(skin, np.float32) / 255) ** 2.2 * cv[..., None]
+    if spec.get('photo'):
+        # una cara de verdad (Gaspi): ojos y mentón medidos en el esqueleto (hueso del ojo y punta de la mandíbula)
+        sk = skeleton_src()[0]
+        joint = lambda j: V[sk['joints'][j]].mean(0)
+        eye_y = joint(sk['bones']['eye.L']['head'])[1]
+        chin_y = joint(sk['bones']['jaw']['tail'])[1]
+        ph = dict(spec['photo'], file=str(HERE.parents[2] / spec['photo']['file']))  # desde la raíz del repo
+        lin = photo_bake(C, V, np.clip(lin, 0, 1) ** (1 / 2.2), ph, eye_y, chin_y, HEAD) ** 2.2
     skin = Image.fromarray((np.clip(lin, 0, 1) ** (1 / 2.2) * 255).astype(np.uint8))
     paste(atlas, skin, 'skin')
     paste(atlas, skin, 'head', HEAD)
@@ -511,7 +520,7 @@ def build(name, spec):
                     for fi in np.nonzero(sel)[0]:
                         kv[clo['F'][fi]] = 2
             parts[-1] = parts[-1][:6] + (kv[part_mesh.src],)
-        paste(atlas, img, slot)
+        paste(atlas, pad(img, clo), slot)
 
     # ---- pelo, cejas, pestañas, ojos
     def acc(path, slot, part, tex=None):
@@ -524,7 +533,8 @@ def build(name, spec):
 
     if spec.get('hair'):
         acc(C / 'hair' / spec['hair'] / (spec['hair'] + '.mhclo'), 'hair', 3)
-    acc(C / 'eyebrows' / spec.get('brows', 'eyebrow001') / (spec.get('brows', 'eyebrow001') + '.mhclo'), 'brows', 3)
+    if spec.get('brows', 'eyebrow001'):  # con foto de la cara, las cejas son las de la foto
+        acc(C / 'eyebrows' / spec.get('brows', 'eyebrow001') / (spec.get('brows', 'eyebrow001') + '.mhclo'), 'brows', 3)
     acc(C / 'eyelashes' / spec.get('lashes', 'eyelashes01') / (spec.get('lashes', 'eyelashes01') + '.mhclo'), 'lashes', 0)
     acc(C / 'eyes/low-poly/low-poly.mhclo', 'eyes', 0, C / 'eyes/materials/brown_eye.png')
 

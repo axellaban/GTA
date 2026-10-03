@@ -33,7 +33,7 @@ CAST = {
                      clothes=['male_casualsuit02', 'shoes05'], paint={'male_casualsuit02': {'top': RIVER, 'bottom': NEGRO}}),
     'mh_pibe': dict(M, age=0.46, muscle=0.45, weight=0.35, height=0.5, seed=11, skin='young_lightskinned_male_diffuse2', hair='short02',
                     clothes=['male_casualsuit04', 'shoes05'], paint={'male_casualsuit04': {'top': ARGENTINA, 'bottom': JEAN}}),
-    'mh_laburante': dict(M, extras=OSCURO, age=0.68, muscle=0.6, weight=0.65, seed=5, ethnic=MORENO, skin='middleage_darkskinned_male', hair='short02',
+    'mh_laburante': dict(M, extras=OSCURO, tint=False, age=0.68, muscle=0.6, weight=0.65, seed=5, ethnic=MORENO, skin='middleage_darkskinned_male', hair='short02',
                          clothes=['male_worksuit01', 'shoes01']),
     'mh_oficinista': dict(M, age=0.66, muscle=0.45, weight=0.55, height=0.6, seed=6, skin='middleage_lightskinned_male', hair='short01',
                           clothes=['male_elegantsuit01', 'shoes04']),
@@ -71,4 +71,11 @@ CAST = {
                        clothes=['male_casualsuit02', 'shoes04'], paint={'male_casualsuit02': {'top': POLICIA, 'bottom': AZUL}}),
     'mh_policia_f': dict(F, age=0.56, muscle=0.6, weight=0.45, cup=0.55, seed=32, skin='young_lightskinned_female', hair='ponytail01',
                          clothes=['female_casualsuit01', 'shoes04'], paint={'female_casualsuit01': {'top': POLICIA, 'bottom': AZUL}}),
+    # ---------------- Gaspi (el protagonista): traje negro, camisa blanca, corbata roja a rayas y la cara de
+    # la foto (src/gaspi-face.webp: la caja de la cara en metros, con los ojos y el mentón donde están)
+    'mh_gaspi': dict(M, age=0.56, muscle=0.5, weight=0.62, height=0.8, seed=99, variety=0.25, skin='young_lightskinned_male',
+                     hair='short02', brows=None, clothes=['male_elegantsuit01', 'shoes04'],
+                     paint={'male_elegantsuit01': {'recolor': [{'box': (0.35, 0.075, 0.42, 0.19), 'to': '#c8102e'}]}},
+                     photo={'file': 'src/gaspi-face.webp', 'eye_y': 1.70, 'chin_y': 1.565, 'x0': -0.13, 'x1': 0.13, 'y0': 1.545, 'y1': 1.835, 'sat': 0.78, 'gain': 1.06},
+                     extras={'hair': ['oscuro']}),
 }
