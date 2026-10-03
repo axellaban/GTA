@@ -332,7 +332,15 @@ function streetSigns(scene, colliders) {
 }
 
 // ---------- Paradas de colectivo ----------
-function busStops(scene, rng) {
+// caja girada como 4 paredes (para que los autos choquen contra algo con forma)
+function boxCollider(colliders, x, z, w, d, rot, h, kind) {
+  const c = Math.cos(rot);
+  const s = Math.sin(rot);
+  const pt = (a, b) => [x + a * c + b * s, z - a * s + b * c];
+  return colliders.addRing([pt(-w / 2, -d / 2), pt(w / 2, -d / 2), pt(w / 2, d / 2), pt(-w / 2, d / 2)], h, kind);
+}
+
+function busStops(scene, rng, colliders) {
   const c = document.createElement('canvas');
   c.width = 128;
   c.height = 192;
@@ -362,6 +370,7 @@ function busStops(scene, rng) {
     const x = nr.x - nr.dz * off * side;
     const z = nr.z + nr.dx * off * side;
     F.box(0.08, 2.6, 0.08, 0x9aa0a4, x, 1.3, z);
+    colliders?.addCircle(x, z, 0.08, 2.6, 'post');
     signs.push({ x, y: 2.35, z, rot: Math.atan2(nr.dx, nr.dz) + Math.PI / 2 });
     if (rng.chance(0.5)) {
       const ux = nr.dx;
@@ -375,6 +384,9 @@ function busStops(scene, rng) {
       F.rbox(3.2, 2.3, 0.06, 0x7fa9b8, bx + nx * 0.6, 1.25, bz + nz * 0.6, rot);
       F.rbox(2.6, 0.08, 0.4, 0x444444, bx + nx * 0.35, 0.6, bz + nz * 0.35, rot);
       for (const k of [-1.5, 1.5]) F.box(0.07, 2.4, 0.07, 0x555555, bx + ux * k - nx * 0.6, 1.25, bz + uz * k - nz * 0.6);
+      // el refugio: la pared de atrás y los dos parantes de adelante
+      colliders?.addSegment(bx + nx * 0.6 - ux * 1.6, bz + nz * 0.6 - uz * 1.6, bx + nx * 0.6 + ux * 1.6, bz + nz * 0.6 + uz * 1.6, 2.4, 'wall');
+      for (const k of [-1.5, 1.5]) colliders?.addCircle(bx + ux * k - nx * 0.6, bz + uz * k - nz * 0.6, 0.06, 2.4, 'post');
     }
   }
   scene.add(F.mesh());
@@ -419,6 +431,7 @@ function baskets(scene, city, rng) {
   const bag = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.2, 0), new THREE.MeshLambertMaterial({ color: 0x151618, flatShading: true }), full.length);
   let j = 0;
   list.forEach(([x, z, f], i) => {
+    city.colliders.addCircle(x, z, 0.1, 1.5, 'post');
     place(post, i, x, 0.15 + 0.52, z);
     place(basket, i, x, 0.15 + 1.2, z, rng.range(0, 0.3));
     if (f) place(bag, j++, x, 0.15 + 1.25, z, 0, 1.2, 0.9, 1);
@@ -438,6 +451,7 @@ function containers(scene, city, rng) {
     placed.push(c);
     const rot = Math.atan2(-Math.cos(c.heading), Math.sin(c.heading));
     F.rbox(1.8, 1.15, 1.1, 0x2f6b3a, c.x, 0.72, c.z, rot);
+    boxCollider(city.colliders, c.x, c.z, 1.8, 1.1, rot, 1.4, 'container');
     F.rbox(1.86, 0.08, 1.16, 0x245530, c.x, 1.33, c.z, rot);
     F.rbox(1.82, 0.06, 1.12, 0xdcdcdc, c.x, 0.55, c.z, rot);
   }
@@ -543,7 +557,7 @@ function rooftops(scene, city, rng) {
 }
 
 // ---------- Catenaria del Roca ----------
-function catenary(scene) {
+function catenary(scene, colliders) {
   const F = new FastBoxes();
   const wire = [];
   const H = 5.6;
@@ -567,6 +581,7 @@ function catenary(scene) {
         const mx = ax + nx * 2.6;
         const mz = az + nz * 2.6;
         F.box(0.22, 6.8, 0.22, 0x5f6a70, mx, 3.4, mz);
+        colliders?.addCircle(mx, mz, 0.14, 6.8, 'column');
         F.box(Math.abs(nx) > 0.5 ? 2.8 : 0.1, 0.1, Math.abs(nx) > 0.5 ? 0.1 : 2.8, 0x5f6a70, (mx + ax) / 2, 6.3, (mz + az) / 2);
       }
     }
@@ -618,9 +633,9 @@ export class BlobShadows {
 export function buildProps(scene, city) {
   const rng = new Rng(2024);
   streetSigns(scene, city.colliders);
-  busStops(scene, rng);
+  busStops(scene, rng, city.colliders);
   baskets(scene, city, rng);
   containers(scene, city, rng);
   rooftops(scene, city, rng);
-  catenary(scene);
+  catenary(scene, city.colliders);
 }

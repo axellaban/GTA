@@ -318,6 +318,13 @@ si no hay autos en el medio (`clear`). Frena al lado (`ai.hold`), toca bocina y 
 costado del auto); a los 14 s → `ransom` (30 % de la plata, mín. $5.000, lo larga a 300–480 m, +2 h).
 Si te alejás más de 28 m o te busca la cana, se va. Si le robás el auto, queda como uno más.
 
+**R25 — ✅ Cosas que los autos atravesaban** (reporte del dueño: "los andenes son como invisibles"). Toda
+colisión es a mano (`Colliders`), así que lo que no se registra es fantasma. Ahora: andenes
+(`addRing(rings[0], 1.1, 'platform')` en `addStation`; Gaspi a pie los ignora en `collide` para poder
+subir caminando, NPC y autos chocan), paradas de colectivo (poste y refugio: pared de atrás y
+parantes), canastos de basura (poste), contenedores (`boxCollider`: caja girada como 4 paredes) y
+postes de la catenaria (`src/props.js`). Al sumar algo sólido nuevo: registrarle su colisión.
+
 **R11 — Pruebas en celu real**: el dueño prueba en iPhone/Android y manda capturas; se ajusta.
 
 **R12 — Acercarse al look del video de Higgsfield** (Gaspi de traje y corbata roja en una vereda a lo

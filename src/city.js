@@ -955,6 +955,8 @@ function addStation(scene, colliders, city) {
     g.rotateX(-Math.PI / 2);
     pg.push(ni(g));
   }
+  // los andenes son un escalón de 1,1 m: los autos se frenan contra el borde (a pie se suben igual)
+  for (const rings of D.platforms) if (rings[0]?.length > 2) colliders.addRing(rings[0], 1.1, 'platform');
   if (pg.length) {
     const pm = new THREE.Mesh(mergeGeometries(pg), concrete);
     pm.receiveShadow = true;

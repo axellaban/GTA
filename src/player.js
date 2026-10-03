@@ -757,7 +757,8 @@ export class Player {
     const airborne = this.y > this.groundAt() + 0.6;
     // las barandas del puente frenan solo arriba; abajo, las paredes comunes (y no las de más bajas que uno)
     const y = this.y;
-    colliders.resolveCircle(p, this.r, (b) => (b.y0 ? y > b.y0 - 0.6 && y < b.h : y < 1 || y < b.h - 0.3) && (!airborne || b.h > 1.3));
+    // (al andén se sube caminando: su borde solo frena a los autos)
+    colliders.resolveCircle(p, this.r, (b) => b.kind !== 'platform' && (b.y0 ? y > b.y0 - 0.6 && y < b.h : y < 1 || y < b.h - 0.3) && (!airborne || b.h > 1.3));
     const cars = traffic.all().concat(police.cars, world.tanks?.list ?? []);
     for (const v of cars) {
       if (Math.abs(v.x - p.x) > 8 || Math.abs(v.z - p.z) > 8) continue;
