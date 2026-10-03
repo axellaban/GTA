@@ -35,6 +35,7 @@ import { Gangs } from './gangs.js';
 import { Barrio } from './barrio.js';
 import { Aura } from './aura.js';
 import { Andenes } from './andenes.js';
+import { CasaClau } from './clau.js';
 import { Garages } from './garage.js';
 import { Destroy } from './destroy.js';
 import { Tanks } from './tank.js';
@@ -488,6 +489,9 @@ world.aura = aura;
 // gente en los andenes: espera, sube y baja del Roca
 const andenes = new Andenes(npcs, interiors, city, trains);
 world.andenes = andenes;
+// la casa de Clau: truco en la terraza con los amigos
+const clau = new CasaClau(scene, city);
+world.clau = clau;
 // casas que se derrumban y el tanque del Ejército (6 estrellas)
 const destroy = new Destroy(scene, city);
 world.destroy = destroy;
@@ -946,6 +950,7 @@ function interactions() {
   if (!action) action = transit.action(world);
   if (!action) action = uver.action(world);
   if (!action) action = tobogan.action(world);
+  if (!action) action = clau.action(world);
   const car = player.nearestVehicle(world);
   if (action) hud.prompt('E', action.text);
   else if (car) {
@@ -1035,6 +1040,8 @@ function speakers() {
   if (cielo.bubble) add(cielo.fortPos.x, 420 + 2.5, cielo.fortPos.z, cielo.bubble, false, { key: 41 });
   if (uver.bubble && uver.v) add(uver.v.x, 2.3, uver.v.z, uver.bubble, true, { key: 23 });
   if (laban.bubble && laban.v) add(laban.v.x, 2.3, laban.v.z, laban.bubble, false, { female: laban.bubble.female, key: laban.bubble.female ? 31 : 17 });
+  const ct = clau.talker();
+  if (ct) add(ct.x, ct.y, ct.z, ct.b, false, { key: ct.key });
   // la gente del corte canta
   for (const e of events.list) {
     if (e.leaving || dist(e) > 30) continue;
@@ -1223,6 +1230,7 @@ function frame(now) {
   npcs.update(dt, world);
   interiors.update(dt, world);
   andenes.update(dt, world);
+  clau.update(dt, world);
   races.update(dt, world);
   matanzas.update(dt, world);
   uver.update(dt, world);

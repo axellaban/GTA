@@ -1267,6 +1267,35 @@ function poseHuman(h, dt, speed, pose = 'walk', t = 0) {
     b.head.rotation.x = 0.3;
     return;
   }
+  if (pose === 'truco' || pose === 'guitar') {
+    // sentado en una silla de plástico: jugando al truco (las cartas en las manos, cada tanto tira una a la
+    // mesa) o tocando la guitarra (la izquierda en el mástil, la derecha rasguea). t: reloj en segundos
+    b.hips.position.y = 0.42;
+    b.thR.rotation.set(-1.45, 0, -0.06);
+    b.thL.rotation.set(-1.4, 0, 0.08);
+    b.shR.rotation.x = 1.35;
+    b.shL.rotation.x = 1.42;
+    b.spine.rotation.x = 0.16;
+    if (pose === 'truco') {
+      const cyc = t % 7.5;
+      const th = cyc > 5.6 && cyc < 6.6 ? Math.sin(((cyc - 5.6) / 1) * Math.PI) : 0;
+      b.uaL.rotation.set(-0.72, 0, -0.3);
+      b.faL.rotation.x = -1.35;
+      b.uaR.rotation.set(-0.72 - 0.45 * th, 0, 0.3 - 0.1 * th);
+      b.faR.rotation.x = -1.35 + 0.95 * th;
+      b.spine.rotation.x = 0.2 + 0.12 * th;
+      b.head.rotation.set(0.32 - 0.12 * th + Math.sin(t * 0.7) * 0.04, Math.sin(t * 0.31) * 0.25, 0);
+    } else {
+      const st = Math.sin(t * 9);
+      b.uaL.rotation.set(-0.85, 0.2, -0.75);
+      b.faL.rotation.x = -1.15;
+      b.uaR.rotation.set(-0.35, 0, 0.42);
+      b.faR.rotation.x = -1.55 + st * 0.18;
+      b.head.rotation.set(0.25 + Math.sin(t * 1.8) * 0.06, -0.3, Math.sin(t * 0.9) * 0.08);
+      b.chest.rotation.y = 0.12;
+    }
+    return;
+  }
   if (pose === 'cower') {
     // agachado con las manos en la cabeza
     b.hips.position.y = 0.55;
@@ -1500,6 +1529,15 @@ function poseHuman(h, dt, speed, pose = 'walk', t = 0) {
     b.faL.rotation.x = -1.3;
     b.uaR.rotation.set(-1.1 + Math.sin(h.phase * 0.8) * 0.15, 0, 0.1);
     b.faR.rotation.x = -0.6;
+  } else if (pose === 'cradle') {
+    // a upa: los dos brazos acunando (Martín con los mellizos), meciéndose de un pie al otro
+    const rock = Math.sin(h.phase * 1.6);
+    b.uaR.rotation.set(-0.62, 0, 0.42);
+    b.uaL.rotation.set(-0.62, 0, -0.42);
+    b.faR.rotation.x = b.faL.rotation.x = -1.75;
+    b.chest.rotation.z = rock * 0.05;
+    b.hips.position.x += rock * 0.02;
+    b.head.rotation.set(0.38, rock * 0.15, 0);
   } else if (pose === 'film') {
     // filmando con el celu: las dos manos adelante a la altura de la cara, siguiendo lo que pasa
     const g = t * 0.7;

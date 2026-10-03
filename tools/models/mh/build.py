@@ -579,7 +579,8 @@ def build(name, spec):
     for clo, slot in [(c, 'clothes') for c in big] + [(c, 'shoes') for c in shoes] + [(c, 'extra') for c in hats]:
         P = fit(clo, V)
         pos, uv, wts, tris = part_mesh(clo, P, clo_weights(clo, W))
-        parts.append((slot, clo['name'], pos, to_atlas(uv, slot), wts, tris, 2 if slot == 'clothes' else 0))
+        # 8: sombrero (el juego lo puede pintar: el de Laban amarillo en la casa de Clau)
+        parts.append((slot, clo['name'], pos, to_atlas(uv, slot), wts, tris, 2 if slot == 'clothes' else 8 if slot == 'extra' else 0))
         paint = spec.get('paint', {}).get(clo['key'], {})
         if paint.get('colorize'):
             # todo de un color conservando la luz (el sombrero blanco de Laban)
@@ -605,6 +606,12 @@ def build(name, spec):
             ex['fixed'] = {'top': bool(paint.get('top', {}).get('fixed')) or not spec.get('tint', True),
                            'bottom': not paint.get('bottom', {}).get('tint', False)}
             ex['lum'] = garment_lum(img, clo, top)
+        if slot == 'extra':
+            # luminancia media del sombrero (para pintarlo de otro color conservando las sombras)
+            a = np.asarray(img.convert('RGBA'), np.float32) / 255
+            m = a[..., 3] > 0.5
+            ex = spec['extras'] = dict(spec.get('extras', {}))
+            ex['lum'] = dict(ex.get('lum', {}), hat=round(float(((a[..., :3] ** 2.2) @ [0.2126, 0.7152, 0.0722])[m].mean()), 4) if m.any() else 0.5)
         paste(atlas, pad(img, clo), slot)
 
     # ---- pelo, cejas, pestañas, ojos

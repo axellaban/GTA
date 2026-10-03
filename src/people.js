@@ -99,9 +99,11 @@ function tintMH(material, ud, o) {
       uFix: { value: new THREE.Vector2(fixed.top ? 1 : 0, fixed.bottom ? 1 : 0) },
       uLum: { value: new THREE.Vector2(Math.max(0.02, lum.top), Math.max(0.02, lum.bottom)) },
       uScalp: { value: o.scalp === false ? 0 : 1 },
+      uHat: { value: v4(o.hat) },
+      uHatLum: { value: Math.max(0.05, lum.hat ?? 0.5) },
     });
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nattribute float _part;\nvarying vec4 vPart;\nvarying float vHairK;')
+      .replace('#include <common>', '#include <common>\nattribute float _part;\nvarying vec4 vPart;\nvarying vec2 vHairK;')
       .replace(
         '#include <begin_vertex>',
         // una parte por vértice y pesos interpolados (con _part interpolado, entre el torso 2 y la manga 5
@@ -111,17 +113,17 @@ function tintMH(material, ud, o) {
           float p = floor(_part + 0.5);
           float torso = 1.0 - step(0.5, abs(p - 2.0));
           vPart = vec4(1.0 - step(0.5, abs(p - 1.0)), torso, torso + 1.0 - step(0.5, abs(p - 5.0)), 1.0 - step(0.5, abs(p - 6.0)));
-          vHairK = 1.0 - step(0.5, abs(p - 3.0)) + 1.0 - step(0.5, abs(p - 7.0));
+          vHairK = vec2(1.0 - step(0.5, abs(p - 3.0)) + 1.0 - step(0.5, abs(p - 7.0)), 1.0 - step(0.5, abs(p - 8.0)));
         }`,
       );
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform vec3 uTint;\nuniform vec3 uSkin;\nuniform vec3 uHair;\nuniform vec4 uTop;\nuniform vec4 uVest;\nuniform vec4 uBottom;\nuniform vec2 uFix;\nuniform vec2 uLum;\nuniform float uScalp;\nvarying vec4 vPart;\nvarying float vHairK;\n' + TINT_GLSL)
+      .replace('#include <common>', '#include <common>\nuniform vec3 uTint;\nuniform vec3 uSkin;\nuniform vec3 uHair;\nuniform vec4 uTop;\nuniform vec4 uVest;\nuniform vec4 uBottom;\nuniform vec2 uFix;\nuniform vec2 uLum;\nuniform float uScalp;\nuniform vec4 uHat;\nuniform float uHatLum;\nvarying vec4 vPart;\nvarying vec2 vHairK;\n' + TINT_GLSL)
       .replace(
         '#include <color_fragment>',
         `#include <color_fragment>
         {
           float skin = vPart.x;
-          float hairK = vHairK; // pelo y cejas
+          float hairK = vHairK.x; // pelo y cejas
           float torso = vPart.y;
           float top = vPart.z;
           float bottom = vPart.w;
@@ -135,6 +137,7 @@ function tintMH(material, ud, o) {
           c = mix(c, uTop.rgb * min(lum / uLum.x, 2.5), top * uTop.a);
           c = mix(c, uVest.rgb * min(lum / uLum.x, 2.5), torso * uVest.a);
           c = mix(c, uBottom.rgb * min(lum / uLum.y, 2.5), bottom * uBottom.a);
+          c = mix(c, uHat.rgb * min(lum / uHatLum, 2.5), vHairK.y * uHat.a); // sombrero de otro color
           diffuseColor.rgb = mix(c, uHair * (lum / 0.18), hairK);
           // pelo pintado en la cabeza (el alfa de la piel: 1 piel … 0,55 pelo; build.py/scalp): del color del
           // pelo con un granulado fino, como el pelo corto de San Andreas. La piel queda opaca.
@@ -145,7 +148,7 @@ function tintMH(material, ud, o) {
         }`,
       );
   };
-  m.customProgramCacheKey = () => 'ropa-mh5';
+  m.customProgramCacheKey = () => 'ropa-mh6';
   m.userData.own = true; // de este personaje solo (disposeHuman lo libera)
   return m;
 }
@@ -237,8 +240,9 @@ function skinMul(hex) {
 }
 
 // Gaspi, Laban, Ciro o el Comandante (null si todavía no cargaron los modelos)
-export function makeStar(name) {
-  return dress(STARS[name], name);
+// over: cambia lo que haga falta (p. ej. el traje y el sombrero amarillos de Laban en la casa de Clau)
+export function makeStar(name, over = null) {
+  return dress(over ? { ...STARS[name], ...over } : STARS[name], name);
 }
 // Las chicas: 'fiesta' (las del Ferrucho de Laban, de vestido) o 'gym' (top y calzas).
 // o: { dress | shirt, pants, hair, skin }
@@ -257,7 +261,7 @@ function dress(st, star) {
   h.star = star;
   h.tall = st.height + 0.5; // donde va el globito de lo que dice
   // todo viene en la textura: solo se fijan el pelo (gris neutro en el atlas), la piel y la ropa pedida
-  const o = { hair: hairColor(st.hair), skin: st.skin, top: st.top, vest: st.vest, bottom: st.bottom, bald: st.bald };
+  const o = { hair: hairColor(st.hair), skin: st.skin, top: st.top, vest: st.vest, bottom: st.bottom, bald: st.bald, hat: st.hat };
   h.rig.model.traverse((m) => {
     if (m.isMesh) dressMesh(m, s.scene.userData, o);
   });

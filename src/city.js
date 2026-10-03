@@ -644,7 +644,7 @@ function addBuildings(scene, atlas, colliders, rng, city) {
       else roof.idx.push(base + i0, base + i2, base + i1);
     }
     if (pitched) gables.push({ ring, h, kind });
-    else if (kind !== 'estadio' && v % 20 < 11) {
+    else if (kind !== 'estadio' && !b.extra && v % 20 < 11) {
       let cx = 0;
       let cz = 0;
       for (const [x, z] of ring) {

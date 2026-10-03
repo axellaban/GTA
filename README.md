@@ -228,6 +228,10 @@ Como las misiones de ambulancia y bomberos de Vice City. La **ambulancia** está
 
 Como en Vice City, la chapa se hunde donde pega el golpe (choques, tiros, explosiones) y queda arrugada; con mucho daño se rompen los vidrios, sale humo del motor y al final se prende fuego. Chapa y pintura (o que el auto vuelva al tránsito) lo deja como nuevo.
 
+## La casa de Clau (0.37)
+
+Sobre Av. Eva Perón (la esquina real con Emilio Castro queda un poco afuera del mapa) está la casa de Clau, de dos pisos, con el cartel en el frente. En la terraza Clau, Pablo el alto, Ale con su vincha de call center y Laban el creador de traje y sombrero amarillos juegan al truco en una mesa de plástico; Gonza toca la guitarra, Martín acuna a los mellizos y Nico está con su caballo. Se sube con E en la puerta y en la mesa se puede jugar una mano.
+
 ## La estación con gente (0.36)
 
 El Roca viene lleno: se ve la gente parada y sentada detrás de las ventanillas. En los andenes espera gente yendo a trabajar (mucha más en hora pico), amontonada donde paran las puertas; cuando el tren para, suben, baja otra gente que camina hacia la estación y en la plaza se ve salir gente de la estación. Al andén ya no se sube caminando desde la calle: se entra a la estación y se pasa el molinete con la SUBE ($650, y con eso el tren no te cobra de nuevo) o te colás saltándolo, y si te ve el de seguridad tenés una estrella. Desde el andén se vuelve a entrar por la puerta de la estación y se sale libre por el molinete.
@@ -350,6 +354,7 @@ Box de CrossFit en su dirección real, **Rivadavia 321**, en la vereda de enfren
 | `src/motores.js` | Ruido de motor sintetizado: cilindros, cambios, carga, Doppler |
 | `src/moves.js` | Pelea y armas: guardia, golpes por fases, patada, reacción, apuntado con la cámara |
 | `src/andenes.js` | Gente en los andenes: espera, sube y baja del Roca, sale por la estación |
+| `src/clau.js` | La casa de Clau: terraza, truco y los amigos |
 | `src/aura.js` | Ronda de chicos farmeando aura en la plaza (turnos, puntaje, Gaspi baila) |
 | `src/fx.js` | Partículas, trazas, marcas de frenada, casquillos, agujeros de bala, restos de choque, lluvia y salpicaduras |
 | `src/carfx.js` | Escape, petardeos y rocío de los autos andando |

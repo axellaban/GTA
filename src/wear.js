@@ -138,3 +138,35 @@ export function wearChain(h) {
   (h.rig?.map?.neck ?? h.bones.neck).add(c);
   return c;
 }
+
+// vincha de call center (Ale): arco sobre la cabeza, los dos auriculares y el micrófono hasta la boca
+const BAND = new THREE.TorusGeometry(1, 0.06, 6, 16, Math.PI);
+const EARCUP = new THREE.CylinderGeometry(1, 1, 0.6, 12);
+export function wearHeadset(h) {
+  const m = headOf(h);
+  const g = new THREE.Group();
+  const black = mat(0x151515, 0.5);
+  const band = new THREE.Mesh(BAND, black);
+  band.scale.setScalar(m.rx + 0.012);
+  band.position.set(0, m.brow + 0.01, m.cz - 0.01);
+  band.rotation.y = Math.PI / 2;
+  g.add(band);
+  for (const s of [-1, 1]) {
+    const cup = new THREE.Mesh(EARCUP, black);
+    cup.scale.set(0.032, 0.03, 0.032);
+    cup.rotation.z = Math.PI / 2;
+    cup.position.set(s * (m.rx + 0.012), m.brow - 0.02, m.cz - 0.01);
+    g.add(cup);
+  }
+  // el micrófono: un caño fino desde el auricular izquierdo hasta delante de la boca
+  const boom = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.008, m.rz * 1.05), black);
+  boom.position.set(m.rx * 0.75, m.brow - 0.075, m.cz + m.rz * 0.42);
+  boom.rotation.y = -0.45;
+  g.add(boom);
+  const mic = new THREE.Mesh(BUTTON, black);
+  mic.scale.setScalar(0.014);
+  mic.position.set(m.rx * 0.3, m.brow - 0.08, m.cz + m.rz * 0.92);
+  g.add(mic);
+  g.name = 'vincha';
+  return onHead(h, g);
+}

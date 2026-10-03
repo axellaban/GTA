@@ -55,6 +55,28 @@ for (const e of REL.nuevos || []) {
   D.buildings.push({ r: e.ring, k: TIPO[e.tipo] ?? 'edificio', f: e.pisos ?? 1, v: 7, fr: [e.frente ?? 0], sb: [0], n: e.nombre ?? null, cat: null, rel: { rubro: e.rubro }, extra: e.extra ?? null });
 }
 
+// La casa de Clau (pedido del dueño): en Emilio Castro y Av. Eva Perón, que queda ~270 m al este del borde del
+// mapa; va en la casa de dos pisos sobre la avenida más cerca de esa esquina (src/clau.js)
+export const CLAU = { x: 584, z: 37 };
+{
+  let best = null;
+  let bd = Infinity;
+  for (const b of D.buildings) {
+    let x = 0;
+    let z = 0;
+    for (const p of b.r) {
+      x += p[0];
+      z += p[1];
+    }
+    const d = Math.hypot(x / b.r.length - CLAU.x, z / b.r.length - CLAU.z);
+    if (d < bd) {
+      bd = d;
+      best = b;
+    }
+  }
+  if (best && bd < 12) Object.assign(best, { k: 'casa', f: 2, v: 7, n: 'La casa de Clau', cat: null, extra: 'clau', rel: { fachada: '#f2d9b4' } });
+}
+
 // Negocios con nombre de OpenStreetMap (scripts/map/osm_pois.py -> src/data/osm.json): cada uno va a la
 // huella que lo contiene o a la más cercana con frente a la calle (a menos de 10 m). Pisan los nombres
 // de Overture, pero no lo cargado a mano en el relevamiento. Después, los lugares de Overture con

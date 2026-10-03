@@ -499,6 +499,19 @@ andén yendo a trabajar, y del la plaza al andén se entra a la estación y se p
   se sale libre. 8 personas pasan los molinetes todo el tiempo (`walkers`). `P.auto` (player.js): caminata
   guiada para pasar. Pruebas: `andenes.mjs`, `anddbg.mjs`, `bordeanden.mjs`.
 
+**R37 — ✅ La casa de Clau** (pedido del dueño: "Emilio Castro y Av. Eva Perón, casa de 2 pisos con terraza donde él
+y sus amigos juegan al truco"). La esquina real (OSM: Emilio Castro) queda ~270 m al este del borde del mapa
+(x ≈ 870, z ≈ -172): va en la casa de dos pisos sobre Eva Perón más cerca (`CLAU` en src/map.js marca esa
+huella con `extra: 'clau'`; city.js no le pone tanque genérico). `src/clau.js` (`CasaClau`): terraza con baldosas,
+baranda (`add3d`, `roofWalkway`), mesa redonda de plástico con cartas españolas, mazo, fernet, coca y mate,
+casilla de la escalera con tanque negro, soga con ropa y el cartel "LA CASA DE CLAU" en el frente. Gente (se
+arma con Gaspi a menos de 140 m): Clau, Pablo el alto (×1,2), Ale (vincha de call center: `wearHeadset` en
+wear.js) y Laban (`makeStar('laban', { top, bottom, hat })` amarillo: el sombrero ahora es la parte 8 del glb y
+el shader lo pinta con `uHat`) jugando ('truco'); Gonza con la guitarra ('guitar'); Martín con los mellizos
+('cradle'); Nico con el caballo (`makeAnimal('horse')`). Globitos y voces con frases de truco (`talker()` en
+`speakers` de main.js). E en la puerta: subir; E en la escalera: bajar; E en la mesa: jugar una mano (gana o
+pierde plata). Prueba: `clau.mjs`. Si se agranda el mapa, mover `CLAU` a la esquina real.
+
 **R11 — Pruebas en celu real**: el dueño prueba en iPhone/Android y manda capturas; se ajusta.
 
 **R12 — Acercarse al look del video de Higgsfield** (Gaspi de traje y corbata roja en una vereda a lo
