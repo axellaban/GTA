@@ -135,12 +135,13 @@ export class Post {
     this.grade.uniforms.resolution.value.set(w * this.renderer.getPixelRatio(), h * this.renderer.getPixelRatio());
   }
   // k: 0 de día, 1 de noche; dusk: 0..1 al atardecer
-  setMood(k, dusk, rain = 0) {
+  // clear: 0..1, día de sol sin atardecer ni lluvia (imagen más nítida, cálida y contrastada)
+  setMood(k, dusk, rain = 0, clear = 0) {
     if (!this.enabled) return;
-    // resplandor suave también de día (la "radiosidad" de la PS2)
+    // resplandor suave también de día (la "radiosidad" de la PS2); a pleno sol, menos (no lava la imagen)
     // (medido en celu: con más fuerza los neones, faros y fogatas se queman en manchas blancas)
-    this.bloom.strength = 0.24 + k * 0.34 + dusk * 0.12;
-    this.bloom.threshold = 0.9 - k * 0.18;
+    this.bloom.strength = 0.24 + k * 0.34 + dusk * 0.12 - clear * 0.08;
+    this.bloom.threshold = 0.9 - k * 0.18 + clear * 0.04;
     this.bloom.radius = 0.5 + k * 0.1;
     // estelas: de noche las luces dejan rastro; de día, casi nada
     this.trails.uniforms.damp.value = 0.55 + k * 0.25;
@@ -149,13 +150,14 @@ export class Post {
     // día: luces cálidas y sombras apenas azules; atardecer: más naranja; noche: todo más frío
     // al atardecer, un toque magenta (luces rosas y sombras violetas) como Vice City
     // filtro de color a lo Vice City: día dorado, atardecer rosa, noche azul violácea
-    u.gain.value.set(1.07 + dusk * 0.05 - k * 0.1, 1.01 - dusk * 0.05 - k * 0.04, 0.9 + dusk * 0.08 + k * 0.2);
+    u.gain.value.set(1.07 + dusk * 0.05 - k * 0.1 + clear * 0.035, 1.01 - dusk * 0.05 - k * 0.04 + clear * 0.012, 0.9 + dusk * 0.08 + k * 0.2 - clear * 0.035);
     u.lift.value.set(-0.012 - k * 0.01 + dusk * 0.012, 0.0 + k * 0.004, 0.022 + k * 0.03 + rain * 0.01 + dusk * 0.018);
     // al morir (o caer preso) la imagen se va a blanco y negro, como en GTA
     const w = this.wasted || 0;
-    u.saturation.value = 1.12 + dusk * 0.1 - k * 0.12 - rain * 0.15;
+    u.saturation.value = 1.12 + dusk * 0.1 - k * 0.12 - rain * 0.15 + clear * 0.06;
     u.gray.value = w;
-    u.contrast.value = 0.28 + dusk * 0.05 - k * 0.08 + w * 0.18;
+    u.contrast.value = 0.28 + dusk * 0.05 - k * 0.08 + clear * 0.1 + w * 0.18;
+    u.sharpen.value = this.q.sharpen * (1 + clear * 0.45);
     u.vignette.value = 0.3 + k * 0.25 + w * 0.5;
     u.time.value = performance.now() / 1000;
     const ao = 2.4 - k * 0.9;

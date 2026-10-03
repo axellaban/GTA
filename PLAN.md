@@ -305,7 +305,13 @@ GTA V; el video es IA pre-renderizada, no se puede generar así en tiempo real e
 2. Gaspi en 3D desde una imagen suya en pose A (Higgsfield `generate_3d`), simplificado a ≤ 5.000
    triángulos con textura de 1024 y animado con `src/rig.js` (hay que pesarle los huesos).
 3. Más texturas de foto CC0 en fachadas, veredas y asfalto (ya empezado: Poly Haven).
-4. Luz de día más nítida y cálida, sombras más definidas y menos bruma (gradeo en `src/post.js`).
+4. ✅ Luz de día más nítida y cálida, sombras más definidas y menos bruma (pedido del dueño). En
+   `updateTime` (`src/main.js`) hay un factor `clear` (día × sin atardecer × sin lluvia): con sol pleno
+   la bruma baja a la mitad (y la niebla lineal se aleja ~110 m), el sol pega más fuerte y más dorado y
+   el cielo rellena menos (sombras más oscuras). `Post.setMood(k, dusk, rain, clear)` sube contraste,
+   saturación y nitidez, calienta el gain y baja el bloom. Sombras con `PCFShadowMap` + `radius` 1,6
+   (borde definido; antes `PCFSoftShadowMap`) y caja de ±62 m (antes ±70: más resolución). Prueba:
+   capturas antes/después a las 10:30, 13 y 16 desde la vereda.
 
 **R12 — ✅ Rendimiento en la compu** (el dueño la notó lenta). Medido con un cuadro en la vereda de
 Meeks (`onBeforeRender`/`onBeforeShadow` por malla): antes 4,77 M triángulos y 1.057 dibujos por cuadro

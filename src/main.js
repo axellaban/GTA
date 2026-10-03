@@ -59,7 +59,8 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPrefere
 // las texturas dibujadas se suben apenas están listas y sueltan su lienzo (tope de memoria del iPhone)
 GPU.renderer = renderer;
 renderer.setSize(innerWidth, innerHeight);
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+// sombras de borde definido (PCF con un poco de radio, no la "soft" que las desparrama)
+renderer.shadowMap.type = THREE.PCFShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -78,12 +79,13 @@ const hemi = new THREE.HemisphereLight(0xdfeaf5, 0x5b5646, 1.2);
 scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xfff0d6, 2.4);
 const sc = sun.shadow.camera;
-sc.left = sc.bottom = -70;
-sc.right = sc.top = 70;
+sc.left = sc.bottom = -62;
+sc.right = sc.top = 62;
 sc.near = 10;
 sc.far = 400;
 sun.shadow.bias = -0.0006;
 sun.shadow.normalBias = 0.04;
+sun.shadow.radius = 1.6;
 scene.add(sun, sun.target);
 let post = null;
 let glows = null;
@@ -611,10 +613,12 @@ function updateTime(dt) {
   U.time.value += dt;
   U.sunColor.value.setHSL(0.1 - dusk * 0.1, 0.9, 0.62 - dusk * 0.05);
   scene.fog.color.copy(U.horizon.value).lerp(U.zenith.value, 0.15);
-  scene.fog.far = (280 + day * 230) * (1 - rain * 0.45);
-  scene.fog.near = scene.fog.far * 0.55;
+  // de día limpio se ve lejos (poca bruma); al atardecer y de noche vuelve la bruma
+  const clear = day * (1 - dusk) * (1 - rain);
+  scene.fog.far = (280 + day * 230 + clear * 110) * (1 - rain * 0.45);
+  scene.fog.near = scene.fog.far * (0.55 + clear * 0.1);
   // bruma: más espesa con lluvia y de noche; del lado del sol se pone dorada
-  ATMO.fogParams.value.set((0.0022 + (1 - day) * 0.0012 + rain * 0.005) * (1 + dusk * 0.4), 0.04, 0, 0);
+  ATMO.fogParams.value.set((0.0022 + (1 - day) * 0.0012 + rain * 0.005) * (1 + dusk * 0.4) * (1 - clear * 0.65), 0.04, 0, 0);
   ATMO.fogSunColor.value.copy(U.sunColor.value).multiplyScalar((0.3 + dusk * 1.1) * day * (1 - rain * 0.8));
   // la luz del sol viene de donde se ve el sol; de noche, de la luna
   const az = ((h - 6) / 24) * Math.PI * 2;
@@ -626,14 +630,15 @@ function updateTime(dt) {
   lightDir.normalize();
   // cuando el sol cruza el horizonte la luz se apaga un instante (sin saltos de sombra)
   const cross = THREE.MathUtils.smoothstep(Math.abs(elev), 0.0, 0.08);
-  sun.intensity = (0.35 + day * 2.9) * (1 - rain * 0.75) * cross;
-  sun.color.setHSL(0.085 - dusk * 0.045, 0.55 + dusk * 0.4, 0.74 - dusk * 0.12);
+  // sol de día más fuerte y cálido (y menos relleno del cielo): sombras marcadas, luz dorada
+  sun.intensity = (0.35 + day * 2.9 + clear * 0.9) * (1 - rain * 0.75) * cross;
+  sun.color.setHSL(0.085 - dusk * 0.045 - clear * 0.01, 0.55 + dusk * 0.4 + clear * 0.25, 0.74 - dusk * 0.12 - clear * 0.03);
   if (elev <= 0) sun.color.set(0x8fa8ff);
   // cielo: relleno azulado para que las sombras tengan color
-  hemi.intensity = (0.62 + day * 0.26) * (1 - rain * 0.1) + rain * day * 0.45 + weather.flash * 2.5;
+  hemi.intensity = (0.62 + day * 0.26 - clear * 0.24) * (1 - rain * 0.1) + rain * day * 0.45 + weather.flash * 2.5;
   hemi.color.copy(U.zenith.value).lerp(time.night ? nightFill : dayFill, 0.6);
   hemi.groundColor.set(time.night ? 0x2a2733 : 0x6b5e4c);
-  scene.environmentIntensity = 0.55 + day * 0.35;
+  scene.environmentIntensity = 0.55 + day * 0.35 - clear * 0.15;
   // la sombra cubre sobre todo lo que tenemos adelante, y se mueve de a un texel (sin temblequeo)
   camera.getWorldDirection(camFwd);
   camFwd.y = 0;
@@ -643,7 +648,7 @@ function updateTime(dt) {
   sun.target.position.copy(shadowCenter);
   sun.position.copy(shadowCenter).addScaledVector(lightDir, 220);
   sky.updateEnv(h, scene);
-  post?.setMood(1 - day, dusk, rain);
+  post?.setMood(1 - day, dusk, rain, clear);
   // faroles de sodio (con lluvia se prenden antes)
   const lit = day - rain * 0.3;
   const lampsOn = lit < 0.35;
