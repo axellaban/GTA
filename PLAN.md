@@ -444,6 +444,24 @@ comunidad de MakeHuman con licencia CC0).
 Prueba: casting en el escenario (800, 800) mirando al este a las 9:30 (`mhcast.mjs` del scratchpad:
 fila de cuerpo entero, caras y primer plano).
 
+**R33 — ✅ Sonido en el celu, motores y lentitud** (reporte del dueño: "anda lento en el celu", "se pone
+lento cuando empezás a jugar más", "el sonido no anda en el celu", "más potencia, mejores motores").
+- Lentitud que crecía: `swapHuman` le copiaba al modelo nuevo la marca `plainParts` del viejo y el
+  Comandante del cielo (`Cielo.update`) se rehacía en cada cuadro, anidado en el anterior. Se borra la
+  marca antes del cambio. Además `disposeHuman` (src/people.js) libera lo propio de cada personaje que se
+  va (textura de huesos, material teñido, mallas de los hechos por código: `forgetHuman` en human.js).
+  Prueba: `fuga.mjs` del scratchpad (4 min saltando por el mapa): memoria plana ~225 MB (antes 250 → 460).
+  `fuga3.mjs` dice qué raíces de la escena juntan mallas con esqueleto y quién las agregó.
+- Sonido en el iPhone: `navigator.audioSession.type = 'playback'` (suena con la llave de silencio),
+  `<audio>` mudo en bucle para Safari viejo y `resume()` en cada toque o al volver (src/audio.js).
+- Motores (`src/motores.js`): bucles sintetizados al arrancar (pulsos de escape por cilindro, desparejo,
+  ruido de combustión, golpeteo diésel, resonancias del caño), dos por motor (vueltas bajas y altas) que se
+  mezclan con el tono de las vueltas; la carga satura y abre el filtro. `Gearbox`: marchas, corte al
+  pasar de marcha, embrague que patina parado. Perfiles: `seis`, `cuatro`, `sport`, `diesel`, `moto`
+  (`motorOf(v)`). Suenan el del jugador (`v.throttle` y `v.vmax` desde `player.drive`/`tank.drive`) y los
+  3 autos o motos más cercanos con paneo y Doppler. Compresor al final. Prueba: `motor.mjs` (WAV con
+  OfflineAudioContext) y `spec.py` (espectro y cuánto cae en la banda del parlante del celu).
+
 **R11 — Pruebas en celu real**: el dueño prueba en iPhone/Android y manda capturas; se ajusta.
 
 **R12 — Acercarse al look del video de Higgsfield** (Gaspi de traje y corbata roja en una vereda a lo

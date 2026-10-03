@@ -228,6 +228,10 @@ Como las misiones de ambulancia y bomberos de Vice City. La **ambulancia** está
 
 Como en Vice City, la chapa se hunde donde pega el golpe (choques, tiros, explosiones) y queda arrugada; con mucho daño se rompen los vidrios, sale humo del motor y al final se prende fuego. Chapa y pintura (o que el auto vuelva al tránsito) lo deja como nuevo.
 
+## Motores y sonido en el celu (0.33)
+
+Cada auto suena a lo que es: el Falcon y el patrullero con un seis cilindros grueso, el Gol y el 504 con un cuatro, la Ferrari que grita arriba, el colectivo y el camión con su diésel y las motos de delivery con su 150. El motor sube de vueltas, pasa los cambios (se nota el corte), ruge a fondo y queda opaco al soltar. Los autos y motos que pasan cerca también se oyen, de un lado o del otro, y con el "ñeeeooo" al pasar. Todo sintetizado en el momento (no hay grabaciones). En el iPhone ahora suena aunque esté la llave de silencio.
+
 ## Personas con modelo de artista (0.20, rehecho en 0.32)
 
 Los vecinos, vecinas y la policía están hechos con [MakeHuman](http://www.makehumancommunity.org) (malla, morfos, esqueleto, pieles, pelo y ropa: todo CC0): cuerpos con proporciones reales, cada uno con su cara (nariz, mentón, ojos y orejas distintos), piel con las cavidades de la cara horneadas, pelo y ropa de verdad. Hay 22: hinchas con la camiseta de Banfield, Temperley, Boca, River y Argentina (rayas y franjas pintadas sobre la prenda, sin escudos), laburante de overol, oficinista de traje, gordo pelado, flaco, musculoso, jubilados y abuela, chicas de remera, short, deportiva o vestido, y la Bonaerense de camisa celeste. En la calle cada uno sale con la ropa de otro color, otro tono de piel y pelo negro, castaño, rubio o canoso. Se arman con `tools/models/mh/` (Python + meshoptimizer): ≤ 5.000 triángulos y una sola textura de 1024 (512 en el celular) por persona.
@@ -331,6 +335,7 @@ Box de CrossFit en su dirección real, **Rivadavia 321**, en la vereda de enfren
 | `src/races.js` | Picadas: carreras callejeras con aros y rivales |
 | `src/trains.js` | Trenes, barreras y pasos a nivel |
 | `src/radio.js`, `src/audio.js` | Radio y sonidos sintetizados |
+| `src/motores.js` | Ruido de motor sintetizado: cilindros, cambios, carga, Doppler |
 | `src/fx.js` | Partículas, trazas, marcas de frenada, casquillos, agujeros de bala, restos de choque, lluvia y salpicaduras |
 | `src/carfx.js` | Escape, petardeos y rocío de los autos andando |
 | `src/icons.js` | Íconos del mapa (dibujados por código) y la leyenda |
