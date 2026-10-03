@@ -1155,6 +1155,7 @@ function frame(now) {
   // durante una cinemática no se dibuja el juego (el video tapa todo y el celu descansa)
   if (CINE.playing) {
     last = now;
+    frame.prev = now;
     requestAnimationFrame(frame);
     return;
   }
@@ -1314,15 +1315,23 @@ window.claude?.hot?.snapshot?.(() => ({ money: player.money, respeto: player.res
 if (window.claude?.hot?.ready) window.claude.hot.ready(start);
 else start(window.claude?.hot?.data ?? {});
 
-// la intro (video de Gaspi hecho con Higgsfield) se ve la primera vez; después, desde la pausa
-const INTRO_KEY = 'gta-intro-visto';
-let introSeen = false;
-try {
-  introSeen = localStorage.getItem(INTRO_KEY) === 'si';
-} catch {
-  /* sin almacenamiento: se ve siempre */
-}
-const playIntro = () => playCine('cine/intro', { title: 'GASPI', sub: 'Temperley · Lomas de Zamora', poster: 'cine/intro.jpg' });
+// Presentación al tocar Jugar en cada sesión; también se puede repetir desde la pausa.
+// La versión evita que una instalación anterior conserve el video viejo en el caché.
+const INTRO_VERSION = 'gaspi-20261003';
+const playIntro = async () => {
+  const gameVolume = audio.master?.gain.value;
+  if (audio.master) audio.master.gain.value = 0;
+  window.speechSynthesis?.cancel();
+  try {
+    await playCine('cine/intro', {
+      poster: `cine/intro.jpg?v=${INTRO_VERSION}`,
+      muted: audio.muted,
+      version: INTRO_VERSION,
+    });
+  } finally {
+    if (audio.master) audio.master.gain.value = audio.muted ? 0 : (gameVolume ?? 0.55);
+  }
+};
 document.getElementById('play').addEventListener('click', async () => {
   document.getElementById('start').hidden = true;
   // en el celu: pantalla completa si el navegador deja
@@ -1330,15 +1339,7 @@ document.getElementById('play').addEventListener('click', async () => {
     document.documentElement.requestFullscreen({ navigationUI: 'hide' }).then(() => window.screen.orientation?.lock?.('landscape').catch(() => {})).catch(() => {});
   }
   audio.start();
-  if (!introSeen) {
-    introSeen = true;
-    try {
-      localStorage.setItem(INTRO_KEY, 'si');
-    } catch {
-      /* sin almacenamiento */
-    }
-    await playIntro();
-  }
+  await playIntro();
   document.body.classList.add('playing');
   hud.show();
   input.wantLock = true;

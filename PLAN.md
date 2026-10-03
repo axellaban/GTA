@@ -560,14 +560,17 @@ número ("8 · Bazuca"). Prueba: `teclas2.mjs`.
 
 **R12 — Acercarse al look del video de Higgsfield** (Gaspi de traje y corbata roja en una vereda a lo
 GTA V; el video es IA pre-renderizada, no se puede generar así en tiempo real en un celu). Pasos:
-1. Cinemáticas con videos de Higgsfield del dueño (intro, entre misiones), comprimidos a 1–2 MB.
-   ✅ Intro: `public/cine/intro.mp4` (H.264) + `.webm` (VP9), `playCine` en `src/cine.js` (franjas, título,
-   saltear; se ve la primera vez al tocar Jugar y desde la pausa con "Ver la intro"). Para sumar otra:
-   `ffmpeg -i video.mp4 -vf scale=720:-2 -c:v libx264 -crf 26 -movflags +faststart -an cine/x.mp4` y lo
-   mismo con `-c:v libvpx-vp9 -b:v 0 -crf 38` a `.webm`. Intro nueva de 30 s (pedido del dueño, en curso):
-   guion y prompts en `tools/cine/guion-intro.md` (8 planos: tren lleno, bajan, Gaspi y la corbata, motochorros, piquete,
-   jubilados, persecución, puente); el dueño genera los clips. Antes de gastar créditos en Higgsfield, el dueño
-   aprueba cada escena.
+1. Cinemáticas con videos de Higgsfield del dueño (intro, entre misiones).
+   ✅ 2026-10-03: intro aprobada de 41 s, once planos, 1080p/24 fps a velocidad natural:
+   `public/cine/intro.mp4` (H.264/AAC, 34,1 MB, faststart) + `.webm` (VP9/Opus, 19,1 MB).
+   Se reproduce al tocar **Jugar** en cada sesión y desde **Ver la intro** en la pausa.
+   Música proporcionada por el dueño: Sentimiento villero, Los Pibes Chorros. En 6C la música se
+   silencia y se conserva la voz original de la señora, sincronizada con la imagen (ver guion).
+   Cierre con logo del juego y **TRIBUTO A GASPI**. `src/cine.js` respeta Sin sonido, conserva el
+   encuadre completo y detiene el audio antes de devolver el control al terminar o saltear.
+   Los videos sólo se cargan al reproducirlos; URL versionada para no usar la intro vieja del caché.
+   Detalles y guion inicial archivado: `tools/cine/guion-intro.md`. Pruebas del reproductor:
+   `node --test tools/cine.test.mjs`. Antes de gastar créditos en nuevas escenas, el dueño las aprueba.
 2. Gaspi en 3D desde una imagen suya en pose A (Higgsfield `generate_3d`), simplificado a ≤ 5.000
    triángulos con textura de 1024 y animado con `src/rig.js` (hay que pesarle los huesos).
 3. Más texturas de foto CC0 en fachadas, veredas y asfalto (ya empezado: Poly Haven).
@@ -760,6 +763,15 @@ Ideas para seguir: capó que se levanta con mucho daño; semáforos y carteles q
 - ⛔ A2 / B1: esperan red o archivos del dueño.
 
 ## 6b. Última sesión (para quien siga)
+
+- ✅ 2026-10-03, Codex: presentación de Gaspi de 41 s integrada después de Jugar, con la mezcla
+  y el tributo aprobados. Audio de la señora: retraso añadido medido 0 ms en MP4 y WebM;
+  tres cuadros muestreados de su plano coinciden con el tiempo de origen esperado.
+  Verificado Jugar → intro con sonido → juego, repetición desde pausa y salteo con pausa inmediata
+  del video; seis pruebas del reproductor y build de producción. Los motores, radio y voces del
+  juego se silencian durante la presentación; se restaura el volumen de pausa o juego al terminar.
+  El service worker ya no intenta guardar respuestas parciales 206 de los videos.
+  Commit de entrega: «Presentación de Gaspi al jugar, con voz sincronizada y tributo».
 
 - ✅ 2026-10-01, segunda tanda Codex: profundidad pintada en dinteles y jambas,
   tanto en color como en emisión nocturna (`src/facade-depth.js`). Se aplica después

@@ -35,7 +35,8 @@ self.addEventListener('fetch', (e) => {
       caches.match(req).then((hit) => {
         const net = fetch(req)
           .then((res) => {
-            if (res.ok || res.type === 'opaque') {
+            // CacheStorage no admite 206: los videos piden rangos para empezar sin bajar todo.
+            if (res.status === 200 || res.type === 'opaque') {
               const copy = res.clone();
               caches.open(CACHE).then((c) => c.put(req, copy));
             }

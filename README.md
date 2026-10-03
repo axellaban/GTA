@@ -4,6 +4,13 @@ Juego de mundo abierto en el navegador, ambientado alrededor de la estación Tem
 
 Jugás con **Gaspi** (saco, camisa blanca, corbata a rayas rojas y blancas).
 
+Al tocar **Jugar** aparece una presentación cinematográfica de 41 segundos con once escenas de
+Gaspi y el barrio, música de **Los Pibes Chorros — Sentimiento villero** suministrada por el dueño
+y el cierre **TRIBUTO A GASPI**. En el primer plano de los jubilados, la música se corta para
+escuchar el diálogo original de la señora, conservando la sincronía del clip.
+Podés saltearla con el botón, una tecla o un toque, y repetirla desde **Ver la intro** en la pausa.
+La opción **Sin sonido** también silencia la presentación. El video se carga al reproducirlo.
+
 
 > **¿Seguís el proyecto (persona o IA)?** Empezá por [`PLAN.md`](PLAN.md): reglas, cómo probar sin GPU y qué falta, en orden.
 

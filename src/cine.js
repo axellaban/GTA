@@ -1,31 +1,40 @@
-// Cinemáticas: videos pre-renderizados (los hace el dueño con Higgsfield; ver R12 en PLAN.md) a pantalla
-// completa con franjas negras a lo GTA, el nombre abajo a la izquierda y un botón para saltear.
+// Cinemáticas pre-renderizadas con su mezcla de audio y títulos (ver R12 en PLAN.md).
 // Se saltean también con cualquier tecla o tocando la pantalla. playCine devuelve una promesa que se
 // resuelve al terminar (o si el video no carga: el juego nunca se queda trabado en la cinemática).
 // Cada video va en dos formatos: .mp4 (H.264, iPhone y casi todos) y .webm (VP9, los navegadores sin H.264).
 
 export const CINE = { playing: false };
 
-export function playCine(base, { title = '', sub = '', poster = '' } = {}) {
+export function playCine(base, { poster = '', muted = false, version = '' } = {}) {
   return new Promise((resolve) => {
     const box = document.createElement('div');
     box.id = 'cine';
+    box.setAttribute('role', 'dialog');
+    box.setAttribute('aria-modal', 'true');
+    box.setAttribute('aria-label', 'Presentación de GTA VI Conurba');
     box.innerHTML = `
-      <video playsinline muted preload="auto"${poster ? ` poster="${poster}"` : ''}></video>
-      <div class="cine-bar top"></div><div class="cine-bar bottom"></div>
-      <div class="cine-title"><strong></strong><span></span></div>
+      <video playsinline preload="auto"></video>
       <button type="button" class="cine-skip">Saltear ▸</button>`;
-    box.querySelector('strong').textContent = title;
-    box.querySelector('.cine-title span').textContent = sub;
     const video = box.querySelector('video');
+    video.muted = muted;
+    if (poster) video.poster = poster;
     let done = false;
+    let startupTimer;
     const finish = () => {
       if (done) return;
       done = true;
+      clearTimeout(startupTimer);
+      // Parar antes de volver al juego: el fundido visual no puede dejar música o voz sonando.
+      video.pause();
       CINE.playing = false;
       removeEventListener('keydown', onKey, true);
       box.classList.add('out');
-      setTimeout(() => box.remove(), 450);
+      box.querySelector('.cine-skip').disabled = true;
+      setTimeout(() => {
+        video.removeAttribute('src');
+        video.load();
+        box.remove();
+      }, 450);
       resolve();
     };
     const onKey = (e) => {
@@ -40,13 +49,14 @@ export function playCine(base, { title = '', sub = '', poster = '' } = {}) {
     addEventListener('keydown', onKey, true);
     video.addEventListener('ended', finish);
     video.addEventListener('error', finish);
-    // el título aparece un segundo después de arrancar, como en las presentaciones de GTA
-    video.addEventListener('playing', () => setTimeout(() => box.classList.add('titled'), 900), { once: true });
+    video.addEventListener('playing', () => clearTimeout(startupTimer), { once: true });
     // si en 6 segundos no arrancó (red lenta o el navegador no lo deja), se sigue al juego
-    setTimeout(() => video.currentTime === 0 && finish(), 6000);
-    video.src = `${base}.${video.canPlayType('video/mp4; codecs="avc1.4D401F"') ? 'mp4' : 'webm'}`;
+    startupTimer = setTimeout(() => video.currentTime === 0 && finish(), 6000);
+    const ext = video.canPlayType('video/mp4; codecs="avc1.4D401F"') ? 'mp4' : 'webm';
+    video.src = `${base}.${ext}${version ? `?v=${encodeURIComponent(version)}` : ''}`;
     document.body.appendChild(box);
     CINE.playing = true;
+    box.querySelector('.cine-skip').focus({ preventScroll: true });
     video.play().catch(finish);
   });
 }

@@ -1,4 +1,39 @@
-# Cinemática de presentación (30 s) — guion y prompts para Higgsfield
+# Cinemática de presentación de Gaspi — entrega aprobada (41 s)
+
+Entregada el 2026-10-03: once planos 16:9, 1920×1080, 24 fps, a velocidad natural.
+El usuario aprobó las variantes 4A, 4B, 5A, 6A, 6C, 7A, 7C y 8A, y pidió integrarlas
+como presentación inmediatamente después de tocar **Jugar**. Se conservan las referencias
+de cara, traje negro, camisa blanca y corbata roja a rayas de Gaspi.
+
+| Inicio–fin (s) | Escena |
+| --- | --- |
+| 0–3,750 | Llegada del Roca a Temperley |
+| 3,750–7,375 | Gaspi baja del tren |
+| 7,375–10,875 | Gaspi se acomoda la corbata |
+| 10,875–14,125 | 4A: farmea aura en la plaza |
+| 14,125–17,625 | 4B: motochorros |
+| 17,625–21,500 | 5A: peaje del carrito cartonero |
+| 21,500–25,375 | 6C: escuadrón de jubilados, habla la señora |
+| 25,375–29,250 | 6A: duelo frente a ANSES |
+| 29,250–33,125 | 7A: persecución en Falcon |
+| 33,125–37,000 | 7C: colectivo y SUBE |
+| 37,000–41,000 | 8A: moneda pendiente; logo del juego y TRIBUTO A GASPI |
+
+La música es el MP3 de **Sentimiento villero — Los Pibes Chorros** proporcionado por el usuario:
+arranca en 0,333 s de la fuente, ganancia −6 dB, entrada de 0,5 s y salida de 1,1 s.
+Se silencia entre 21,375 y 25,375 s para la voz original de 6C. El audio de ese clip
+va desde 0 a 4 s y la imagen desde 0,125 a 4 s: su entrada anticipada de tres cuadros
+conserva la primera palabra y mantiene el mismo reloj de origen cuando aparece la señora.
+Sin voces superpuestas del juego; los demás audios de los clips quedan silenciados.
+Los títulos principales usan ArtDeco de GTA VI y el cierre usa el logo de la portada del juego.
+
+Distribución: `public/cine/intro.mp4` (H.264/AAC con faststart), `intro.webm` (VP9/Opus)
+y `intro.jpg` como imagen de carga. Ambas versiones conservan el mismo montaje y mezcla.
+La versión de la URL evita reproducir un archivo anterior guardado por el service worker.
+El reproductor mantiene la imagen entera, respeta **Sin sonido**, pausa y libera el video
+al terminar o saltear, y permite repetirlo desde la pausa.
+
+## Guion inicial de 30 s (histórico, anterior a la revisión aprobada)
 
 Pedido del dueño: intro de 30 s hecha con Higgsfield, con motochorros, piquete y jubilados. El dueño genera
 los clips; acá se cortan, se les ponen títulos y música y se comprimen (`public/cine/`, `src/cine.js`).
