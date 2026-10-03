@@ -228,6 +228,10 @@ Como las misiones de ambulancia y bomberos de Vice City. La **ambulancia** está
 
 Como en Vice City, la chapa se hunde donde pega el golpe (choques, tiros, explosiones) y queda arrugada; con mucho daño se rompen los vidrios, sale humo del motor y al final se prende fuego. Chapa y pintura (o que el auto vuelva al tránsito) lo deja como nuevo.
 
+## La estación con gente (0.36)
+
+El Roca viene lleno: se ve la gente parada y sentada detrás de las ventanillas. En los andenes espera gente yendo a trabajar (mucha más en hora pico), amontonada donde paran las puertas; cuando el tren para, suben, baja otra gente que camina hacia la estación y en la plaza se ve salir gente de la estación. Al andén ya no se sube caminando desde la calle: se entra a la estación y se pasa el molinete con la SUBE ($650, y con eso el tren no te cobra de nuevo) o te colás saltándolo, y si te ve el de seguridad tenés una estrella. Desde el andén se vuelve a entrar por la puerta de la estación y se sale libre por el molinete.
+
 ## Piñas y apuntado (0.35)
 
 Las piñas se pegan con todo el cuerpo: Gaspi se pone en guardia de boxeo, carga, el golpe sale rápido, gira la cadera, pivotea el pie de atrás y vuelve a la guardia. El combo es directo, cruzado, gancho, uppercut y patada frontal, y da medio paso hacia el rival. Al que le pegan se le va la cabeza para el lado del golpe. Al apuntar, el torso sigue la mira arriba y abajo, el arma patea al tirar y se puede caminar de costado o para atrás sin dejar de apuntar. Todo pasa de una pose a otra sin saltos.
@@ -345,6 +349,7 @@ Box de CrossFit en su dirección real, **Rivadavia 321**, en la vereda de enfren
 | `src/radio.js`, `src/audio.js` | Radio y sonidos sintetizados |
 | `src/motores.js` | Ruido de motor sintetizado: cilindros, cambios, carga, Doppler |
 | `src/moves.js` | Pelea y armas: guardia, golpes por fases, patada, reacción, apuntado con la cámara |
+| `src/andenes.js` | Gente en los andenes: espera, sube y baja del Roca, sale por la estación |
 | `src/aura.js` | Ronda de chicos farmeando aura en la plaza (turnos, puntaje, Gaspi baila) |
 | `src/fx.js` | Partículas, trazas, marcas de frenada, casquillos, agujeros de bala, restos de choque, lluvia y salpicaduras |
 | `src/carfx.js` | Escape, petardeos y rocío de los autos andando |

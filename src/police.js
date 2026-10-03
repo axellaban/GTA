@@ -8,7 +8,7 @@ import { R } from './rng.js';
 import { radialTexture } from './city.js';
 import { carEffects } from './carfx.js';
 
-const HEAT = { ovni: 2.2, choque: 0.15, robo_negocio: 1.7, pina: 0.1, ko: 0.45, herido: 0.45, muerte: 0.9, tiros: 0.2, cana: 1.2, robo_auto: 0.6, atropello: 0.4, explosion: 1.1 };
+const HEAT = { colado: 1.05, ovni: 2.2, choque: 0.15, robo_negocio: 1.7, pina: 0.1, ko: 0.45, herido: 0.45, muerte: 0.9, tiros: 0.2, cana: 1.2, robo_auto: 0.6, atropello: 0.4, explosion: 1.1 };
 const beaconMat = (c) => new THREE.MeshBasicMaterial({ color: c });
 
 export class Police {

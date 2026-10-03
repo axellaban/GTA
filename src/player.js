@@ -405,6 +405,7 @@ export class Player {
       this.place();
       return;
     }
+    this.fareT = Math.max(0, (this.fareT || 0) - dt); // pasaje pagado en el molinete
     for (const k of Object.keys(this.buffs)) {
       this.buffs[k] -= dt;
       if (this.buffs[k] <= 0) delete this.buffs[k];
@@ -441,6 +442,7 @@ export class Player {
 
     if (this.jack) this.updateJack(dt, world);
     else if (this.exitAnim) this.updateExit(dt);
+    else if (this.auto) this.updateAuto(dt);
     else if (this.vehicle) this.drive(dt, world);
     else this.walk(dt, world);
 
@@ -457,6 +459,28 @@ export class Player {
       }
     }
     this.place();
+  }
+
+  // caminata guiada (pasar el molinete, colarse de un salto): va derecho al punto y devuelve el control
+  updateAuto(dt) {
+    const a = this.auto;
+    a.t += dt;
+    const k = Math.min(1, a.t / a.dur);
+    this.x = a.from.x + (a.to.x - a.from.x) * k;
+    this.z = a.from.z + (a.to.z - a.from.z) * k;
+    this.heading = Math.atan2(a.to.x - a.from.x, a.to.z - a.from.z);
+    this.speed = 0;
+    this.mvx = this.mvz = 0;
+    if (a.jump) {
+      // salta el molinete: sube con las piernas recogidas y cae del otro lado
+      this.yOff = -Math.sin(k * Math.PI) * 0.7;
+      animateHuman(this.h, dt, 3.2, 'walk');
+    } else animateHuman(this.h, dt, 1.3, 'walk');
+    if (k >= 1) {
+      this.auto = null;
+      this.yOff = 0;
+      a.done?.();
+    }
   }
 
   updateExit(dt) {
@@ -583,6 +607,11 @@ export class Player {
     this.x += this.mvx * dt;
     this.z += this.mvz * dt;
     this.collide(world);
+    // un escalón de más de medio metro (el borde del andén) no se sube caminando: hay que saltar
+    if (this.vy <= 0 && this.y < ground + 0.3 && this.groundAt() - ground > 0.6) {
+      this.x = x0;
+      this.z = z0;
+    }
     // contra una pared no sigue "patinando": la velocidad es la que de verdad avanzó
     if (dt > 0) {
       const rvx = (this.x - x0) / dt;
@@ -780,8 +809,9 @@ export class Player {
     const airborne = this.y > this.groundAt() + 0.6;
     // las barandas del puente frenan solo arriba; abajo, las paredes comunes (y no las de más bajas que uno)
     const y = this.y;
-    // (al andén se sube caminando: su borde solo frena a los autos; abajo en el bajo nivel no chocan los de arriba)
-    colliders.resolveCircle(p, this.r, (b) => b.kind !== 'platform' && !(b.over && y < -1) && (b.y0 ? y > b.y0 - 0.6 && y < b.h : y < 1 || y < b.h - 0.3) && (!airborne || b.h > 1.3));
+    // al andén no se sube caminando desde la calle o las vías (se entra por la estación y los molinetes, se baja
+    // del puente o se trepa de un salto); arriba del andén su borde no frena. Abajo en el bajo nivel no chocan los de arriba
+    colliders.resolveCircle(p, this.r, (b) => (b.kind !== 'platform' || y < 0.6) && !(b.over && y < -1) && (b.y0 ? y > b.y0 - 0.6 && y < b.h : y < 1 || y < b.h - 0.3) && (!airborne || b.h > 1.3));
     const cars = traffic.all().concat(police.cars, world.tanks?.list ?? []);
     for (const v of cars) {
       if (Math.abs(v.x - p.x) > 8 || Math.abs(v.z - p.z) > 8) continue;

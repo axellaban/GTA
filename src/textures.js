@@ -1577,6 +1577,57 @@ export function bannerTexture(text, rng) {
   return tex(c);
 }
 
+// pasajeros del Roca en hora pico detrás del vidrio (siluetas: cabeza, hombros y ropa, con el reflejo
+// del vidrio encima). x, y, w, h: la ventana en píxeles; door: los que van parados contra la puerta
+const SKIN = ['#c8946e', '#a87452', '#e0b48e', '#8a5a3c', '#d9a882', '#b98560'];
+const HAIR = ['#1a1410', '#2b1d14', '#3a2a1c', '#5a4632', '#8a8a8a', '#7a5a2a'];
+const CLOTH = ['#2b3e5c', '#5c2b2b', '#e8e8e8', '#3a3a3a', '#6b6b6b', '#1f5e3a', '#8a6d3b', '#b0413e', '#2f4f6f', '#d8c8a8', '#4a2f5c'];
+function crowdWindow(ctx, x, y, w, h, door = false) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x, y, w, h);
+  ctx.clip();
+  const pick = (a) => a[Math.floor(Math.random() * a.length)];
+  // atrás, más oscuros (los del fondo del vagón); adelante, los que están contra el vidrio
+  const rows = door ? [[0.55, 2]] : [[0.4, 4], [0.75, 3], [1, 3]];
+  for (const [shade, n] of rows) {
+    for (let i = 0; i < n + (Math.random() < 0.5 ? 1 : 0); i++) {
+      const cx = x + (w * (i + 0.5 + (Math.random() - 0.5) * 0.6)) / (n + 0.5);
+      // parados (la cabeza arriba) o sentados (más abajo)
+      const standing = door || Math.random() < 0.7;
+      const hy = y + (standing ? 4 + Math.random() * 6 : 14 + Math.random() * 6);
+      const hr = 2.6 + Math.random() * 0.8;
+      ctx.globalAlpha = 0.45 + 0.45 * shade;
+      ctx.fillStyle = pick(CLOTH);
+      ctx.beginPath();
+      ctx.ellipse(cx, hy + hr * 2.6 + 8, hr * 2.4, 10, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = pick(SKIN);
+      ctx.beginPath();
+      ctx.ellipse(cx, hy + hr, hr * 0.85, hr * 1.1, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = pick(HAIR);
+      ctx.beginPath();
+      ctx.ellipse(cx, hy + hr * 0.45, hr * 0.9, hr * 0.65, 0, Math.PI, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  // la baranda de arriba
+  ctx.globalAlpha = 0.5;
+  ctx.fillStyle = '#9aa4ab';
+  ctx.fillRect(x, y + 3, w, 1.2);
+  // reflejo del vidrio
+  const g = ctx.createLinearGradient(x, y, x + w, y + h);
+  g.addColorStop(0, 'rgba(255,255,255,0.18)');
+  g.addColorStop(0.45, 'rgba(255,255,255,0.02)');
+  g.addColorStop(0.55, 'rgba(255,255,255,0.12)');
+  g.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = g;
+  ctx.fillRect(x, y, w, h);
+  ctx.restore();
+}
+
 export function trainSideTexture(kind) {
   const c = canvas(512, 128);
   const ctx = c.getContext('2d');
@@ -1593,10 +1644,11 @@ export function trainSideTexture(kind) {
     ctx.fillStyle = '#6ec3ea';
     ctx.fillRect(0, 100, 512, 6);
   }
-  // ventanas
+  // ventanas, con el tren lleno: gente parada y sentada (cada coche distinto)
   for (let x = 40; x < 480; x += 66) {
     ctx.fillStyle = '#1e2b36';
     ctx.fillRect(x, 26, 48, 40);
+    crowdWindow(ctx, x, 26, 48, 40);
   }
   // puertas
   ctx.fillStyle = '#9aa4ab';
@@ -1605,6 +1657,8 @@ export function trainSideTexture(kind) {
   ctx.fillStyle = '#1e2b36';
   ctx.fillRect(14, 28, 14, 36);
   ctx.fillRect(484, 28, 14, 36);
+  crowdWindow(ctx, 14, 28, 14, 36, true);
+  crowdWindow(ctx, 484, 28, 14, 36, true);
   // grafiti ocasional
   ctx.save();
   ctx.globalAlpha = 0.8;

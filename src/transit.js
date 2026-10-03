@@ -44,7 +44,7 @@ export class Transit {
         const s = Math.sin(b.h);
         const c = Math.cos(b.h);
         if (Math.abs(dx * s + dz * c) < 9 && Math.abs(dx * c - dz * s) < 4.5) {
-          return { text: `Subirse al tren a ${t.route.name} (SUBE $${FARE.tren})`, run: () => this.board(world, 'tren', t) };
+          return { text: P.fareT > 0 ? `Subirse al tren a ${t.route.name} (ya pagaste)` : `Subirse al tren a ${t.route.name} (SUBE $${FARE.tren})`, run: () => this.board(world, 'tren', t) };
         }
       }
     }
@@ -57,12 +57,17 @@ export class Transit {
 
   board(world, kind, x) {
     const { player: P, hud, audio } = world;
-    if (P.money < FARE[kind]) {
+    // si pasó la SUBE en el molinete hace poco, ya pagó (src/interiors.js)
+    const paid = kind === 'tren' && P.fareT > 0;
+    if (!paid && P.money < FARE[kind]) {
       hud.toast('No te alcanza la SUBE');
       return;
     }
-    P.addMoney(-FARE[kind]);
-    audio.tone?.([2300], 0.14, 'square', 0.12); // el pip de la SUBE
+    if (!paid) {
+      P.addMoney(-FARE[kind]);
+      audio.tone?.([2300], 0.14, 'square', 0.12); // el pip de la SUBE
+    }
+    P.fareT = 0;
     this.ride = { kind, t: kind === 'tren' ? x : null, v: kind === 'bus' ? x : null, time: 0, zoom: P.zoom, pitch: P.camPitch };
     P.h.root.visible = false;
     P.riding = true;

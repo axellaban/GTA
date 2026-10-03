@@ -34,6 +34,7 @@ import { GPU, flushTextures } from './textures.js';
 import { Gangs } from './gangs.js';
 import { Barrio } from './barrio.js';
 import { Aura } from './aura.js';
+import { Andenes } from './andenes.js';
 import { Garages } from './garage.js';
 import { Destroy } from './destroy.js';
 import { Tanks } from './tank.js';
@@ -484,6 +485,9 @@ world.barrio = barrio;
 // ronda de chicos farmeando aura en la plaza Tomás Espora
 const aura = new Aura(npcs);
 world.aura = aura;
+// gente en los andenes: espera, sube y baja del Roca
+const andenes = new Andenes(npcs, interiors, city, trains);
+world.andenes = andenes;
 // casas que se derrumban y el tanque del Ejército (6 estrellas)
 const destroy = new Destroy(scene, city);
 world.destroy = destroy;
@@ -1218,6 +1222,7 @@ function frame(now) {
   traffic.update(dt, world);
   npcs.update(dt, world);
   interiors.update(dt, world);
+  andenes.update(dt, world);
   races.update(dt, world);
   matanzas.update(dt, world);
   uver.update(dt, world);

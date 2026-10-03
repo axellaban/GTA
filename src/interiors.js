@@ -18,6 +18,7 @@ import { Npc } from './npcs.js';
 import { WEAPONS, pickupWeapon, handWeapon } from './weapons.js';
 
 const HALL = { x: 1500, z: 1500 };
+export const FARE_TREN = 650; // el pasaje con la SUBE (molinete o al subir al tren)
 const KIOSCO = { x: 1560, z: 1500 };
 const BAR = { x: 1620, z: 1500 };
 const PIZZA = { x: 1680, z: 1500 };
@@ -150,6 +151,10 @@ function floorTex(a, b, n = 8) {
   return t;
 }
 
+const GATE_BAR = new THREE.BoxGeometry(0.5, 0.035, 0.035);
+const GATE_MAT = new THREE.MeshBasicMaterial({ color: 0xd9dee2 });
+const GATE_LIGHT = new THREE.BoxGeometry(0.07, 0.04, 0.07);
+
 // una persona quieta adentro (sentada, mirando el cartel, atendiendo)
 function extra(group, x, z, face, pose, look) {
   const h = (!look && PEOPLE.ready && makePerson(R.chance(0.5) ? 'male' : 'female')) || makeLook(look) || makeHuman(look ?? randomCivilian());
@@ -217,13 +222,37 @@ export class Interiors {
       for (let k = 0; k < 6; k++) F.box(0.04, 1.1, 0.03, 0x1a1a1a, -W / 2 + 0.22, 1.65, z - 0.6 + k * 0.24);
       F.box(0.5, 0.08, 1.6, 0x6b4a2e, -W / 2 + 0.4, 1.05, z);
     }
-    // molinetes frente a la salida a los andenes
+    // molinetes frente a la salida a los andenes: cinco cuerpos con lector de SUBE y el trípode que gira;
+    // a los costados, baranda hasta las paredes (no se pasa por al lado)
+    const LZ = -D / 2 + 2.2;
+    this.gates = [];
     for (let k = 0; k < 5; k++) {
       const x = -2.4 + k * 1.2;
-      F.box(0.28, 1.0, 0.9, 0x9aa4ab, x, 0.5, -D / 2 + 2.2);
-      F.box(0.5, 0.05, 0.05, 0xc8ced2, x + 0.38, 0.95, -D / 2 + 2.2);
-      F.box(0.2, 0.06, 0.2, 0x2e7d32, x, 1.03, -D / 2 + 2.45);
+      F.box(0.28, 1.0, 0.9, 0x9aa4ab, x, 0.5, LZ);
+      F.box(0.3, 0.04, 0.92, 0x6e7880, x, 1.02, LZ);
+      F.box(0.16, 0.05, 0.16, 0x1f6fb5, x, 1.06, LZ + 0.32); // lector SUBE
+      const arm = new THREE.Group();
+      for (let j = 0; j < 3; j++) {
+        const bar = new THREE.Mesh(GATE_BAR, GATE_MAT);
+        bar.position.x = 0.26;
+        const holder = new THREE.Group();
+        holder.rotation.z = (j * Math.PI * 2) / 3;
+        holder.add(bar);
+        arm.add(holder);
+      }
+      arm.position.set(x + 0.15, 0.92, LZ);
+      g.add(arm);
+      const light = new THREE.Mesh(GATE_LIGHT, new THREE.MeshBasicMaterial({ color: 0xc62828 }));
+      light.position.set(x, 1.1, LZ - 0.32);
+      g.add(light);
+      this.gates.push({ x: HALL.x + x + 0.6, z: HALL.z + LZ, arm, light, spin: 0, target: 0, ok: 0 });
     }
+    for (const [x0, x1] of [[-W / 2, -2.55], [2.55 + 0.65, W / 2]]) {
+      F.box(x1 - x0, 0.05, 0.05, 0xc8ced2, (x0 + x1) / 2, 1.0, LZ);
+      F.box(x1 - x0, 0.05, 0.05, 0xc8ced2, (x0 + x1) / 2, 0.55, LZ);
+      for (let x = x0 + 0.4; x < x1; x += 1.2) F.box(0.05, 1.0, 0.05, 0xc8ced2, x, 0.5, LZ);
+    }
+    this.hallLine = HALL.z + LZ;
     // bancos de madera
     for (const z of [-2.2, 1.6]) {
       F.box(0.5, 0.08, 2.4, 0x7a5432, W / 2 - 1.2, 0.48, z);
@@ -270,13 +299,171 @@ export class Interiors {
       [HALL.x - W / 2 + 0.15, HALL.z + D / 2 - 0.15],
     ];
     colliders.addRing(ring, 5, 'wall');
-    colliders.addSegment(HALL.x - 3, HALL.z - D / 2 + 2.2, HALL.x + 3.2, HALL.z - D / 2 + 2.2, 1, 'wall');
+    colliders.addSegment(HALL.x - W / 2, HALL.z + LZ, HALL.x + W / 2, HALL.z + LZ, 1.2, 'wall');
     // puertas
     const door = this.city.spots.stationDoor;
     const sw = this.city.spots.stationWall;
     const out = { x: door.x, z: door.z, face: sw ? Math.atan2(sw.nx, sw.nz) : 0 };
     this.doors.push({ room: 'hall', label: 'Entrar a la estación', outside: out, inside: { x: HALL.x, z: HALL.z + D / 2 - 1.6, face: Math.PI }, exit: 'Salir a la calle' });
     this.hallPlatformExit = { x: HALL.x, z: HALL.z - D / 2 + 1.2 };
+    // la puerta del lado de los andenes: en la pared del edificio que da a las vías
+    const pd = this.platformDoorSpot();
+    if (pd) {
+      this.platformDoor = { room: 'hall', label: 'Entrar a la estación', outside: pd, inside: { x: HALL.x, z: HALL.z - D / 2 + 0.9, face: 0 }, exit: 'Pasar a los andenes' };
+      this.doors.push(this.platformDoor);
+    }
+    // gente que entra y sale por los molinetes (se mueve solo con Gaspi adentro)
+    this.walkers = [];
+    for (let i = 0; i < 8; i++) {
+      const w = extra(g, 0, 0, 0, 'walk');
+      this.walkers.push(w);
+      this.resetWalker(w, true);
+    }
+  }
+
+  // dónde queda la puerta de la estación del lado de las vías (afuera, sobre el andén)
+  platformDoorSpot() {
+    const st = this.city.buildingList?.find((b) => b.kind === 'estacion');
+    const sw = this.city.spots.stationWall;
+    if (!st || !sw) return null;
+    // la pared opuesta a la de la plaza
+    const r = st.ring;
+    let best = null;
+    for (let k = 0; k < r.length; k++) {
+      const [ax, az] = r[k];
+      const [bx, bz] = r[(k + 1) % r.length];
+      const l = Math.hypot(bx - ax, bz - az);
+      if (l < 8) continue;
+      let nx = (bz - az) / l;
+      let nz = -(bx - ax) / l;
+      const mx = (ax + bx) / 2;
+      const mz = (az + bz) / 2;
+      // normal hacia afuera: lejos del centro del edificio
+      let cx = 0;
+      let cz = 0;
+      for (const [x, z] of r) {
+        cx += x;
+        cz += z;
+      }
+      cx /= r.length;
+      cz /= r.length;
+      if ((mx - cx) * nx + (mz - cz) * nz < 0) {
+        nx = -nx;
+        nz = -nz;
+      }
+      const facing = nx * sw.nx + nz * sw.nz; // -1: opuesta a la de la plaza
+      if (!best || facing < best.facing) best = { facing, x: mx + nx * 2.4, z: mz + nz * 2.4, nx, nz };
+    }
+    return best && best.facing < -0.5 ? { x: best.x, z: best.z, face: Math.atan2(best.nx, best.nz) } : null;
+  }
+
+  // la gente del hall: de la calle a los andenes (pasando un molinete) o al revés
+  resetWalker(w, first = false) {
+    const k = R.int(0, 4);
+    const gate = this.gates[k];
+    const toPlat = R.chance(0.5);
+    const street = { x: HALL.x + R.range(-1.2, 1.2), z: HALL.z + 4.4 };
+    const plat = { x: HALL.x + R.range(-1.5, 1.5), z: HALL.z - 4.4 };
+    const a = { x: gate.x, z: gate.z + 0.9 };
+    const b = { x: gate.x, z: gate.z - 0.9 };
+    w.path = toPlat ? [street, a, b, plat] : [plat, b, a, street];
+    w.gate = gate;
+    w.i = first ? R.int(0, 2) : 0;
+    const p = w.path[w.i];
+    w.x = p.x + (first ? R.range(-0.3, 0.3) : 0);
+    w.z = p.z;
+    w.v = R.range(1.15, 1.5);
+    w.wait = first ? 0 : R.range(0, 2.5);
+  }
+
+  updateWalkers(dt, world) {
+    const P = world.player;
+    for (const w of this.walkers) {
+      if (w.wait > 0) {
+        w.wait -= dt;
+        w.h.root.visible = false;
+        continue;
+      }
+      w.h.root.visible = true;
+      const t = w.path[w.i + 1];
+      if (!t) {
+        this.resetWalker(w);
+        continue;
+      }
+      const dx = t.x - w.x;
+      const dz = t.z - w.z;
+      const d = Math.hypot(dx, dz);
+      // no le pasan por encima a Gaspi
+      const blocked = Math.hypot(P.x - (w.x + (dx / (d || 1)) * 0.6), P.z - (w.z + (dz / (d || 1)) * 0.6)) < 0.55;
+      const sp = blocked ? 0 : w.v;
+      if (d < 0.08) {
+        // pasa el molinete: bip y el trípode gira
+        if (w.i === 1) this.spinGate(w.gate, world, true);
+        w.i++;
+      } else {
+        const st = Math.min(d, sp * dt);
+        w.x += (dx / d) * st;
+        w.z += (dz / d) * st;
+        w.h.root.rotation.y = Math.atan2(dx, dz);
+      }
+      w.h.root.position.set(w.x - HALL.x, 0, w.z - HALL.z);
+      animateHuman(w.h, dt, sp, 'walk');
+    }
+  }
+
+  spinGate(gate, world, ok) {
+    gate.target += (Math.PI * 2) / 3;
+    gate.ok = ok ? 0.8 : -0.8;
+    if (world && this.inside?.room === 'hall') {
+      if (ok) world.audio.tone([1760], 0.08, 'square', 0.05);
+      else world.audio.tone([440, 330], 0.25, 'square', 0.06);
+    }
+  }
+
+  updateGates(dt) {
+    for (const g of this.gates || []) {
+      g.spin += (g.target - g.spin) * Math.min(1, dt * 9);
+      g.arm.rotation.z = g.spin;
+      g.ok -= Math.sign(g.ok) * Math.min(Math.abs(g.ok), dt);
+      g.light.material.color.setHex(g.ok > 0 ? 0x43a047 : 0xc62828);
+    }
+  }
+
+  // pasar el molinete: con la SUBE (paga), colado de un salto (el de seguridad a veces te ve) o salir
+  turnstile(world, gate, dir, mode) {
+    const P = world.player;
+    const { hud, audio } = world;
+    const from = { x: gate.x, z: gate.z + dir * 0.9 };
+    const to = { x: gate.x, z: gate.z - dir * 0.9 };
+    if (mode === 'sube') {
+      if (P.money < FARE_TREN) return hud.toast('No te alcanza la SUBE', 1.8);
+      P.addMoney(-FARE_TREN);
+      P.fareT = 600; // con eso viaja (src/transit.js)
+      audio.tone([1760, 1760], 0.07, 'square', 0.06);
+      hud.toast(`SUBE: -$${FARE_TREN} · Saldo $${P.money.toLocaleString('es-AR')}`, 1.8);
+    }
+    this.spinGate(gate, null, true);
+    P.x = from.x;
+    P.z = from.z;
+    P.auto = {
+      from,
+      to,
+      t: 0,
+      dur: mode === 'salto' ? 0.7 : 1.0,
+      jump: mode === 'salto',
+      done: () => {
+        if (mode !== 'salto') return;
+        if (R.chance(0.45)) {
+          world.hud.flash('¡TE COLASTE!', 'El de seguridad te vio saltar el molinete', 'bad', 2.2);
+          const door = this.city.spots.stationDoor;
+          world.police.crime('colado', door.x, door.z);
+          if (world.police.stars === 0) {
+            world.police.heat = Math.max(world.police.heat, 1.05);
+            world.police.updateStars();
+          }
+        } else world.hud.toast('Te colaste. Nadie vio nada', 1.8);
+      },
+    };
   }
 
   drawBoard(world) {
@@ -901,7 +1088,28 @@ export class Interiors {
     if (d.room === 'bar' && near(this.barCounter, 1.1)) return { text: 'Pedir en la barra', run: () => this.shop(world, 'bar') };
     if (d.room === 'correo' && near(this.correoCounter, 1.2)) return { text: 'Pedirle a Don Manolo', run: () => this.shop(world, 'correo') };
     if (d.room === 'pizza' && near(this.pizzaCounter, 1.1)) return { text: 'Pedir en el mostrador', run: () => this.shop(world, 'pizza') };
-    if (d.room === 'hall' && near(this.hallPlatformExit, 1.8)) return { text: 'Pasar a los andenes', run: () => this.go(world, d, false, 'andenes') };
+    if (d.room === 'hall') {
+      if (P.auto) return null;
+      // los molinetes: del lado de la calle se paga (o se salta), del lado de los andenes se sale libre
+      const gate = this.gates.reduce((b, g) => (Math.abs(P.x - g.x) < Math.abs(P.x - b.x) ? g : b));
+      const side = P.z > this.hallLine ? 1 : -1;
+      if (Math.abs(P.z - this.hallLine) < 1.15 && Math.abs(P.x - gate.x) < 0.9) {
+        if (side < 0) return { text: 'Salir por el molinete', run: () => this.turnstile(world, gate, -1, 'salida') };
+        return {
+          text: `Molinete: pasar la SUBE ($${FARE_TREN})`,
+          run: () =>
+            world.hud.ask('Molinete', [
+              { label: `Pasar la SUBE ($${FARE_TREN})`, run: () => this.turnstile(world, gate, 1, 'sube') },
+              { label: 'Colarse saltando el molinete', run: () => this.turnstile(world, gate, 1, 'salto') },
+              { label: 'Nada', run: () => {} },
+            ]),
+        };
+      }
+      if (side < 0 && near(this.hallPlatformExit, 1.8)) return { text: 'Pasar a los andenes', run: () => this.go(world, this.platformDoor ?? d, false, this.platformDoor ? null : 'andenes') };
+      const street = this.doors[0];
+      if (side > 0 && near(street.inside, 1.4)) return { text: street.exit, run: () => this.go(world, street, false) };
+      return null;
+    }
     if (near(d.inside, 1.4)) return { text: d.exit, run: () => this.go(world, d, false) };
     return null;
   }
@@ -1000,6 +1208,10 @@ export class Interiors {
     } else if (n) n.calmT = 0;
     if (!this.inside) return;
     for (const p of this.people) if (!p.room || p.room === this.inside.room) animateHuman(p.h, dt, 0, p.pose === 'idle' ? 'walk' : p.pose);
+    if (this.inside.room === 'hall') {
+      this.updateGates(dt);
+      this.updateWalkers(dt, world);
+    }
     this.boardT -= dt;
     if (this.inside.room === 'hall' && this.boardT <= 0) {
       this.boardT = 5;

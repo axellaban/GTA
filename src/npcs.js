@@ -659,7 +659,7 @@ export class Npcs {
       if (n.down || n.type === 'cana' || n.state === 'fight') continue;
       const d = Math.hypot(n.x - x, n.z - z);
       if (d > r) continue;
-      if (n.type === 'mendigo' || n.type === 'medias' || n.type === 'panchero' || n.type === 'trapito' || n.type === 'vecino' || n.type === 'piquetero' || n.type === 'borracho' || n.type === 'chico') {
+      if (n.type === 'mendigo' || n.type === 'medias' || n.type === 'panchero' || n.type === 'trapito' || n.type === 'vecino' || n.type === 'piquetero' || n.type === 'borracho' || n.type === 'chico' || n.type === 'pasajero') {
         if (n.state === 'flee' || n.state === 'cower') {
           n.fleeT = Math.max(n.fleeT || 0, 6);
           continue;
@@ -895,6 +895,12 @@ export class Npcs {
           if (Math.hypot(n.target.x - n.x, n.target.z - n.z) < 1) this.nextLeg(n);
         }
         if (!night && dp > 150 && this.count('zombie') > 7) n.dead = true;
+      } else if (n.type === 'pasajero') {
+        // gente de los andenes (src/andenes.js)
+        const r = world.andenes?.brain(n, dt, world, dp) ?? { want: 0, pose: 'walk' };
+        want = r.want;
+        pose = r.pose;
+        n.poseT = r.t || 0;
       } else if (n.type === 'borracho' || n.type === 'chico') {
         const r = world.barrio?.brain(n, dt, world, dp) ?? { want: 0, pose: 'walk' };
         want = r.want;
@@ -914,7 +920,7 @@ export class Npcs {
         pose = r?.pose ?? 'walk';
       }
       // golpe o reacción en curso: pisa la pose
-      let t = n.type === 'borracho' || n.type === 'chico' ? n.poseT || 0 : 0;
+      let t = n.type === 'borracho' || n.type === 'chico' || n.type === 'pasajero' ? n.poseT || 0 : 0;
       // los del gym entrenan mientras nadie los moleste
       if (n.exercise && n.state === 'walk') {
         pose = n.exercise;

@@ -481,6 +481,24 @@ anterior): sin saltos. Combo de `src/combat.js`: directo, cruzado, gancho, upper
 paso hacia el rival mientras sale el golpe, y Gaspi queda en guardia 3,5 s (`fightT`). Pruebas:
 `golpes.mjs` (grilla de cuadros por movimiento, de perfil o de frente) y `combo.mjs` (el combo en el juego).
 
+**R36 — ✅ Estación con gente y molinetes** (pedido del dueño: "el tren siempre con mucha gente, mucha gente en el
+andén yendo a trabajar, y del la plaza al andén se entra a la estación y se pasan los molinetes").
+- Tren lleno: `trainSideTexture` (textures.js) pinta pasajeros parados y sentados detrás de cada ventanilla
+  (`crowdWindow`, distinto en cada coche).
+- `src/andenes.js` (`Andenes`): pasajeros (NPC tipo 'pasajero', `brain`) amontonados frente a donde quedan las
+  puertas de cada recorrido parado en la estación (`doorsOf`); 44 en hora pico (6:20–9:35 y 17–20:10), 22 de
+  día, pocos de noche (×0,6 en el celu). Cuando para un tren: el 75 % de los que están a menos de 22 m de
+  una puerta sube (el tren espera hasta 8 s más), baja gente que camina a la puerta de la estación del
+  andén, y en la plaza sale gente de la estación (`spawnWalker` en `stationDoor`). Después llegan de a uno.
+- Al andén no se sube caminando desde la calle o las vías: el borde del andén frena a Gaspi abajo (filtro de
+  `collide` en player.js) y un escalón de más de 0,6 m no se sube (hay que saltar). Se entra por la estación
+  (puerta de la plaza o la nueva del lado del andén, `platformDoor` en interiors.js) o bajando del puente.
+- Hall (interiors.js): molinetes con lector SUBE, trípode que gira (`gates`, `spinGate`) y baranda hasta las
+  paredes. Del lado de la calle: pasar la SUBE ($650, `FARE_TREN`; `P.fareT` = viaje pagado, el tren no cobra
+  de nuevo) o colarse de un salto (45 %: te ve el de seguridad, 1 estrella: `HEAT.colado`). Del lado del andén
+  se sale libre. 8 personas pasan los molinetes todo el tiempo (`walkers`). `P.auto` (player.js): caminata
+  guiada para pasar. Pruebas: `andenes.mjs`, `anddbg.mjs`, `bordeanden.mjs`.
+
 **R11 — Pruebas en celu real**: el dueño prueba en iPhone/Android y manda capturas; se ajusta.
 
 **R12 — Acercarse al look del video de Higgsfield** (Gaspi de traje y corbata roja en una vereda a lo
