@@ -253,6 +253,7 @@ Además: los **vecinos cruzan las vías por el puente de la estación** (suben, 
 - **Morres**, la carnicería de la esquina de Cangallo y Santa María de Oro (cartel rojo y toldo).
 - **Escuela Media Tomás Espora**, sobre Santa María de Oro, a mitad de cuadra antes de 14 de Julio.
 - **Vaicrem**, la heladería de Av. Almirante Brown y 14 de Julio.
+- Sobre **Almirante Brown, entre Anchorena y 14 de Julio**, a mitad de cuadra: la **puertita azul**, al lado el **Banco Macro** y al lado el **Banco Provincia** (con sus colores; el Provincia aparecía con otro nombre).
 - **El Viejo Correo**, Av. Meeks 1357: se entra. Bar clásico y antiguo: boiserie de madera, piso de damero, barra larga de estaño con caja registradora, espejo con botellas, ventiladores de techo, mesas de mármol con sillas de Viena, la pared de casilleros de bronce del correo y el buzón rojo. Atiende Don Manolo (vermú con soda, café en jarrito, ginebra, picada) y hay parroquianos jugando al truco.
 - **Borrachos** en la puerta del Supermercado Luna, con el porrón y la camiseta del Celeste, tambaleándose y pidiendo para el vino.
 - **Chicos** en la puerta del Colegio Eccleston a la hora del colegio (de 7:30 a 18:30), con uniforme y mochila, jugando a la mancha. Como en los GTA, a los chicos no se los puede lastimar: si hay lío, salen corriendo.

@@ -344,6 +344,10 @@ acepta ahora `frente` (índice de arista que da a la calle: manda sobre "el fren
 `city.js` y `pickups.shops`). Interior `buildCorreo` en `src/interiors.js` (CORREO x 1810), menú
 `correo`, ventiladores que giran en `update`.
 
+**R28 — ✅ Cuadra de los bancos** (pedido del dueño): #1455 Banco Macro y #1456 Banco Provincia por
+relevamiento (al Provincia le ganaba "La Casona" de OSM). El relevamiento acepta `puerta: { color, punto }`
+(puerta con marco sobre el frente, en `addBuildings`): la puertita azul va en #1454, pegada al Macro.
+
 **R11 — Pruebas en celu real**: el dueño prueba en iPhone/Android y manda capturas; se ajusta.
 
 **R12 — Acercarse al look del video de Higgsfield** (Gaspi de traje y corbata roja en una vereda a lo

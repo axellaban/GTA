@@ -588,6 +588,19 @@ function addBuildings(scene, atlas, colliders, rng, city) {
         if (v % 2 === 0) city.neon.push({ cx, cz, ux, uz, nx: e.nx, nz: e.nz, sw, v });
       }
     }
+    // una puerta que pidió el dueño (relevamiento: puerta { color, punto }), con su marco
+    if (rel?.puerta && bestFront) {
+      const e = bestFront;
+      const ux = (e.bx - e.ax) / e.L;
+      const uz = (e.bz - e.az) / e.L;
+      const P = rel.puerta.punto;
+      const t = P ? Math.max(0.7, Math.min(e.L - 0.7, (P[0] - e.ax) * ux + (P[1] - e.az) * uz)) : e.L * 0.15;
+      const x = e.ax + ux * t;
+      const z = e.az + uz * t;
+      det.rbox(1.12, 2.3, 0.08, 0x2e2e2e, x + e.nx * 0.04, 1.3, z + e.nz * 0.04, angOf(ux, uz));
+      det.rbox(0.92, 2.12, 0.1, rel.puerta.color || '#1565c0', x + e.nx * 0.08, 1.22, z + e.nz * 0.08, angOf(ux, uz));
+      det.rbox(0.06, 0.06, 0.06, 0xd4af37, x + ux * 0.32 + e.nx * 0.15, 1.2, z + uz * 0.32 + e.nz * 0.15, angOf(ux, uz));
+    }
     // la escuela con nombre (ver src/map.js): cartel azul sobre la entrada
     if (kind === 'escuela' && b.n && bestFront && signs.uv(b.n)) {
       const e = bestFront;

@@ -42,6 +42,36 @@
     131.4
    ],
    "fuente": "dueño: Av. Meeks 1357, bar clásico y antiguo (número ubicado con la numeración de OSM)"
+  },
+  {
+   "id": 1455,
+   "nombre": "Banco Macro",
+   "tipo": "local",
+   "rubro": "Banco",
+   "cartel": "#13306b",
+   "letras": "#ffffff",
+   "fuente": "dueño: entre Anchorena y 14 de Julio, a mitad de cuadra (OSM: Macro, Almirante Brown)"
+  },
+  {
+   "id": 1456,
+   "nombre": "Banco Provincia",
+   "tipo": "local",
+   "rubro": "Banco",
+   "cartel": "#00843d",
+   "letras": "#ffffff",
+   "fuente": "dueño: al lado del Macro (OSM: Banco Provincia, Almirante Brown)"
+  },
+  {
+   "id": 1454,
+   "tipo": "local",
+   "puerta": {
+    "color": "#1565c0",
+    "punto": [
+     246.6,
+     -245.3
+    ]
+   },
+   "fuente": "dueño: una puertita azul al lado del Banco Macro"
   }
  ]
 }

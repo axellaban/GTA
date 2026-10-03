@@ -29,7 +29,7 @@ for (const e of REL.negocios || []) {
     b.fr = [b.fr[i], ...b.fr.filter((_, j) => j !== i)];
     b.sb = [b.sb[i], ...b.sb.filter((_, j) => j !== i)];
   }
-  b.rel = { fachada: e.fachada, persiana: !!e.persiana, toldo: !!e.toldo, rejas: !!e.rejas, rubro: e.rubro, punto: e.punto, frente: e.frente };
+  b.rel = { fachada: e.fachada, persiana: !!e.persiana, toldo: !!e.toldo, rejas: !!e.rejas, rubro: e.rubro, punto: e.punto, frente: e.frente, puerta: e.puerta };
 }
 
 // Negocios con nombre de OpenStreetMap (scripts/map/osm_pois.py -> src/data/osm.json): cada uno va a la
