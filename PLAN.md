@@ -538,6 +538,17 @@ adentro); src/map.js exporta `X0, Z0, X1, Z1`, `AREA`, `WALL`, `inArea` y `edgeD
 - Memoria: ~265 MB contra ~220 MB del mapa viejo en `fuga.mjs` (37 % más edificios), estable, sin fuga.
   Pruebas: `norte.mjs` (sanatorio, guardia, flores, cruce y mapa de pausa), `clau.mjs`, smoke, `mis5173.mjs`.
 
+**R39 — ✅ Imagen más clara de día y calle que se veía de pasto** (reporte del dueño con captura del celu a las 8:04:
+"se ve demasiado oscuro"). Con el sol bajo casi toda la calle queda a la sombra de las casas y el relleno del
+cielo era poco: en main.js `hemi` sube de día (0,64 → ~1,2 a pleno sol) y más con el sol bajo (`lowSun`), igual
+`environmentIntensity`; exposición de día 0,95 → 1,1; en post.js menos contraste y viñeta de día y las sombras
+levantadas apenas. La noche queda igual (mismos valores con `day = 0`). Brillo medio en `luz.mjs` (Liniers y
+Meeks): 8:04 61 → 85, 12:30 88 → 100, 17:36 64 → 86.
+De paso: a veces la calle se veía de pasto (también antes de agrandar el mapa). Era el piso de fondo, un plano
+de dos triángulos gigantes 4 cm abajo del asfalto: la profundidad interpolada no alcanzaba y lo tapaba. Ahora
+es una grilla de cuadrados de ~50 m (city.js). Pruebas: `calle10.mjs` (14 cambios de hora sin pasto; antes
+salía en 1 a 3), `luz.mjs`.
+
 **R11 — Pruebas en celu real**: el dueño prueba en iPhone/Android y manda capturas; se ajusta.
 
 **R12 — Acercarse al look del video de Higgsfield** (Gaspi de traje y corbata roja en una vereda a lo

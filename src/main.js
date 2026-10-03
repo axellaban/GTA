@@ -676,11 +676,14 @@ function updateTime(dt) {
   sun.intensity = (0.35 + day * 2.9 + clear * 0.9) * (1 - rain * 0.75) * cross;
   sun.color.setHSL(0.085 - dusk * 0.045 - clear * 0.01, 0.55 + dusk * 0.4 + clear * 0.25, 0.74 - dusk * 0.12 - clear * 0.03);
   if (elev <= 0) sun.color.set(0x8fa8ff);
-  // cielo: relleno azulado para que las sombras tengan color
-  hemi.intensity = (0.62 + day * 0.26 - clear * 0.24) * (1 - rain * 0.1) + rain * day * 0.45 + weather.flash * 2.5;
+  // cielo: relleno azulado para que las sombras tengan color. De día más relleno (reporte del dueño: "se
+  // ve demasiado oscuro"), y más todavía con el sol bajo (a la mañana y a la tarde casi toda la calle
+  // queda a la sombra de las casas y se veía negra)
+  const lowSun = day * (1 - THREE.MathUtils.smoothstep(elev, 0.25, 0.75));
+  hemi.intensity = (0.62 + day * (0.62 - clear * 0.08) + lowSun * 0.55) * (1 - rain * 0.1) + rain * day * 0.3 + weather.flash * 2.5;
   hemi.color.copy(U.zenith.value).lerp(time.night ? nightFill : dayFill, 0.6);
   hemi.groundColor.set(time.night ? 0x2a2733 : 0x6b5e4c);
-  scene.environmentIntensity = 0.55 + day * 0.35 - clear * 0.15;
+  scene.environmentIntensity = 0.55 + day * 0.6 - clear * 0.1 + lowSun * 0.3;
   // la sombra cubre sobre todo lo que tenemos adelante, y se mueve de a un texel (sin temblequeo)
   camera.getWorldDirection(camFwd);
   camFwd.y = 0;
@@ -717,7 +720,7 @@ function updateTime(dt) {
     setUnderglow(on * 0.9);
   }
   city.lampPools.material.opacity = THREE.MathUtils.clamp((0.35 - lit) * 0.8, 0, 0.2);
-  renderer.toneMappingExposure = 0.95 + (1 - day) * 0.35;
+  renderer.toneMappingExposure = 1.1 + (1 - day) * 0.2;
 }
 
 const lightDir = new THREE.Vector3();

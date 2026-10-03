@@ -171,8 +171,10 @@ class Quads {
 
 // ---------- Suelo: manzanas, veredas, calzadas, plazas ----------
 function addGround(scene, city) {
-  // el piso de fondo: la caja del mapa más 400 m para cada lado (los interiores, a 1500 m, quedan afuera)
-  const base = new THREE.PlaneGeometry(X1 - X0 + 800, Z1 - Z0 + 800);
+  // el piso de fondo: la caja del mapa más 400 m para cada lado (los interiores, a 1500 m, quedan afuera).
+  // En cuadrados de ~50 m: con dos triángulos gigantes la profundidad interpolada no alcanzaba y este
+  // piso (2 cm abajo) a veces tapaba el asfalto (la calle se veía de pasto)
+  const base = new THREE.PlaneGeometry(X1 - X0 + 800, Z1 - Z0 + 800, Math.ceil((X1 - X0 + 800) / 50), Math.ceil((Z1 - Z0 + 800) / 50));
   base.rotateX(-Math.PI / 2);
   base.translate((X0 + X1) / 2, -0.02, (Z0 + Z1) / 2);
   const gt = groundTexture();

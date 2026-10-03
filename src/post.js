@@ -151,14 +151,15 @@ export class Post {
     // al atardecer, un toque magenta (luces rosas y sombras violetas) como Vice City
     // filtro de color a lo Vice City: día dorado, atardecer rosa, noche azul violácea
     u.gain.value.set(1.07 + dusk * 0.05 - k * 0.1 + clear * 0.035, 1.01 - dusk * 0.05 - k * 0.04 + clear * 0.012, 0.9 + dusk * 0.08 + k * 0.2 - clear * 0.035);
-    u.lift.value.set(-0.012 - k * 0.01 + dusk * 0.012, 0.0 + k * 0.004, 0.022 + k * 0.03 + rain * 0.01 + dusk * 0.018);
+    // (de día las sombras se levantan un poco: en el celu se veían negras)
+    u.lift.value.set(0.004 - k * 0.026 + dusk * 0.012, 0.008 - k * 0.004, 0.026 + k * 0.026 + rain * 0.01 + dusk * 0.018);
     // al morir (o caer preso) la imagen se va a blanco y negro, como en GTA
     const w = this.wasted || 0;
     u.saturation.value = 1.12 + dusk * 0.1 - k * 0.12 - rain * 0.15 + clear * 0.06;
     u.gray.value = w;
-    u.contrast.value = 0.28 + dusk * 0.05 - k * 0.08 + clear * 0.1 + w * 0.18;
+    u.contrast.value = 0.24 + dusk * 0.05 - k * 0.04 + clear * 0.05 + w * 0.18;
     u.sharpen.value = this.q.sharpen * (1 + clear * 0.45);
-    u.vignette.value = 0.3 + k * 0.25 + w * 0.5;
+    u.vignette.value = 0.2 + k * 0.35 + w * 0.5;
     u.time.value = performance.now() / 1000;
     const ao = 2.4 - k * 0.9;
     if (this.ao && Math.abs(this.ao.configuration.intensity - ao) > 0.02) this.ao.configuration.intensity = ao;
