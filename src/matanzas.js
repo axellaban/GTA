@@ -4,6 +4,7 @@
 // si no, la calavera vuelve al rato. Mientras dura, la cana no pasa de dos estrellas.
 import * as THREE from 'three';
 import { makeHuman, SKINS, HAIRS } from './human.js';
+import { makeLook } from './people.js';
 import { Npc } from './npcs.js';
 import { STATION } from './map.js';
 import { WEAPONS } from './weapons.js';
@@ -124,8 +125,10 @@ export class Matanzas {
       n.vmax = R.range(1.1, 1.6);
     } else {
       // barra de Banfield: camiseta verde y blanca, gorrito, ganas de pelear
-      const h = makeHuman({ skin: R.pick(SKINS), hair: R.pick(HAIRS), hairStyle: R.pick(['buzz', 'short', 'curly']), jersey: 'banfield', pants: R.pick([0x1a1a1a, 0x2c3e5c, 0x3a3a40]), shoes: 0xf2f2f2, cap: R.chance(0.4) ? 0x0a7a3b : null, stubble: R.chance(0.7), scale: R.range(0.98, 1.07) });
+      const look = { skin: R.pick(SKINS), hair: R.pick(HAIRS), hairStyle: R.pick(['buzz', 'short', 'curly']), jersey: 'banfield', pants: R.pick([0x1a1a1a, 0x2c3e5c, 0x3a3a40]), shoes: 0xf2f2f2, cap: R.chance(0.4) ? 0x0a7a3b : null, stubble: R.chance(0.7), scale: R.range(0.98, 1.07) };
+      const h = makeLook(look) || makeHuman(look);
       n = this.npcs.add(new Npc('vecino', h, p.x, p.z));
+      n.look = look;
       n.barra = true;
       n.hp = 70;
       n.brave = 1;

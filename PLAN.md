@@ -416,9 +416,28 @@ personajes", iterar con capturas). En curso. Hecho:
 - Detalles: `pad` en `paint.py` corre el color de cada pieza de ropa hacia el fondo de la textura (los
   bordes del cuello y los puños no se manchan al achicar); el cuerpo se esconde solo donde la ropa lo tapa
   entero (con "algún vértice tapado" se abrían agujeros en el cuello).
-Falta (en orden): gorra/insignia de la cana y SWAT propio; chicos (MakeHuman con edad ~12), trapitos,
-panchero, linyera, borrachos, bandas y zombis con el elenco (hoy siguen hechos por código); Laban, Ciro y
-las chicas; LOD lejano.
+- Todos los personajes (salvo el SWAT y el marciano): `makeLook(look)` en `src/people.js` traduce un
+  look de `human.js` (el que arman trapitos, linyeras, vendedores de medias, panchero, zombis, armero,
+  bandas, borrachos, chicos del colegio, barras de Banfield, piqueteros, motos, el carro del cartonero y el
+  soldado del tanque) al modelo MakeHuman que más se parece (chico/a, mujer, viejo, panza, bigote,
+  barba, musculoso, camiseta de club) y le impone colores (`top`, `vest` solo el torso, `bottom`, pelo y
+  piel relativos a los de human.js) y accesorios (`src/wear.js`: gorra con visera e insignia, casco,
+  anteojos, cadenita, franela, vasito; se calzan con `userData.head`). Si todavía no cargaron, el sistema
+  usa makeHuman y `npcs.update` lo cambia después (cuando está a más de 35 m: `n.plain` o `n.look`).
+  Pelado o con gorra/casco/sombrero: `baldGeometry` (la misma malla sin los triángulos del pelo,
+  compartida). Personajes: `makeStar('gaspi'|'laban'|'ciro'|'comandante')`, `makeGirl('fiesta'|'gym')`;
+  el Comandante del cielo pasa al modelo nuevo cuando carga (`Cielo.plainFort`). Se fueron los Quaternius
+  de personas y el código de la cara pegada (`faceDecal`).
+- `_part` ahora: 1 piel, 2 torso, 5 mangas, 6 pantalón, 3 pelo, 7 cejas, 0 lo demás. Extras del glb:
+  `fixed`, `lum`, `hair`, `head`. Elenco especial (`SETS.special`): linyera (barba pintada: `beard` en
+  `skin.py`), armero, chicos (edad 0,3); `SETS.stars`: Gaspi, Laban (traje blanco + `fedora01`), Ciro (en
+  cuero: `drop: top`), Comandante, chicas de fiesta y de gym. Con sombrero el presupuesto se reparte
+  (`TOTAL` en `pack.mjs`).
+- La piel se esconde si tiene un vértice tapado por la ropa o queda a menos de 1,8 cm debajo de la tela
+  (axilas y hombros), salvo en el cuello (ahí solo si está tapada entera).
+Falta (en orden): LOD lejano (hoy ~5.000 triángulos cada uno hasta 150 m); carga diferida de `special`
+y `stars`; SWAT propio con casco y chaleco; más ropa (buzos con capucha, shorts, vestidos: assets de la
+comunidad de MakeHuman con licencia CC0).
 Prueba: casting en el escenario (800, 800) mirando al este a las 9:30 (`mhcast.mjs` del scratchpad:
 fila de cuerpo entero, caras y primer plano).
 

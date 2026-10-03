@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { makeHuman, animateHuman, randomCivilian, SKINS, HAIRS } from './human.js';
 import { makeDog } from './animals.js';
-import { makePerson, PEOPLE, ANIMALS, makeAnimal, animalPlay, swapHuman } from './people.js';
+import { makePerson, makeLook, PEOPLE, ANIMALS, makeAnimal, animalPlay, swapHuman } from './people.js';
 import { DATA as D } from './map.js';
 import { R } from './rng.js';
 import { walkwayHeight } from './physics.js';
@@ -12,6 +12,10 @@ import { lowFilter } from './bajonivel.js';
 
 const OFF = (e) => e.street.w / 2 + 1.5; // mitad de la vereda
 const EG = 40; // grilla de aristas
+
+// cuerpo para un look de human.js: el modelo MakeHuman que más se parece o, si todavía no cargaron, el
+// hecho por código (y después se cambia: ver la vuelta de los "plain" en update)
+const body = (look) => makeLook(look) || makeHuman(look);
 
 export class Npc {
   constructor(type, human, x, z) {
@@ -300,14 +304,16 @@ export class Npcs {
     for (let i = 0; i < 44; i++) this.spawnWalker(null, center, 8, 150);
     for (let i = 0; i < 3; i++) this.spawnGroup(center, i ? 30 : 12, i ? 120 : 40);
     for (const s of this.city.spots.trapitos) {
-      const h = makeHuman({ ...randomCivilian(), vest: 0xc6ff00, cap: R.chance(0.5) ? 0x1a237e : null, franela: true });
-      const n = this.add(new Npc('trapito', h, s.x, s.z));
+      const look = { ...randomCivilian(), female: false, vest: 0xc6ff00, cap: R.chance(0.5) ? 0x1a237e : null, franela: true };
+      const n = this.add(new Npc('trapito', body(look), s.x, s.z));
+      n.look = look;
       n.state = 'idle';
       n.home = { x: s.x, z: s.z };
     }
     for (const s of this.city.spots.mendigos) {
-      const h = makeHuman({ skin: R.pick(SKINS), hair: R.pick(HAIRS), shirt: R.pick([0x6d5c47, 0x4e4e4e, 0x5d4037]), pants: 0x3e3a36, beard: true, hairStyle: 'long', cup: true, tired: true });
-      const n = this.add(new Npc('mendigo', h, s.x, s.z));
+      const look = { skin: R.pick(SKINS), hair: R.pick(HAIRS), shirt: R.pick([0x6d5c47, 0x4e4e4e, 0x5d4037]), pants: 0x3e3a36, beard: true, hairStyle: 'long', cup: true, tired: true };
+      const n = this.add(new Npc('mendigo', body(look), s.x, s.z));
+      n.look = look;
       n.state = 'sit';
       n.heading = s.heading;
       n.hp = 60;
@@ -339,7 +345,8 @@ export class Npcs {
     for (const p of plats.slice(0, 2)) homes.push(p);
     this.vendors = [];
     for (const home of homes) {
-      const h = makeHuman({ skin: R.pick(SKINS), hair: R.pick(HAIRS), shirt: R.pick([0xe65100, 0x2e7d32, 0x283593]), pants: 0x2d3440, cap: 0xf5f5f5, belly: R.chance(0.5), longSleeves: true });
+      const look = { skin: R.pick(SKINS), hair: R.pick(HAIRS), shirt: R.pick([0xe65100, 0x2e7d32, 0x283593]), pants: 0x2d3440, cap: 0xf5f5f5, belly: R.chance(0.5), longSleeves: true };
+      const h = body(look);
       // la bolsa de medias de colores colgando de la mano izquierda
       const bag = new THREE.Group();
       const cols = [0xf5f5f5, 0x212121, 0x1565c0, 0xc62828, 0x9e9e9e, 0xf9a825];
@@ -352,6 +359,7 @@ export class Npcs {
       bag.position.set(0, -0.06, 0.02);
       h.bones.handL.add(bag);
       const n = this.add(new Npc('medias', h, home.x, home.z));
+      n.look = look;
       n.state = 'idle';
       n.home = home;
       n.hp = 80;
@@ -363,8 +371,9 @@ export class Npcs {
   spawnPanchero() {
     const at = this.city.spots.panchero;
     if (!at) return;
-    const h = makeHuman({ skin: R.pick(SKINS), hair: 0x2b1d14, hairStyle: 'short', shirt: 0xf5f5f5, longSleeves: true, pants: 0x2d3440, cap: 0xf5f5f5, mustache: true, belly: true, scale: 1.02 });
-    const n = this.add(new Npc('panchero', h, at.x, at.z));
+    const look = { skin: R.pick(SKINS), hair: 0x2b1d14, hairStyle: 'short', shirt: 0xf5f5f5, longSleeves: true, pants: 0x2d3440, cap: 0xf5f5f5, mustache: true, belly: true, scale: 1.02 };
+    const n = this.add(new Npc('panchero', body(look), at.x, at.z));
+    n.look = look;
     n.state = 'idle';
     n.home = { x: at.x, z: at.z };
     n.heading = at.heading;
@@ -458,8 +467,9 @@ export class Npcs {
   spawnZombie(near, rmin = 40, rmax = 140) {
     const p = this.sidewalkPoint(near.x, near.z, rmin, rmax);
     if (!p) return null;
-    const h = makeHuman({ skin: R.pick([0xc9a88f, 0xb89478, 0xa88a70]), hair: 0x2b2420, shirt: R.pick([0x4e4a45, 0x5d5348, 0x3d3d3d]), pants: 0x333333, hood: R.chance(0.5) ? 0x3a3a3a : null, beard: R.chance(0.5), tired: true, scale: R.range(0.9, 1) });
-    const n = this.add(new Npc('zombie', h, p.x, p.z));
+    const look = { skin: R.pick([0xa9b08f, 0x98a078, 0x8a9070]), hair: 0x2b2420, shirt: R.pick([0x4e4a45, 0x5d5348, 0x3d3d3d]), pants: 0x333333, hood: R.chance(0.5) ? 0x3a3a3a : null, beard: R.chance(0.5), tired: true, scale: R.range(0.9, 1) };
+    const n = this.add(new Npc('zombie', body(look), p.x, p.z));
+    n.look = look;
     n.state = 'walk';
     n.vmax = R.range(0.5, 0.9);
     n.hp = 45;
@@ -471,8 +481,11 @@ export class Npcs {
   // Cana a pie (la maneja la policía, pero camina, pega y cae como cualquiera)
   // gendarme: con 6 estrellas bajan de las camionetas con pasamontañas y equipo táctico
   spawnCop(x, z, gendarme = false) {
-    const h = (gendarme && PEOPLE.ready && makePerson('swat')) || (PEOPLE.ready && R.chance(0.85) && makePerson('police')) || makeHuman({ skin: R.pick(SKINS), hair: 0x1a1a1a, hairStyle: R.pick(['short', 'buzz']), police: true, shirt: 0x8fb4d8, pants: 0x1c2a44, shoes: 0x111111, cap: 0x1c2a44, stubble: R.chance(0.4), scale: R.range(0.98, 1.06) });
+    // la Bonaerense de MakeHuman (camisa celeste), con gorra azul e insignia la mayoría
+    const look = { skin: R.pick(SKINS), hair: 0x1a1a1a, hairStyle: R.pick(['short', 'buzz']), police: true, female: R.chance(0.2), shirt: 0x8fb4d8, pants: 0x1c2a44, shoes: 0x111111, cap: R.chance(0.65) ? 0x1c2a44 : null, stubble: R.chance(0.4), scale: R.range(0.98, 1.06) };
+    const h = (gendarme && PEOPLE.ready && makePerson('swat')) || makeLook({ ...look, hair: null, skin: null }) || makeHuman({ ...look, female: false, cap: 0x1c2a44 });
     const n = this.add(new Npc('cana', h, x, z));
+    if (!h.rig && !gendarme) n.look = { ...look, hair: null, skin: null };
     n.gendarme = gendarme;
     n.state = 'chase';
     n.hp = gendarme ? 200 : 140;
@@ -666,11 +679,12 @@ export class Npcs {
     // están lejos de Gaspi (que no se vea el cambio)
     if (PEOPLE.ready && (this.upT = (this.upT ?? 0) - dt) <= 0) {
       this.upT = 0.05;
-      const n = this.list.find((o) => o.plain && !o.dead && !o.down && o.state === 'walk' && Math.hypot(player.x - o.x, player.z - o.z) > 35);
+      const n = this.list.find((o) => (o.plain || (o.look && !o.h.rig)) && !o.dead && !o.down && !o.lifted && Math.hypot(player.x - o.x, player.z - o.z) > 35);
       if (n) {
+        const h = n.plain ? makePerson(R.chance(0.5) ? 'female' : 'male') : makeLook(n.look);
         n.plain = false;
-        const h = makePerson(R.chance(0.5) ? 'female' : 'male');
         if (h) this.reskin(n, h);
+        else n.look = null;
       }
     }
     for (const n of this.list) {

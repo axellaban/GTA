@@ -17,6 +17,7 @@ from cast import CAST
 from paint import classify, pad, repaint
 from skin import cavity
 from skin import photo as photo_bake
+from skin import beard as beard_paint
 
 HERE = Path(__file__).resolve().parent
 C = HERE / 'cache'
@@ -249,6 +250,7 @@ def read_clo(path):
     info['mat'] = {}
     if 'material' in info:
         mp = info['dir'] / info['material']
+        info['matdir'] = mp.parent  # las texturas son relativas al .mhmat (el sombrero lo tiene en materials/)
         if mp.exists():
             for l in open(mp):
                 ps = l.split()
@@ -414,12 +416,45 @@ def clo_weights(clo, W):
 def load_img(clo, key='diffuseTexture', fallback=None):
     tex = clo['mat'].get(key)
     if tex:
-        p = clo['dir'] / tex
+        p = clo.get('matdir', clo['dir']) / tex
         if p.exists():
             return Image.open(p)
     if fallback:
         return Image.open(fallback)
     raise SystemExit('sin textura para ' + clo.get('name', '?'))
+
+
+def garment_lum(img, clo, top):
+    """Luminancia lineal media de la parte de arriba y de abajo de la prenda en su textura."""
+    from paint import raster_tris
+    size = 512
+    T = clo['T']
+    out = {}
+    for name, sel in (('top', top), ('bottom', ~top)):
+        tris = []
+        for fi in np.nonzero(sel)[0]:
+            f, ft = clo['F'][fi], clo['FT'][fi]
+            for k in range(1, len(f) - 1):
+                tris.append([T[ft[0]], T[ft[k]], T[ft[k + 1]]])
+        if not tris:
+            out[name] = 0.2
+            continue
+        uvpx = np.array(tris) * size
+        uvpx[..., 1] = size - uvpx[..., 1]
+        _, m = raster_tris(uvpx, np.zeros((len(tris), 3, 1), np.float32), size)
+        lin = (np.asarray(img.convert('RGB').resize((size, size), Image.BILINEAR), np.float32) / 255) ** 2.2
+        out[name] = round(float((lin @ [0.2126, 0.7152, 0.0722])[m].mean()), 4)
+    return out
+
+
+def colorize(img, hexcol):
+    a = np.asarray(img.convert('RGB'), np.float32) / 255
+    lin = a ** 2.2
+    lum = lin @ [0.2126, 0.7152, 0.0722]
+    col = np.array([int(hexcol[i:i + 2], 16) / 255 for i in (1, 3, 5)]) ** 2.2
+    ref = col @ [0.2126, 0.7152, 0.0722]
+    out = col * np.clip(lum / max(np.median(lum), 1e-3) * ref / max(ref, 1e-3), 0, 1.6)[..., None]
+    return Image.fromarray((np.clip(out, 0, 1) ** (1 / 2.2) * 255).astype(np.uint8))
 
 
 def neutral(img, hair):
@@ -452,20 +487,53 @@ def build(name, spec):
     # ---- ropa primero: dice qué parte del cuerpo se tapa
     deleted = np.zeros(len(V), bool)
     clothes = []
+    names = [b[0] for b in SKEL]
     for c in spec['clothes']:
-        clo = read_clo(C / 'clothes' / c / f'{c}.mhclo')
-        deleted[clo['delete']] = True
+        d, f = c.split('/') if '/' in c else (c, c)  # 'fedora01/fedora': carpeta y archivo distintos
+        clo = read_clo(C / 'clothes' / d / f'{f}.mhclo')
+        clo['key'] = c
+        drop = spec.get('drop', {}).get(c, [])
+        dl = np.array(clo['delete'], int)
+        if 'top' in drop:
+            # en cuero (Ciro): se sacan las piezas de arriba de la prenda y el torso no se esconde
+            isl, up = classify(clo, clo_weights(clo, W), names)
+            keepf = ~up[isl]
+            clo['F'] = [f for f, k in zip(clo['F'], keepf) if k]
+            clo['FT'] = [f for f, k in zip(clo['FT'], keepf) if k]
+            lower = W[:, [names.index(n) for n in ('LeftUpLeg', 'RightUpLeg', 'LeftLeg', 'RightLeg', 'LeftFoot', 'RightFoot', 'Hips')]].sum(1) > 0.5
+            dl = dl[lower[dl]] if len(dl) else dl
+        if len(dl):
+            deleted[dl] = True
         clothes.append(clo)
 
     # ---- cuerpo (proxy)
     sex = 'female' if spec['gender'] < 0.5 else 'male'
     px = read_clo(C / 'proxymeshes' / spec.get('proxy', 'female1605' if sex == 'female' else 'male1591') / ('%s.proxy' % spec.get('proxy', 'female1605' if sex == 'female' else 'male1591')))
     P = fit(px, V)
-    # un vértice del cuerpo se esconde si el de la malla base que más pesa quedó tapado; una cara se
-    # esconde si quedó tapada entera (con "alguno tapado" se abrían agujeros en el cuello y los puños)
+    # un vértice del cuerpo se esconde si el de la malla base que más pesa quedó tapado. Una cara se
+    # esconde si tiene alguno tapado (si no, la piel asoma por las costuras al bajar los brazos), salvo en
+    # el cuello: ahí solo si quedó tapada entera (si no, se abren agujeros en el cuello de la camisa)
     main = px['refs'][np.arange(len(px['refs'])), np.argmax(px['w'], 1)]
     hid = deleted[main]
-    keep = np.array([not all(hid[v] for v in f) for f in px['F']])
+    names_ = [b[0] for b in SKEL]
+    neck = (W[main][:, names_.index('Neck')] + W[main][:, names_.index('Head')]) > 0.25
+    # además, la piel que queda justo debajo de la tela (axilas, hombros: el asset no siempre las marca)
+    P = fit(px, V)
+    for clo in clothes:
+        if clo['name'].startswith(('shoes', 'fedora')):
+            continue
+        G = fit(clo, V)
+        NG = np.zeros_like(G)
+        for f in clo['F']:
+            n = np.cross(G[f[1]] - G[f[0]], G[f[-1]] - G[f[0]])
+            NG[f] += n
+        NG /= np.linalg.norm(NG, axis=1, keepdims=True) + 1e-9
+        for i0 in range(0, len(P), 256):
+            d = np.linalg.norm(P[i0:i0 + 256, None, :] - G[None, :, :], axis=2)
+            j = d.argmin(1)
+            under = ((P[i0:i0 + 256] - G[j]) * NG[j]).sum(1) < 0.03
+            hid[i0:i0 + 256] |= (d[np.arange(len(j)), j] < 0.18) & under & ~neck[i0:i0 + 256]
+    keep = np.array([not (all(hid[v] for v in f) if any(neck[v] for v in f) else any(hid[v] for v in f)) for f in px['F']])
     pos, uv, wts, tris = part_mesh(px, P, clo_weights(px, W), keep)
     # la cara va a su zona ampliada del atlas; el resto del cuerpo a la de piel
     inhead = (uv[:, 0] >= HEAD[0]) & (1 - uv[:, 1] >= HEAD[1]) & (1 - uv[:, 1] <= HEAD[3])
@@ -480,12 +548,15 @@ def build(name, spec):
     # sombra de las cavidades (ojos, nariz, boca, orejas, dedos) horneada en la piel
     cv = cavity(C, V, skin.size[0], spec.get('cavity', 1.3))
     lin = (np.asarray(skin, np.float32) / 255) ** 2.2 * cv[..., None]
+    # ojos y mentón medidos en el esqueleto (hueso del ojo y punta de la mandíbula)
+    sk = skeleton_src()[0]
+    joint = lambda j: V[sk['joints'][j]].mean(0)
+    eye_y = joint(sk['bones']['eye.L']['head'])[1]
+    chin_y = joint(sk['bones']['jaw']['tail'])[1]
+    if spec.get('beard'):
+        lin = beard_paint(C, V, np.clip(lin, 0, 1) ** (1 / 2.2), spec['beard'], eye_y, chin_y, HEAD) ** 2.2
     if spec.get('photo'):
-        # una cara de verdad (Gaspi): ojos y mentón medidos en el esqueleto (hueso del ojo y punta de la mandíbula)
-        sk = skeleton_src()[0]
-        joint = lambda j: V[sk['joints'][j]].mean(0)
-        eye_y = joint(sk['bones']['eye.L']['head'])[1]
-        chin_y = joint(sk['bones']['jaw']['tail'])[1]
+        # una cara de verdad (Gaspi)
         ph = dict(spec['photo'], file=str(HERE.parents[2] / spec['photo']['file']))  # desde la raíz del repo
         lin = photo_bake(C, V, np.clip(lin, 0, 1) ** (1 / 2.2), ph, eye_y, chin_y, HEAD) ** 2.2
     skin = Image.fromarray((np.clip(lin, 0, 1) ** (1 / 2.2) * 255).astype(np.uint8))
@@ -493,33 +564,40 @@ def build(name, spec):
     paste(atlas, skin, 'head', HEAD)
 
     # ---- ropa: todas las prendas comparten la zona 'clothes' salvo los zapatos
-    big = [c for c in clothes if not c['name'].startswith('shoes')]
+    hats = [c for c in clothes if c['name'].startswith('fedora')]
     shoes = [c for c in clothes if c['name'].startswith('shoes')]
+    big = [c for c in clothes if not any(c is x for x in hats + shoes)]
     if len(big) > 1:
         raise SystemExit('por ahora una sola prenda grande por personaje')
-    for clo, slot in [(c, 'clothes') for c in big] + [(c, 'shoes') for c in shoes]:
+    for clo, slot in [(c, 'clothes') for c in big] + [(c, 'shoes') for c in shoes] + [(c, 'extra') for c in hats]:
         P = fit(clo, V)
         pos, uv, wts, tris = part_mesh(clo, P, clo_weights(clo, W))
         parts.append((slot, clo['name'], pos, to_atlas(uv, slot), wts, tris, 2 if slot == 'clothes' else 0))
-        paint = spec.get('paint', {}).get(clo['name'], {})
-        names = [b[0] for b in SKEL]
-        if paint:
+        paint = spec.get('paint', {}).get(clo['key'], {})
+        if paint.get('colorize'):
+            # todo de un color conservando la luz (el sombrero blanco de Laban)
+            img = colorize(load_img(clo), paint['colorize'])
+        elif paint:
             img, top = repaint(clo, meters(P), clo_weights(clo, W), names, paint)
         else:
             img = load_img(clo)
-            if slot == 'clothes':
-                isl, up = classify(clo, clo_weights(clo, W), names)
-                top = up[isl]
         if slot == 'clothes':
-            # en el juego cambia de color la parte de arriba (salvo camisetas y uniformes: 'fixed'); la de
-            # abajo queda como es (un jean violeta no existe), salvo que se pida 'tint'
-            kv = np.full(len(P), 4)
-            for which, sel, default in (('top', top, spec.get('tint', True)), ('bottom', ~top, False)):
-                sp = paint.get(which, {})
-                if sp.get('tint', default and not sp.get('fixed')):
-                    for fi in np.nonzero(sel)[0]:
-                        kv[clo['F'][fi]] = 2
+            # cada vértice dice qué es: 2 torso, 5 mangas, 6 pantalón (el juego decide si cambia de color o
+            # le pone uno pedido: chaleco de trapito, camisa del panchero…)
+            isl, up = classify(clo, clo_weights(clo, W), names)
+            sleeve = classify.sleeve[isl]
+            top = up[isl]
+            kv = np.full(len(P), 6)
+            for fi in range(len(clo['F'])):
+                if top[fi]:
+                    kv[clo['F'][fi]] = 5 if sleeve[fi] else 2
             parts[-1] = parts[-1][:6] + (kv[part_mesh.src],)
+            # qué no cambia de color al azar (camisetas, uniformes; los pantalones salvo que se pida) y la
+            # luminancia media de cada parte (para pintarla de un color dado conservando las sombras)
+            ex = spec['extras'] = dict(spec.get('extras', {}))
+            ex['fixed'] = {'top': bool(paint.get('top', {}).get('fixed')) or not spec.get('tint', True),
+                           'bottom': not paint.get('bottom', {}).get('tint', False)}
+            ex['lum'] = garment_lum(img, clo, top)
         paste(atlas, pad(img, clo), slot)
 
     # ---- pelo, cejas, pestañas, ojos
@@ -529,14 +607,30 @@ def build(name, spec):
         pos, uv, wts, tris = part_mesh(clo, P, clo_weights(clo, W))
         parts.append((slot, clo['name'], pos, to_atlas(uv, slot), wts, tris, part))
         img = Image.open(tex) if tex else load_img(clo)
-        paste(atlas, neutral(img, slot == 'hair') if part == 3 else img, slot)
+        paste(atlas, neutral(img, slot == 'hair') if part in (3, 7) else img, slot)
 
     if spec.get('hair'):
         acc(C / 'hair' / spec['hair'] / (spec['hair'] + '.mhclo'), 'hair', 3)
     if spec.get('brows', 'eyebrow001'):  # con foto de la cara, las cejas son las de la foto
-        acc(C / 'eyebrows' / spec.get('brows', 'eyebrow001') / (spec.get('brows', 'eyebrow001') + '.mhclo'), 'brows', 3)
+        acc(C / 'eyebrows' / spec.get('brows', 'eyebrow001') / (spec.get('brows', 'eyebrow001') + '.mhclo'), 'brows', 7)
     acc(C / 'eyelashes' / spec.get('lashes', 'eyelashes01') / (spec.get('lashes', 'eyelashes01') + '.mhclo'), 'lashes', 0)
     acc(C / 'eyes/low-poly/low-poly.mhclo', 'eyes', 0, C / 'eyes/materials/brown_eye.png')
+
+    # ---- medidas de la cabeza para gorras y cascos en el juego (metros, relativas al hueso Head)
+    sk = skeleton_src()[0]
+    hi = [b[0] for b in SKEL].index('Head')
+    hb = bones[hi]['pos']
+    hv = V[:13380][W[:13380, hi] > 0.6]
+    brow = V[sk['joints'][sk['bones']['eye.L']['head']]].mean(0)[1] + 0.25
+    band = hv[(hv[:, 1] > brow) & (hv[:, 1] < brow + 0.6)]
+    ex = spec['extras'] = dict(spec.get('extras', {}))
+    ex['head'] = {
+        'top': round(float(hv[:, 1].max() - hb[1]) * 0.1, 4),
+        'brow': round(float(brow - hb[1]) * 0.1, 4),
+        'cz': round(float((band[:, 2].max() + band[:, 2].min()) / 2 - hb[2]) * 0.1, 4),
+        'rx': round(float(band[:, 0].max() - band[:, 0].min()) / 2 * 0.1, 4),
+        'rz': round(float(band[:, 2].max() - band[:, 2].min()) / 2 * 0.1, 4),
+    }
 
     # ---- a metros, con los pies en el piso
     ymin = min(p[2][:, 1].min() for p in parts)

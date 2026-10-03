@@ -4,6 +4,7 @@
 // Después, los créditos y de vuelta a la terraza: el juego sigue.
 import * as THREE from 'three';
 import { makeHuman, animateHuman } from './human.js';
+import { makeStar, swapHuman } from './people.js';
 import { roofWalkway } from './physics.js';
 import { R } from './rng.js';
 
@@ -98,24 +99,9 @@ export class Cielo {
       ray.rotation.x = R.range(-0.2, 0.2);
       g.add(ray);
     }
-    // el Comandante
-    const h = makeHuman({ skin: 0xc98654, hair: 0xf4ead0, hairStyle: 'side', shirt: 0xffffff, jacket: 0xfafafa, pants: 0xf5f5f5, shoes: 0xf0f0f0, muscle: true, scale: 1.03 });
-    // lentes negros
-    const shades = new THREE.Group();
-    const lens = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.1, metalness: 0.8 });
-    for (const s of [-1, 1]) {
-      const l = new THREE.Mesh(new THREE.BoxGeometry(0.052, 0.032, 0.012), lens);
-      l.position.set(s * 0.032, 0, 0);
-      shades.add(l);
-    }
-    shades.add(new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.008, 0.008), lens));
-    shades.position.set(0, 0.118, 0.12);
-    h.bones.head.add(shades);
-    // cadenita de oro
-    const chain = new THREE.Mesh(new THREE.TorusGeometry(0.085, 0.008, 6, 20), new THREE.MeshStandardMaterial({ color: 0xffcf40, roughness: 0.25, metalness: 1 }));
-    chain.rotation.x = Math.PI / 2.3;
-    chain.position.set(0, -0.03, 0.05);
-    h.bones.neck.add(chain);
+    // el Comandante: el de MakeHuman (traje blanco, platinado, anteojos y cadenita) o, si todavía no
+    // cargó, uno hecho por código con sus anteojos y su cadenita (y se cambia en update)
+    const h = makeStar('comandante') || this.plainFort();
     h.root.position.set(this.fortAt.x, HY, this.fortAt.z);
     h.root.rotation.y = Math.atan2(-this.ux, -this.uz);
     g.add(h.root);
@@ -245,7 +231,37 @@ export class Cielo {
     return true;
   }
 
+  plainFort() {
+    const h = makeHuman({ skin: 0xc98654, hair: 0xf4ead0, hairStyle: 'side', shirt: 0xffffff, jacket: 0xfafafa, pants: 0xf5f5f5, shoes: 0xf0f0f0, muscle: true, scale: 1.03 });
+    // lentes negros
+    const shades = new THREE.Group();
+    const lens = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.1, metalness: 0.8 });
+    for (const s of [-1, 1]) {
+      const l = new THREE.Mesh(new THREE.BoxGeometry(0.052, 0.032, 0.012), lens);
+      l.position.set(s * 0.032, 0, 0);
+      shades.add(l);
+    }
+    shades.add(new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.008, 0.008), lens));
+    shades.position.set(0, 0.118, 0.12);
+    h.bones.head.add(shades);
+    // cadenita de oro
+    const chain = new THREE.Mesh(new THREE.TorusGeometry(0.085, 0.008, 6, 20), new THREE.MeshStandardMaterial({ color: 0xffcf40, roughness: 0.25, metalness: 1 }));
+    chain.rotation.x = Math.PI / 2.3;
+    chain.position.set(0, -0.03, 0.05);
+    h.bones.neck.add(chain);
+    h.plainParts = [shades, chain];
+    return h;
+  }
+
   update(dt, world) {
+    // el Comandante hecho por código pasa al de MakeHuman apenas cargan los modelos
+    if (this.fort?.plainParts) {
+      const h = makeStar('comandante');
+      if (h) {
+        for (const o of this.fort.plainParts) o.removeFromParent();
+        this.fort = swapHuman(this.fort, h);
+      }
+    }
     if (this.bubble) {
       this.bubble.t -= dt;
       if (this.bubble.t <= 0) this.bubble = null;
@@ -262,6 +278,7 @@ export class Cielo {
       const k = Math.min(1, this.hugT / 0.8);
       animateHuman(this.fort, dt, 0, 'idle');
       this.hugPose(this.fort, k);
+      this.fort.rig?.apply();
       animateHuman(P.h, dt, 0, 'idle');
       this.hugPose(P.h, k);
       P.h.rig?.apply();

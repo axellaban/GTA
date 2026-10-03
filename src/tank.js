@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { BoxBuilder } from './builder.js';
 import { Vehicle } from './traffic.js';
 import { makeHuman } from './human.js';
+import { makeLook } from './people.js';
 import { R } from './rng.js';
 
 const OLIVE = 0x4b5a2a;
@@ -136,7 +137,8 @@ export class Tanks {
     v.eject = null;
     const lx = -Math.cos(v.heading);
     const lz = Math.sin(v.heading);
-    const h = makeHuman({ skin: R.pick([0xd9a882, 0xc68b62]), hair: 0x1a1a1a, hairStyle: 'buzz', top: 'long', shirt: 0x4b5320, pants: 0x4b5320, shoes: 0x111111, helmet: 0x3a4620 });
+    const look = { skin: R.pick([0xd9a882, 0xc68b62]), hair: 0x1a1a1a, hairStyle: 'buzz', top: 'long', shirt: 0x4b5320, pants: 0x4b5320, shoes: 0x111111, helmet: 0x3a4620 };
+    const h = makeLook(look) || makeHuman(look);
     const d = world.npcs.spawnWalker({ x: v.x + lx * (v.W / 2 + 1.3), z: v.z + lz * (v.W / 2 + 1.3), heading: v.heading + Math.PI / 2 }, null, 0, 0, null, h);
     if (d) {
       world.npcs.hurt(d, 5, lx, lz, { knock: true, knockT: 1.8, world });

@@ -9,6 +9,7 @@
 import * as THREE from 'three';
 import { Npc } from './npcs.js';
 import { makeHuman } from './human.js';
+import { makeLook } from './people.js';
 import { handWeapon } from './weapons.js';
 import { textTexture, bannerTexture } from './textures.js';
 import { nearestRoad, STATION } from './map.js';
@@ -131,8 +132,9 @@ export class Gangs {
     const def = g.def;
     for (let i = g.members.length; i < def.arms.length; i++) {
       const p = g.points[i % g.points.length];
-      const h = makeHuman(g.kind === 'arbolitos' ? arbolitoLook(i) : jubiladoLook(i));
-      const n = this.npcs.add(new Npc('banda', h, p.x + R.range(-1, 1), p.z + R.range(-1, 1)));
+      const look = g.kind === 'arbolitos' ? arbolitoLook(i) : jubiladoLook(i);
+      const n = this.npcs.add(new Npc('banda', makeLook(look) || makeHuman(look), p.x + R.range(-1, 1), p.z + R.range(-1, 1)));
+      n.look = look;
       n.gang = g;
       n.state = 'gang';
       n.arm = def.arms[i];

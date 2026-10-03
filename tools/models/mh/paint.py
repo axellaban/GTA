@@ -34,15 +34,23 @@ def islands(F, FT):
     return np.array([roots.setdefault(find(ft[0]), len(roots)) for ft in FT])
 
 
+ARMS = {'LeftArm', 'RightArm', 'LeftForeArm', 'RightForeArm', 'LeftHand', 'RightHand'}
+
+
 def classify(clo, Wv, names):
-    """Cada isla es 'top' (torso y brazos) o 'bottom' (piernas), según los huesos que la mueven."""
+    """Cada isla es 'top' (torso y brazos) o 'bottom' (piernas), según los huesos que la mueven.
+    Devuelve la isla de cada cara, si cada isla es de arriba y si es manga (brazos)."""
     up = np.array([n in UPPER for n in names])
     lo = np.array([n in LOWER for n in names])
+    arm = np.array([n in ARMS for n in names])
     isl = islands(clo['F'], clo['FT'])
     score = np.zeros(isl.max() + 1)
+    arms = np.zeros(isl.max() + 1)
     for fi, f in enumerate(clo['F']):
         w = Wv[f]
         score[isl[fi]] += (w[:, up].sum() - w[:, lo].sum()) / len(f)
+        arms[isl[fi]] += (w[:, arm].sum() - w[:, up & ~arm].sum()) / len(f)
+    classify.sleeve = (score > 0) & (arms > 0)
     return isl, score > 0
 
 
@@ -268,6 +276,8 @@ def repaint(clo, P, Wv, names, spec, size=1024):
             rng = np.random.default_rng(7)
             noise = 1 + (rng.random((size, size)) - 0.5) * 0.06
             new = col * (sh * noise)[..., None]
+        # el borde de afuera (para el filtrado) toma el color de adentro, no el sombreado del fondo
+        new, m2 = dilate(np.where(m[..., None], new, 0).astype(np.float32), m, 8)
         out[m2] = new[m2]
     for rc in spec.get('recolor', []):
         out = recolor(out, rc)

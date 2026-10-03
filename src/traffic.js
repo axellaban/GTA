@@ -1,7 +1,7 @@
 // Grafo de calles, autos con IA, colectivos y autos estacionados.
 import { ROADS, HALF } from './map.js';
 import { makeCar, makeBus, makeMoto, makeTruck, makeCarro, CAR_COLORS, DELIVERY, deliveryPack } from './vehicles.js';
-import { ANIMALS, makeAnimal, animalPlay } from './people.js';
+import { ANIMALS, makeAnimal, animalPlay, makeLook } from './people.js';
 import { repairCar, tailMat, brakeMat, carLod, QMODELS } from './cars.js';
 import * as THREE from 'three';
 import { makeHuman, animateHuman, randomCivilian } from './human.js';
@@ -321,7 +321,7 @@ export class Traffic {
     const look = B
       ? { ...c, helmet: R.pick(B.helmet), jacket: coat, shirt: B.color, longSleeves: true }
       : { ...c, helmet: R.chance(0.7) ? R.pick([0x111111, 0xc62828, 0xf5f5f5, 0x1565c0]) : null, jacket: R.chance(0.4) ? 0x222222 : null, longSleeves: true };
-    const rider = makeHuman(look);
+    const rider = makeLook(look) || makeHuman(look);
     if (brand === 'rappi') deliveryPack(rider, brand);
     animateHuman(rider, 0, 0, 'ride');
     rider.root.position.set(0, 0.36, -0.12);
@@ -356,7 +356,8 @@ export class Traffic {
     // el carro del cartonero, por las calles de barrio
     const small = this.graph.edges.filter((e) => e.len > 25 && e.street.w >= 6 && !e.street.avenue);
     for (let i = 0; i < 2 && small.length; i++) {
-      const d = makeHuman({ ...randomCivilian(), cap: R.chance(0.6) ? 0x6d4c41 : null, longSleeves: true });
+      const dl = { ...randomCivilian(), female: false, cap: R.chance(0.6) ? 0x6d4c41 : null, longSleeves: true };
+      const d = makeLook(dl) || makeHuman(dl);
       animateHuman(d, 0, 0, 'sit');
       const v = this.spawnOn(makeCarro(d), R.pick(small), 5);
       v.ai.vmax = R.range(2.6, 3.4);

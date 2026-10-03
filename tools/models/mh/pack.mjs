@@ -18,14 +18,15 @@ const DST = path.join(HERE, '../../../public/models/people');
 // triángulos por pieza (las pestañas y los ojos son chicos; los zapatos casi no se ven)
 const BUDGET = { body: 1450, clothes: 1640, shoes: 260, hair: 1100, brows: 192, lashes: 120, eyes: 172, extra: 400, extra2: 400 };
 const TEX = 1024;
+const TOTAL = 4950; // tope por persona (iPhone)
 
 await MeshoptSimplifier.ready;
 MeshoptSimplifier.useExperimentalFeatures = true; // para Prune (saca mechones sueltos del pelo)
 
-function simplify(part) {
+function simplify(part, k = 1) {
   const idx = Uint32Array.from(part.index);
   const pos = Float32Array.from(part.pos);
-  const want = Math.min(idx.length, (BUDGET[part.role] ?? 500) * 3);
+  const want = Math.min(idx.length, Math.floor((BUDGET[part.role] ?? 500) * k) * 3);
   let out = idx;
   if (want < idx.length) {
     const flags = part.role === 'body' ? ['LockBorder'] : part.role === 'hair' ? ['Prune'] : [];
@@ -90,7 +91,12 @@ function normals(p) {
 
 async function pack(name) {
   const src = JSON.parse(fs.readFileSync(path.join(SRC, `${name}.json`), 'utf8'));
-  const parts = src.parts.map(simplify);
+  // si con sombrero (u otra pieza más) se pasa del total, se achican el cuerpo, la ropa y el pelo
+  const want = (p) => Math.min(p.index.length / 3, BUDGET[p.role] ?? 500);
+  const sum = src.parts.reduce((a, p) => a + want(p), 0);
+  const big = src.parts.filter((p) => ['body', 'clothes', 'hair'].includes(p.role)).reduce((a, p) => a + want(p), 0);
+  const k = sum > TOTAL ? Math.max(0.5, 1 - (sum - TOTAL) / big) : 1;
+  const parts = src.parts.map((p) => simplify(p, ['body', 'clothes', 'hair'].includes(p.role) ? k : 1));
   let nv = 0;
   let ni = 0;
   for (const p of parts) (nv += p.pos.length / 3), (ni += p.index.length);

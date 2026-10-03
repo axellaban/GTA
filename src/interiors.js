@@ -12,7 +12,7 @@ import * as THREE from 'three';
 import { FastBoxes } from './builder.js';
 import { freeAfterUpload } from './textures.js';
 import { makeHuman, animateHuman, randomCivilian } from './human.js';
-import { makePerson, PEOPLE } from './people.js';
+import { makePerson, makeLook, PEOPLE } from './people.js';
 import { R } from './rng.js';
 import { Npc } from './npcs.js';
 import { WEAPONS, pickupWeapon, handWeapon } from './weapons.js';
@@ -152,7 +152,7 @@ function floorTex(a, b, n = 8) {
 
 // una persona quieta adentro (sentada, mirando el cartel, atendiendo)
 function extra(group, x, z, face, pose, look) {
-  const h = (!look && PEOPLE.ready && makePerson(R.chance(0.5) ? 'male' : 'female')) || makeHuman(look ?? randomCivilian());
+  const h = (!look && PEOPLE.ready && makePerson(R.chance(0.5) ? 'male' : 'female')) || makeLook(look) || makeHuman(look ?? randomCivilian());
   h.root.position.set(x, 0, z);
   h.root.rotation.y = face;
   group.add(h.root);
@@ -808,8 +808,9 @@ export class Interiors {
     this.npcs = npcs;
     const at = this.armeroAt;
     if (!at) return;
-    const h = makeHuman({ skin: 0xd9a882, hair: 0x9e9e9e, hairStyle: 'short', mustache: true, top: 'tank', shirt: 0x4e5b3a, pants: 0x2b2f2a, shoes: 0x2a1a10, belly: true, muscle: true, scale: 1.08 });
-    const n = npcs.add(new Npc('armero', h, at.x, at.z));
+    const look = { skin: 0xd9a882, hair: 0x9e9e9e, hairStyle: 'short', mustache: true, top: 'tank', shirt: 0x4e5b3a, pants: 0x2b2f2a, shoes: 0x2a1a10, belly: true, muscle: true, scale: 1.08 };
+    const n = npcs.add(new Npc('armero', makeLook(look) || makeHuman(look), at.x, at.z));
+    n.look = look;
     n.state = 'idle';
     n.home = { x: at.x, z: at.z };
     n.heading = at.face;

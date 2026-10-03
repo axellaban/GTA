@@ -38,7 +38,7 @@ import { Destroy } from './destroy.js';
 import { Tanks } from './tank.js';
 import { addPalms } from './palms.js';
 import { Laban } from './laban.js';
-import { loadPeople, loadAnimals, makeStar, swapHuman, makePerson, PEOPLE } from './people.js';
+import { loadPeople, loadAnimals, makeStar, makeGirl, makeLook, swapHuman, makePerson, PEOPLE } from './people.js';
 import { Rescue } from './rescue.js';
 import { Combat } from './combat.js';
 import { Police } from './police.js';
@@ -1349,6 +1349,6 @@ addEventListener('resize', () => {
 
 // Para pruebas desde la consola
 world.signs = SIGNS;
-world.people = { PEOPLE, makePerson, animateHuman };
+world.people = { PEOPLE, makePerson, makeLook, makeStar, makeGirl, animateHuman };
 window.__gta = world;
 window.__renderer = renderer;

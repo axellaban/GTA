@@ -42,13 +42,9 @@ def vertex_normals(V, F):
     return N / (np.linalg.norm(N, axis=1, keepdims=True) + 1e-12)
 
 
-def photo(C, V, skin, spec, eye_y, chin_y, head_uv):
-    """Pega una foto de frente (la cara de Gaspi) en la textura de la piel: cada texel de la cabeza se
-    proyecta de frente sobre la foto, alineando ojos y mentón; pesa más donde la cara mira para adelante
-    y se funde con el alfa de la foto. El resto de la piel toma el tono de la foto."""
-    from PIL import Image
+def head_maps(C, V, size, head_uv):
+    """Posición y normal de la malla base (dm) en cada texel de la zona de la cabeza de la piel."""
     F, FT, T = body_faces(C)
-    size = skin.shape[0]
     N = vertex_normals(V, F)
     uv = T[FT]
     x0, y0, x1, y1 = head_uv
@@ -59,8 +55,49 @@ def photo(C, V, skin, spec, eye_y, chin_y, head_uv):
     tris = np.concatenate([uvpx[:, [0, 1, 2]], uvpx[:, [0, 2, 3]]])
     tv = np.concatenate([vals[:, [0, 1, 2]], vals[:, [0, 2, 3]]])
     img, m = raster_tris(tris, tv, size)
-    pos, nrm = img[..., :3], img[..., 3:]
+    nrm = img[..., 3:]
     nrm = nrm / (np.linalg.norm(nrm, axis=2, keepdims=True) + 1e-9)
+    return img[..., :3], nrm, m
+
+
+def beard(C, V, skin, spec, eye_y, chin_y, head_uv):
+    """Barba, bigote o barba de días pintados en la piel (linyera, panchero, armero). La zona se define
+    en la cara: alto relativo r = 0 en la punta del mentón y 1 a la altura de los ojos."""
+    from paint import hexrgb, noise3
+    size = skin.shape[0]
+    pos, nrm, m = head_maps(C, V, size, head_uv)
+    x, y, z = pos[..., 0], pos[..., 1], pos[..., 2]
+    r = (y - chin_y) / (eye_y - chin_y)
+    ax = np.abs(x)
+    sm = lambda e0, e1, v: np.clip((v - e0) / (e1 - e0), 0, 1)
+    kind = spec.get('kind', 'full')
+    front = sm(-0.35, 0.1, nrm[..., 2])  # no la nuca
+    lips = sm(0.3, 0.2, ax) * sm(0.21, 0.25, r) * sm(0.37, 0.33, r) * sm(0.2, 0.6, nrm[..., 2])
+    if kind == 'mustache':
+        a = sm(0.34, 0.24, ax) * sm(0.35, 0.39, r) * sm(0.5, 0.45, r) * sm(0.3, 0.6, nrm[..., 2])
+        dens = 0.95
+    else:
+        # mejillas bajas, mandíbula, mentón y bigote; un poco por debajo del mentón
+        a = sm(0.55, 0.47, r) * sm(-0.28, -0.12, r) * sm(0.72, 0.6, ax) * front * (1 - lips)
+        # la línea de la mejilla sube hacia las patillas
+        a *= sm(0.0, 0.08, 0.55 + 0.25 * sm(0.3, 0.65, ax) - r + 0.08)
+        dens = 0.9 if kind == 'full' else 0.42
+    # pelo: un ruido fino (de lejos se ve como sombra) y el borde más ralo
+    n = noise3(pos * 42, 11) * 0.6 + noise3(pos * 95, 12) * 0.4
+    a = np.clip(a * dens * (0.55 + 0.75 * n), 0, 1) * m
+    col = hexrgb(spec.get('color', '#2b2018')) ** 2.2
+    lin = skin ** 2.2
+    out = lin * (1 - a[..., None]) + col * (0.75 + 0.5 * n[..., None]) * a[..., None]
+    return np.clip(out, 0, 1) ** (1 / 2.2)
+
+
+def photo(C, V, skin, spec, eye_y, chin_y, head_uv):
+    """Pega una foto de frente (la cara de Gaspi) en la textura de la piel: cada texel de la cabeza se
+    proyecta de frente sobre la foto, alineando ojos y mentón; pesa más donde la cara mira para adelante
+    y se funde con el alfa de la foto. El resto de la piel toma el tono de la foto."""
+    from PIL import Image
+    size = skin.shape[0]
+    pos, nrm, m = head_maps(C, V, size, head_uv)
     # de la malla (dm) a la caja de la foto (m): ojos y mentón donde los espera
     k = (spec['eye_y'] - spec['chin_y']) / ((eye_y - chin_y) * 0.1)
     px = pos[..., 0] * 0.1 * k

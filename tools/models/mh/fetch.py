@@ -104,7 +104,7 @@ def main():
     for h in ['short01', 'short02', 'short03', 'short04', 'bob02', 'ponytail01', 'afro01', 'long01', 'braid01']:
         tux_dir(f'hair/{h}/')
     print('pelo listo')
-    for c in ['male_casualsuit01', 'male_casualsuit02', 'male_casualsuit03', 'male_casualsuit04', 'male_casualsuit05', 'male_casualsuit06', 'male_worksuit01', 'male_elegantsuit01', 'female_casualsuit01', 'female_casualsuit02', 'female_sportsuit01', 'female_elegantsuit01', 'shoes01', 'shoes02', 'shoes03', 'shoes04', 'shoes05', 'shoes06']:
+    for c in ['male_casualsuit01', 'male_casualsuit02', 'male_casualsuit03', 'male_casualsuit04', 'male_casualsuit05', 'male_casualsuit06', 'male_worksuit01', 'male_elegantsuit01', 'female_casualsuit01', 'female_casualsuit02', 'female_sportsuit01', 'female_elegantsuit01', 'shoes01', 'shoes02', 'shoes03', 'shoes04', 'shoes05', 'shoes06', 'fedora01']:
         tux_dir(f'clothes/{c}/')
     tux_dir('clothes/materials/') if get(TUX + 'clothes/materials/') else None
     print('ropa lista')

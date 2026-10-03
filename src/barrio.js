@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import { Npc } from './npcs.js';
 import { makeHuman } from './human.js';
+import { makeLook } from './people.js';
 import { R } from './rng.js';
 
 const LINES = {
@@ -44,8 +45,10 @@ export class Barrio {
     const sz = -at.nx;
     const x = at.x + sx * (i - 1) * 1.6 + at.nx * R.range(-0.3, 0.6);
     const z = at.z + sz * (i - 1) * 1.6 + at.nz * R.range(-0.3, 0.6);
-    const h = makeHuman({ skin: R.pick([0xc68b62, 0xd9a882, 0xb07a52]), hair: R.pick([0x2b1d14, 0x5a5a5a, 0x1a1a1a]), hairStyle: R.pick(['short', 'curly', 'bald']), top: R.pick(['jersey', 'tshirt', 'hoodie']), jersey: 'temperley', shirt: R.pick([0x6b6b6b, 0x4e342e, 0x2e4a2e]), pants: R.pick([0x3a3a40, 0x2c3e5c]), shoes: 0x2a2a2a, stubble: true, tired: true, belly: R.chance(0.7), scale: R.range(0.96, 1.04) });
+    const look = { skin: R.pick([0xc68b62, 0xd9a882, 0xb07a52]), hair: R.pick([0x2b1d14, 0x5a5a5a, 0x1a1a1a]), hairStyle: R.pick(['short', 'curly', 'bald']), top: R.pick(['jersey', 'tshirt', 'hoodie']), jersey: 'temperley', shirt: R.pick([0x6b6b6b, 0x4e342e, 0x2e4a2e]), pants: R.pick([0x3a3a40, 0x2c3e5c]), shoes: 0x2a2a2a, stubble: true, tired: true, belly: R.chance(0.7), scale: R.range(0.96, 1.04) };
+    const h = makeLook(look) || makeHuman(look);
     const n = this.npcs.add(new Npc('borracho', h, x, z));
+    n.look = look;
     n.state = 'idle';
     n.home = { x, z };
     n.hp = 70;
@@ -67,7 +70,8 @@ export class Barrio {
       const girl = i % 2 === 1;
       const x = at.x + sx * R.range(-5, 5) + at.nx * R.range(0, 3);
       const z = at.z + sz * R.range(-5, 5) + at.nz * R.range(0, 3);
-      const h = makeHuman({
+      const look = {
+        child: true,
         female: girl,
         skin: R.pick([0xf0c8a8, 0xe0b090, 0xd9a882, 0xc68b62]),
         hair: R.pick([0x2b1d14, 0x4a3020, 0x1a1a1a, 0x8a5a2a, 0xc9a15a]),
@@ -80,8 +84,10 @@ export class Barrio {
         shoes: 0x1a1a1a,
         socks: 0xf2f2f2,
         scale: R.range(0.62, 0.78),
-      });
+      };
+      const h = makeLook(look) || makeHuman(look);
       const n = this.npcs.add(new Npc('chico', h, x, z));
+      n.look = look;
       n.state = 'idle';
       n.home = { x: at.x + at.nx * 1.5, z: at.z + at.nz * 1.5 };
       n.hp = 9999;

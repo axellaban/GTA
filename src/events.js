@@ -1,6 +1,7 @@
 // Cortes de calle, marchas y el zócalo de noticias.
 import * as THREE from 'three';
 import { makeHuman, randomCivilian } from './human.js';
+import { makeLook } from './people.js';
 import { Npc } from './npcs.js';
 import { bannerTexture } from './textures.js';
 import { ROADS, NAMED, project, pointAt, withCum, cornerName } from './map.js';
@@ -126,7 +127,9 @@ export class Events {
     const n = R.int(12, 18);
     const rng = this.rng;
     for (let i = 0; i < n; i++) {
-      const h = makeHuman({ ...randomCivilian(), cap: R.chance(0.3) ? R.pick([0x1a237e, 0xc62828, 0x2e7d32]) : null });
+      const look = { ...randomCivilian(), cap: R.chance(0.3) ? R.pick([0x1a237e, 0xc62828, 0x2e7d32]) : null };
+      const h = makeLook(look) || makeHuman(look);
+      h.lookFor = look;
       const side = i % 2 ? 1 : -1;
       const lx = R.range(-s.w / 2 + 0.6, s.w / 2 - 0.6);
       const lz = side * R.range(2.2, 5.5);
@@ -192,7 +195,9 @@ export class Events {
     const holders = [];
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < 5; c++) {
-        const h = makeHuman({ ...randomCivilian(), cap: R.chance(0.3) ? R.pick([0x1a237e, 0xc62828]) : null });
+        const look = { ...randomCivilian(), cap: R.chance(0.3) ? R.pick([0x1a237e, 0xc62828]) : null };
+        const h = makeLook(look) || makeHuman(look);
+        h.lookFor = look;
         const lx = (c - 2) * (s.w / 5.5) + R.range(-0.3, 0.3);
         const lz = -r * 3.2 + R.range(-0.5, 0.5);
         const role = r === 0 && (c === 0 || c === 4) ? 'banner' : r === 3 && c % 2 === 0 ? 'drum' : R.pick(['walk', 'fist', 'walk']);
@@ -221,6 +226,7 @@ export class Events {
   // (lo llama npcs.update en el estado 'protest') los lleva a su lugar en el grupo.
   recruit(ev, h, role, lx, lz, face = 0) {
     const n = new Npc('piquetero', h, 0, 0);
+    if (!h.rig) n.look = h.lookFor;
     n.ev = ev;
     n.role = role;
     n.lx = lx;
