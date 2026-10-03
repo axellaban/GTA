@@ -387,8 +387,10 @@ export class Npcs {
       if (!p) return null;
     }
     // la mayoría con modelo de artista (CC0, ver src/people.js) cuando ya cargaron
-    const h = human || (!look && PEOPLE.ready && R.chance(0.75) && makePerson(R.chance(0.5) ? 'female' : 'male')) || makeHuman(look ?? randomCivilian());
+    const h = human || (!look && PEOPLE.ready && R.chance(0.9) && makePerson(R.chance(0.5) ? 'female' : 'male')) || makeHuman(look ?? randomCivilian());
     const n = this.add(new Npc('vecino', h, p.x, p.z));
+    // un vecino cualquiera hecho por código (antes de que cargaran los modelos): se cambia después
+    n.plain = !human && !look && !h.rig;
     n.heading = p.heading ?? R.range(0, Math.PI * 2);
     n.vmax = R.range(1.1, 1.6);
     n.state = 'walk';
@@ -660,6 +662,17 @@ export class Npcs {
     const near = [];
     for (const n of this.list) if (!n.down && n.state !== 'sit' && Math.abs(n.x - player.x) < 40 && Math.abs(n.z - player.z) < 40) near.push(n);
     if (!player.vehicle && !player.dead) near.push({ x: player.x, y: player.y, z: player.z, wide: 1.15 });
+    // los vecinos que nacieron antes de que cargaran los modelos de artista pasan a uno de a poco, cuando
+    // están lejos de Gaspi (que no se vea el cambio)
+    if (PEOPLE.ready && (this.upT = (this.upT ?? 0) - dt) <= 0) {
+      this.upT = 0.05;
+      const n = this.list.find((o) => o.plain && !o.dead && !o.down && o.state === 'walk' && Math.hypot(player.x - o.x, player.z - o.z) > 35);
+      if (n) {
+        n.plain = false;
+        const h = makePerson(R.chance(0.5) ? 'female' : 'male');
+        if (h) this.reskin(n, h);
+      }
+    }
     for (const n of this.list) {
       n.t += dt;
       if (n.bubble) {

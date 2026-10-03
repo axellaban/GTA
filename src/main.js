@@ -17,7 +17,7 @@ import { Trains } from './trains.js';
 import { Hud } from './hud.js';
 import { lightMat, tailMat, brakeMat, paintMat, repairCar, makeFerrucho, setUnderglow, loadQCars } from './cars.js';
 import { CAR_COLORS, makeCar } from './vehicles.js';
-import { loadGaspiPhoto, updateHumanLod } from './human.js';
+import { loadGaspiPhoto, updateHumanLod, animateHuman } from './human.js';
 import { Sky } from './sky.js';
 import { Post, QUALITY } from './post.js';
 import { Glows } from './glow.js';
@@ -38,7 +38,7 @@ import { Destroy } from './destroy.js';
 import { Tanks } from './tank.js';
 import { addPalms } from './palms.js';
 import { Laban } from './laban.js';
-import { loadPeople, loadAnimals, makeStar, swapHuman } from './people.js';
+import { loadPeople, loadAnimals, makeStar, swapHuman, makePerson, PEOPLE } from './people.js';
 import { Rescue } from './rescue.js';
 import { Combat } from './combat.js';
 import { Police } from './police.js';
@@ -1349,5 +1349,6 @@ addEventListener('resize', () => {
 
 // Para pruebas desde la consola
 world.signs = SIGNS;
+world.people = { PEOPLE, makePerson, animateHuman };
 window.__gta = world;
 window.__renderer = renderer;

@@ -67,7 +67,12 @@ export function rigHuman(source, { height = 1.75, female = false } = {}) {
   model.traverse((o) => {
     if (o.isMesh) {
       o.castShadow = true;
-      o.frustumCulled = false; // el skinning mueve los vértices fuera de la caja original
+      // el skinning mueve los vértices fuera de la caja original: una esfera holgada (que alcance para
+      // acostado o con los brazos arriba) en vez de dibujarlo siempre, aunque esté fuera de cámara
+      if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+      const bb = o.geometry.boundingBox;
+      const size = bb.getSize(new THREE.Vector3());
+      o.boundingSphere = new THREE.Sphere(bb.getCenter(new THREE.Vector3()), Math.max(size.x, size.y, size.z) * 0.75);
     }
   });
   const holder = new THREE.Group(); // escala el modelo a la altura pedida

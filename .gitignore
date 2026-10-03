@@ -7,3 +7,5 @@ scripts/map/__pycache__/
 tools/models/node_modules
 public/test/
 /rigtest.html
+tools/models/mh/cache/
+tools/models/mh/__pycache__/

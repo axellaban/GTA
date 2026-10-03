@@ -1,21 +1,25 @@
-// Personas con modelo de artista (CC0): low-poly con textura pintada, como Vice City.
-// Vienen de Mesh2Motion (github.com/scottpetrovic/mesh2motion-app, carpeta models-variation/human):
-// autores elbolilloduro (varones, mujeres, policías, médico), todos CC0.
-// Los "q_" son de Quaternius (Ultimate Modular Men y Women, CC0): low-poly facetado con colores
-// lisos, pasados por tools/models/quat.mjs (colores de vértice, una malla, ≤ 4.800 triángulos).
+// Personas con modelo de artista: los vecinos, la policía y los clientes salen de MakeHuman (CC0,
+// makehumancommunity.org): cuerpo, cara, piel, ropa y pelo armados con tools/models/mh (build.py +
+// pack.mjs), cada uno con su cara y su ropa (camisetas de Banfield, Temperley, Boca, River…), ~5.000
+// triángulos y una textura de 1024. El SWAT es de Mesh2Motion (elbolilloduro, CC0) y Gaspi, Laban, Ciro y
+// las chicas de Quaternius (Ultimate Modular Men y Women, CC0; tools/models/quat.mjs).
 // Se cargan una vez; cada persona es un clon animado con nuestras poses (src/rig.js).
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { rigHuman } from './rig.js';
 import { R } from './rng.js';
+import { TOUCH } from './input.js';
+import { freeAfterUpload } from './textures.js';
 import faceUrl from './gaspi-face.webp';
 
 const SETS = {
-  male: ['male_5', 'male_6', 'male_10', 'male_15', 'male_32', 'doctor_m', 'q_casual', 'q_hoodie', 'q_punk', 'q_worker', 'q_suit', 'q_beach', 'q_farmer'],
-  female: ['female_8', 'female_9', 'female_31', 'qf_casual', 'qf_worker', 'qf_formal', 'qf_suit', 'qf_punk', 'qf_adventurer'],
-  police: ['police_male', 'police_female'],
+  male: ['mh_banfield', 'mh_temperley', 'mh_boca', 'mh_river', 'mh_pibe', 'mh_laburante', 'mh_oficinista', 'mh_gordo', 'mh_flaco', 'mh_musculoso', 'mh_rayado', 'mh_jubilado_old', 'mh_abuelo_old'],
+  female: ['mh_f_remera', 'mh_f_short', 'mh_f_deporte', 'mh_f_vestido', 'mh_f_madre', 'mh_f_afro', 'mh_f_abuela_old'],
+  police: ['mh_policia', 'mh_policia_f'],
   swat: ['swat_male'],
+  // solo para Gaspi, Laban, Ciro y las chicas (makeStar, makeGirl): no salen como vecinos al azar
+  stars: ['q_suit', 'q_beach', 'qf_formal', 'qf_casual'],
 };
 
 // Ropa de otro color para cada vecino: se gira el tono de lo que está saturado y no es piel
@@ -91,7 +95,69 @@ function tintParts(material, hue, sat, val, skin) {
   return m;
 }
 
+// MakeHuman (tools/models/mh): _part dice 1 piel, 2 ropa, 3 pelo y cejas, 4 ropa que no cambia de color
+// (camisetas de equipo, uniformes), 0 lo demás (ojos, zapatos).
+// La piel ya viene con su textura (clara u oscura): acá solo se varía un poco el tono. La ropa cambia
+// de color como en tintClothes y el pelo (gris neutro en el atlas, luminancia media 0,18) toma el color
+// que le toque: negro, castaño, rubio teñido, canoso…
+const MH_SKIN = [[1, 1, 1], [0.97, 0.93, 0.9], [0.93, 0.86, 0.8], [1.02, 0.98, 0.95]];
+const MH_HAIR = { negro: [0.025, 0.02, 0.018], oscuro: [0.05, 0.032, 0.022], castano: [0.12, 0.07, 0.04], claro: [0.3, 0.2, 0.11], rubio: [0.55, 0.42, 0.24], colorado: [0.32, 0.1, 0.04], canoso: [0.4, 0.4, 0.4], blanco: [0.75, 0.74, 0.72] };
+const MH_HAIR_W = [['negro', 4], ['oscuro', 5], ['castano', 4], ['claro', 1.5], ['rubio', 1], ['colorado', 0.4]];
+// allowed: los colores que admite el modelo (userData.hair del glb; p. ej. morochos: negro u oscuro)
+function mhHair(old, allowed) {
+  if (old && R.chance(0.7)) return MH_HAIR[R.chance(0.5) ? 'canoso' : 'blanco'];
+  const list = allowed ? MH_HAIR_W.filter(([k]) => allowed.includes(k)) : MH_HAIR_W;
+  let t = Math.random() * list.reduce((a, b) => a + b[1], 0);
+  for (const [k, w] of list) if ((t -= w) <= 0) return MH_HAIR[k];
+  return MH_HAIR.oscuro;
+}
+function tintMH(material, hue, sat, val, skin, hair) {
+  const m = material.clone();
+  m.onBeforeCompile = (shader) => {
+    THREE.Material.prototype.onBeforeCompile.call(m, shader);
+    shader.uniforms.uTint = { value: new THREE.Vector3(hue, sat, val) };
+    shader.uniforms.uSkin = { value: new THREE.Vector3(...skin) };
+    shader.uniforms.uHair = { value: new THREE.Vector3(...hair) };
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nattribute float _part;\nvarying float vPart;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvPart = _part;');
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nuniform vec3 uTint;\nuniform vec3 uSkin;\nuniform vec3 uHair;\nvarying float vPart;\n' + TINT_GLSL)
+      .replace(
+        '#include <color_fragment>',
+        `#include <color_fragment>
+        {
+          float hairK = step(2.5, vPart) - step(3.5, vPart);
+          float cloth = step(1.5, vPart) - step(2.5, vPart);
+          float skin = step(0.5, vPart) - step(1.5, vPart);
+          vec3 hsv = tintHsv(pow(max(diffuseColor.rgb, 0.0), vec3(0.4545)));
+          hsv.x = fract(hsv.x + uTint.x * cloth);
+          hsv.y = clamp(hsv.y * mix(1.0, uTint.y, cloth), 0.0, 1.0);
+          hsv.z *= mix(1.0, uTint.z, cloth);
+          vec3 c = pow(tintRgb(hsv), vec3(2.2)) * mix(vec3(1.0), uSkin, skin);
+          float lum = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+          diffuseColor.rgb = mix(c, uHair * (lum / 0.18), hairK);
+        }`,
+      );
+  };
+  m.customProgramCacheKey = () => 'ropa-mh';
+  return m;
+}
+
 export const PEOPLE = { ready: false, scenes: {} };
+
+function halve(t) {
+  const img = t.image;
+  if (!img?.width || img.width <= 512) return;
+  const c = document.createElement('canvas');
+  c.width = img.width / 2;
+  c.height = img.height / 2;
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+  img.close?.(); // ImageBitmap: se libera ya
+  t.image = c;
+  t.needsUpdate = true;
+  freeAfterUpload(t);
+}
 
 export function loadPeople() {
   const loader = new GLTFLoader();
@@ -102,6 +168,8 @@ export function loadPeople() {
         loader
           .loadAsync(`models/people/${f}.glb`)
           .then((g) => {
+            // en el celular (poca memoria de placa) la textura de los MakeHuman baja de 1024 a 512
+            if (TOUCH && /^mh_/.test(f)) g.scene.traverse((o) => o.isMesh && o.material.map && halve(o.material.map));
             // Quaternius: sin normales, se dibuja facetado como el original
             g.scene.traverse((o) => {
               if (o.isMesh && !o.geometry.attributes.normal) {
@@ -124,8 +192,14 @@ export function makePerson(kind) {
   const list = PEOPLE.scenes[kind];
   if (!list?.length) return null;
   const s = R.pick(list);
-  const female = kind === 'female' || /female/.test(s.f);
-  const h = rigHuman(s.scene, { female, height: female ? R.range(1.6, 1.7) : R.range(1.7, 1.84) });
+  const female = kind === 'female' || /female|^mh_f_|_f$/.test(s.f);
+  // los de MakeHuman ya vienen con su altura (la abuela es bajita, el flaco alto): apenas se varía
+  let height = female ? R.range(1.6, 1.7) : R.range(1.7, 1.84);
+  if (/^mh_/.test(s.f)) {
+    s.h0 ??= new THREE.Box3().setFromObject(s.scene).getSize(new THREE.Vector3()).y;
+    height = s.h0 * R.range(0.97, 1.03);
+  }
+  const h = rigHuman(s.scene, { female, height });
   h.file = s.f; // qué modelo es (para pruebas)
   // los vecinos con ropa de otro color (los uniformes quedan como son)
   if (kind === 'male' || kind === 'female') {
@@ -134,7 +208,8 @@ export function makePerson(kind) {
     const val = R.range(0.72, 1.18);
     h.rig.model.traverse((o) => {
       if (!o.isMesh) return;
-      if (o.geometry.attributes._part) o.material = tintParts(o.material, hue, sat, val, R.pick(SKIN_TONES));
+      if (/^mh_/.test(s.f)) o.material = tintMH(o.material, hue, sat, val, R.pick(MH_SKIN), mhHair(/_old/.test(s.f), s.scene.userData.hair));
+      else if (o.geometry.attributes._part) o.material = tintParts(o.material, hue, sat, val, R.pick(SKIN_TONES));
       else if (o.material?.map) o.material = tintClothes(o.material, hue, sat, val);
     });
   }

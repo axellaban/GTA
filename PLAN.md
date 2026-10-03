@@ -379,6 +379,41 @@ rampa) elige entre puente y trinchera según la altura que traía; Gaspi en auto
 `markOver` marca lo de arriba que cae sobre lo hondo: los de abajo (auto, Gaspi, NPC con y < -1) no lo
 chocan (`lowFilter`). Sin veredas: los NPC no caminan por ahí (`walkEdges`) ni se estaciona.
 
+**R32 — Personas al nivel de San Andreas / Vice City** (pedido del dueño, prioridad: "todos los
+personajes", iterar con capturas). En curso. Hecho:
+- Tubería MakeHuman (CC0: malla base, proxies, morfos, esqueleto y pesos, pieles, pelo, ropa; ver
+  LICENSE.md §C de makehumancommunity/makehuman) en `tools/models/mh/`:
+  `fetch.py` baja todo a `cache/` (no se sube: ~320 MB), `cast.py` es el elenco (morfos 0..1 como los
+  deslizadores, cara al azar con `seed`, piel, ropa, pelo, repintado), `build.py` arma cada personaje
+  (morfos macro con las fórmulas de `humanmodifier.py`, cara con ~45 modificadores de detalle, proxy
+  liviano y prendas ajustadas por sus 3 vértices de referencia, cuerpo tapado por la ropa afuera,
+  esqueleto de 19 huesos con nombres de Mixamo sumando los pesos del esqueleto completo, atlas 2048
+  con la cabeza ampliada aparte), `paint.py` repinta la ropa (sin los logos de MakeHuman: mapa de
+  posiciones 3D → rayas, franja, banda, liso; sombreado de oclusión + pliegues + costuras) y `skin.py`
+  hornea las cavidades de la cara en la piel (curvatura a 3 escalas en la malla de 13 mil vértices).
+  `pack.mjs` simplifica cada pieza (meshoptimizer) a ≤ 5.000 triángulos en total, normales suaves, una
+  malla, un material (alphaTest para el pelo, doble cara) y atlas WebP 1024 → `public/models/people/mh_*.glb`
+  (~330 KB). `_PART` por vértice: 1 piel, 2 ropa que cambia de color, 3 pelo y cejas (gris neutro: el
+  juego le da color), 4 ropa fija (camisetas, uniformes, pantalones), 0 lo demás. `userData.hair` (extras
+  de la escena) limita los colores de pelo (morochos: negro u oscuro); `_old` en el nombre: canosos.
+  `cd tools/models && python3 mh/fetch.py && python3 mh/build.py && node mh/pack.mjs`.
+- Elenco: 13 varones (camisetas de Banfield, Temperley, Boca, River y Argentina sin escudos, laburante de
+  overol, oficinista, gordo pelado, flaco, musculoso, camisa rayada, dos jubilados), 7 mujeres (remera y
+  jean, short, deportiva, vestido, madre, afro, abuela) y policía Bonaerense (camisa celeste, pantalón
+  azul) varón y mujer. Reemplazan a los de elbolilloduro y Quaternius (quedan `swat_male` y los
+  Quaternius de Gaspi, Laban, Ciro y las chicas, en `SETS.stars`).
+- Juego: `tintMH` (`src/people.js`) con tono de piel suave, ropa de arriba de otro color y pelo
+  negro/castaño/rubio/canoso; altura natural del modelo ±3 %; en celular la textura baja a 512
+  (`halve` + `freeAfterUpload`). `src/rig.js`: esfera de recorte holgada en vez de `frustumCulled = false`
+  (antes se dibujaban todos los vecinos aunque estuvieran atrás de la cámara). `src/npcs.js`: los vecinos
+  hechos por código antes de que cargaran los modelos pasan a uno de a poco cuando están a más de 35 m
+  (`n.plain`). `world.people` expone `PEOPLE`, `makePerson` y `animateHuman` para las pruebas.
+Falta (en orden): gorra/insignia de la cana y SWAT propio; chicos (MakeHuman con edad ~12), trapitos,
+panchero, linyera, borrachos, bandas y zombis con el elenco (hoy siguen hechos por código); Gaspi con la
+cara de la foto horneada en la textura de la cabeza, Laban, Ciro y las chicas; LOD lejano.
+Prueba: casting en el escenario (800, 800) mirando al este a las 9:30 (`mhcast.mjs` del scratchpad:
+fila de cuerpo entero, caras y primer plano).
+
 **R11 — Pruebas en celu real**: el dueño prueba en iPhone/Android y manda capturas; se ajusta.
 
 **R12 — Acercarse al look del video de Higgsfield** (Gaspi de traje y corbata roja en una vereda a lo
