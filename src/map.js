@@ -23,7 +23,13 @@ for (const e of REL.negocios || []) {
   if (TIPO[e.tipo]) b.k = TIPO[e.tipo];
   if (e.pisos) b.f = e.pisos;
   if (e.nombre && e.cartel) SIGN_COLORS_REAL.set(e.nombre, { bg: e.cartel, fg: e.letras || '#ffffff' });
-  b.rel = { fachada: e.fachada, persiana: !!e.persiana, toldo: !!e.toldo, rejas: !!e.rejas, rubro: e.rubro };
+  // frente: qué pared es la de la calle (índice de arista); punto: dónde va el cartel/la puerta (un galpón largo)
+  if (e.frente != null && b.fr.includes(e.frente)) {
+    const i = b.fr.indexOf(e.frente);
+    b.fr = [b.fr[i], ...b.fr.filter((_, j) => j !== i)];
+    b.sb = [b.sb[i], ...b.sb.filter((_, j) => j !== i)];
+  }
+  b.rel = { fachada: e.fachada, persiana: !!e.persiana, toldo: !!e.toldo, rejas: !!e.rejas, rubro: e.rubro, punto: e.punto, frente: e.frente };
 }
 
 // Negocios con nombre de OpenStreetMap (scripts/map/osm_pois.py -> src/data/osm.json): cada uno va a la

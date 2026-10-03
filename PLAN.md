@@ -337,6 +337,13 @@ lejos de los bordes. `Heli` usa el mismo enchufe que el OVNI (`P.ufo = heli`: `p
 solo te bajás donde hay piso caminable. El ruido va por `world.heliVol` (lo mezcla `police.update`).
 La torre está protegida en `Destroy.protectedBuilding`.
 
+**R27 — ✅ El Viejo Correo** (Av. Meeks 1357, pedido del dueño): en el galpón #399 (ex "El Espejo"). El
+número se ubicó con la numeración de OSM sobre Meeks (1307 y 1387 interpolados). El relevamiento
+acepta ahora `frente` (índice de arista que da a la calle: manda sobre "el frente más largo" en
+`addBuildings`) y `punto` ([x, z] donde va el cartel y la puerta en un frente largo; lo usan
+`city.js` y `pickups.shops`). Interior `buildCorreo` en `src/interiors.js` (CORREO x 1810), menú
+`correo`, ventiladores que giran en `update`.
+
 **R11 — Pruebas en celu real**: el dueño prueba en iPhone/Android y manda capturas; se ajusta.
 
 **R12 — Acercarse al look del video de Higgsfield** (Gaspi de traje y corbata roja en una vereda a lo

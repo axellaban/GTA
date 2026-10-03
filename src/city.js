@@ -534,7 +534,8 @@ function addBuildings(scene, atlas, colliders, rng, city) {
       }
       if (isFront && e.l > 3) {
         const fe = { ax: p0[0], az: p0[1], bx: p1[0], bz: p1[1], nx, nz, L: e.l };
-        if (!bestFront || e.l > bestFront.L) bestFront = fe;
+        // el frente más largo, salvo que el relevamiento diga cuál es el de la calle
+        if (rel?.frente != null ? k === rel.frente : !bestFront || e.l > bestFront.L) bestFront = fe;
         if (kind === 'edificio') {
           for (let f = 1; f < floors; f++) {
             const y = f * FLOOR_H;
@@ -576,8 +577,11 @@ function addBuildings(scene, atlas, colliders, rng, city) {
       const uv = signs.uv(nm);
       if (uv) {
         const sw = Math.min(len - 1, 7.5);
-        const cx = (e.ax + e.bx) / 2 + e.nx * 0.2;
-        const cz = (e.az + e.bz) / 2 + e.nz * 0.2;
+        // en el medio del frente (o donde diga el relevamiento, en un frente largo)
+        let t = len / 2;
+        if (rel?.punto) t = Math.max(sw / 2 + 0.5, Math.min(len - sw / 2 - 0.5, (rel.punto[0] - e.ax) * ux + (rel.punto[1] - e.az) * uz));
+        const cx = e.ax + ux * t + e.nx * 0.2;
+        const cz = e.az + uz * t + e.nz * 0.2;
         signQ.vert(cx - (ux * sw) / 2, cz - (uz * sw) / 2, cx + (ux * sw) / 2, cz + (uz * sw) / 2, 3.05, 3.85, uv);
         det.rbox(sw + 0.1, 0.9, 0.16, 0x2a2d30, cx - e.nx * 0.09, 3.45, cz - e.nz * 0.09, angOf(ux, uz));
         city.shopSigns.push({ x: cx, z: cz, nx: e.nx, nz: e.nz, name: nm });

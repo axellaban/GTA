@@ -171,7 +171,10 @@ export class Pickups {
       .filter((b) => b.kind === 'local' && b.b.fr?.length)
       .map((b) => {
         const o = outward(b.ring, b.b.fr[0]);
-        return { x: (o.ax + o.bx) / 2 + o.nx * 1.6, z: (o.az + o.bz) / 2 + o.nz * 1.6, nx: o.nx, nz: o.nz, name: b.b.n, cool: 0 };
+        // la puerta: en el medio del frente o donde el relevamiento puso el cartel
+        const P = b.b.rel?.punto;
+        const t = P ? Math.max(4, Math.min(o.l - 4, (P[0] - o.ax) * o.ux + (P[1] - o.az) * o.uz)) : o.l / 2;
+        return { x: o.ax + o.ux * t + o.nx * 1.6, z: o.az + o.uz * t + o.nz * 1.6, nx: o.nx, nz: o.nz, name: b.b.n, cool: 0 };
       })
       .sort((a, b) => dist(a) - dist(b));
     this.shops = shops;

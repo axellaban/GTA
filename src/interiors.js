@@ -22,6 +22,7 @@ const KIOSCO = { x: 1560, z: 1500 };
 const BAR = { x: 1620, z: 1500 };
 const PIZZA = { x: 1680, z: 1500 };
 const ARMERIA = { x: 1740, z: 1500 };
+const CORREO = { x: 1810, z: 1500 };
 
 // lo que se exhibe en la armería: [arma, precio] (chaleco y balas son especiales)
 const STOCK = [
@@ -43,6 +44,7 @@ const STOCK_NAME = { chaleco: 'Chaleco antibalas', balas: 'Balas para todo', mol
 const MENUS = {
   kiosco: { who: 'El kiosquero: "¿Qué llevás, maestro?"', items: [['Alfajor triple', 900, 15], ['Gaseosa', 1200, 25]] },
   bar: { who: 'El mozo: "¿Qué te sirvo, Gaspi?"', items: [['Fernet con coca', 2500, 35], ['Porrón de rubia', 1800, 25], ['Café con medialunas', 1400, 15]] },
+  correo: { who: 'Don Manolo, el mozo: "¿Qué le sirvo, joven?"', items: [['Vermú con soda y maní', 1500, 20], ['Café en jarrito', 900, 10], ['Ginebra Bols', 1200, 15], ['Picada de salame y queso', 4500, 50]] },
   pizza: { who: 'El pizzero: "¿Qué sale, jefe?"', items: [['Porción de muzza', 1500, 30], ['Porción de fugazzeta', 1800, 35], ['Fainá', 700, 10], ['Grande de muzza', 7000, 100]] },
 };
 
@@ -171,6 +173,7 @@ export class Interiors {
     this.buildBar(colliders, pickups);
     this.buildPizzeria(colliders, pickups);
     this.buildArmeria(colliders, pickups);
+    this.buildCorreo(colliders, pickups);
     this.fade = document.createElement('div');
     Object.assign(this.fade.style, { position: 'fixed', inset: '0', background: '#000', opacity: '0', pointerEvents: 'none', transition: 'opacity 0.4s', zIndex: '40' });
     document.body.appendChild(this.fade);
@@ -458,6 +461,175 @@ export class Interiors {
     this.doors.push({ room: 'bar', label: `Entrar al bar "${this.barName}"`, outside: { x: real.shop.x, z: real.shop.z, face: Math.atan2(real.shop.nx, real.shop.nz) }, inside: { x: BAR.x, z: BAR.z + D / 2 - 1.1, face: Math.PI }, exit: 'Salir a la calle' });
   }
 
+  // ---------- El Viejo Correo (Av. Meeks 1357): bar notable, clásico y antiguo ----------
+  // Boiserie de madera oscura, piso de damero, barra larga con estaño y caja registradora, espejo con
+  // estantes de botellas, ventiladores de techo, mesas de mármol con sillas de Viena, la pared de los
+  // casilleros de bronce del viejo correo y el buzón rojo. Atiende Don Manolo (chaleco y moñito) y hay
+  // parroquianos jugando al truco y leyendo el diario.
+  buildCorreo(colliders, pickups) {
+    const real = realShop(this.city, pickups, /VIEJO CORREO/i);
+    if (!real) return;
+    const g = new THREE.Group();
+    g.position.set(CORREO.x, 0, CORREO.z);
+    const F = new FastBoxes();
+    const W = 9;
+    const D = 7.4;
+    const H = 3.8;
+    roomBox(F, W, D, H, 0xd9c49a, 0x6b4a2e);
+    // boiserie: madera oscura hasta 1,5 m con moldura
+    for (const [w, d, x, z] of [[W, 0.05, 0, -D / 2 + 0.1], [W, 0.05, 0, D / 2 - 0.1], [0.05, D, -W / 2 + 0.1, 0], [0.05, D, W / 2 - 0.1, 0]]) {
+      F.box(w, 1.5, d, 0x4a2a14, x, 0.75, z);
+      F.box(w + (d < 0.1 && w > 1 ? 0 : 0.02), 0.08, d + 0.04, 0x7a5030, x, 1.52, z);
+    }
+    // cornisa arriba
+    for (const [w, d, x, z] of [[W, 0.12, 0, -D / 2 + 0.12], [W, 0.12, 0, D / 2 - 0.12], [0.12, D, -W / 2 + 0.12, 0], [0.12, D, W / 2 - 0.12, 0]]) F.box(w, 0.18, d, 0x5a3a20, x, H - 0.2, z);
+    // la barra larga con tapa de estaño y apoyapié de bronce
+    const bz = -D / 2 + 1.7;
+    F.box(W - 2.6, 1.1, 0.62, 0x4a2a14, -0.7, 0.55, bz);
+    for (let k = 0; k < 7; k++) F.box(0.04, 0.8, 0.02, 0x2e1a0c, -W / 2 + 1.2 + k * 0.92, 0.55, bz + 0.32);
+    F.box(W - 2.5, 0.06, 0.74, 0xb8b8b0, -0.7, 1.13, bz);
+    F.box(W - 2.6, 0.05, 0.05, 0xc9a227, -0.7, 0.2, bz + 0.38);
+    // caja registradora antigua y la cafetera de bronce
+    F.box(0.45, 0.32, 0.36, 0x8a6a2a, 1.6, 1.32, bz - 0.05);
+    F.box(0.42, 0.14, 0.2, 0xc9a227, 1.6, 1.55, bz - 0.12);
+    F.box(0.5, 0.55, 0.38, 0xc9a227, -2.6, 1.43, bz - 0.08);
+    F.box(0.2, 0.18, 0.2, 0x8a6a2a, -2.6, 1.8, bz - 0.08);
+    // banquetas altas
+    for (let k = 0; k < 6; k++) {
+      const x = -W / 2 + 1.4 + k * 0.95;
+      F.box(0.38, 0.07, 0.38, 0x6b1a1a, x, 0.78, bz + 0.8);
+      F.box(0.06, 0.76, 0.06, 0xc9a227, x, 0.38, bz + 0.8);
+      F.box(0.32, 0.03, 0.32, 0x2a2a2a, x, 0.02, bz + 0.8);
+    }
+    // espejo con marco y estantes con botellas (vermú, ginebra, licores)
+    F.box(W - 2.4, 1.5, 0.04, 0x8fa3a8, -0.7, 2.25, -D / 2 + 0.11);
+    F.box(W - 2.2, 0.1, 0.08, 0x5a3a20, -0.7, 3.04, -D / 2 + 0.12);
+    const bottles = [0x5d1a1a, 0x1b4d2a, 0xc9a227, 0x3e2510, 0xd7ccc8, 0x7a1f1f, 0x2e4a1e, 0xb5651d];
+    for (let row = 0; row < 3; row++) {
+      F.box(W - 2.6, 0.04, 0.26, 0x5a3a20, -0.7, 1.55 + row * 0.48, -D / 2 + 0.22);
+      for (let k = 0; k < 22; k++) F.box(0.08, 0.32 - (k % 3) * 0.05, 0.08, bottles[(k * 3 + row) % bottles.length], -W / 2 + 1.5 + k * 0.27, 1.73 + row * 0.48, -D / 2 + 0.24);
+    }
+    // casilleros de bronce del viejo correo (la pared de la izquierda)
+    for (let r = 0; r < 6; r++) {
+      for (let c = 0; c < 9; c++) {
+        const z = -1.8 + c * 0.42;
+        F.box(0.04, 0.34, 0.38, (r + c) % 4 ? 0xb08a3a : 0x9a7428, -W / 2 + 0.14, 1.75 + r * 0.33, z);
+        F.box(0.05, 0.05, 0.05, 0x3a2a14, -W / 2 + 0.17, 1.82 + r * 0.33, z + 0.1);
+      }
+    }
+    // el buzón rojo de pie
+    F.box(0.5, 1.1, 0.42, 0xb71c1c, -W / 2 + 0.55, 0.65, 2.3);
+    F.box(0.56, 0.1, 0.48, 0x8a1010, -W / 2 + 0.55, 1.24, 2.3);
+    F.box(0.3, 0.04, 0.02, 0x111111, -W / 2 + 0.81, 1.0, 2.3);
+    // mesas de mármol con sillas de Viena
+    const marble = 0xe8e4dc;
+    for (const [x, z] of [[-2.3, 1.0], [0.4, 1.0], [3.0, 0.4], [-0.9, 2.6], [2.0, 2.5]]) {
+      F.box(0.75, 0.05, 0.75, marble, x, 0.76, z);
+      F.box(0.06, 0.72, 0.06, 0x1a1a1a, x, 0.37, z);
+      F.box(0.45, 0.03, 0.45, 0x1a1a1a, x, 0.02, z);
+      for (const s of [-1, 1]) {
+        F.box(0.4, 0.04, 0.4, 0x3e2510, x + s * 0.7, 0.46, z);
+        for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) F.box(0.03, 0.44, 0.03, 0x2e1a0c, x + s * 0.7 + a * 0.16, 0.22, z + b * 0.16);
+        F.box(0.03, 0.55, 0.36, 0x3e2510, x + s * 0.88, 0.74, z);
+      }
+    }
+    // naipes y vasitos en la mesa del truco
+    for (let k = 0; k < 4; k++) F.box(0.07, 0.01, 0.1, 0xf5f0e6, -2.45 + k * 0.1, 0.79, 0.95 + (k % 2) * 0.08);
+    for (const [x, z] of [[-2.05, 1.2], [-2.55, 0.75], [0.6, 1.15]]) F.box(0.06, 0.1, 0.06, 0x7a1f1f, x, 0.84, z);
+    // lámparas colgantes (globos tibios) y dos ventiladores de techo
+    for (const [x, z] of [[-2.3, 1.0], [0.4, 1.0], [3.0, 0.4], [-2.5, bz], [1.5, bz]]) {
+      F.box(0.02, 0.8, 0.02, 0x222222, x, H - 0.45, z);
+      F.box(0.28, 0.22, 0.28, 0xffe0a0, x, H - 0.95, z);
+    }
+    g.add(shaded(F));
+    // el piso de damero blanco y negro
+    const fl = new THREE.Mesh(new THREE.PlaneGeometry(W, D).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: floorTex('#efe9dc', '#1e1e1e', 8) }));
+    fl.material.map.repeat.set(W / 1.6, D / 1.6);
+    fl.position.y = 0.01;
+    g.add(fl);
+    this.correoFans = [];
+    for (const x of [-1.6, 2.2]) {
+      const fan = new THREE.Group();
+      const blade = new THREE.MeshBasicMaterial({ color: 0x4a2a14 });
+      for (let i = 0; i < 4; i++) {
+        const b = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.02, 0.16), blade);
+        b.position.x = 0.5;
+        const arm = new THREE.Group();
+        arm.rotation.y = (i * Math.PI) / 2;
+        arm.add(b);
+        fan.add(arm);
+      }
+      fan.add(new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.18, 10), new THREE.MeshBasicMaterial({ color: 0xc9a227 })));
+      fan.position.set(x, H - 0.45, 1.7);
+      g.add(fan);
+      this.correoFans.push(fan);
+    }
+    // carteles y cuadros: el nombre sobre el espejo, Correos y Telégrafos y la foto del Temperley de antes
+    sign(g, 'EL VIEJO CORREO', { w: 3.6, h: 0.5, x: -0.7, y: 3.35, z: -D / 2 + 0.1, bg: '#1f3d2b', fg: '#e8c66a', font: 64 });
+    sign(g, 'CORREOS Y TELÉGRAFOS', { w: 2.4, h: 0.32, x: -W / 2 + 0.1, y: 3.95 - 0.55, z: -0.1, rot: Math.PI / 2, bg: '#6b1a1a', fg: '#f3e6c4', font: 50 });
+    const foto = canvasTex(256, 180, (c, w, h) => {
+      c.fillStyle = '#3a2a1a';
+      c.fillRect(0, 0, w, h);
+      c.fillStyle = '#c9b48a';
+      c.fillRect(12, 12, w - 24, h - 24);
+      // la estación vieja en sepia: el andén, el techo y una locomotora
+      c.fillStyle = '#8a7350';
+      c.fillRect(24, 110, w - 48, 14);
+      c.fillRect(40, 60, 120, 10);
+      for (let k = 0; k < 5; k++) c.fillRect(46 + k * 26, 70, 4, 40);
+      c.fillStyle = '#5a4630';
+      c.fillRect(150, 80, 70, 30);
+      c.fillRect(196, 62, 10, 18);
+      c.beginPath();
+      c.arc(166, 112, 8, 0, Math.PI * 2);
+      c.arc(204, 112, 8, 0, Math.PI * 2);
+      c.fill();
+      c.fillStyle = '#3a2a1a';
+      c.font = 'italic 16px Georgia, serif';
+      c.fillText('Temperley, 1910', 30, 150);
+    });
+    const frame = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.78), new THREE.MeshBasicMaterial({ map: foto }));
+    frame.position.set(W / 2 - 0.12, 2.3, -0.6);
+    frame.rotation.y = -Math.PI / 2;
+    g.add(frame);
+    const tango = canvasTex(180, 256, (c, w, h) => {
+      c.fillStyle = '#e8dcc0';
+      c.fillRect(0, 0, w, h);
+      c.fillStyle = '#7a1f1f';
+      c.font = 'bold 30px Georgia, serif';
+      c.textAlign = 'center';
+      c.fillText('GRAN', w / 2, 46);
+      c.fillText('BAILE', w / 2, 80);
+      c.fillStyle = '#1a1a1a';
+      c.font = 'italic 22px Georgia, serif';
+      c.fillText('de tango', w / 2, 112);
+      c.fillRect(70, 130, 40, 70);
+      c.beginPath();
+      c.arc(90, 124, 14, 0, Math.PI * 2);
+      c.fill();
+      c.font = '16px Georgia, serif';
+      c.fillText('Sábado 22 hs', w / 2, 230);
+    });
+    const poster = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.85), new THREE.MeshBasicMaterial({ map: tango }));
+    poster.position.set(W / 2 - 0.12, 2.25, 1.6);
+    poster.rotation.y = -Math.PI / 2;
+    g.add(poster);
+    // Don Manolo atrás de la barra; el truco y el del diario
+    const manolo = extra(g, -0.4, bz - 0.75, 0, 'idle', { skin: 0xe0b896, hair: 0xd9d9d9, hairStyle: 'bald', mustache: true, shirt: 0xf5f5f5, jacket: 0x2a1a10, tie: 0x111111, pants: 0x1a1a1a, belly: true, scale: 1.0 });
+    this.people.push({ ...manolo, room: 'correo' });
+    for (const [x, z, face] of [[-3.0, 1.0, Math.PI / 2], [-1.6, 1.0, -Math.PI / 2], [1.1, 1.0, -Math.PI / 2], [2.7, 2.5, -Math.PI / 2]]) {
+      const p = extra(g, x, z, face, 'sit', { ...randomCivilian(), hair: R.pick([0xd9d9d9, 0xbdbdbd, 0x5a5a5a]), cap: R.chance(0.3) ? 0x3a3a3a : null, longSleeves: true });
+      p.h.root.position.y = 0.05;
+      this.people.push({ ...p, room: 'correo' });
+    }
+    this.scene.add(g);
+    roomWalls(colliders, CORREO, W, D);
+    colliders.addSegment(CORREO.x - W / 2, CORREO.z + bz + 0.36, CORREO.x + W / 2 - 1.3, CORREO.z + bz + 0.36, 1, 'wall');
+    for (const [x, z] of [[-2.3, 1.0], [0.4, 1.0], [3.0, 0.4], [-0.9, 2.6], [2.0, 2.5]]) colliders.addCircle(CORREO.x + x, CORREO.z + z, 0.45, 1, 'prop');
+    this.correoCounter = { x: CORREO.x - 0.4, z: CORREO.z + bz + 0.8 };
+    this.doors.push({ room: 'correo', label: 'Entrar a El Viejo Correo', outside: { x: real.shop.x, z: real.shop.z, face: Math.atan2(real.shop.nx, real.shop.nz) }, inside: { x: CORREO.x + 2.6, z: CORREO.z + D / 2 - 1.1, face: Math.PI }, exit: 'Salir a Meeks' });
+  }
+
   // ---------- Pizzería ----------
   buildPizzeria(colliders, pickups) {
     const real = realShop(this.city, pickups, /PIZZ/i);
@@ -726,6 +898,7 @@ export class Interiors {
     }
     if (d.room === 'kiosco' && near(this.counter, 0.9)) return { text: 'Comprar en el kiosco', run: () => this.shop(world, 'kiosco') };
     if (d.room === 'bar' && near(this.barCounter, 1.1)) return { text: 'Pedir en la barra', run: () => this.shop(world, 'bar') };
+    if (d.room === 'correo' && near(this.correoCounter, 1.2)) return { text: 'Pedirle a Don Manolo', run: () => this.shop(world, 'correo') };
     if (d.room === 'pizza' && near(this.pizzaCounter, 1.1)) return { text: 'Pedir en el mostrador', run: () => this.shop(world, 'pizza') };
     if (d.room === 'hall' && near(this.hallPlatformExit, 1.8)) return { text: 'Pasar a los andenes', run: () => this.go(world, d, false, 'andenes') };
     if (near(d.inside, 1.4)) return { text: d.exit, run: () => this.go(world, d, false) };
@@ -807,6 +980,8 @@ export class Interiors {
   }
 
   update(dt, world) {
+    // los ventiladores de techo de El Viejo Correo
+    if (this.inside?.room === 'correo') for (const f of this.correoFans || []) f.rotation.y += dt * 2.4;
     // al Tano, si lo bajaron, lo reemplaza otro al rato (con Gaspi afuera) y reponen lo robado
     const n = this.armero;
     if (n && (n.killed || n.dead) && this.inside?.room !== 'armeria') {

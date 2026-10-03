@@ -81,7 +81,7 @@ export class Hud {
     add('pancho', world.city?.spots.pancho);
     for (const n of world.npcs?.vendors || []) if (!n.dead && !n.killed) add('medias', n);
     for (const d of world.interiors?.doors || []) {
-      const icon = { kiosco: 'kiosco', bar: 'bar', pizza: 'pizzeria' }[d.room];
+      const icon = { kiosco: 'kiosco', bar: 'bar', correo: 'bar', pizza: 'pizzeria' }[d.room];
       if (icon) add(icon, d.outside);
     }
     if (world.carwash?.x != null) add('lavadero', world.carwash);

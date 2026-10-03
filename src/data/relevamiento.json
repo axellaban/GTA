@@ -28,6 +28,20 @@
    "letras": "#ad1457",
    "toldo": true,
    "fuente": "dueño: Av. Almirante Brown y 14 de Julio"
+  },
+  {
+   "id": 399,
+   "nombre": "El Viejo Correo",
+   "tipo": "local",
+   "rubro": "Bar",
+   "cartel": "#1f3d2b",
+   "letras": "#e8c66a",
+   "frente": 9,
+   "punto": [
+    -93.8,
+    131.4
+   ],
+   "fuente": "dueño: Av. Meeks 1357, bar clásico y antiguo (número ubicado con la numeración de OSM)"
   }
  ]
 }
