@@ -308,6 +308,16 @@ caja, `model` igual 'delivery'). `Traffic.randomMoto`: 50 % delivery, mitad y mi
 color de la app; Rappi con la mochila colgada del pecho (`v.brand`; `ejectRider` se la vuelve a poner al
 que se baja). Sin logos: solo el nombre en letras nuestras. `startDelivery` titula con la app.
 
+**R24 — ✅ Chofer de Uver** (pedido del dueño: "un Uber pervertido que te quiere subir y te secuestra";
+se usa una marca trucha, como en los GTA, para no mostrar a la empresa real como secuestradora; las
+frases son de chamuyo pesado, nada explícito). `src/uver.js`: cada 170–300 s (el primero a los 100 s)
+con Gaspi a pie y tranquilo, `spawn` pone el auto (`v.keep`, `v.uver`) 28–50 m atrás en su carril, solo
+si no hay autos en el medio (`clear`). Frena al lado (`ai.hold`), toca bocina y ofrece (`bubble` va a
+`speakers`). E (`action`) → `board`: Gaspi oculto y `P.riding` (el tránsito no lo cuenta como peatón),
+`riding` lo lleva con el auto; E suma `grip` (se afloja solo); a 1 → `escape` (golpe y al piso al
+costado del auto); a los 14 s → `ransom` (30 % de la plata, mín. $5.000, lo larga a 300–480 m, +2 h).
+Si te alejás más de 28 m o te busca la cana, se va. Si le robás el auto, queda como uno más.
+
 **R11 — Pruebas en celu real**: el dueño prueba en iPhone/Android y manda capturas; se ajusta.
 
 **R12 — Acercarse al look del video de Higgsfield** (Gaspi de traje y corbata roja en una vereda a lo

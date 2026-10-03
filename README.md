@@ -242,6 +242,8 @@ Como los "Rampage" de Vice City: seis **calaveras** rojas por el barrio (se ven 
 
 **Repartidores de PedidosYa y Rappi**: la mitad de las motos son de delivery. Los de PedidosYa llevan campera y casco rojos y la caja roja atrás de la moto; los de Rappi, campera naranja (o negra) y la mochila-caja naranja en la espalda. Colores tomados de cómo andan en la calle; letras y cajas dibujadas en el juego (sin logos). Si te subís a una, la changa dice de qué app es.
 
+**El chofer de Uver** (app trucha, como las marcas de los GTA): cada tanto, si andás a pie, un sedán negro con el cartelito UVER en el techo se arrima al cordón, toca bocina y el chofer (demasiado simpático) te ofrece llevarte gratis. Si te subís (E), traba las puertas y sale a toda velocidad: **apretá E repetido para forcejear** hasta que se le escapa el volante y te tirás del auto. Si no llegás, te lleva lejos, se queda con el 30 % de tu plata de rescate y te larga en cualquier calle.
+
 Además: los **vecinos cruzan las vías por el puente de la estación** (suben, cruzan y bajan; alguno se para en el medio a mirar el tren), y la **luz de día** es más nítida y cálida, con sombras marcadas y menos bruma.
 
 ## Lo que cargó el dueño (relevamiento, 0.28)

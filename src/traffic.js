@@ -542,7 +542,8 @@ export class Traffic {
     for (const o of police) put(vgrid, o);
     if (pv) put(vgrid, pv);
     for (const p of npcs.walkers()) put(pgrid, p);
-    if (!pv) put(pgrid, player);
+    // (de pasajero no cuenta como peatón: si no, el auto frenaría por tenerlo "adelante")
+    if (!pv && !player.riding) put(pgrid, player);
     const buf = [];
     const near = (g, x, z) => {
       buf.length = 0;

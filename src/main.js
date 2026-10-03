@@ -52,6 +52,7 @@ import { CarWash } from './carwash.js';
 import { Races } from './races.js';
 import { Missions, makeMarker } from './missions.js';
 import { Matanzas, DEFS as MATANZAS } from './matanzas.js';
+import { Uver } from './uver.js';
 
 setupInstall();
 
@@ -251,6 +252,7 @@ Vehicle.onSlam = (v, k) => {
   if (d < 25) audio.golpe(0.4 * k * (1 - d / 25));
 };
 const transit = new Transit(city, trains, traffic);
+const uver = new Uver(traffic, npcs);
 world.transit = transit;
 const interiors = new Interiors(scene, city, city.colliders, pickups);
 flushTextures();
@@ -262,6 +264,9 @@ const missions = new Missions(scene, world);
 world.missions = missions;
 const matanzas = new Matanzas(scene, npcs);
 world.matanzas = matanzas;
+world.uver = uver;
+world.transit = transit;
+world.streetName = nearestStreetName;
 world.save = () => saveGame();
 const ufo = new Ufo(scene, world);
 world.ufo = ufo;
@@ -907,6 +912,7 @@ function interactions() {
   }
   if (!action) action = interiors.action(world);
   if (!action) action = transit.action(world);
+  if (!action) action = uver.action(world);
   const car = player.nearestVehicle(world);
   if (action) hud.prompt('E', action.text);
   else if (car) {
@@ -993,6 +999,7 @@ function speakers() {
   for (const n of npcs.list) if (n.bubble) add(n.x, n.y + (n.h.tall ?? 2.35 * n.h.root.scale.y), n.z, n.bubble, n.type === 'trapito' || n.type === 'cana' || n.state === 'fight', { female: n.h.female, key: n.h.phase });
   for (const m of crime.motos) if (m.bubble) add(m.v.x, 2.6, m.v.z, m.bubble, true, { key: 7 });
   if (player.bubble) add(player.x, player.y + 2.4, player.z, player.bubble, false, { key: 3 });
+  if (uver.bubble && uver.v) add(uver.v.x, 2.3, uver.v.z, uver.bubble, true, { key: 23 });
   if (laban.bubble && laban.v) add(laban.v.x, 2.3, laban.v.z, laban.bubble, false, { female: laban.bubble.female, key: laban.bubble.female ? 31 : 17 });
   // la gente del corte canta
   for (const e of events.list) {
@@ -1167,7 +1174,7 @@ function frame(now) {
       combat.strip(player);
       player.respawn(comisaria, 'comisaria');
     }
-  } else if (!transit.update(dt, world)) {
+  } else if (!transit.update(dt, world) && !uver.riding(dt, world)) {
     ufo.update(dt, world);
     interactions();
     player.update(dt, world);
@@ -1182,6 +1189,7 @@ function frame(now) {
   interiors.update(dt, world);
   races.update(dt, world);
   matanzas.update(dt, world);
+  uver.update(dt, world);
   crime.update(dt, world);
   police.update(dt, world);
   events.update(dt, world);
