@@ -54,6 +54,7 @@ import { Missions, makeMarker } from './missions.js';
 import { Matanzas, DEFS as MATANZAS } from './matanzas.js';
 import { Uver } from './uver.js';
 import { buildTower, Heli } from './heli.js';
+import { buildTobogan, Tobogan } from './tobogan.js';
 
 setupInstall();
 
@@ -271,6 +272,9 @@ const tower = buildTower(scene, city);
 const heli = new Heli(scene, tower);
 world.tower = tower;
 world.heli = heli;
+// la torre de Almirante Brown 2973: ascensor, pileta y tobogán en la terraza
+const tobogan = new Tobogan(buildTobogan(scene, city));
+world.tobogan = tobogan;
 world.transit = transit;
 world.streetName = nearestStreetName;
 world.save = () => saveGame();
@@ -927,6 +931,7 @@ function interactions() {
   if (!action) action = interiors.action(world);
   if (!action) action = transit.action(world);
   if (!action) action = uver.action(world);
+  if (!action) action = tobogan.action(world);
   const car = player.nearestVehicle(world);
   if (action) hud.prompt('E', action.text);
   else if (car) {
@@ -1205,6 +1210,7 @@ function frame(now) {
   matanzas.update(dt, world);
   uver.update(dt, world);
   heli.update(dt, world);
+  tobogan.update(dt, world);
   crime.update(dt, world);
   police.update(dt, world);
   events.update(dt, world);

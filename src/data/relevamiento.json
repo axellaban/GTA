@@ -73,5 +73,32 @@
    },
    "fuente": "dueño: una puertita azul al lado del Banco Macro"
   }
+ ],
+ "nuevos": [
+  {
+   "ring": [
+    [
+     83.59,
+     -454.8
+    ],
+    [
+     92.62,
+     -439.23
+    ],
+    [
+     77.04,
+     -430.2
+    ],
+    [
+     68.02,
+     -445.78
+    ]
+   ],
+   "tipo": "edificio",
+   "pisos": 32,
+   "frente": 0,
+   "extra": "tobogan",
+   "fuente": "dueño: Almirante Brown 2973 (esquina Esmeralda), altísimo, con un tobogán gigante en el último piso que cae a una pileta"
+  }
  ]
 }

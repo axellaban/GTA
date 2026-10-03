@@ -392,6 +392,28 @@ export const ICONS = {
       text(g, '$', 40, INK);
     },
   },
+  tobogan: {
+    bg: '#0d47a1',
+    label: 'Tobogán y pileta (terraza, piso 32)',
+    draw(g) {
+      g.strokeStyle = WHITE;
+      g.lineWidth = 5;
+      g.lineCap = 'round';
+      g.beginPath();
+      g.moveTo(18, 14);
+      g.bezierCurveTo(50, 18, 14, 34, 46, 40);
+      g.stroke();
+      g.lineWidth = 3;
+      for (const y of [46, 52]) {
+        g.beginPath();
+        g.moveTo(14, y);
+        g.quadraticCurveTo(20, y - 4, 26, y);
+        g.quadraticCurveTo(32, y + 4, 38, y);
+        g.quadraticCurveTo(44, y - 4, 50, y);
+        g.stroke();
+      }
+    },
+  },
   heli: {
     bg: '#c8102e',
     label: 'Helicóptero (terraza de las torres)',
@@ -486,6 +508,6 @@ export function drawIcon(g, kind, x, y, size, letter = null) {
 }
 
 // lo que se muestra en la leyenda del mapa de pausa, en orden
-export const LEGEND = ['mision', 'armeria', 'arbolitos', 'jubilados', 'pintura', 'gym', 'nafta', 'comisaria', 'hospital', 'tren', 'pancho', 'medias', 'kiosco', 'picada', 'corte', 'ambulancia', 'bombero', 'delivery', 'ovni', 'heli', 'matanza', 'arma', 'vida', 'chaleco', 'coima'];
+export const LEGEND = ['mision', 'armeria', 'arbolitos', 'jubilados', 'pintura', 'gym', 'nafta', 'comisaria', 'hospital', 'tren', 'pancho', 'medias', 'kiosco', 'picada', 'corte', 'ambulancia', 'bombero', 'delivery', 'ovni', 'heli', 'tobogan', 'matanza', 'arma', 'vida', 'chaleco', 'coima'];
 // de los objetos del piso (pickups) al ícono
 export const PICKUP_ICON = { weapon: 'arma', health: 'vida', armor: 'chaleco', coima: 'coima' };

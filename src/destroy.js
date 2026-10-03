@@ -74,7 +74,7 @@ export class Destroy {
 
   protectedBuilding(b, world) {
     // la estación y la torre del helipuerto (src/heli.js) no se caen
-    if (b.kind === 'estacion' || b === world.tower?.building) return true;
+    if (b.kind === 'estacion' || b === world.tower?.building || b.b?.extra === 'tobogan') return true;
     const doors = world.interiors?.doors || [];
     for (const d of doors) if (distToRing(d.outside.x, d.outside.z, b.ring) < 3.5 || pointInRing(d.outside.x, d.outside.z, b.ring)) return true;
     if (world.gym?.x != null && pointInRing(world.gym.x, world.gym.z, b.ring)) return true;

@@ -31,6 +31,11 @@ for (const e of REL.negocios || []) {
   }
   b.rel = { fachada: e.fachada, persiana: !!e.persiana, toldo: !!e.toldo, rejas: !!e.rejas, rubro: e.rubro, punto: e.punto, frente: e.frente, puerta: e.puerta };
 }
+// edificios que no están en los datos y el dueño pidió (relevamiento.nuevos): van al final de la lista,
+// así no cambian los números de los demás
+for (const e of REL.nuevos || []) {
+  D.buildings.push({ r: e.ring, k: TIPO[e.tipo] ?? 'edificio', f: e.pisos ?? 1, v: 7, fr: [e.frente ?? 0], sb: [0], n: e.nombre ?? null, cat: null, rel: { rubro: e.rubro }, extra: e.extra ?? null });
+}
 
 // Negocios con nombre de OpenStreetMap (scripts/map/osm_pois.py -> src/data/osm.json): cada uno va a la
 // huella que lo contiene o a la más cercana con frente a la calle (a menos de 10 m). Pisan los nombres

@@ -348,6 +348,15 @@ acepta ahora `frente` (índice de arista que da a la calle: manda sobre "el fren
 relevamiento (al Provincia le ganaba "La Casona" de OSM). El relevamiento acepta `puerta: { color, punto }`
 (puerta con marco sobre el frente, en `addBuildings`): la puertita azul va en #1454, pegada al Macro.
 
+**R29 — ✅ Torre del tobogán** (Alte. Brown 2973, pedido del dueño). En los datos no había edificio en
+ese tramo de la vereda oeste: el relevamiento acepta `nuevos` ([{ ring, tipo, pisos, frente, extra }],
+`src/map.js` los agrega al final de `D.buildings`). 32 pisos (99,5 m). `src/tobogan.js`: marco local
+(s a lo largo del frente, d hacia adentro), pileta con borde (`add3d`) y su piso caminable (la terraza es
+`roofWalkway` con `hole`; nuevo en `walkwayHeight`), torrecita, tobogán = `TubeGeometry` sobre una
+`CatmullRomCurve3` (sale por el costado, hélice de 1,5 vueltas de radio 4 alrededor de un poste con
+ménsulas a la pared, vuelve a la pileta). El viaje usa `P.cutscene` y acelera con la pendiente.
+Ascensor: fundido entre la vereda y la casilla de la terraza. Protegida en `Destroy`.
+
 **R11 — Pruebas en celu real**: el dueño prueba en iPhone/Android y manda capturas; se ajusta.
 
 **R12 — Acercarse al look del video de Higgsfield** (Gaspi de traje y corbata roja en una vereda a lo

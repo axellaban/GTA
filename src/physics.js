@@ -10,7 +10,7 @@ export function walkwayHeight(walkways, x, z, y) {
     if (w.ring) {
       const b = w.box;
       if (x < b.x0 || x > b.x1 || z < b.z0 || z > b.z1 || w.y0 > y + 0.7 || w.y0 <= best) continue;
-      if (inRing(x, z, w.ring)) best = w.y0;
+      if (inRing(x, z, w.ring) && !(w.hole && inRing(x, z, w.hole))) best = w.y0;
       continue;
     }
     const dx = w.bx - w.ax;
