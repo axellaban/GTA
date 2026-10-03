@@ -6,6 +6,7 @@ import { R } from './rng.js';
 import { carEffects } from './carfx.js';
 import { SIGNS } from './props.js';
 import { walkwayHeight } from './physics.js';
+import { lowFilter } from './bajonivel.js';
 
 const WALK = 2.3;
 const RUN = 6.3;
@@ -757,8 +758,8 @@ export class Player {
     const airborne = this.y > this.groundAt() + 0.6;
     // las barandas del puente frenan solo arriba; abajo, las paredes comunes (y no las de más bajas que uno)
     const y = this.y;
-    // (al andén se sube caminando: su borde solo frena a los autos)
-    colliders.resolveCircle(p, this.r, (b) => b.kind !== 'platform' && (b.y0 ? y > b.y0 - 0.6 && y < b.h : y < 1 || y < b.h - 0.3) && (!airborne || b.h > 1.3));
+    // (al andén se sube caminando: su borde solo frena a los autos; abajo en el bajo nivel no chocan los de arriba)
+    colliders.resolveCircle(p, this.r, (b) => b.kind !== 'platform' && !(b.over && y < -1) && (b.y0 ? y > b.y0 - 0.6 && y < b.h : y < 1 || y < b.h - 0.3) && (!airborne || b.h > 1.3));
     const cars = traffic.all().concat(police.cars, world.tanks?.list ?? []);
     for (const v of cars) {
       if (Math.abs(v.x - p.x) > 8 || Math.abs(v.z - p.z) > 8) continue;
@@ -889,7 +890,7 @@ export class Player {
     this.scrapeT = (this.scrapeT || 0) - dt;
     for (const c of v.circles()) {
       const p = { x: c.x, z: c.z };
-      const hit = colliders.resolveCircle(p, c.r);
+      const hit = colliders.resolveCircle(p, c.r, (v.y || 0) < -1 ? lowFilter : undefined);
       if (hit) {
         // un poste de luz a velocidad: lo voltea y sigue (frenado)
         const vel = Math.hypot(v.vx, v.vz);
@@ -1127,7 +1128,7 @@ export class Player {
       return;
     }
     const dt = this.dt || 1 / 60;
-    const ground = this.vehicle ? 0 : this.groundAt();
+    const ground = this.vehicle ? this.vehicle.y || 0 : this.groundAt();
     if (!this.vehicle && (this.vy !== 0 || this.y > ground + 0.3)) {
       // gravedad
       this.vy -= 13 * dt;

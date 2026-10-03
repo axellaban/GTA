@@ -28,6 +28,7 @@ import { addWind } from './atmosphere.js';
 import { Colliders } from './physics.js';
 import { FastBoxes } from './builder.js';
 import { Rng } from './rng.js';
+import { buildBajo, cutGround } from './bajonivel.js';
 const ni = (g) => (g.index ? g.toNonIndexed() : g);
 // instancias que no se mueven nunca: chunks.js las reparte por cuadrado para no dibujarlas todas
 // (con un número adelante: más allá de esos metros ni se dibujan, son cosas chicas)
@@ -56,6 +57,8 @@ export function buildCity(scene) {
   addFences(scene, colliders, city.balconyRails);
   addTracks(scene);
   addStation(scene, colliders, city);
+  // el bajo nivel (calzada que baja abajo de las vías, paredes, puentes): src/bajonivel.js
+  buildBajo(scene, city);
   addLamps(scene, city, rng);
   addTrees(scene, colliders, rng);
   addClutter(scene, rng);
@@ -173,7 +176,8 @@ function addGround(scene, city) {
   base.translate(0, -0.02, 0);
   const gt = groundTexture();
   gt.repeat.set(160, 160);
-  const bm = new THREE.Mesh(base, new THREE.MeshLambertMaterial({ map: gt }));
+  // (el piso, las manzanas, las veredas y las plazas se recortan donde pasa el bajo nivel)
+  const bm = new THREE.Mesh(base, cutGround(new THREE.MeshLambertMaterial({ map: gt })));
   bm.receiveShadow = true;
   scene.add(bm);
 
@@ -184,15 +188,15 @@ function addGround(scene, city) {
   // manzanas elevadas 15 cm con cordón
   // el pulmón de manzana: pasto medio seco, con manchones grandes para que no se note la repetición
   const dry = grassTexture('seco');
-  const topMat = addWorldDetail(new THREE.MeshLambertMaterial({ map: dry.map, normalMap: dry.normal, normalScale: new THREE.Vector2(0.6, 0.6) }), { strength: 0.4, scale: 0.05, damp: 0 });
+  const topMat = cutGround(addWorldDetail(new THREE.MeshLambertMaterial({ map: dry.map, normalMap: dry.normal, normalScale: new THREE.Vector2(0.6, 0.6) }), { strength: 0.4, scale: 0.05, damp: 0 }));
   const top = new THREE.Mesh(flat(D.blocks, 0.15, 4), topMat);
   top.receiveShadow = true;
   scene.add(top);
-  scene.add(new THREE.Mesh(sides(D.blocks, 0, 0.15), new THREE.MeshLambertMaterial({ color: 0xc4bfb3, side: THREE.DoubleSide })));
+  scene.add(new THREE.Mesh(sides(D.blocks, 0, 0.15), cutGround(new THREE.MeshLambertMaterial({ color: 0xc4bfb3, side: THREE.DoubleSide }))));
 
   const st = sidewalkTexture();
   const walkMat = new THREE.MeshStandardMaterial({ map: st, normalMap: normalMapFrom(st.image, 3, true), normalScale: new THREE.Vector2(0.8, 0.8), roughness: 0.95, metalness: 0, envMapIntensity: 0.5 });
-  const walk = new THREE.Mesh(flat(D.sidewalks, 0.153, 3.2), addWorldDetail(walkMat, { strength: 0.3, scale: 0.12, damp: 0, wet: true }));
+  const walk = new THREE.Mesh(flat(D.sidewalks, 0.153, 3.2), cutGround(addWorldDetail(walkMat, { strength: 0.3, scale: 0.12, damp: 0, wet: true })));
   walk.receiveShadow = true;
   scene.add(walk);
 
@@ -202,6 +206,7 @@ function addGround(scene, city) {
   const road = new THREE.Mesh(flat(D.roadPoly, 0.02, 9), addWorldDetail(roadMat, { strength: 0.28, scale: 0.035, damp: 0, wet: true }));
   road.receiveShadow = true;
   scene.add(road);
+  city.roadMat = roadMat;
   // con lluvia se mojan: menos rugosos y más oscuros
   city.wetMats = [road.material, walk.material];
   // fotos CC0 de asfalto y baldosas si se bajaron (scripts/texturas.mjs); si no, quedan las dibujadas
@@ -219,7 +224,7 @@ function addGround(scene, city) {
       q.add((ax + bx) / 2, (az + bz) / 2, (bx - ax) / l, (bz - az) / l, l + p.w * 0.5, p.w, 0.17);
     }
   }
-  const pm = new THREE.Mesh(q.geometry(), new THREE.MeshLambertMaterial({ color: 0xbdb6a6 }));
+  const pm = new THREE.Mesh(q.geometry(), cutGround(new THREE.MeshLambertMaterial({ color: 0xbdb6a6 })));
   pm.receiveShadow = true;
   scene.add(pm);
 
@@ -233,7 +238,7 @@ function addGround(scene, city) {
   if (green.length) {
     const grass = grassTexture('verde');
     const gmMat = addWorldDetail(new THREE.MeshLambertMaterial({ map: grass.map, normalMap: grass.normal, normalScale: new THREE.Vector2(0.6, 0.6) }), { strength: 0.4, scale: 0.05, damp: 0 });
-    const gm = new THREE.Mesh(flat(green, 0.158, 4), gmMat);
+    const gm = new THREE.Mesh(flat(green, 0.158, 4), cutGround(gmMat));
     gm.receiveShadow = true;
     scene.add(gm);
   }
@@ -248,7 +253,7 @@ function addGround(scene, city) {
     const t = new THREE.CanvasTexture(pt);
     t.colorSpace = THREE.SRGBColorSpace;
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
-    const pm2 = new THREE.Mesh(flat(pitch, 0.162, 10), new THREE.MeshLambertMaterial({ map: t }));
+    const pm2 = new THREE.Mesh(flat(pitch, 0.162, 10), cutGround(new THREE.MeshLambertMaterial({ map: t })));
     pm2.receiveShadow = true;
     scene.add(pm2);
     const lines = new Quads();
@@ -272,7 +277,8 @@ function addRoadMarkings(scene) {
   const cross = new Quads();
   const pare = [];
   for (const r of ROADS) {
-    if (r.len < 20 || r.w < 7) continue;
+    // (el bajo nivel pinta sus líneas sobre su propia calzada: src/bajonivel.js)
+    if (r.len < 20 || r.w < 7 || r.bajo) continue;
     const trim = 9;
     if (r.avenue) {
       for (let s = trim; s < r.len - trim; s += 2) {
@@ -1543,7 +1549,7 @@ function findSpots(city, rng) {
   const door = city.spots.stationDoor;
   const curb = [];
   for (const r of ROADS) {
-    if (r.len < 25 || r.cls === 'service' || r.w < 7) continue;
+    if (r.len < 25 || r.cls === 'service' || r.w < 7 || r.bajo) continue;
     for (let s = 12; s < r.len - 12; s += 6) {
       const p = pointAt(r.pts, r.cum, s);
       for (const side of [-1, 1]) {

@@ -56,6 +56,7 @@ import { Uver } from './uver.js';
 import { buildTower, Heli } from './heli.js';
 import { buildTobogan, Tobogan } from './tobogan.js';
 import { Cielo } from './cielo.js';
+import { markOver, BAJO } from './bajonivel.js';
 
 setupInstall();
 
@@ -281,6 +282,7 @@ const cielo = new Cielo(scene, city, tobogan);
 world.cielo = cielo;
 world.transit = transit;
 world.streetName = nearestStreetName;
+world.bajo = BAJO;
 world.save = () => saveGame();
 const ufo = new Ufo(scene, world);
 world.ufo = ufo;
@@ -1268,6 +1270,8 @@ function frame(now) {
 
 // la ciudad fija en pedazos de 120 m: lo que no se ve (ni proyecta sombra cerca) no se dibuja
 flushTextures();
+// lo que quedó arriba de la trinchera del bajo nivel no choca a los de abajo
+markOver(city.colliders);
 chunkScene(scene);
 
 function start(data = {}) {

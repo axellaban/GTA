@@ -8,6 +8,7 @@ import { makePerson, PEOPLE, ANIMALS, makeAnimal, animalPlay, swapHuman } from '
 import { DATA as D } from './map.js';
 import { R } from './rng.js';
 import { walkwayHeight } from './physics.js';
+import { lowFilter } from './bajonivel.js';
 
 const OFF = (e) => e.street.w / 2 + 1.5; // mitad de la vereda
 const EG = 40; // grilla de aristas
@@ -85,7 +86,8 @@ export class Npcs {
     }
     for (const n of graph.nodes) n.maxW = Math.max(...n.out.map((e) => e.street.w), 6);
     // aristas caminables: calles con vereda (no pasillos ni vías de servicio angostas)
-    this.walkEdges = graph.edges.filter((e) => e.street.w >= 6 && e.len > 8);
+    // (por el bajo nivel no camina nadie: no tiene veredas)
+    this.walkEdges = graph.edges.filter((e) => e.street.w >= 6 && e.len > 8 && !e.street.bajo);
     this.grid = new Map();
     for (const e of this.walkEdges) {
       const n = Math.ceil(e.len / 15);
@@ -910,7 +912,7 @@ export class Npcs {
       if (n.type !== 'mendigo' || n.state !== 'sit') {
         const p = { x: n.x, z: n.z };
         // el marciano baja por la rampa de su propia nave
-        this.colliders.resolveCircle(p, n.r, n.type === 'alien' ? notUfo : n.y > 1.3 ? this.upFilter(n) : undefined);
+        this.colliders.resolveCircle(p, n.r, n.type === 'alien' ? notUfo : n.y > 1.3 ? this.upFilter(n) : n.y < -1 ? lowFilter : undefined);
         n.x = p.x;
         n.z = p.z;
       }

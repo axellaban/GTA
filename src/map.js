@@ -5,6 +5,7 @@ import D from './data/temperley.json';
 import REL from './data/relevamiento.json';
 import OSM from './data/osm.json';
 import PLACES from './data/places.json';
+import { LANES as BAJO_LANES, W as BAJO_W, NAME as BAJO_NAME, SEGS as BAJO_SEGS, laneDist, depthAt, sOf } from './bajo-geo.js';
 
 // Lo cargado a mano en /relevamiento.html (exportado a src/data/relevamiento.json) pisa lo que trae
 // Overture: nombre real, tipo, pisos y colores del cartel. Ver PLAN.md, parte B.
@@ -31,6 +32,23 @@ for (const e of REL.negocios || []) {
   }
   b.rel = { fachada: e.fachada, persiana: !!e.persiana, toldo: !!e.toldo, rejas: !!e.rejas, rubro: e.rubro, punto: e.punto, frente: e.frente, puerta: e.puerta };
 }
+// el bajo nivel (src/bajo-geo.js): sus dos manos van a la lista de calles, y lo que quedaba encima
+// (árboles, faroles, alambrados, senderos, paradas) se saca
+for (const p of BAJO_LANES) D.roads.push({ n: BAJO_NAME, c: 'primary', w: BAJO_W, p, bajo: true });
+{
+  const on = (x, z, m = 1.5) => laneDist(x, z) <= BAJO_W / 2 + m;
+  D.trees = D.trees.filter((t) => !on(t[0], t[1]));
+  D.lamps = D.lamps.filter((t) => !on(t[0], t[1]));
+  D.signals = D.signals.filter((t) => !on(t[0], t[1], 0.5));
+  D.stops = D.stops.filter((t) => !on(t[0], t[1], 0.5));
+  D.paths = D.paths.filter((p) => !p.p.some(([x, z]) => on(x, z, 0.5)));
+  D.fences = D.fences.filter(([ax, az, bx, bz]) => {
+    const n = Math.ceil(Math.hypot(bx - ax, bz - az));
+    for (let i = 0; i <= n; i++) if (on(ax + ((bx - ax) * i) / n, az + ((bz - az) * i) / n, 0.5)) return false;
+    return true;
+  });
+}
+
 // edificios que no están en los datos y el dueño pidió (relevamiento.nuevos): van al final de la lista,
 // así no cambian los números de los demás
 for (const e of REL.nuevos || []) {
@@ -118,7 +136,7 @@ export const ROADS = D.roads.map((r, i) => {
   const pts = r.p;
   const cum = [0];
   for (let k = 1; k < pts.length; k++) cum.push(cum[k - 1] + Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]));
-  return { id: i, name: r.n || '', cls: r.c, w: r.w, avenue: AVENUE.has(r.c), pts, cum, len: cum[cum.length - 1] };
+  return { id: i, name: r.n || '', cls: r.c, w: r.w, avenue: AVENUE.has(r.c), pts, cum, len: cum[cum.length - 1], bajo: !!r.bajo };
 });
 export const TRACKS = D.rails;
 export const PLATFORMS = D.platforms;
@@ -424,6 +442,21 @@ export function makeGround() {
   const data = g.getImageData(0, 0, N, N).data;
   const H = new Float32Array(N * N);
   for (let i = 0; i < N * N; i++) H[i] = data[i * 4] / 100;
+  // el bajo nivel: su calzada (a nivel o en la trinchera) pisa a las manzanas
+  for (const s of BAJO_SEGS) {
+    const i0 = Math.max(0, Math.floor((s.x0 + HALF) / RES));
+    const i1 = Math.min(N - 1, Math.ceil((s.x1 + HALF) / RES));
+    const j0 = Math.max(0, Math.floor((s.z0 + HALF) / RES));
+    const j1 = Math.min(N - 1, Math.ceil((s.z1 + HALF) / RES));
+    for (let j = j0; j <= j1; j++) {
+      for (let i = i0; i <= i1; i++) {
+        const x = i * RES - HALF + RES / 2;
+        const z = j * RES - HALF + RES / 2;
+        const t = Math.max(0, Math.min(s.l, (x - s.ax) * s.ux + (z - s.az) * s.uz));
+        if (Math.hypot(x - s.ax - s.ux * t, z - s.az - s.uz * t) <= BAJO_W / 2 + 0.3) H[j * N + i] = 0.02 + depthAt(sOf(x, z));
+      }
+    }
+  }
   // el lienzo ya no hace falta (en iPhone los lienzos tienen un tope de memoria)
   c.width = c.height = 1;
   return function heightAt(x, z) {

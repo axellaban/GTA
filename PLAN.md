@@ -365,6 +365,20 @@ Comandante (`near`) y `hug` (cutscene, `hugPose` sobre la pose quieta, cámara q
 `Cielo.camera`, que `main.js` consulta antes de la de Gaspi). `ending`: créditos y vuelta a la terraza.
 El Comandante: `makeHuman` con lentes y cadenita colgados de los huesos; sin fotos.
 
+**R31 — ✅ Bajo nivel** (pedido del dueño). `scripts/map/preprocess.py` descartaba las calles que se
+llaman "bajo nivel"; en vez de regenerar el mapa (cambiaría los números de edificio del relevamiento),
+se suma al cargar. `src/bajo-geo.js` (sin imports): las dos manos de OSM, el eje del túnel y `depthAt(s)`
+(5,4 m en |s| ≤ 24, rampas coseno de 72 m). `src/map.js`: agrega las manos a `D.roads` (`bajo: true`;
+el grafo empalma con Eva Perón y 9 de Julio por las puntas), saca árboles/faroles/alambrados/senderos
+de encima y baja `heightAt` en la franja. `src/bajonivel.js`: calzada en cinta (mismo material del
+asfalto), líneas, paredes con baranda y colisión `trench` (cortadas bajo los puentes), cordones a nivel,
+puentes detectados donde una calle o vía cruza lo hondo (losa abajo, barandas `over`, pasarela a nivel en
+`BAJO.walk` + `city.walkways`), techo del túnel (|s| ≤ 21), máscara que recorta el piso (`cutGround` en
+los materiales de `addGround`; los puentes quedan). `vehicleY` (en `Vehicle.sync`, con cabeceo en la
+rampa) elige entre puente y trinchera según la altura que traía; Gaspi en auto usa `vehicle.y`.
+`markOver` marca lo de arriba que cae sobre lo hondo: los de abajo (auto, Gaspi, NPC con y < -1) no lo
+chocan (`lowFilter`). Sin veredas: los NPC no caminan por ahí (`walkEdges`) ni se estaciona.
+
 **R11 — Pruebas en celu real**: el dueño prueba en iPhone/Android y manda capturas; se ajusta.
 
 **R12 — Acercarse al look del video de Higgsfield** (Gaspi de traje y corbata roja en una vereda a lo

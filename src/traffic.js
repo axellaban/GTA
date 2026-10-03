@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { makeHuman, animateHuman, randomCivilian } from './human.js';
 import { R } from './rng.js';
 import { carEffects } from './carfx.js';
+import { vehicleY } from './bajonivel.js';
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 // los del montón, que pueden pasar a ser un auto de artista
@@ -24,6 +25,7 @@ export class Vehicle {
     this.x = x;
     this.z = z;
     this.heading = heading;
+    this.y = 0; // a nivel; en el bajo nivel, más abajo (src/bajonivel.js)
     this.speed = 0;
     this.steer = 0;
     this.damage = 0;
@@ -92,6 +94,18 @@ export class Vehicle {
       this.mesh.rotation.z = this.tilt.z;
       this.mesh.position.y += this.tilt.y;
     }
+    // el bajo nivel: baja con la calzada (o va por el puente) y se inclina en la rampa
+    const gy = vehicleY(this.x, this.z, this.y);
+    if (gy !== 0 || this.y !== 0) {
+      const h = (this.L || 4) / 2;
+      const sx = Math.sin(this.heading) * h;
+      const sz = Math.cos(this.heading) * h;
+      const pitch = -Math.atan2(vehicleY(this.x + sx, this.z + sz, gy) - vehicleY(this.x - sx, this.z - sz, gy), h * 2);
+      this.mesh.rotation.order = 'YXZ';
+      this.mesh.rotation.x = (this.kind === 'moto' ? this.mesh.rotation.x : this.tilt ? this.tilt.x : 0) + pitch;
+      this.mesh.position.y += gy;
+    }
+    this.y = gy;
     this.wheelSpin += this.speed * dt * 3;
     const u = this.mesh.userData;
     if (u.chassis) this.suspend(dt, u);
