@@ -1,7 +1,7 @@
 // Combate: combos de piñas y patada, palazos, tiros con mira o apuntado automático,
 // balas de la cana, autos que se prenden fuego y explotan.
 import * as THREE from 'three';
-import { WEAPONS, ORDER, handWeapon, rocketMesh } from './weapons.js';
+import { WEAPONS, ORDER, SLOTS, handWeapon, rocketMesh } from './weapons.js';
 import { dentCar, dropBumper, looseBumper } from './cars.js';
 import { R } from './rng.js';
 import { TOUCH } from './input.js';
@@ -125,13 +125,21 @@ export class Combat {
     const { player: P, input, hud } = world;
     if (input.hit('q', 'weapon')) this.cycle(P, 1);
     if (!hud.dialog) {
-      for (let i = 0; i < ORDER.length; i++) {
-        if (input.hit(String(i + 1)) && P.inv[ORDER[i]] && P.weapon !== ORDER[i]) {
-          P.weapon = ORDER[i];
-          P.attack = null;
-          P.reloadT = 0;
-          this.syncHand(P);
+      for (let i = 0; i < SLOTS.length; i++) {
+        if (!input.hit(String(i + 1))) continue;
+        const owned = SLOTS[i].filter((id) => P.inv[id]);
+        if (!owned.length) {
+          hud.toast(`${i + 1}: ${SLOTS[i].map((id) => WEAPONS[id].name).join(' / ')} (no la tenés)`, 1.6);
+          continue;
         }
+        // en el casillero que ya está en la mano: la siguiente de ese casillero
+        const k = owned.indexOf(P.weapon);
+        const next = owned[(k + 1) % owned.length];
+        if (next === P.weapon) continue;
+        P.weapon = next;
+        P.attack = null;
+        P.reloadT = 0;
+        this.syncHand(P);
       }
     }
     const w = WEAPONS[P.weapon];

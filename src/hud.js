@@ -1,11 +1,12 @@
 // HUD: tarjeta SUBE, plata, reloj, minimapa, zócalo, diálogos, globos y carteles.
 import * as THREE from 'three';
 import { X0, Z0, X1, Z1, AREA, DATA as D, TRACKS, nearestStreetName } from './map.js';
+import gaspiUrl from './gaspi.webp';
+import { WEAPONS, SLOT_OF } from './weapons.js';
+import { TOUCH } from './input.js';
+import { drawIcon, iconCanvas, ICONS, LEGEND, PICKUP_ICON } from './icons.js';
 
 const MAPK = 1; // px del plano por metro
-import gaspiUrl from './gaspi.webp';
-import { WEAPONS } from './weapons.js';
-import { drawIcon, iconCanvas, ICONS, LEGEND, PICKUP_ICON } from './icons.js';
 
 // inicial de quien da la misión (como las letras de los GTA): "El Turco del kiosco" → T
 const initial = (who = '') => (who.split(/[\s,]+/).find((w) => w && !['El', 'La', 'Los', 'Las', 'Don', 'Doña'].includes(w)) ?? 'M')[0].toUpperCase();
@@ -141,7 +142,8 @@ export class Hud {
     $('stars').className = pol.stars && !pol.seen ? 'search' : pol.flash > 0 ? 'hot' : '';
     // arma y balas
     const w = WEAPONS[player.weapon || 'punos'];
-    $('w-name').textContent = w.name;
+    // en la compu, el número de su casillero (1 a 9)
+    $('w-name').textContent = TOUCH ? w.name : `${SLOT_OF[w.id] ?? ''} · ${w.name}`;
     const a = player.ammo?.[w.id];
     $('w-ammo').textContent = w.gun ? (player.reloadT > 0 ? 'recargando' : `${a?.mag ?? 0} / ${a?.res ?? 0}`) : w.throw ? `${a?.mag ?? 0}` : '';
     // controles táctiles: a pie, en auto o en moto; el botón de ataque dice qué hace

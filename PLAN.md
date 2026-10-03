@@ -549,6 +549,13 @@ de dos triángulos gigantes 4 cm abajo del asfalto: la profundidad interpolada n
 es una grilla de cuadrados de ~50 m (city.js). Pruebas: `calle10.mjs` (14 cambios de hora sin pasto; antes
 salía en 1 a 3), `luz.mjs`.
 
+**R40 — ✅ Todas las armas con tecla** (el dueño: "la bazuca no sé con qué ponerla, del 1 al 9 son armas").
+Eran 12 armas en `ORDER` y solo las 9 primeras tenían número. Ahora hay casilleros a lo GTA (`SLOTS` y `SLOT_OF`
+en weapons.js): 1 piñas, 2 motosierra/bastón/palo, 3 revólver/pistola, 4 tumbera, 5 metra, 6 ametralladora,
+7 molotov, 8 bazuca, 9 lanzallamas; apretar de nuevo el mismo número pasa a la otra del grupo, y si no tenés
+ninguna de ese casillero lo avisa. Q recorre en ese mismo orden. En la compu el recuadro del arma muestra el
+número ("8 · Bazuca"). Prueba: `teclas2.mjs`.
+
 **R11 — Pruebas en celu real**: el dueño prueba en iPhone/Android y manda capturas; se ajusta.
 
 **R12 — Acercarse al look del video de Higgsfield** (Gaspi de traje y corbata roja en una vereda a lo

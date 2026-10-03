@@ -20,7 +20,12 @@ export const WEAPONS = {
   // lanzallamas (el de los jubilados): chorro de fuego mientras apretás; quema gente y autos
   lanzallamas: { id: 'lanzallamas', name: 'Lanzallamas', gun: true, flame: true, heavy: true, auto: true, dmg: 0, rate: 0.05, mag: 120, reload: 2.8, range: 8.5, spread: 0, pellets: 1, pose: 'aimLong', ammoPickup: 120 },
 };
-export const ORDER = ['punos', 'motosierra', 'baston', 'palo', 'revolver', 'pistola', 'metra', 'ametralladora', 'escopeta', 'molotov', 'bazuca', 'lanzallamas'];
+// Casilleros del teclado (1 a 9), como en los GTA: un número por tipo de arma y, si en ese casillero tenés
+// más de una, apretando de nuevo se pasa a la otra (pedido del dueño: la bazuca no tenía tecla)
+export const SLOTS = [['punos'], ['motosierra', 'baston', 'palo'], ['revolver', 'pistola'], ['escopeta'], ['metra'], ['ametralladora'], ['molotov'], ['bazuca'], ['lanzallamas']];
+export const SLOT_OF = Object.fromEntries(SLOTS.flatMap((s, i) => s.map((id) => [id, i + 1])));
+// Q recorre las que tenés en el mismo orden que los casilleros
+export const ORDER = SLOTS.flat();
 
 const metal = 0x2a2c30;
 const wood = 0x7a4a26;

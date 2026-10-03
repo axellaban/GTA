@@ -87,7 +87,7 @@ Para comparar la misma calle de día, al atardecer y con lluvia: `npm run dev` y
 | Mouse | Mirar (clic para capturar el mouse) |
 | Clic | Pegar (combo) o tirar |
 | Clic derecho | Apuntar |
-| Q · 1 a 5 | Cambiar de arma |
+| Q · 1 a 9 | Cambiar de arma: 1 piñas, 2 motosierra / bastón / palo, 3 revólver / pistola, 4 tumbera, 5 metra, 6 ametralladora, 7 molotov, 8 bazuca, 9 lanzallamas (apretando de nuevo el mismo número se pasa a la otra de ese grupo) |
 | R | Recargar · cambiar la radio arriba del auto |
 | Espacio | Saltar · freno de mano |
 | Shift | Correr · willy en la moto · quemar gomas |

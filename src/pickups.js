@@ -2,7 +2,7 @@
 // Las fijas reaparecen al rato; las que se caen de alguien desaparecen solas.
 import * as THREE from 'three';
 import { DATA as D } from './map.js';
-import { WEAPONS, pickupWeapon } from './weapons.js';
+import { WEAPONS, SLOT_OF, pickupWeapon } from './weapons.js';
 import { BoxBuilder } from './builder.js';
 import { R } from './rng.js';
 import { outward } from './city.js';
@@ -243,7 +243,7 @@ export class Pickups {
       } else if (p.kind === 'weapon') {
         combat.give(player, p.data.id);
         const w = WEAPONS[p.data.id];
-        hud.flash(w.name.toUpperCase(), TOUCH ? (w.gun ? 'Apunta solo. Tocá el arma arriba para cambiarla' : 'Tocá el arma arriba para cambiarla') : w.gun ? 'Clic para tirar · clic derecho para apuntar · Q cambia de arma' : 'Clic para pegar · Q cambia de arma', 'ok', 2.6);
+        hud.flash(w.name.toUpperCase(), TOUCH ? (w.gun ? 'Apunta solo. Tocá el arma arriba para cambiarla' : 'Tocá el arma arriba para cambiarla') : w.gun ? `Clic para tirar · clic derecho para apuntar · tecla ${SLOT_OF[w.id]} o Q cambia de arma` : `Clic para pegar · tecla ${SLOT_OF[w.id]} o Q cambia de arma`, 'ok', 2.6);
         audio.recarga?.();
       } else if (p.kind === 'coima') {
         const { police } = world;
