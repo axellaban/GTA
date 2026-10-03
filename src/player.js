@@ -614,6 +614,12 @@ export class Player {
       t = 1 - this.reactT / 0.3;
     } else if (w.gun) pose = 'holdGun';
     else if (this.phoneT > 0) pose = 'phone';
+    else if (this.danceT > 0 && this.speed < 0.3) {
+      // en el medio de la ronda de los chicos (src/aura.js): farmeando aura
+      pose = 'aura';
+      t = this.danceClock ?? 0;
+    }
+    this.danceT = (this.danceT || 0) - dt;
     this.phoneT = (this.phoneT || 0) - dt;
     // girando en el lugar da pasitos (si no, gira como una estatua)
     const stepIn = this.speed < 0.6 ? Math.min(1.1, Math.abs(this.turnW || 0) * 0.3) : 0;

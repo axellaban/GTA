@@ -912,7 +912,7 @@ export class Npcs {
         pose = r?.pose ?? 'walk';
       }
       // golpe o reacción en curso: pisa la pose
-      let t = n.type === 'borracho' ? n.poseT || 0 : 0;
+      let t = n.type === 'borracho' || n.type === 'chico' ? n.poseT || 0 : 0;
       // los del gym entrenan mientras nadie los moleste
       if (n.exercise && n.state === 'walk') {
         pose = n.exercise;

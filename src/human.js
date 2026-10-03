@@ -1328,6 +1328,47 @@ function poseHuman(h, dt, speed, pose = 'walk', t = 0) {
     b.uaL.rotation.set(-0.25, -0.2, -0.12);
     b.faL.rotation.x = -0.9;
     b.head.rotation.set(-0.08 * bite + Math.sin(g * 6) * 0.02 * (1 - bite), Math.sin(g * 0.5) * 0.15, 0);
+  } else if (pose === 'aura') {
+    // "farmear aura" (el baile del nene del bote): cara seria, se balancea al ritmo, las rodillas marcan
+    // el pulso y los brazos hacen ondas largas, uno y después el otro. t: reloj del ritmo en segundos
+    const g = t * Math.PI * 2 * 0.95;
+    const sway = Math.sin(g);
+    const bob = Math.abs(Math.sin(g));
+    b.hips.position.y -= 0.035 * bob;
+    b.hips.position.x = sway * 0.03;
+    b.hips.rotation.z = -sway * 0.07;
+    b.hips.rotation.y = sway * 0.12;
+    b.spine.rotation.z = sway * 0.05;
+    b.chest.rotation.set(0.04, -sway * 0.16, sway * 0.06);
+    b.thR.rotation.x = b.thL.rotation.x = -0.2 * bob;
+    b.shR.rotation.x = b.shL.rotation.x = 0.4 * bob;
+    b.ftR.rotation.x = b.ftL.rotation.x = -0.2 * bob;
+    b.head.rotation.set(0.07 * bob - 0.04, sway * 0.18, -sway * 0.08);
+    // qué brazo lleva la onda (cambia cada dos balanceos, mezclado)
+    const k = Math.max(0, Math.min(1, 0.5 + 1.6 * Math.sin(g * 0.5)));
+    const wr = k * k * (3 - 2 * k);
+    const wave = (ua, fa, side, w) => {
+      const s = Math.sin(g + (side > 0 ? 0 : Math.PI));
+      const roll = Math.sin(g * 2);
+      // activo: el brazo afuera a la altura del hombro, barre de adelante al costado y la muñeca ondula
+      const ax = -0.7 - 0.4 * s;
+      const az = side * (1.25 + 0.3 * s);
+      const fx = -0.35 - 0.45 * (0.5 + 0.5 * roll);
+      // quieto: colgando, apenas con el ritmo
+      ua.rotation.set(ax * w + 0.08 * sway * (1 - w), 0.25 * side * w, az * w + side * 0.12 * (1 - w));
+      fa.rotation.x = fx * w - 0.35 * (1 - w);
+    };
+    wave(b.uaR, b.faR, -1, wr);
+    wave(b.uaL, b.faL, 1, 1 - wr);
+  } else if (pose === 'clap') {
+    // aplaudiendo al ritmo (la ronda alrededor del que baila). t: reloj en segundos
+    const g = t * Math.PI * 2 * 1.9;
+    const open = 0.5 + 0.5 * Math.cos(g);
+    b.uaR.rotation.set(-1.0, -0.2, 0.32 - 0.5 * open);
+    b.uaL.rotation.set(-1.0, 0.2, -0.32 + 0.5 * open);
+    b.faR.rotation.x = b.faL.rotation.x = -1.0;
+    b.chest.rotation.x = 0.03 * open;
+    b.head.rotation.x = -0.05 + 0.05 * open;
   } else if (pose === 'talk') {
     // hablando: la mano derecha acompaña lo que dice, a veces las dos; cabeza y hombros se mueven
     const g = h.phase;
@@ -1470,6 +1511,14 @@ function poseHuman(h, dt, speed, pose = 'walk', t = 0) {
     b.faL.rotation.x = -1.3;
     b.uaR.rotation.set(-1.1 + Math.sin(h.phase * 0.8) * 0.15, 0, 0.1);
     b.faR.rotation.x = -0.6;
+  } else if (pose === 'film') {
+    // filmando con el celu: las dos manos adelante a la altura de la cara, siguiendo lo que pasa
+    const g = t * 0.7;
+    b.uaR.rotation.set(-0.95, 0.1, 0.42);
+    b.uaL.rotation.set(-0.95, -0.1, -0.42);
+    b.faR.rotation.x = b.faL.rotation.x = -1.45;
+    b.chest.rotation.y = Math.sin(g) * 0.08;
+    b.head.rotation.set(0.12, Math.sin(g) * 0.06, 0);
   } else if (pose === 'phone') {
     b.uaR.rotation.set(-0.35, 0, 0.35);
     b.faR.rotation.x = -2.3;

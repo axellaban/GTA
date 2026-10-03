@@ -33,6 +33,7 @@ import { chunkScene, updateChunks } from './chunks.js';
 import { GPU, flushTextures } from './textures.js';
 import { Gangs } from './gangs.js';
 import { Barrio } from './barrio.js';
+import { Aura } from './aura.js';
 import { Garages } from './garage.js';
 import { Destroy } from './destroy.js';
 import { Tanks } from './tank.js';
@@ -480,6 +481,9 @@ world.gangs = gangs;
 // borrachos en la puerta del Supermercado Luna y chicos en la del Colegio Eccleston (src/barrio.js)
 const barrio = new Barrio(npcs, city);
 world.barrio = barrio;
+// ronda de chicos farmeando aura en la plaza Tomás Espora
+const aura = new Aura(npcs);
+world.aura = aura;
 // casas que se derrumban y el tanque del Ejército (6 estrellas)
 const destroy = new Destroy(scene, city);
 world.destroy = destroy;
@@ -1231,6 +1235,7 @@ function frame(now) {
   carwash.update(dt, world);
   gangs.update(dt, world);
   barrio.update(dt, world);
+  aura.update(dt, world);
   tanks.update(dt, world);
   destroy.update(dt, world);
   checkCheats();
