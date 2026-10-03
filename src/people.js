@@ -99,20 +99,30 @@ function tintMH(material, ud, o) {
       uLum: { value: new THREE.Vector2(Math.max(0.02, lum.top), Math.max(0.02, lum.bottom)) },
     });
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nattribute float _part;\nvarying float vPart;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvPart = _part;');
+      .replace('#include <common>', '#include <common>\nattribute float _part;\nvarying vec4 vPart;\nvarying float vHairK;')
+      .replace(
+        '#include <begin_vertex>',
+        // una parte por vértice y pesos interpolados (con _part interpolado, entre el torso 2 y la manga 5
+        // aparecían el 3 y el 4: rayitas color pelo en la costura del hombro)
+        `#include <begin_vertex>
+        {
+          float p = floor(_part + 0.5);
+          float torso = 1.0 - step(0.5, abs(p - 2.0));
+          vPart = vec4(1.0 - step(0.5, abs(p - 1.0)), torso, torso + 1.0 - step(0.5, abs(p - 5.0)), 1.0 - step(0.5, abs(p - 6.0)));
+          vHairK = 1.0 - step(0.5, abs(p - 3.0)) + 1.0 - step(0.5, abs(p - 7.0));
+        }`,
+      );
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform vec3 uTint;\nuniform vec3 uSkin;\nuniform vec3 uHair;\nuniform vec4 uTop;\nuniform vec4 uVest;\nuniform vec4 uBottom;\nuniform vec2 uFix;\nuniform vec2 uLum;\nvarying float vPart;\n' + TINT_GLSL)
+      .replace('#include <common>', '#include <common>\nuniform vec3 uTint;\nuniform vec3 uSkin;\nuniform vec3 uHair;\nuniform vec4 uTop;\nuniform vec4 uVest;\nuniform vec4 uBottom;\nuniform vec2 uFix;\nuniform vec2 uLum;\nvarying vec4 vPart;\nvarying float vHairK;\n' + TINT_GLSL)
       .replace(
         '#include <color_fragment>',
         `#include <color_fragment>
         {
-          float p = floor(vPart + 0.5);
-          float skin = 1.0 - step(0.5, abs(p - 1.0));
-          float hairK = 1.0 - step(0.5, abs(p - 3.0)) + 1.0 - step(0.5, abs(p - 7.0)); // pelo y cejas
-          float torso = 1.0 - step(0.5, abs(p - 2.0));
-          float top = torso + 1.0 - step(0.5, abs(p - 5.0));
-          float bottom = 1.0 - step(0.5, abs(p - 6.0));
+          float skin = vPart.x;
+          float hairK = vHairK; // pelo y cejas
+          float torso = vPart.y;
+          float top = vPart.z;
+          float bottom = vPart.w;
           float shiftK = top * (1.0 - uFix.x) + bottom * (1.0 - uFix.y);
           vec3 hsv = tintHsv(pow(max(diffuseColor.rgb, 0.0), vec3(0.4545)));
           hsv.x = fract(hsv.x + uTint.x * shiftK);
@@ -127,7 +137,7 @@ function tintMH(material, ud, o) {
         }`,
       );
   };
-  m.customProgramCacheKey = () => 'ropa-mh3';
+  m.customProgramCacheKey = () => 'ropa-mh4';
   return m;
 }
 
