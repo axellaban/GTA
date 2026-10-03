@@ -462,6 +462,14 @@ lento cuando empezás a jugar más", "el sonido no anda en el celu", "más poten
   3 autos o motos más cercanos con paneo y Doppler. Compresor al final. Prueba: `motor.mjs` (WAV con
   OfflineAudioContext) y `spec.py` (espectro y cuánto cae en la banda del parlante del celu).
 
+**R34 — ✅ Chicos farmeando aura** (pedido del dueño: "30 chicos en ronda farmeando aura, modo
+competencia, en la plaza de Temperley"). `src/aura.js`: en un claro de la Plaza Comandante Tomás Espora
+(`AURA_SPOT`, lejos de árboles, faroles y palmeras), de 13 a 21:30 y con Gaspi a menos de 150 m. 30 chicos
+de tipo 'chico' (no se lastiman) con `n.aura` (`Barrio.brain` les delega a `Aura.brain`). Turnos: uno pasa
+al medio y baila 7 s (pose 'aura' en human.js), los demás 'clap', 'film' (con un celu en la mano) o
+'listen'; después un juez le pone puntaje (+ o −) y queda el récord. Gaspi quieto en el medio: baila
+(`player.danceT`/`danceClock`) y gana +1 de respeto (una vez cada 2 minutos). Prueba: `aura.mjs`.
+
 **R11 — Pruebas en celu real**: el dueño prueba en iPhone/Android y manda capturas; se ajusta.
 
 **R12 — Acercarse al look del video de Higgsfield** (Gaspi de traje y corbata roja en una vereda a lo

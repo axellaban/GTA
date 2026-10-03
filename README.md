@@ -228,6 +228,10 @@ Como las misiones de ambulancia y bomberos de Vice City. La **ambulancia** está
 
 Como en Vice City, la chapa se hunde donde pega el golpe (choques, tiros, explosiones) y queda arrugada; con mucho daño se rompen los vidrios, sale humo del motor y al final se prende fuego. Chapa y pintura (o que el auto vuelva al tránsito) lo deja como nuevo.
 
+## Chicos farmeando aura (0.34)
+
+En la Plaza Comandante Tomás Espora, a la tarde, hay una ronda de 30 chicos "farmeando aura": de a uno pasan al medio y hacen el baile del nene del bote, con cara seria, mientras los demás aplauden y filman con el celu. Al final le ponen puntaje ("¡+4.200 de aura!" o "Ese es un NPC: −800") y queda el récord. Si Gaspi se para quieto en el medio, baila él y gana respeto. A los chicos no se los puede lastimar.
+
 ## Motores y sonido en el celu (0.33)
 
 Cada auto suena a lo que es: el Falcon y el patrullero con un seis cilindros grueso, el Gol y el 504 con un cuatro, la Ferrari que grita arriba, el colectivo y el camión con su diésel y las motos de delivery con su 150. El motor sube de vueltas, pasa los cambios (se nota el corte), ruge a fondo y queda opaco al soltar. Los autos y motos que pasan cerca también se oyen, de un lado o del otro, y con el "ñeeeooo" al pasar. Todo sintetizado en el momento (no hay grabaciones). En el iPhone ahora suena aunque esté la llave de silencio.
@@ -336,6 +340,7 @@ Box de CrossFit en su dirección real, **Rivadavia 321**, en la vereda de enfren
 | `src/trains.js` | Trenes, barreras y pasos a nivel |
 | `src/radio.js`, `src/audio.js` | Radio y sonidos sintetizados |
 | `src/motores.js` | Ruido de motor sintetizado: cilindros, cambios, carga, Doppler |
+| `src/aura.js` | Ronda de chicos farmeando aura en la plaza (turnos, puntaje, Gaspi baila) |
 | `src/fx.js` | Partículas, trazas, marcas de frenada, casquillos, agujeros de bala, restos de choque, lluvia y salpicaduras |
 | `src/carfx.js` | Escape, petardeos y rocío de los autos andando |
 | `src/icons.js` | Íconos del mapa (dibujados por código) y la leyenda |
