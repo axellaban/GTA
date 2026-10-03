@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import gaspiUrl from './gaspi.webp';
 import { BONES, B, Mesher, loft, ellipsoid, chain, head, shell, prim, smooth } from './body.js';
+import { combatPose, COMBAT_POSES } from './moves.js';
 
 export const SKINS = [0xe8c4a8, 0xd9a882, 0xc68b62, 0xa86f4a, 0x8a5a3a, 0xf1d2bb];
 export const HAIRS = [0x2b1d14, 0x4a3020, 0x1a1a1a, 0x6b4a2b, 0x8a8a8a, 0xb88a4a];
@@ -1131,8 +1132,46 @@ function reset(h) {
 
 // Anima caminata y poses. `speed` en m/s. `t` (0..1) es el avance de un golpe.
 // `post(bones)`: retoques encima de la pose (mirar a alguien, inclinarse) antes de copiarla al modelo.
+// cuánto dura el paso de una pose a otra (s): los golpes y las reacciones casi sin mezcla para que peguen
+const BLEND = { jab: 0.06, cross: 0.07, hook: 0.08, uppercut: 0.08, kick: 0.1, hit: 0.04, punch: 0.06, swing: 0.07, dead: 0.3, knocked: 0.22, getup: 0.12, aim: 0.12, aimLong: 0.14 };
+const qa = new THREE.Quaternion();
+const qb = new THREE.Quaternion();
 export function animateHuman(h, dt, speed, pose = 'walk', t = 0, post = null) {
+  // al cambiar de pose se parte de cómo estaba el cuerpo y se llega a la nueva en un instante (sin saltos)
+  const list = (h.boneList ??= Object.values(h.bones));
+  if (pose !== h.poseKey && h.out && dt > 0) {
+    h.from ??= new Float32Array(list.length * 4 + 6);
+    h.from.set(h.out);
+    h.blendT = 0;
+    h.blendD = BLEND[pose] ?? BLEND[h.poseKey] ?? 0.18;
+  } else if (pose !== h.poseKey) h.blendD = 0;
+  h.poseKey = pose;
   poseHuman(h, dt, speed, pose, t);
+  if (h.blendD > 0) {
+    h.blendT += dt;
+    const k = Math.min(1, h.blendT / h.blendD);
+    if (k >= 1) h.blendD = 0;
+    else {
+      const e = k * k * (3 - 2 * k);
+      const f = h.from;
+      for (let i = 0; i < list.length; i++) {
+        qa.fromArray(f, i * 4);
+        qb.copy(list[i].quaternion);
+        list[i].quaternion.slerpQuaternions(qa, qb, e);
+      }
+      const o = list.length * 4;
+      const hp = h.bones.hips.position;
+      const rp = h.bones.root.position;
+      hp.set(f[o] + (hp.x - f[o]) * e, f[o + 1] + (hp.y - f[o + 1]) * e, f[o + 2] + (hp.z - f[o + 2]) * e);
+      rp.set(f[o + 3] + (rp.x - f[o + 3]) * e, f[o + 4] + (rp.y - f[o + 4]) * e, f[o + 5] + (rp.z - f[o + 5]) * e);
+    }
+  }
+  // lo que quedó (antes de los retoques de "post") es el punto de partida de la próxima mezcla
+  const out = (h.out ??= new Float32Array(list.length * 4 + 6));
+  for (let i = 0; i < list.length; i++) list[i].quaternion.toArray(out, i * 4);
+  const o = list.length * 4;
+  h.bones.hips.position.toArray(out, o);
+  h.bones.root.position.toArray(out, o + 3);
   post?.(h.bones);
   // personajes de modelo externo (src/rig.js): copiar la pose al esqueleto real
   h.rig?.apply();
@@ -1140,7 +1179,7 @@ export function animateHuman(h, dt, speed, pose = 'walk', t = 0, post = null) {
 function poseHuman(h, dt, speed, pose = 'walk', t = 0) {
   // ritmo del paso medido para que el pie apoyado no patine: caminando ~0,8 zancadas por segundo,
   // corriendo a fondo ~1,6 (como una persona de verdad)
-  h.phase += dt * (speed < 0.1 ? 1 : speed < 1 ? 2 + speed * 2.85 : 4.6 + speed * 0.25 + Math.max(0, speed - 3) * 1.35);
+  h.phase += (h.walkBack && speed > 0.1 ? -1 : 1) * dt * (speed < 0.1 ? 1 : speed < 1 ? 2 + speed * 2.85 : 4.6 + speed * 0.25 + Math.max(0, speed - 3) * 1.35);
   const s = Math.sin(h.phase);
   const c = Math.cos(h.phase);
   const amp = Math.min(0.85, speed * 0.26);
@@ -1298,6 +1337,9 @@ function poseHuman(h, dt, speed, pose = 'walk', t = 0) {
   b.spine.rotation.x = 0.03 + run * 0.16 + amp * 0.04;
   b.head.rotation.y = -(b.hips.rotation.y + b.chest.rotation.y) * 0.85;
   b.head.rotation.x = -b.spine.rotation.x * 0.6 + Math.abs(c) * amp * 0.03;
+  // caminando de costado (apuntando): la cadera y las piernas van para donde camina, el pecho no
+  h.strafeHip = h.strafe && speed > 0.1 ? Math.max(-1.1, Math.min(1.1, h.strafe)) * 0.75 * Math.min(1, speed / 0.8) : 0;
+  b.hips.rotation.y += h.strafeHip;
   // quieto: respira, pasa el peso de una pierna a la otra y mira alrededor. Se mezcla de a poco
   // con la caminata al frenar o arrancar (sin saltos de pose).
   const idleW = 1 - smooth(0.05, 0.9, speed);
@@ -1319,7 +1361,10 @@ function poseHuman(h, dt, speed, pose = 'walk', t = 0) {
     mix(b.head.rotation, 'x', Math.sin(t * 0.17) * 0.05);
   }
 
-  if (pose === 'eat') {
+  if (COMBAT_POSES.has(pose)) {
+    // pelea y armas: src/moves.js
+    combatPose(h, b, pose, t, speed);
+  } else if (pose === 'eat') {
     // comiendo un pancho: la mano va a la boca, mastica, vuelve
     const g = h.phase;
     const bite = Math.max(0, Math.sin(g * 1.2)) ** 3;
@@ -1420,35 +1465,6 @@ function poseHuman(h, dt, speed, pose = 'walk', t = 0) {
   } else if (pose === 'fist') {
     b.uaR.rotation.x = -2.6 + Math.sin(h.phase * 4) * 0.3;
     b.faR.rotation.x = -0.4 - Math.max(0, Math.sin(h.phase * 4)) * 0.5;
-  } else if (pose === 'punch' || pose === 'jab' || pose === 'cross') {
-    // golpe recto: guardia -> brazo extendido -> vuelve. Jab con la izquierda.
-    const ext = Math.sin(Math.min(1, t) * Math.PI);
-    const left = pose === 'jab';
-    guard(b);
-    const [ua, fa] = left ? [b.uaL, b.faL] : [b.uaR, b.faR];
-    ua.rotation.x = -1.2 - ext * 0.4;
-    ua.rotation.z = (left ? -1 : 1) * ext * 0.25;
-    fa.rotation.x = -1.9 + ext * 1.9;
-    b.chest.rotation.y = (left ? -0.25 : 0.45) * ext;
-    b.spine.rotation.x = 0.1 + ext * 0.08;
-  } else if (pose === 'hook') {
-    const ext = Math.sin(Math.min(1, t) * Math.PI);
-    guard(b);
-    b.uaR.rotation.set(-1.45, 0, 1.2 * ext);
-    b.faR.rotation.x = -1.4;
-    b.faR.rotation.y = ext * 0.5;
-    b.chest.rotation.y = -0.2 + ext * 0.9;
-    b.hips.rotation.y = ext * 0.3;
-  } else if (pose === 'kick') {
-    const ext = Math.sin(Math.min(1, t) * Math.PI);
-    guard(b);
-    b.thR.rotation.x = -1.5 * ext;
-    b.shR.rotation.x = 1.2 * (1 - ext) * Math.min(1, t * 3);
-    b.thL.rotation.x = 0.15 * ext;
-    b.spine.rotation.x = -0.25 * ext;
-    b.hips.position.y = 0.95 - 0.04 * ext;
-  } else if (pose === 'guard') {
-    guard(b);
   } else if (pose === 'swing') {
     // palo: de atrás del hombro hacia adelante
     const k = Math.min(1, t);
@@ -1459,24 +1475,6 @@ function poseHuman(h, dt, speed, pose = 'walk', t = 0) {
     b.uaL.rotation.set(-1.2, 0, -0.6);
     b.faL.rotation.x = -1.2;
     b.chest.rotation.y = 0.6 * a - 0.7 * hit;
-  } else if (pose === 'aim') {
-    // pistola a dos manos, a la altura de los ojos
-    b.uaR.rotation.set(-1.52, 0, 0.12);
-    b.faR.rotation.x = -0.05;
-    b.uaL.rotation.set(-1.4, 0, -0.55);
-    b.faL.rotation.set(-0.25, 0, 0);
-    b.chest.rotation.y = 0.12;
-    b.head.rotation.y = 0.05;
-    b.uaR.rotation.x -= t * 0.35;
-  } else if (pose === 'aimLong') {
-    // escopeta al hombro
-    b.uaR.rotation.set(-1.1, 0, 0.5);
-    b.faR.rotation.x = -1.2;
-    b.uaL.rotation.set(-1.45, 0, -0.35);
-    b.faL.rotation.x = -0.2;
-    b.chest.rotation.y = 0.35;
-    b.head.rotation.y = -0.2;
-    b.chest.rotation.x = -t * 0.12;
   } else if (pose === 'reload') {
     // recarga: el arma baja frente al pecho, la otra mano va y viene con el cargador, mira el arma
     const k = Math.sin(Math.min(1, t) * Math.PI);
@@ -1487,15 +1485,6 @@ function poseHuman(h, dt, speed, pose = 'walk', t = 0) {
     b.chest.rotation.y = 0.15;
     b.head.rotation.x = 0.4 * k;
     b.neck.rotation.x = 0.15 * k;
-  } else if (pose === 'holdGun') {
-    b.uaR.rotation.set(-0.35, 0, -0.05);
-    b.faR.rotation.x = -0.9;
-  } else if (pose === 'hit') {
-    const k = Math.sin(Math.min(1, t) * Math.PI);
-    b.spine.rotation.x = -0.35 * k;
-    b.head.rotation.x = -0.5 * k;
-    b.uaR.rotation.set(-0.6 * k, 0, -0.6 * k);
-    b.uaL.rotation.set(-0.6 * k, 0, 0.6 * k);
   } else if (pose === 'handsup') {
     b.uaR.rotation.set(-2.9, 0, 0.3);
     b.uaL.rotation.set(-2.9, 0, -0.3);
@@ -1524,15 +1513,6 @@ function poseHuman(h, dt, speed, pose = 'walk', t = 0) {
     b.faR.rotation.x = -2.3;
     b.head.rotation.set(0.1, 0, -0.15);
   }
-}
-
-function guard(b) {
-  b.uaR.rotation.set(-0.9, 0, 0.35);
-  b.uaL.rotation.set(-0.9, 0, -0.35);
-  b.faR.rotation.x = -2.0;
-  b.faL.rotation.x = -2.0;
-  b.spine.rotation.x = 0.12;
-  b.head.rotation.x = 0.08;
 }
 
 export function randomCivilian() {

@@ -470,6 +470,17 @@ al medio y baila 7 s (pose 'aura' en human.js), los demás 'clap', 'film' (con u
 'listen'; después un juez le pone puntaje (+ o −) y queda el récord. Gaspi quieto en el medio: baila
 (`player.danceT`/`danceClock`) y gana +1 de respeto (una vez cada 2 minutos). Prueba: `aura.mjs`.
 
+**R35 — ✅ Piñas, patadas y apuntado a lo GTA de ahora** (pedido del dueño: "mucho más naturales").
+`src/moves.js` (lo llama `poseHuman` para 'fight', 'guard', 'jab', 'cross', 'hook', 'uppercut', 'kick',
+'hit', 'aim', 'aimLong', 'holdGun'): guardia de boxeo con rebote; cada golpe en fases (carga → sale rápido
+→ impacto → vuelve a la guardia) con cadera, pecho, pies y peso; patada frontal con recogida de rodilla;
+reacción al golpe hacia el lado que lo empuja (`h.hitSide`); apuntado con el torso que sigue la cámara
+(`h.aimPitch`), retroceso y respiración; caminar de costado o para atrás apuntando (`h.strafe`,
+`h.walkBack`, `h.strafeHip`). `animateHuman` mezcla al cambiar de pose (`BLEND`, slerp desde la pose
+anterior): sin saltos. Combo de `src/combat.js`: directo, cruzado, gancho, uppercut, patada (`hitAt`), medio
+paso hacia el rival mientras sale el golpe, y Gaspi queda en guardia 3,5 s (`fightT`). Pruebas:
+`golpes.mjs` (grilla de cuadros por movimiento, de perfil o de frente) y `combo.mjs` (el combo en el juego).
+
 **R11 — Pruebas en celu real**: el dueño prueba en iPhone/Android y manda capturas; se ajusta.
 
 **R12 — Acercarse al look del video de Higgsfield** (Gaspi de traje y corbata roja en una vereda a lo

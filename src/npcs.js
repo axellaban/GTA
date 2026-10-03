@@ -576,7 +576,9 @@ export class Npcs {
       n.heading = Math.atan2(-fx, -fz);
       n.act = null;
     } else {
-      n.act = { pose: 'hit', t: 0, dur: 0.35 };
+      n.act = { pose: 'hit', t: 0, dur: 0.5 };
+      // la cabeza se va para donde la empuja el golpe (src/moves.js)
+      n.h.hitSide = fx * Math.cos(n.heading) - fz * Math.sin(n.heading) > 0 ? 1 : -1;
       n.x += fx * 0.3;
       n.z += fz * 0.3;
     }

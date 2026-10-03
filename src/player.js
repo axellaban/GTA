@@ -102,7 +102,11 @@ export class Player {
   }
   hitReact(x, z) {
     if (this.vehicle || this.downT > 0) return;
-    this.reactT = 0.3;
+    this.reactT = 0.45;
+    this.fightT = 3.5; // le pegaron: se pone en guardia
+    // la cabeza se va para el lado contrario al golpe (src/moves.js)
+    const a = Math.atan2(x - this.x, z - this.z) - this.heading;
+    this.h.hitSide = Math.sin(a) > 0 ? -1 : 1;
     const d = Math.hypot(this.x - x, this.z - z) || 1;
     this.x += ((this.x - x) / d) * 0.25;
     this.z += ((this.z - z) / d) * 0.25;
@@ -611,8 +615,9 @@ export class Player {
       t = this.recoil;
     } else if (this.reactT > 0) {
       pose = 'hit';
-      t = 1 - this.reactT / 0.3;
+      t = 1 - this.reactT / 0.45;
     } else if (w.gun) pose = 'holdGun';
+    else if (this.fightT > 0 && !w.gun && !w.throw && w.id === 'punos') pose = 'fight';
     else if (this.phoneT > 0) pose = 'phone';
     else if (this.danceT > 0 && this.speed < 0.3) {
       // en el medio de la ronda de los chicos (src/aura.js): farmeando aura
@@ -620,6 +625,17 @@ export class Player {
       t = this.danceClock ?? 0;
     }
     this.danceT = (this.danceT || 0) - dt;
+    // después de pelear queda en guardia un rato (src/moves.js)
+    this.fightT = (this.fightT || 0) - dt;
+    // apuntando: el torso sigue la mira arriba/abajo y camina de costado o para atrás sin dejar de apuntar
+    const mv = Math.hypot(this.mvx, this.mvz);
+    let rel = mv > 0.3 ? Math.atan2(this.mvx, this.mvz) - this.heading : 0;
+    while (rel > Math.PI) rel -= Math.PI * 2;
+    while (rel < -Math.PI) rel += Math.PI * 2;
+    const aimingNow = w.gun && (this.aiming || this.shootT > 0);
+    this.h.aimPitch = -(this.camPitch - 0.2) * 0.6;
+    this.h.walkBack = aimingNow && Math.abs(rel) > 2.0;
+    this.h.strafe = aimingNow ? (this.h.walkBack ? rel - Math.sign(rel) * Math.PI : rel) : 0;
     this.phoneT = (this.phoneT || 0) - dt;
     // girando en el lugar da pasitos (si no, gira como una estatua)
     const stepIn = this.speed < 0.6 ? Math.min(1.1, Math.abs(this.turnW || 0) * 0.3) : 0;

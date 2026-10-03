@@ -6,11 +6,14 @@ import { dentCar, dropBumper, looseBumper } from './cars.js';
 import { R } from './rng.js';
 import { TOUCH } from './input.js';
 
+// combo de piñas: directo de izquierda, cruzado de derecha, gancho, uppercut y patada (poses en
+// src/moves.js; el golpe cuenta cerca de la mitad, cuando el brazo llega estirado)
 const COMBO = [
-  { pose: 'jab', dur: 0.3, dmg: 9, reach: 1.5 },
-  { pose: 'cross', dur: 0.34, dmg: 13, reach: 1.55 },
-  { pose: 'hook', dur: 0.46, dmg: 20, reach: 1.5 },
-  { pose: 'kick', dur: 0.58, dmg: 30, reach: 1.8, knock: true },
+  { pose: 'jab', dur: 0.32, dmg: 9, reach: 1.5, hitAt: 0.34 },
+  { pose: 'cross', dur: 0.4, dmg: 13, reach: 1.55, hitAt: 0.42 },
+  { pose: 'hook', dur: 0.48, dmg: 18, reach: 1.45, hitAt: 0.48 },
+  { pose: 'uppercut', dur: 0.5, dmg: 22, reach: 1.4, hitAt: 0.5 },
+  { pose: 'kick', dur: 0.66, dmg: 30, reach: 1.85, knock: true, hitAt: 0.47 },
 ];
 
 const charred = new THREE.MeshStandardMaterial({ color: 0x1b1816, roughness: 1, metalness: 0.1 });
@@ -170,16 +173,30 @@ export class Combat {
     const move = w.id !== 'punos' ? { pose: 'swing', dur: w.dur, dmg: w.dmg, reach: w.range, knock: w.knock ?? R.chance(0.45), saw: !!w.saw } : COMBO[step % COMBO.length];
     const tgt = this.meleeTarget(P, world, 3);
     if (tgt) P.heading = Math.atan2(tgt.x - P.x, tgt.z - P.z);
-    P.attack = { ...move, step, t: 0, hitDone: false, queued: false };
+    P.attack = { ...move, step, t: 0, hitDone: false, queued: false, tgt };
+    P.fightT = 3.5; // queda en guardia un rato
     if (move.saw) this.audio.motosierra?.();
-    else this.audio.whoosh(move.pose === 'kick' || move.pose === 'swing' ? 0.5 : 0.3);
+    else this.audio.whoosh(move.pose === 'kick' || move.pose === 'swing' ? 0.5 : move.pose === 'hook' || move.pose === 'uppercut' ? 0.4 : 0.3);
   }
   meleeUpdate(dt, world) {
     const P = world.player;
     const a = P.attack;
     if (!a) return;
     a.t += dt;
-    if (!a.hitDone && a.t > a.dur * 0.45) {
+    // se acerca medio paso al que le pega (como en los GTA): mientras el golpe sale, si está a tiro
+    const tg = a.tgt;
+    if (tg && a.t < a.dur * (a.hitAt ?? 0.45)) {
+      const ox = tg.obj?.x ?? tg.obj?.v?.x ?? tg.x;
+      const oz = tg.obj?.z ?? tg.obj?.v?.z ?? tg.z;
+      const d = Math.hypot(ox - P.x, oz - P.z);
+      if (d > 1.0 && d < 2.6) {
+        const step = Math.min(d - 0.95, 3.2 * dt);
+        P.x += ((ox - P.x) / d) * step;
+        P.z += ((oz - P.z) / d) * step;
+        P.heading = Math.atan2(ox - P.x, oz - P.z);
+      }
+    }
+    if (!a.hitDone && a.t > a.dur * (a.hitAt ?? 0.45)) {
       a.hitDone = true;
       this.meleeHit(P, world, a);
     }
@@ -220,7 +237,7 @@ export class Combat {
     if (!t || t.cos < 0.35) return;
     const fx = Math.sin(P.heading);
     const fz = Math.cos(P.heading);
-    const heavy = a.pose === 'kick' || a.pose === 'swing' || a.pose === 'hook';
+    const heavy = a.pose === 'kick' || a.pose === 'swing' || a.pose === 'hook' || a.pose === 'uppercut';
     this.fx.shake += a.saw ? 0.1 : heavy ? 0.24 : 0.12;
     if (!a.saw) this.audio.golpe(a.pose === 'swing' ? 0.9 : 0.6);
     P.hitMarker = 0.15;
