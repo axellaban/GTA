@@ -15,7 +15,7 @@ from PIL import Image, ImageFilter
 
 from cast import CAST
 from paint import classify, pad, repaint
-from skin import cavity
+from skin import cavity, scalp
 from skin import photo as photo_bake
 from skin import beard as beard_paint
 
@@ -560,6 +560,13 @@ def build(name, spec):
         ph = dict(spec['photo'], file=str(HERE.parents[2] / spec['photo']['file']))  # desde la raíz del repo
         lin = photo_bake(C, V, np.clip(lin, 0, 1) ** (1 / 2.2), ph, eye_y, chin_y, HEAD) ** 2.2
     skin = Image.fromarray((np.clip(lin, 0, 1) ** (1 / 2.2) * 255).astype(np.uint8))
+    if spec.get('hair'):
+        # el pelo pintado en la cabeza va en el alfa de la piel (1 piel … 0,55 pelo; el juego lo decodifica)
+        hc = read_clo(C / 'hair' / spec['hair'] / (spec['hair'] + '.mhclo'))
+        hc['img'] = load_img(hc)
+        hw = W[:, names.index('Head')] + W[:, names.index('Neck')]
+        sm = scalp(C, V, hw, hc, fit(hc, V), eye_y, chin_y, skin.size[0])
+        skin.putalpha(Image.fromarray((255 * (1 - 0.45 * sm)).round().astype(np.uint8)))
     paste(atlas, skin, 'skin')
     paste(atlas, skin, 'head', HEAD)
 

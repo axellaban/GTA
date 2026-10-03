@@ -173,3 +173,66 @@ def cavity(C, V, size=2048, strength=1.0):
     img, m2 = dilate(img, m, 8)
     img[~m2] = 1
     return img[..., 0]
+
+
+def scalp(C, V, hw, hair, P, eye_y, chin_y, size):
+    """Dónde el pelo tapa la cabeza (0..1 en el espacio de la piel): ahí el juego pinta la piel del color
+    del pelo, como el pelo corto pintado de San Andreas (así no se ve el corte entre las mechas y la
+    frente, y de lejos, con menos mechas, la cabeza sigue teniendo pelo). Para cada vértice de la cabeza
+    se buscan puntos opacos del pelo (según el alfa de su textura) delante de la piel, a lo largo de la
+    normal: hasta 3 cm afuera y a menos de 1 cm de costado."""
+    from PIL import Image
+    F, FT, T = body_faces(C)
+    nv = 13380
+    Vb = V[:nv]
+    N = vertex_normals(V, F)[:nv]
+    # puntos del pelo: varios por triángulo, solo los opacos
+    img = np.asarray(hair['img'].convert('RGBA'), np.float32)[..., 3] / 255
+    H_, W_ = img.shape
+    tri, tuv = [], []
+    for f, ft in zip(hair['F'], hair['FT']):
+        for i in range(1, len(f) - 1):
+            tri.append((f[0], f[i], f[i + 1]))
+            tuv.append((ft[0], ft[i], ft[i + 1]))
+    tri, tuv = np.array(tri), np.array(tuv)
+    HT = np.asarray(hair['T'], float)
+    bary = np.array([[1, 1, 1], [4, 1, 1], [1, 4, 1], [1, 1, 4], [2, 2, 0.5], [0.5, 2, 2], [2, 0.5, 2]], float)
+    bary /= bary.sum(1, keepdims=True)
+    Q = np.einsum('kj,tjc->tkc', bary, P[tri]).reshape(-1, 3)
+    U = np.einsum('kj,tjc->tkc', bary, HT[tuv]).reshape(-1, 2)
+    a = img[np.clip(((1 - U[:, 1]) * H_).astype(int), 0, H_ - 1), np.clip((U[:, 0] * W_).astype(int), 0, W_ - 1)]
+    Q = Q[a > 0.5]
+    # vértices de la cabeza (sin la cara de frente)
+    head = hw[:nv] > 0.5  # peso de la cabeza y el cuello
+    face = (N[:, 2] > 0.3) & (Vb[:, 1] < eye_y + 0.3)
+    head &= ~face & (Vb[:, 1] > chin_y)
+    idx = np.nonzero(head)[0]
+    m = np.zeros(nv)
+    for i0 in range(0, len(idx), 128):
+        ii = idx[i0:i0 + 128]
+        d = Q[None, :, :] - Vb[ii, None, :]
+        along = (d * N[ii, None, :]).sum(2)
+        lat = np.linalg.norm(d - along[..., None] * N[ii, None, :], axis=2)
+        ok = (along > -0.05) & (along < 0.3)
+        cov = np.clip((0.1 - lat) / 0.05, 0, 1) * ok
+        m[ii] = cov.max(1) if cov.shape[1] else 0
+    # suavizado por las aristas (el borde queda difuso, como el nacimiento del pelo)
+    E = np.concatenate([F[:, [0, 1]], F[:, [1, 2]], F[:, [2, 3]], F[:, [3, 0]]])
+    E = np.concatenate([E, E[:, ::-1]])
+    deg = np.bincount(E[:, 0], minlength=len(V)).astype(float)
+    mv = np.zeros(len(V))
+    mv[:nv] = m
+    for _ in range(2):
+        acc = np.zeros(len(V))
+        np.add.at(acc, E[:, 0], mv[E[:, 1]])
+        mv = np.where(deg > 0, 0.5 * mv + 0.5 * acc / np.maximum(deg, 1), mv)
+    mv[:nv][face] = 0
+    uvpx = T[FT] * [size, size]
+    uvpx[..., 1] = size - uvpx[..., 1]
+    vals = np.clip(mv, 0, 1)[F][..., None].astype(np.float32)
+    tris = np.concatenate([uvpx[:, [0, 1, 2]], uvpx[:, [0, 2, 3]]])
+    tv = np.concatenate([vals[:, [0, 1, 2]], vals[:, [0, 2, 3]]])
+    out, mk = raster_tris(tris, tv, size)
+    out, mk2 = dilate(out, mk, 8)
+    out[~mk2] = 0
+    return np.clip(out[..., 0], 0, 1)

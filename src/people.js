@@ -98,6 +98,7 @@ function tintMH(material, ud, o) {
       uBottom: { value: v4(o.bottom) },
       uFix: { value: new THREE.Vector2(fixed.top ? 1 : 0, fixed.bottom ? 1 : 0) },
       uLum: { value: new THREE.Vector2(Math.max(0.02, lum.top), Math.max(0.02, lum.bottom)) },
+      uScalp: { value: o.scalp === false ? 0 : 1 },
     });
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nattribute float _part;\nvarying vec4 vPart;\nvarying float vHairK;')
@@ -114,7 +115,7 @@ function tintMH(material, ud, o) {
         }`,
       );
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform vec3 uTint;\nuniform vec3 uSkin;\nuniform vec3 uHair;\nuniform vec4 uTop;\nuniform vec4 uVest;\nuniform vec4 uBottom;\nuniform vec2 uFix;\nuniform vec2 uLum;\nvarying vec4 vPart;\nvarying float vHairK;\n' + TINT_GLSL)
+      .replace('#include <common>', '#include <common>\nuniform vec3 uTint;\nuniform vec3 uSkin;\nuniform vec3 uHair;\nuniform vec4 uTop;\nuniform vec4 uVest;\nuniform vec4 uBottom;\nuniform vec2 uFix;\nuniform vec2 uLum;\nuniform float uScalp;\nvarying vec4 vPart;\nvarying float vHairK;\n' + TINT_GLSL)
       .replace(
         '#include <color_fragment>',
         `#include <color_fragment>
@@ -135,10 +136,16 @@ function tintMH(material, ud, o) {
           c = mix(c, uVest.rgb * min(lum / uLum.x, 2.5), torso * uVest.a);
           c = mix(c, uBottom.rgb * min(lum / uLum.y, 2.5), bottom * uBottom.a);
           diffuseColor.rgb = mix(c, uHair * (lum / 0.18), hairK);
+          // pelo pintado en la cabeza (el alfa de la piel: 1 piel … 0,55 pelo; build.py/scalp): del color del
+          // pelo con un granulado fino, como el pelo corto de San Andreas. La piel queda opaca.
+          float sc = skin * clamp((1.0 - diffuseColor.a) / 0.45, 0.0, 1.0) * uScalp;
+          float gr = fract(sin(dot(floor(vMapUv * 1024.0), vec2(12.9898, 78.233))) * 43758.5453);
+          diffuseColor.rgb = mix(diffuseColor.rgb, uHair * (0.62 + 0.4 * gr), sc);
+          diffuseColor.a = mix(diffuseColor.a, 1.0, skin);
         }`,
       );
   };
-  m.customProgramCacheKey = () => 'ropa-mh4';
+  m.customProgramCacheKey = () => 'ropa-mh5';
   m.userData.own = true; // de este personaje solo (disposeHuman lo libera)
   return m;
 }
@@ -307,6 +314,7 @@ export function makeLook(o) {
     vest: o.vest,
     bottom: o.pants ?? null,
     bald: o.hairStyle === 'bald' || o.helmet != null || o.cap != null, // con gorra o casco no asoma el pelo
+    scalp: o.hairStyle !== 'bald', // el pelo corto pintado sí (debajo de la gorra)
   };
   if (opts.top == null && !ud.fixed?.top) Object.assign(opts, { hue: Math.random(), sat: R.range(0.8, 1.2), val: R.range(0.8, 1.1) });
   h.rig.model.traverse((m) => {
