@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { makeHuman, animateHuman, randomCivilian, SKINS, HAIRS } from './human.js';
 import { makeDog } from './animals.js';
 import { makePerson, makeLook, PEOPLE, ANIMALS, makeAnimal, animalPlay, swapHuman } from './people.js';
+import { setLod } from './rig.js';
 import { DATA as D } from './map.js';
 import { R } from './rng.js';
 import { walkwayHeight } from './physics.js';
@@ -698,6 +699,8 @@ export class Npcs {
       const dp = Math.hypot(player.x - n.x, player.z - n.z);
       const far = dp > 150;
       n.mesh.visible = !far;
+      // de lejos, la malla liviana (~1.200 triángulos en vez de 5.000)
+      if (n.h.lods) setLod(n.h, dp > 28);
       // sombra de verdad solo cerca (de lejos alcanza con la mancha de contacto)
       const shade = dp < 40;
       if (shade !== n.shade) {

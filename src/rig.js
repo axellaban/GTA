@@ -196,6 +196,20 @@ export function rigHuman(source, { height = 1.75, female = false } = {}) {
   }
 
   const h = { root, bones, phase: Math.random() * 10, geos: null, lod: 0, keep: true, female, rig: { apply, map, model } };
+  // los de MakeHuman traen otra malla más liviana para de lejos ('lejos'): arranca escondida
+  const far = model.getObjectByName('lejos');
+  if (far) {
+    far.visible = false;
+    h.lods = [model.getObjectByName('cuerpo'), far];
+  }
   apply();
   return h;
+}
+
+// cerca o lejos (los que traen dos mallas): npcs.js lo llama con la distancia a Gaspi
+export function setLod(h, far) {
+  if (!h.lods || h.farLod === far) return;
+  h.farLod = far;
+  h.lods[0].visible = !far;
+  h.lods[1].visible = far;
 }

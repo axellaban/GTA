@@ -435,8 +435,11 @@ personajes", iterar con capturas). En curso. Hecho:
   (`TOTAL` en `pack.mjs`).
 - La piel se esconde si tiene un vértice tapado por la ropa o queda a menos de 1,8 cm debajo de la tela
   (axilas y hombros), salvo en el cuello (ahí solo si está tapada entera).
-Falta (en orden): LOD lejano (hoy ~5.000 triángulos cada uno hasta 150 m); carga diferida de `special`
-y `stars`; SWAT propio con casco y chaleco; más ropa (buzos con capucha, shorts, vestidos: assets de la
+- De lejos (más de 28 m, `setLod` en `src/rig.js` desde `npcs.update`): cada glb trae una segunda malla
+  'lejos' (~1.100–2.000 triángulos, mismo esqueleto y material; el pelo se queda con las tiras más grandes:
+  `bigCards` en `pack.mjs`). Normales, uv y pesos cuantizados (KHR_mesh_quantization) y WebP 84: el elenco
+  bajó de 14 a 9,6 MB.
+Falta (en orden): carga diferida de `special` y `stars`; SWAT propio con casco y chaleco; más ropa (buzos con capucha, shorts, vestidos: assets de la
 comunidad de MakeHuman con licencia CC0).
 Prueba: casting en el escenario (800, 800) mirando al este a las 9:30 (`mhcast.mjs` del scratchpad:
 fila de cuerpo entero, caras y primer plano).
