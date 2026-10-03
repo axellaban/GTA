@@ -44,6 +44,8 @@ export class Police {
     const before = this.stars;
     this.heat = Math.min(6.99, this.heat + k);
     if (kind === 'cana' || kind === 'muerte') this.heat = Math.max(this.heat, 2);
+    // en una matanza la cana no pasa de dos estrellas (como en Vice City, para que se pueda jugar)
+    if (this.world?.matanzas?.active) this.heat = Math.min(this.heat, 2.99);
     this.updateStars();
     this.lostT = 0;
     if (this.stars > before) {

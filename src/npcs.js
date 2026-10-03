@@ -450,8 +450,8 @@ export class Npcs {
     }
     this.groups = this.groups.filter((g) => !g.done);
   }
-  spawnZombie(near) {
-    const p = this.sidewalkPoint(near.x, near.z, 40, 140);
+  spawnZombie(near, rmin = 40, rmax = 140) {
+    const p = this.sidewalkPoint(near.x, near.z, rmin, rmax);
     if (!p) return null;
     const h = makeHuman({ skin: R.pick([0xc9a88f, 0xb89478, 0xa88a70]), hair: 0x2b2420, shirt: R.pick([0x4e4a45, 0x5d5348, 0x3d3d3d]), pants: 0x333333, hood: R.chance(0.5) ? 0x3a3a3a : null, beard: R.chance(0.5), tired: true, scale: R.range(0.9, 1) });
     const n = this.add(new Npc('zombie', h, p.x, p.z));
@@ -497,6 +497,12 @@ export class Npcs {
   // ---------- Golpes ----------
   // fx, fz: dirección del golpe. Devuelve 'ko' si lo dejó fuera de combate y 'muerte' si lo mató.
   hurt(n, dmg, fx, fz, o = {}) {
+    const res = this.damage(n, dmg, fx, fz, o);
+    // las matanzas cuentan lo que mata Gaspi
+    if (res === 'muerte' && o.byPlayer) o.world?.matanzas?.onKill(n);
+    return res;
+  }
+  damage(n, dmg, fx, fz, o) {
     const w = o.world;
     // a los chicos no se los lastima (como en los GTA): se asustan y salen corriendo
     if (n.type === 'chico') {
@@ -602,6 +608,7 @@ export class Npcs {
     let next;
     if (n.type === 'zombie') next = 'fight';
     else if (n.type === 'trapito') next = gun ? 'flee' : R.chance(0.7) ? 'fight' : 'flee';
+    else if (n.barra) next = 'fight';
     else if (n.type === 'vecino' || n.type === 'piquetero') next = !gun && R.chance(n.brave) ? 'fight' : 'flee';
     else next = 'flee';
     // a un manifestante no se le pega gratis: los compañeros salen a defenderlo

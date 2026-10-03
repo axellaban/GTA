@@ -236,6 +236,12 @@ Además hay 13 vecinos y vecinas de [Quaternius](https://quaternius.com) (Ultima
 
 Los perros también son un modelo CC0 de Mesh2Motion, con animaciones de verdad (quieto, caminar, correr, ladrar) y distintos tonos de pelo, y el caballo del carro del cartonero también.
 
+## Matanzas (0.29)
+
+Como los "Rampage" de Vice City: seis **calaveras** rojas por el barrio (se ven en el mapa). Pasás caminando por arriba y arranca: te dan un arma con munición de sobra y tenés que bajar a una cantidad de **zombis** o de **barras de Banfield** antes de que se acabe el tiempo (motosierra, metra, tumbera, lanzallamas, molotov y bazuca). Pagan de **$25.000 a $60.000**. Mientras dura, la cana no pasa de dos estrellas. Si no llegás, la calavera vuelve al rato. Cuentan para el porcentaje de la pausa.
+
+Además: los **vecinos cruzan las vías por el puente de la estación** (suben, cruzan y bajan; alguno se para en el medio a mirar el tren), y la **luz de día** es más nítida y cálida, con sombras marcadas y menos bruma.
+
 ## Lo que cargó el dueño (relevamiento, 0.28)
 
 - **Morres**, la carnicería de la esquina de Cangallo y Santa María de Oro (cartel rojo y toldo).
@@ -300,6 +306,7 @@ Box de CrossFit en su dirección real, **Rivadavia 321**, en la vereda de enfren
 | `public/models/vehicles/qcars.glb` | Autos modernos de Quaternius (CC0), los carga `loadQCars` en `src/cars.js` |
 | `src/palms.js` | Palmeras de las plazas (instanciadas) |
 | `src/stunts.js` | Rampas y saltos insólitos con cámara lenta |
+| `src/matanzas.js` | Matanzas contra reloj (calaveras, zombis y barras, premio en plata) |
 | `src/gym.js` | Gym El Kaiser: galpón, cartel, racks y los musculosos entrenando |
 | `src/missions.js` | Misiones: llamadas, marcador, etapas, premio |
 | `src/transit.js` | Tren y colectivo de pasajero |

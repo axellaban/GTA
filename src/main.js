@@ -51,6 +51,7 @@ import { Interiors } from './interiors.js';
 import { CarWash } from './carwash.js';
 import { Races } from './races.js';
 import { Missions, makeMarker } from './missions.js';
+import { Matanzas, DEFS as MATANZAS } from './matanzas.js';
 
 setupInstall();
 
@@ -259,6 +260,9 @@ world.races = races;
 police.world = world;
 const missions = new Missions(scene, world);
 world.missions = missions;
+const matanzas = new Matanzas(scene, npcs);
+world.matanzas = matanzas;
+world.save = () => saveGame();
 const ufo = new Ufo(scene, world);
 world.ufo = ufo;
 
@@ -736,6 +740,12 @@ function nearestCorte() {
 }
 const praise = ['¡BIEN AHÍ!', '¡VAMOS, GASPI!', '¡DE UNA!', '¡ESO!', '¡QUÉ CRACK!'];
 function updateObjective() {
+  const mz = matanzas.objective();
+  if (mz) {
+    hud.setObjective(mz.text, mz.target);
+    hud.updateObjective(player);
+    return;
+  }
   const rc = races.objective();
   if (rc) {
     hud.setObjective(rc.text, rc.target);
@@ -1003,7 +1013,7 @@ function speakers() {
 const SAVE = 'gta-conurbano-partida';
 function saveGame() {
   try {
-    localStorage.setItem(SAVE, JSON.stringify({ money: player.money, respeto: player.respeto, phone: player.phone, step, hour: time.hour, inv: player.inv, ammo: player.ammo, weapon: player.weapon, armor: player.armor, flags, missions: missions.save(), figus: [...player.figus], saltos: [...player.saltos] }));
+    localStorage.setItem(SAVE, JSON.stringify({ money: player.money, respeto: player.respeto, phone: player.phone, step, hour: time.hour, inv: player.inv, ammo: player.ammo, weapon: player.weapon, armor: player.armor, flags, missions: missions.save(), figus: [...player.figus], saltos: [...player.saltos], matanzas: [...(player.matanzas || [])] }));
   } catch {
     /* sin almacenamiento */
   }
@@ -1023,6 +1033,7 @@ function loadGame() {
     player.armor = d.armor ?? 0;
     player.figus = new Set(d.figus || []);
     player.saltos = new Set(d.saltos || []);
+    player.matanzas = new Set(d.matanzas || []);
     Object.assign(flags, d.flags || {});
     missions.next = d.missions?.next ?? 0;
     missions.done = d.missions?.done ?? 0;
@@ -1056,8 +1067,9 @@ function setPaused(p) {
     const mis = Math.min(missions.done, 3);
     const figus = player.figus.size;
     const saltos = player.saltos.size;
-    const pct = Math.round((mis / 3) * 35 + (figus / FIGUS) * 30 + (saltos / RAMPS) * 15 + (Math.min(step, steps.length - 1) / (steps.length - 1)) * 20);
-    document.getElementById('stats').textContent = `Completado ${pct}% · Misiones ${mis}/3 · Figuritas ${figus}/${FIGUS} · Saltos ${saltos}/${RAMPS}`;
+    const mz = player.matanzas?.size ?? 0;
+    const pct = Math.round((mis / 3) * 30 + (figus / FIGUS) * 25 + (saltos / RAMPS) * 15 + (mz / MATANZAS.length) * 10 + (Math.min(step, steps.length - 1) / (steps.length - 1)) * 20);
+    document.getElementById('stats').textContent = `Completado ${pct}% · Misiones ${mis}/3 · Figuritas ${figus}/${FIGUS} · Saltos ${saltos}/${RAMPS} · Matanzas ${mz}/${MATANZAS.length}`;
     try {
       document.exitPointerLock?.();
     } catch {
@@ -1168,6 +1180,7 @@ function frame(now) {
   npcs.update(dt, world);
   interiors.update(dt, world);
   races.update(dt, world);
+  matanzas.update(dt, world);
   crime.update(dt, world);
   police.update(dt, world);
   events.update(dt, world);

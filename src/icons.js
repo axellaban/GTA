@@ -392,6 +392,27 @@ export const ICONS = {
       text(g, '$', 40, INK);
     },
   },
+  matanza: {
+    bg: '#b71c1c',
+    label: 'Matanzas',
+    draw(g) {
+      // calavera
+      g.fillStyle = WHITE;
+      g.beginPath();
+      g.arc(32, 28, 15, 0, Math.PI * 2);
+      g.fill();
+      rrect(g, 23, 34, 18, 12, 3);
+      g.fill();
+      g.fillStyle = '#b71c1c';
+      g.beginPath();
+      g.arc(26, 28, 4.5, 0, Math.PI * 2);
+      g.arc(38, 28, 4.5, 0, Math.PI * 2);
+      g.fill();
+      path(g, [[32, 32], [29.5, 37], [34.5, 37]]);
+      g.fill();
+      for (const x of [27, 32, 37]) g.fillRect(x - 0.8, 41, 1.6, 6);
+    },
+  },
   figu: {
     bg: '#ff4fd8',
     label: 'Figuritas',
@@ -450,6 +471,6 @@ export function drawIcon(g, kind, x, y, size, letter = null) {
 }
 
 // lo que se muestra en la leyenda del mapa de pausa, en orden
-export const LEGEND = ['mision', 'armeria', 'arbolitos', 'jubilados', 'pintura', 'gym', 'nafta', 'comisaria', 'hospital', 'tren', 'pancho', 'medias', 'kiosco', 'picada', 'corte', 'ambulancia', 'bombero', 'delivery', 'ovni', 'arma', 'vida', 'chaleco', 'coima'];
+export const LEGEND = ['mision', 'armeria', 'arbolitos', 'jubilados', 'pintura', 'gym', 'nafta', 'comisaria', 'hospital', 'tren', 'pancho', 'medias', 'kiosco', 'picada', 'corte', 'ambulancia', 'bombero', 'delivery', 'ovni', 'matanza', 'arma', 'vida', 'chaleco', 'coima'];
 // de los objetos del piso (pickups) al ícono
 export const PICKUP_ICON = { weapon: 'arma', health: 'vida', armor: 'chaleco', coima: 'coima' };

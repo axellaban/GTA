@@ -292,6 +292,16 @@ Colegio Eccleston de 7:30 a 18:30. Los chicos no se pueden lastimar: `Npcs.hurt`
 balas los atraviesan (`Combat.trace`), no se apuntan y el rayo del OVNI no los levanta. Esquinas
 calculadas con las calles de OSM (Cangallo y SMdO en 65.6,-12.5; SMdO y 14 de Julio en 58.3,-160.2).
 
+**R22 — ✅ Matanzas** (pedido del dueño, los "Rampage" de Vice City): `src/matanzas.js`. Seis calaveras
+fijas (en la vereda de la arista más cerca de puntos alrededor de `STATION`, a 140–465 m) con `DEFS`:
+arma, objetivo (`zombis` = `spawnZombie(P, 20, 50)`; `barras` = vecinos con camiseta de Banfield,
+`n.barra`, siempre pelean: ver `react`), cantidad, tiempo y premio ($25.000–$60.000). Se agarra a pie,
+sin misión ni picada. `Npcs.hurt` ahora envuelve a `damage` y avisa `matanzas.onKill` cuando Gaspi
+mata (`byPlayer`). Siempre hay 7 objetivos vivos cerca (los de más de 90 m se borran). `Police.crime`
+topea en 2 estrellas mientras dura. Hechas en `player.matanzas` (se guardan), cuentan 10 % del
+porcentaje de la pausa; ícono `matanza` (calavera) en mapa y minimapa. Si fallás, vuelve en 45 s.
+Prueba: forzar `P.x/z` sobre una calavera, `matanzas.update` y matar con `npcs.hurt(..., {byPlayer})`.
+
 **R11 — Pruebas en celu real**: el dueño prueba en iPhone/Android y manda capturas; se ajusta.
 
 **R12 — Acercarse al look del video de Higgsfield** (Gaspi de traje y corbata roja en una vereda a lo

@@ -87,6 +87,7 @@ export class Hud {
     if (world.carwash?.x != null) add('lavadero', world.carwash);
     for (const m of world.gangs?.markers() || []) add(m.kind, m);
     for (const m of world.races?.markers() || []) add('picada', m);
+    for (const m of world.matanzas?.markers(P) || []) add('matanza', m);
     for (const m of world.events?.markers() || []) add('corte', m);
     const r = world.rescue;
     if (r?.ambulance && !r.ambulance.wreck && P.vehicle !== r.ambulance) add('ambulancia', r.ambulance);
