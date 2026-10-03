@@ -528,6 +528,48 @@ const DEFS = [
   },
 ];
 
+// La última: cuando ganaste todas, llama el Comandante desde el cielo (ver src/cielo.js)
+export const FINAL = {
+  id: 'cielo',
+  title: 'EL CIELO DEL COMANDANTE',
+  name: 'El cielo del Comandante',
+  giver: 'Número desconocido',
+  call: 'Gaspi... soy yo, el Comandante. Te espero arriba de todo. Subí a lo más alto de Temperley, papi.',
+  reward: 1000000,
+  respeto: 20,
+  start: (c) => c.w.tobogan?.t?.door ?? c.near(c.city.spots.stationDoor, 20, 60),
+  stages: [
+    {
+      skip: (c) => c.w.tobogan?.where(c.P) !== 'calle',
+      text: () => 'Subí en el ascensor a la terraza de la torre de Alte. Brown',
+      target: (c) => c.w.tobogan?.t?.door ?? null,
+      update: (c) => c.w.tobogan?.where(c.P) !== 'calle',
+    },
+    {
+      enter: (c) => {
+        c.w.cielo.beamOn(c.w);
+        c.hud.flash('¡MIRÁ PARA ARRIBA!', 'Baja una luz dorada en el medio de la terraza', 'ok', 3);
+      },
+      text: () => 'Metete en la luz dorada',
+      target: (c) => c.w.cielo.beam,
+      update: (c) => c.w.cielo.inBeam(c.P),
+    },
+    {
+      enter: (c) => c.w.cielo.ascend(c.w),
+      text: () => 'Encontrá al Comandante',
+      target: (c) => c.w.cielo.fortPos,
+      update: (c) => c.w.cielo.near(c.P),
+    },
+    {
+      enter: (c) => c.w.cielo.hug(c.w),
+      text: () => 'El Comandante',
+      target: () => null,
+      update: (c) => c.w.cielo.hugDone,
+    },
+  ],
+  done: (c) => c.w.cielo.ending(c.w),
+};
+
 export class Missions {
   constructor(scene, world, save = {}) {
     this.w = world;
@@ -536,13 +578,14 @@ export class Missions {
     scene.add(this.marker);
     this.next = save.next ?? 0; // próxima misión (vuelven a empezar al terminar todas)
     this.done = save.done ?? 0;
+    this.finale = !!save.finale; // ya jugó el final en el cielo
     this.offer = null; // misión ofrecida: {def, origin}
     this.m = null; // misión en curso
     this.callT = 25; // primera llamada al rato de terminar el tutorial
     this.t = 0;
   }
   save() {
-    return { next: this.next, done: this.done };
+    return { next: this.next, done: this.done, finale: this.finale };
   }
   // mientras dura el encargo de Ciro, Ciro no le busca pelea a Gaspi
   get ciroPeace() {
@@ -627,9 +670,13 @@ export class Missions {
     this.ring();
   }
 
+  // la próxima: el final cuando ganaste todas (una sola vez), si no la que sigue
+  nextDef() {
+    return this.done >= DEFS.length && !this.finale && this.w.cielo ? FINAL : DEFS[this.next % DEFS.length];
+  }
   ring() {
     const w = this.w;
-    const def = DEFS[this.next % DEFS.length];
+    const def = this.nextDef();
     w.audio.ring?.();
     // la voz del que llama, como en el celu
     setTimeout(() => w.audio.speak?.(def.call, { female: /^Doña/.test(def.giver), key: this.next + 11, force: true }), 1300);
@@ -687,7 +734,8 @@ export class Missions {
     w.hud.flash('¡MISIÓN CUMPLIDA!', `${fmt(def.reward)} · Respeto +${def.respeto}`, 'ok', 4);
     this.cleanup();
     this.m = null;
-    this.next++;
+    if (def.id === 'cielo') this.finale = true;
+    else this.next++;
     this.done++;
     this.callT = R.range(35, 60);
   }

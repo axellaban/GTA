@@ -357,6 +357,14 @@ ese tramo de la vereda oeste: el relevamiento acepta `nuevos` ([{ ring, tipo, pi
 ménsulas a la pared, vuelve a la pileta). El viaje usa `P.cutscene` y acelera con la pendiente.
 Ascensor: fundido entre la vereda y la casilla de la terraza. Protegida en `Destroy`.
 
+**R30 — ✅ Final en el cielo** (pedido del dueño). `FINAL` en `src/missions.js` (`nextDef`: cuando
+`done >= DEFS.length` y no se jugó; `finale` se guarda). Etapas: subir a la terraza de la torre del tobogán,
+meterse en la luz (`Cielo.beamOn/inBeam`), `ascend` (fundido blanco, la nube a 420 m arriba de la torre:
+`roofWalkway` ovalado + barandas `add3d` invisibles que se apagan con `gone` al volver), encontrar al
+Comandante (`near`) y `hug` (cutscene, `hugPose` sobre la pose quieta, cámara que orbita en
+`Cielo.camera`, que `main.js` consulta antes de la de Gaspi). `ending`: créditos y vuelta a la terraza.
+El Comandante: `makeHuman` con lentes y cadenita colgados de los huesos; sin fotos.
+
 **R11 — Pruebas en celu real**: el dueño prueba en iPhone/Android y manda capturas; se ajusta.
 
 **R12 — Acercarse al look del video de Higgsfield** (Gaspi de traje y corbata roja en una vereda a lo

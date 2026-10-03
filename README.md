@@ -248,6 +248,10 @@ Como los "Rampage" de Vice City: seis **calaveras** rojas por el barrio (se ven 
 
 Además: los **vecinos cruzan las vías por el puente de la estación** (suben, cruzan y bajan; alguno se para en el medio a mirar el tren), y la **luz de día** es más nítida y cálida, con sombras marcadas y menos bruma.
 
+## El final: el cielo del Comandante (0.30)
+
+Cuando ganaste las nueve misiones, te llama un número desconocido: es **el Comandante** (Ricardo Fort), que te espera "arriba de todo". Subís en el ascensor a la terraza de la torre del tobogán, baja una **luz dorada**, te metés y aparecés en el **cielo, arriba de una nube enorme**, al atardecer. En la otra punta te espera el Comandante (pelo platinado, bronceado, traje blanco, lentes negros y cadenita) y **se dan un abrazo** mientras la cámara gira alrededor. Después, los créditos ("FIN"), $1.000.000 y de vuelta a la terraza: el juego sigue. Es un personaje hecho en el juego, sin fotos.
+
 ## Lo que cargó el dueño (relevamiento, 0.28)
 
 - **Morres**, la carnicería de la esquina de Cangallo y Santa María de Oro (cartel rojo y toldo).

@@ -55,6 +55,7 @@ import { Matanzas, DEFS as MATANZAS } from './matanzas.js';
 import { Uver } from './uver.js';
 import { buildTower, Heli } from './heli.js';
 import { buildTobogan, Tobogan } from './tobogan.js';
+import { Cielo } from './cielo.js';
 
 setupInstall();
 
@@ -275,6 +276,9 @@ world.heli = heli;
 // la torre de Almirante Brown 2973: ascensor, pileta y tobogán en la terraza
 const tobogan = new Tobogan(buildTobogan(scene, city));
 world.tobogan = tobogan;
+// el final: la nube del Comandante
+const cielo = new Cielo(scene, city, tobogan);
+world.cielo = cielo;
 world.transit = transit;
 world.streetName = nearestStreetName;
 world.save = () => saveGame();
@@ -1018,6 +1022,7 @@ function speakers() {
   for (const n of npcs.list) if (n.bubble) add(n.x, n.y + (n.h.tall ?? 2.35 * n.h.root.scale.y), n.z, n.bubble, n.type === 'trapito' || n.type === 'cana' || n.state === 'fight', { female: n.h.female, key: n.h.phase });
   for (const m of crime.motos) if (m.bubble) add(m.v.x, 2.6, m.v.z, m.bubble, true, { key: 7 });
   if (player.bubble) add(player.x, player.y + 2.4, player.z, player.bubble, false, { key: 3 });
+  if (cielo.bubble) add(cielo.fortPos.x, 420 + 2.5, cielo.fortPos.z, cielo.bubble, false, { key: 41 });
   if (uver.bubble && uver.v) add(uver.v.x, 2.3, uver.v.z, uver.bubble, true, { key: 23 });
   if (laban.bubble && laban.v) add(laban.v.x, 2.3, laban.v.z, laban.bubble, false, { female: laban.bubble.female, key: laban.bubble.female ? 31 : 17 });
   // la gente del corte canta
@@ -1064,6 +1069,7 @@ function loadGame() {
     Object.assign(flags, d.flags || {});
     missions.next = d.missions?.next ?? 0;
     missions.done = d.missions?.done ?? 0;
+    missions.finale = !!d.missions?.finale;
     combat.syncHand(player);
     return true;
   } catch {
@@ -1211,6 +1217,7 @@ function frame(now) {
   uver.update(dt, world);
   heli.update(dt, world);
   tobogan.update(dt, world);
+  cielo.update(dt, world);
   crime.update(dt, world);
   police.update(dt, world);
   events.update(dt, world);
@@ -1235,7 +1242,7 @@ function frame(now) {
   updateObjective();
   updateGps(dt);
   // adentro del taller la cámara queda afuera, mirando el portón
-  if (!garages.camera(camera)) player.updateCamera(camera, dt, city.colliders, fx);
+  if (!garages.camera(camera) && !cielo.camera(camera)) player.updateCamera(camera, dt, city.colliders, fx);
   fx.update(dt);
   smash.update(dt);
   SIGNS.update(dt, world);
