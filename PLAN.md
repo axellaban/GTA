@@ -302,6 +302,12 @@ topea en 2 estrellas mientras dura. Hechas en `player.matanzas` (se guardan), cu
 porcentaje de la pausa; ícono `matanza` (calavera) en mapa y minimapa. Si fallás, vuelve en 45 s.
 Prueba: forzar `P.x/z` sobre una calavera, `matanzas.update` y matar con `npcs.hurt(..., {byPlayer})`.
 
+**R23 — ✅ Delivery de PedidosYa y Rappi** (pedido del dueño): `DELIVERY` y `deliveryPack(human, brand)`
+en `src/vehicles.js`; `makeMoto(color, { brand })` (PedidosYa: caja #EE2D43 con el nombre; Rappi: sin
+caja, `model` igual 'delivery'). `Traffic.randomMoto`: 50 % delivery, mitad y mitad; campera y casco del
+color de la app; Rappi con la mochila colgada del pecho (`v.brand`; `ejectRider` se la vuelve a poner al
+que se baja). Sin logos: solo el nombre en letras nuestras. `startDelivery` titula con la app.
+
 **R11 — Pruebas en celu real**: el dueño prueba en iPhone/Android y manda capturas; se ajusta.
 
 **R12 — Acercarse al look del video de Higgsfield** (Gaspi de traje y corbata roja en una vereda a lo

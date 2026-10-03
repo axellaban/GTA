@@ -298,7 +298,8 @@ function startDelivery() {
   if (!p) return;
   const d = Math.hypot(p.x - player.x, p.z - player.z);
   Object.assign(job, { active: true, x: p.x, z: p.z, t: Math.round(d / 7 + 25), pay: Math.round((2500 + d * 12) / 100) * 100, street: nearestStreetName(p.x, p.z) });
-  hud.flash('CHANGA DE DELIVERY', `Llevá el pedido a ${job.street}. Pagan $${job.pay.toLocaleString('es-AR')}`, 'ok', 3);
+  const app = { pedidosya: 'PEDIDOSYA', rappi: 'RAPPI' }[player.vehicle?.brand] ?? 'DELIVERY';
+  hud.flash(`CHANGA DE ${app}`, `Llevá el pedido a ${job.street}. Pagan $${job.pay.toLocaleString('es-AR')}`, 'ok', 3);
 }
 function updateJob(dt) {
   const v = player.vehicle;

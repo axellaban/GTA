@@ -125,9 +125,56 @@ export function makeBus(line = 160) {
   return g;
 }
 
+// Las apps de delivery del barrio (colores de sus uniformes; letras y cajas dibujadas acá, sin logos):
+// PedidosYa con la caja roja atrás de la moto y campera roja; Rappi con la mochila-caja naranja en
+// la espalda del repartidor y campera naranja (o negra).
+export const DELIVERY = {
+  pedidosya: { color: 0xee2d43, label: 'PedidosYa', helmet: [0xee2d43, 0x111111, 0xee2d43] },
+  rappi: { color: 0xff441f, label: 'Rappi', helmet: [0x111111, 0xff441f, 0x111111] },
+};
+const packGeo = new THREE.BoxGeometry(0.44, 0.46, 0.34);
+const packStrapGeo = new THREE.BoxGeometry(0.05, 0.36, 0.05);
+const packMats = {};
+// la mochila-caja de Rappi, para colgar del pecho (va en la espalda)
+export function deliveryPack(human, brand = 'rappi') {
+  const B = DELIVERY[brand];
+  const M = (packMats[brand] ??= {
+    box: new THREE.MeshStandardMaterial({ color: B.color, roughness: 0.6 }),
+    strap: new THREE.MeshLambertMaterial({ color: 0x1a1a1a }),
+    label: new THREE.MeshBasicMaterial({ map: textTexture(B.label, { w: 256, h: 128, bg: `#${new THREE.Color(B.color).getHexString()}`, fg: '#ffffff', font: 64 }) }),
+  });
+  const g = new THREE.Group();
+  const box = new THREE.Mesh(packGeo, M.box);
+  box.castShadow = true;
+  g.add(box);
+  for (const s of [-1, 1]) {
+    const st = new THREE.Mesh(packStrapGeo, M.strap);
+    st.position.set(s * 0.12, -0.02, 0.19);
+    g.add(st);
+  }
+  const back = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.2), M.label);
+  back.position.set(0, 0.06, -0.172);
+  back.rotation.y = Math.PI;
+  g.add(back);
+  for (const s of [-1, 1]) {
+    const side = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.15), M.label);
+    side.position.set(s * 0.222, 0.06, 0);
+    side.rotation.y = (s * Math.PI) / 2;
+    g.add(side);
+  }
+  g.position.set(0, 0.02, -0.26);
+  (human.bones.chest || human.bones.spine).add(g);
+  return g;
+}
+
 // Moto de calle (110/150 cc). Con `box` lleva la caja de delivery atrás.
 const motoTex = new Map();
-export function makeMoto(color = 0x1c1c1c, { box = null, label = 'DELIVERY' } = {}) {
+export function makeMoto(color = 0x1c1c1c, { box = null, label = 'DELIVERY', brand = null } = {}) {
+  // PedidosYa: la caja roja con el nombre; Rappi va con la mochila en la espalda (sin caja en la moto)
+  if (brand === 'pedidosya') {
+    box = DELIVERY.pedidosya.color;
+    label = DELIVERY.pedidosya.label;
+  }
   const g = new THREE.Group();
   g.rotation.order = 'YXZ';
   const B = new BoxBuilder();
@@ -179,7 +226,7 @@ export function makeMoto(color = 0x1c1c1c, { box = null, label = 'DELIVERY' } = 
   const head = new THREE.MeshBasicMaterial({ color: 0xfff2c0 });
   mesh(new THREE.BoxGeometry(0.14, 0.1, 0.05), head, 0, 0.96, 0.73, g);
   mesh(new THREE.BoxGeometry(0.12, 0.05, 0.03), new THREE.MeshBasicMaterial({ color: 0xb01010 }), 0, 0.8, -1.0, g);
-  g.userData = { L: 1.95, W: 0.7, wheels, headMat: head, kind: 'moto', model: box ? 'delivery' : 'moto' };
+  g.userData = { L: 1.95, W: 0.7, wheels, headMat: head, kind: 'moto', model: box || brand ? 'delivery' : 'moto', brand };
   return g;
 }
 

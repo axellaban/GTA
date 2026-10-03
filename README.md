@@ -240,6 +240,8 @@ Los perros también son un modelo CC0 de Mesh2Motion, con animaciones de verdad 
 
 Como los "Rampage" de Vice City: seis **calaveras** rojas por el barrio (se ven en el mapa). Pasás caminando por arriba y arranca: te dan un arma con munición de sobra y tenés que bajar a una cantidad de **zombis** o de **barras de Banfield** antes de que se acabe el tiempo (motosierra, metra, tumbera, lanzallamas, molotov y bazuca). Pagan de **$25.000 a $60.000**. Mientras dura, la cana no pasa de dos estrellas. Si no llegás, la calavera vuelve al rato. Cuentan para el porcentaje de la pausa.
 
+**Repartidores de PedidosYa y Rappi**: la mitad de las motos son de delivery. Los de PedidosYa llevan campera y casco rojos y la caja roja atrás de la moto; los de Rappi, campera naranja (o negra) y la mochila-caja naranja en la espalda. Colores tomados de cómo andan en la calle; letras y cajas dibujadas en el juego (sin logos). Si te subís a una, la changa dice de qué app es.
+
 Además: los **vecinos cruzan las vías por el puente de la estación** (suben, cruzan y bajan; alguno se para en el medio a mirar el tren), y la **luz de día** es más nítida y cálida, con sombras marcadas y menos bruma.
 
 ## Lo que cargó el dueño (relevamiento, 0.28)

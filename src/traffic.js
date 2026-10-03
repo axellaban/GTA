@@ -1,6 +1,6 @@
 // Grafo de calles, autos con IA, colectivos y autos estacionados.
 import { ROADS, HALF } from './map.js';
-import { makeCar, makeBus, makeMoto, makeTruck, makeCarro, CAR_COLORS } from './vehicles.js';
+import { makeCar, makeBus, makeMoto, makeTruck, makeCarro, CAR_COLORS, DELIVERY, deliveryPack } from './vehicles.js';
 import { ANIMALS, makeAnimal, animalPlay } from './people.js';
 import { repairCar, tailMat, brakeMat, carLod, QMODELS } from './cars.js';
 import * as THREE from 'three';
@@ -297,17 +297,22 @@ export class Traffic {
     }
     return n;
   }
+  // motos: la mitad son repartidores de PedidosYa o de Rappi, con el uniforme de cada uno
   randomMoto() {
-    const delivery = R.chance(0.45);
-    const box = delivery ? R.pick([0xe53935, 0xff6f00, 0x00a650, 0xffc400]) : null;
-    const mesh = makeMoto(R.pick([0x1c1c1c, 0xb71c1c, 0x0d47a1, 0x333333, 0xe0e0e0, 0x1b5e20]), { box });
+    const brand = R.chance(0.5) ? (R.chance(0.5) ? 'pedidosya' : 'rappi') : null;
+    const B = brand && DELIVERY[brand];
+    const mesh = makeMoto(R.pick([0x1c1c1c, 0xb71c1c, 0x0d47a1, 0x333333, 0xe0e0e0, 0x1b5e20]), { brand });
     const c = randomCivilian();
-    const look = { ...c, helmet: R.chance(0.7) ? R.pick([0x111111, 0xc62828, 0xf5f5f5, 0x1565c0]) : null, jacket: box ?? (R.chance(0.4) ? 0x222222 : null), shirt: box ?? c.shirt, longSleeves: true };
+    const coat = B ? (brand === 'rappi' && R.chance(0.3) ? 0x1a1a1a : B.color) : null;
+    const look = B
+      ? { ...c, helmet: R.pick(B.helmet), jacket: coat, shirt: B.color, longSleeves: true }
+      : { ...c, helmet: R.chance(0.7) ? R.pick([0x111111, 0xc62828, 0xf5f5f5, 0x1565c0]) : null, jacket: R.chance(0.4) ? 0x222222 : null, longSleeves: true };
     const rider = makeHuman(look);
+    if (brand === 'rappi') deliveryPack(rider, brand);
     animateHuman(rider, 0, 0, 'ride');
     rider.root.position.set(0, 0.36, -0.12);
     mesh.add(rider.root);
-    return { mesh, rider, look };
+    return { mesh, rider, look, brand };
   }
 
   populate(city, player, n = 34, buses = 5) {
@@ -331,6 +336,7 @@ export class Traffic {
       const v = this.spawnOn(m.mesh, e, R.range(3, e.len * 0.8));
       v.rider = m.rider;
       v.riderLook = m.look;
+      v.brand = m.brand;
       v.ai.vmax = R.range(11, 15);
     }
     // el carro del cartonero, por las calles de barrio
@@ -445,6 +451,8 @@ export class Traffic {
     v.mesh.remove(v.rider.root);
     v.rider = null;
     const d = world.npcs.spawnWalker({ x: v.x + fx * 1.5, z: v.z + fz * 1.5, heading: v.heading }, null, 0, 0, v.riderLook);
+    // el de Rappi se baja con la mochila puesta
+    if (d && v.brand === 'rappi') deliveryPack(d.h, 'rappi');
     if (d) {
       world.npcs.hurt(d, 10, fx, fz, { knock: true, knockT: 2, world });
       d.after = R.chance(0.5) ? 'fight' : 'flee';
