@@ -330,6 +330,8 @@ export class Tanks {
     const want = throttle * (throttle > 0 ? vmax : 5);
     v.speed += Math.max(-6 * dt, Math.min(3.5 * dt, want - v.speed));
     if (!throttle) v.speed *= Math.exp(-dt * 1.5);
+    v.throttle = Math.abs(throttle); // el diésel ruge también marcha atrás y girando
+    v.vmax = vmax;
     // gira sobre sí mismo (las orugas), más despacio a toda marcha
     v.heading += steer * (1.0 - Math.min(0.5, Math.abs(v.speed) / 24)) * dt * (v.speed < -0.5 ? -1 : 1);
     v.steer = 0;

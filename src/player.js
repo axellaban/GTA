@@ -850,6 +850,8 @@ export class Player {
     v.x += v.vx * dt;
     v.z += v.vz * dt;
     v.speed = vf;
+    v.throttle = throttle; // para el ruido del motor (src/audio.js)
+    v.vmax = vmax;
     v.brakeIn = hb || (throttle < 0 && vf > 0.5) || (throttle > 0 && vf < -0.5) || (throttle === 0 && Math.abs(vf) < 0.3);
     const slip = Math.abs(vl);
     // en llanta: las ruedas raspan el asfalto y saltan chispas

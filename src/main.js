@@ -1250,8 +1250,7 @@ function frame(now) {
   SIGNS.update(dt, world);
   nafta.update(dt, world);
   radio.update();
-  const moto = crime.nearestMoto(player.x, player.z, 80);
-  audio.update(player.vehicle?.speed ?? 0, !!player.vehicle, moto ? Math.hypot(moto.x - player.x, moto.z - player.z) : 999, player.vehicle?.kind === 'moto');
+  audio.update(dt, player.vehicle, camera, traffic, crime);
   hud.update(dt, world);
   updateHurt(dt);
   hud.bubbles(camera, speakers());

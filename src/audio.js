@@ -1,22 +1,106 @@
-// Sonido sintetizado con WebAudio: bombos, bocinas, motos, bocina del tren y barreras.
+// Sonido sintetizado con WebAudio: bombos, bocinas, tiros, motores (src/motores.js), bocina del tren y barreras.
+import { Gearbox, MotorVoice, motorOf } from './motores.js';
+
+// medio segundo de silencio en WAV: un <audio> en bucle con esto pasa la sesión de audio del iPhone a
+// "reproducción" (si no, con la llave de silencio puesta, WebAudio no suena)
+function silentWav() {
+  const n = 4000;
+  const b = new Uint8Array(44 + n);
+  const dv = new DataView(b.buffer);
+  const str = (o, t) => [...t].forEach((c, i) => (b[o + i] = c.charCodeAt(0)));
+  str(0, 'RIFF');
+  dv.setUint32(4, 36 + n, true);
+  str(8, 'WAVEfmt ');
+  dv.setUint32(16, 16, true);
+  dv.setUint16(20, 1, true);
+  dv.setUint16(22, 1, true);
+  dv.setUint32(24, 8000, true);
+  dv.setUint32(28, 8000, true);
+  dv.setUint16(32, 1, true);
+  dv.setUint16(34, 8, true);
+  str(36, 'data');
+  dv.setUint32(40, n, true);
+  b.fill(128, 44);
+  let bin = '';
+  for (const x of b) bin += String.fromCharCode(x);
+  return 'data:audio/wav;base64,' + btoa(bin);
+}
+
 export class Audio {
   constructor() {
     this.ctx = null;
     this.muted = false;
-    this.engine = null;
+    this.others = [];
+    this.nearT = 0;
   }
+  // se llama dentro del toque en "Jugar" (los navegadores del celu solo dejan sonar después de un gesto)
   start() {
-    if (this.ctx) return;
+    if (this.ctx) {
+      this.resume();
+      return;
+    }
     try {
-      this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+      try {
+        // iPhone (Safari 16.4+): que suene aunque esté la llave de silencio
+        if (navigator.audioSession) navigator.audioSession.type = 'playback';
+      } catch {
+        /* nada */
+      }
+      this.ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
       this.master = this.ctx.createGain();
       this.master.gain.value = 0.55;
-      this.master.connect(this.ctx.destination);
+      // compresor al final: los motores y los tiros suenan fuerte sin romper los parlantes del celu
+      this.comp = this.ctx.createDynamicsCompressor();
+      this.comp.threshold.value = -14;
+      this.comp.knee.value = 10;
+      this.comp.ratio.value = 4;
+      this.comp.attack.value = 0.004;
+      this.comp.release.value = 0.2;
+      this.master.connect(this.comp).connect(this.ctx.destination);
       this.noiseBuf = this.makeNoise();
-      this.setupEngine();
+      this.unlock();
+      // el celu suspende el audio al bloquear la pantalla, con la intro o una llamada: se retoma en el
+      // próximo toque o al volver
+      const again = () => this.resume();
+      for (const ev of ['touchend', 'pointerup', 'click', 'keydown']) window.addEventListener(ev, again, { capture: true, passive: true });
+      document.addEventListener('visibilitychange', () => !document.hidden && this.resume());
     } catch {
       this.ctx = null;
     }
+  }
+  unlock() {
+    const c = this.ctx;
+    // una muestra en silencio dentro del gesto (iPhone viejo) y arrancar el contexto
+    const s = c.createBufferSource();
+    s.buffer = c.createBuffer(1, 1, 22050);
+    s.connect(c.destination);
+    s.start(0);
+    c.resume?.().catch(() => {});
+    // iPhone sin audioSession: un <audio> mudo en bucle
+    const ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (ios && !navigator.audioSession) {
+      const a = document.createElement('audio');
+      a.setAttribute('x-webkit-airplay', 'deny');
+      a.setAttribute('playsinline', '');
+      a.loop = true;
+      a.src = silentWav();
+      a.play().catch(() => {});
+      this.silent = a;
+    }
+    // las voces del navegador también se destraban con un gesto
+    try {
+      const u = new SpeechSynthesisUtterance(' ');
+      u.volume = 0;
+      window.speechSynthesis?.speak(u);
+    } catch {
+      /* sin voces */
+    }
+  }
+  resume() {
+    const c = this.ctx;
+    if (!c) return;
+    if (c.state !== 'running') c.resume?.().catch(() => {});
+    if (this.silent?.paused) this.silent.play().catch(() => {});
   }
   toggleMute() {
     this.muted = !this.muted;
@@ -414,42 +498,70 @@ export class Audio {
     this.rain.g.gain.setTargetAtTime(v * 0.08, this.ctx.currentTime, 1);
   }
 
-  setupEngine() {
-    const o = this.ctx.createOscillator();
-    o.type = 'sawtooth';
-    const f = this.ctx.createBiquadFilter();
-    f.type = 'lowpass';
-    f.frequency.value = 420;
-    const g = this.ctx.createGain();
-    g.gain.value = 0;
-    o.connect(f).connect(g).connect(this.master);
-    o.start();
-    const mo = this.ctx.createOscillator();
-    mo.type = 'square';
-    const mf = this.ctx.createBiquadFilter();
-    mf.type = 'bandpass';
-    mf.frequency.value = 1400;
-    const mg = this.ctx.createGain();
-    mg.gain.value = 0;
-    mo.connect(mf).connect(mg).connect(this.master);
-    mo.start();
-    this.engine = { o, g, mo, mg };
+  // Motores: el del auto o la moto que manejás (con caja de cambios) y los de los autos y motos que pasan
+  // cerca (hasta 3, con paneo y Doppler). v: el vehículo del jugador · cam: la cámara (el oído)
+  update(dt, v, cam, traffic, crime) {
+    if (!this.ctx) return;
+    dt = Math.min(dt, 0.1);
+    const name = v && !v.wreck ? motorOf(v) : null;
+    if (name !== this.mine?.name || (this.mine && this.mine.v !== v)) {
+      this.mine?.voice.stop();
+      this.mine = name ? { name, v, voice: new MotorVoice(this.ctx, this.master, name), box: new Gearbox(name) } : null;
+    }
+    if (this.mine) {
+      const m = this.mine;
+      const rpm = m.box.update(dt, v.speed ?? 0, v.vmax ?? 30, v.throttle ?? 0);
+      m.voice.set(rpm, m.box.load, 0.62);
+    }
+    this.nearby(dt, v, cam, traffic, crime);
   }
-  // Motor del auto de Gaspi y el "ñeeee" de la moto que se acerca.
-  update(carSpeed, inCar, motoDist, onMoto = false) {
-    if (!this.engine) return;
-    const t = this.ctx.currentTime;
-    const e = this.engine;
-    const car = inCar && !onMoto;
-    // cambios: el motor sube de vueltas y cae al pasar de marcha
-    const sp = Math.abs(carSpeed);
-    const gear = sp < 7 ? sp / 7 : sp < 15 ? (sp - 7) / 8 : sp < 24 ? (sp - 15) / 9 : (sp - 24) / 12;
-    e.o.frequency.setTargetAtTime(car ? 42 + gear * 55 + sp * 1.2 : 40, t, 0.08);
-    e.g.gain.setTargetAtTime(car ? 0.12 + Math.min(0.1, sp * 0.005) : 0, t, 0.2);
-    // moto de Gaspi o motos cerca
-    const mine = onMoto ? 0.09 : 0;
-    const mv = Math.max(mine, motoDist < 60 ? (1 - motoDist / 60) * 0.1 : 0);
-    e.mo.frequency.setTargetAtTime(onMoto ? 150 + gear * 200 + sp * 3 : 190 + Math.sin(t * 3) * 25, t, 0.06);
-    e.mg.gain.setTargetAtTime(mv, t, 0.2);
+  nearby(dt, mine, cam, traffic, crime) {
+    if (!cam) return;
+    const lx = cam.position.x;
+    const lz = cam.position.z;
+    if ((this.nearT -= dt) <= 0) {
+      this.nearT = 0.3;
+      const cands = [];
+      const add = (c) => {
+        if (!c || c === mine || c.wreck || c.dead || !motorOf(c)) return;
+        const d = Math.hypot(c.x - lx, c.z - lz);
+        if (d < 48) cands.push([d, c]);
+      };
+      for (const c of traffic?.cars ?? []) add(c);
+      for (const m of crime?.motos ?? []) if (m.state !== 'down' && m.state !== 'gone') add(m.v);
+      cands.sort((a, b) => a[0] - b[0]);
+      const pick = new Set(cands.slice(0, 3).map((x) => x[1]));
+      this.others = this.others.filter((o) => {
+        if (pick.has(o.car)) return pick.delete(o.car) || true;
+        o.voice.stop(0.4);
+        return false;
+      });
+      for (const car of pick) {
+        const name = motorOf(car);
+        this.others.push({ car, voice: new MotorVoice(this.ctx, this.master, name, true), box: new Gearbox(name), prev: Math.abs(car.speed ?? 0), thr: 0.3 });
+      }
+    }
+    // la derecha de la cámara, para el paneo
+    const e = cam.matrixWorld.elements;
+    const rx = e[0];
+    const rz = e[2];
+    const rl = Math.hypot(rx, rz) || 1;
+    for (const o of this.others) {
+      const c = o.car;
+      const dx = c.x - lx;
+      const dz = c.z - lz;
+      const d = Math.max(0.5, Math.hypot(dx, dz));
+      const sp = c.speed ?? 0;
+      const acc = (Math.abs(sp) - o.prev) / Math.max(dt, 1e-3);
+      o.prev = Math.abs(sp);
+      o.thr += (Math.max(0, Math.min(1, 0.25 + acc / 3)) - o.thr) * Math.min(1, dt * 4);
+      const vmax = { moto: 29, diesel: 18, sport: 45 }[o.voice.name] ?? 30;
+      const rpm = o.box.update(dt, sp, vmax, o.thr);
+      // Doppler: el "ñeeeooo" del que pasa
+      const vr = -((c.fx ?? 0) * sp * dx + (c.fz ?? 0) * sp * dz) / d;
+      const pitch = Math.max(0.85, Math.min(1.18, 343 / (343 - vr)));
+      const fall = Math.max(0, 1 - d / 48);
+      o.voice.set(rpm, o.box.load, 0.5 * fall * fall, pitch, Math.max(-0.9, Math.min(0.9, ((dx * rx + dz * rz) / rl / d) * 0.9)));
+    }
   }
 }
