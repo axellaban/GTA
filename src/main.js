@@ -36,6 +36,7 @@ import { Barrio } from './barrio.js';
 import { Aura } from './aura.js';
 import { Andenes } from './andenes.js';
 import { CasaClau } from './clau.js';
+import { Norte } from './norte.js';
 import { Garages } from './garage.js';
 import { Destroy } from './destroy.js';
 import { Tanks } from './tank.js';
@@ -492,6 +493,9 @@ world.andenes = andenes;
 // la casa de Clau: truco en la terraza con los amigos
 const clau = new CasaClau(scene, city);
 world.clau = clau;
+// la franja norte: el Sanatorio Juncal y el puesto de flores de Cerrito y Almirante Brown
+const norte = new Norte(scene, city, npcs);
+world.norte = norte;
 // casas que se derrumban y el tanque del Ejército (6 estrellas)
 const destroy = new Destroy(scene, city);
 world.destroy = destroy;
@@ -951,6 +955,7 @@ function interactions() {
   if (!action) action = uver.action(world);
   if (!action) action = tobogan.action(world);
   if (!action) action = clau.action(world);
+  if (!action) action = norte.action(world);
   const car = player.nearestVehicle(world);
   if (action) hud.prompt('E', action.text);
   else if (car) {
@@ -1231,6 +1236,7 @@ function frame(now) {
   interiors.update(dt, world);
   andenes.update(dt, world);
   clau.update(dt, world);
+  norte.update(dt, world);
   races.update(dt, world);
   matanzas.update(dt, world);
   uver.update(dt, world);

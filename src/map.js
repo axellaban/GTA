@@ -55,26 +55,31 @@ for (const e of REL.nuevos || []) {
   D.buildings.push({ r: e.ring, k: TIPO[e.tipo] ?? 'edificio', f: e.pisos ?? 1, v: 7, fr: [e.frente ?? 0], sb: [0], n: e.nombre ?? null, cat: null, rel: { rubro: e.rubro }, extra: e.extra ?? null });
 }
 
-// La casa de Clau (pedido del dueño): en Emilio Castro y Av. Eva Perón, que queda ~270 m al este del borde del
-// mapa; va en la casa de dos pisos sobre la avenida más cerca de esa esquina (src/clau.js)
-export const CLAU = { x: 584, z: 37 };
+// La casa de Clau (pedido del dueño): en la esquina de Emilio Castro y Av. Eva Perón (OSM), en la casa de la
+// esquina más cercana (ni galpón ni casita: entre 100 y 450 m²) (src/clau.js)
+export const CLAU = { x: 869.6, z: -174.1 };
 {
   let best = null;
   let bd = Infinity;
   for (const b of D.buildings) {
-    let x = 0;
-    let z = 0;
-    for (const p of b.r) {
-      x += p[0];
-      z += p[1];
+    let area = 0;
+    let d = Infinity;
+    for (let i = 0; i < b.r.length; i++) {
+      const [ax, az] = b.r[i];
+      const [bx, bz] = b.r[(i + 1) % b.r.length];
+      area += ax * bz - bx * az;
+      const dx = bx - ax;
+      const dz = bz - az;
+      const t = Math.max(0, Math.min(1, ((CLAU.x - ax) * dx + (CLAU.z - az) * dz) / (dx * dx + dz * dz || 1)));
+      d = Math.min(d, Math.hypot(CLAU.x - ax - dx * t, CLAU.z - az - dz * t));
     }
-    const d = Math.hypot(x / b.r.length - CLAU.x, z / b.r.length - CLAU.z);
-    if (d < bd) {
+    area = Math.abs(area) / 2;
+    if (area > 100 && area < 450 && d < bd) {
       bd = d;
       best = b;
     }
   }
-  if (best && bd < 12) Object.assign(best, { k: 'casa', f: 2, v: 7, n: 'La casa de Clau', cat: null, extra: 'clau', rel: { fachada: '#f2d9b4' } });
+  if (best && bd < 25) Object.assign(best, { k: 'casa', f: 2, v: 7, n: 'La casa de Clau', cat: null, extra: 'clau', rel: { fachada: '#f2d9b4' } });
 }
 
 // Negocios con nombre de OpenStreetMap (scripts/map/osm_pois.py -> src/data/osm.json): cada uno va a la
@@ -147,8 +152,43 @@ function ringDist(r, x, z) {
   assign(PLACES.pois.filter((p) => !have.has(p.n)), true);
 }
 
+// El Sanatorio Juncal (pedido del dueño: "muy grande"), en Juncal y Almirante Brown: OSM lo trae con su
+// huella real; se lo hace alto y blanco (los carteles, la cruz y la guardia los pone src/norte.js)
+{
+  const ringArea = (r) => Math.abs(r.reduce((s, [x, z], i) => s + x * r[(i + 1) % r.length][1] - r[(i + 1) % r.length][0] * z, 0)) / 2;
+  const sj = D.buildings.filter((b) => b.n === 'Sanatorio Juncal').sort((a, b) => ringArea(b.r) - ringArea(a.r))[0];
+  if (sj) Object.assign(sj, { k: 'edificio', f: 8, v: 4, extra: 'sanatorio', rel: { fachada: '#f1f3f4' } });
+}
+
 export const DATA = D;
-export const HALF = D.half;
+// Zona del mapa (scripts/map/area.py): el cuadrado original de 1,2 km más dos franjas, al norte por
+// Almirante Brown hasta Cerrito y al este por Av. Eva Perón hasta Emilio Castro. AREA es el contorno, WALL
+// el borde que no se cruza (2 m adentro) y BOUNDS la caja que lo encierra.
+export const [X0, Z0, X1, Z1] = D.bounds;
+export const AREA = D.area;
+export const WALL = D.wall;
+export function inArea(x, z) {
+  let inside = false;
+  for (let i = 0, j = AREA.length - 1; i < AREA.length; j = i++) {
+    const [xi, zi] = AREA[i];
+    const [xj, zj] = AREA[j];
+    if (zi > z !== zj > z && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) inside = !inside;
+  }
+  return inside;
+}
+// distancia al borde del mapa
+export function edgeDist(x, z) {
+  let best = Infinity;
+  for (let i = 0, j = AREA.length - 1; i < AREA.length; j = i++) {
+    const [ax, az] = AREA[j];
+    const [bx, bz] = AREA[i];
+    const dx = bx - ax;
+    const dz = bz - az;
+    const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1)));
+    best = Math.min(best, Math.hypot(x - ax - dx * t, z - az - dz * t));
+  }
+  return best;
+}
 export const SIDEWALK = 3.0;
 
 const AVENUE = new Set(['primary', 'secondary']);
@@ -443,49 +483,58 @@ export function cornerName(x, z) {
 // Se rasteriza una vez a una grilla de 0,5 m para que la consulta sea instantánea.
 export function makeGround() {
   const RES = 0.5;
-  const N = Math.ceil((HALF * 2) / RES);
+  const NX = Math.ceil((X1 - X0) / RES);
+  const NZ = Math.ceil((Z1 - Z0) / RES);
+  // en cm: con el mapa más grande, Float32 eran 43 MB y esto la mitad
+  const H = new Int16Array(NX * NZ);
+  // se rasteriza en franjas (en iPhone los lienzos tienen un tope de memoria)
+  const STRIP = 1024;
   const c = document.createElement('canvas');
-  c.width = c.height = N;
-  const g = c.getContext('2d');
-  g.fillStyle = '#000';
-  g.fillRect(0, 0, N, N);
-  const X = (x) => (x + HALF) / RES;
-  const fill = (rings, color) => {
-    g.fillStyle = color;
-    g.beginPath();
-    for (const r of rings) {
-      r.forEach(([x, z], i) => (i ? g.lineTo(X(x), X(z)) : g.moveTo(X(x), X(z))));
-      g.closePath();
-    }
-    g.fill('evenodd');
-  };
-  for (const b of D.blocks) fill(b, '#0f0f0f'); // 15 cm
-  for (const p of D.platforms) fill(p, '#6e6e6e'); // 110 cm
-  const data = g.getImageData(0, 0, N, N).data;
-  const H = new Float32Array(N * N);
-  for (let i = 0; i < N * N; i++) H[i] = data[i * 4] / 100;
+  c.width = NX;
+  c.height = Math.min(STRIP, NZ);
+  const g = c.getContext('2d', { willReadFrequently: true });
+  for (let j0 = 0; j0 < NZ; j0 += STRIP) {
+    const rows = Math.min(STRIP, NZ - j0);
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.fillStyle = '#000';
+    g.fillRect(0, 0, NX, c.height);
+    g.setTransform(1 / RES, 0, 0, 1 / RES, -X0 / RES, -Z0 / RES - j0);
+    const fill = (rings, color) => {
+      g.fillStyle = color;
+      g.beginPath();
+      for (const r of rings) {
+        r.forEach(([x, z], i) => (i ? g.lineTo(x, z) : g.moveTo(x, z)));
+        g.closePath();
+      }
+      g.fill('evenodd');
+    };
+    for (const b of D.blocks) fill(b, '#0f0f0f'); // 15 cm
+    for (const p of D.platforms) fill(p, '#6e6e6e'); // 110 cm
+    const data = g.getImageData(0, 0, NX, rows).data;
+    for (let i = 0; i < NX * rows; i++) H[j0 * NX + i] = data[i * 4];
+  }
+  // el lienzo ya no hace falta
+  c.width = c.height = 1;
   // el bajo nivel: su calzada (a nivel o en la trinchera) pisa a las manzanas
   for (const s of BAJO_SEGS) {
-    const i0 = Math.max(0, Math.floor((s.x0 + HALF) / RES));
-    const i1 = Math.min(N - 1, Math.ceil((s.x1 + HALF) / RES));
-    const j0 = Math.max(0, Math.floor((s.z0 + HALF) / RES));
-    const j1 = Math.min(N - 1, Math.ceil((s.z1 + HALF) / RES));
+    const i0 = Math.max(0, Math.floor((s.x0 - X0) / RES));
+    const i1 = Math.min(NX - 1, Math.ceil((s.x1 - X0) / RES));
+    const j0 = Math.max(0, Math.floor((s.z0 - Z0) / RES));
+    const j1 = Math.min(NZ - 1, Math.ceil((s.z1 - Z0) / RES));
     for (let j = j0; j <= j1; j++) {
       for (let i = i0; i <= i1; i++) {
-        const x = i * RES - HALF + RES / 2;
-        const z = j * RES - HALF + RES / 2;
+        const x = i * RES + X0 + RES / 2;
+        const z = j * RES + Z0 + RES / 2;
         const t = Math.max(0, Math.min(s.l, (x - s.ax) * s.ux + (z - s.az) * s.uz));
-        if (Math.hypot(x - s.ax - s.ux * t, z - s.az - s.uz * t) <= BAJO_W / 2 + 0.3) H[j * N + i] = 0.02 + depthAt(sOf(x, z));
+        if (Math.hypot(x - s.ax - s.ux * t, z - s.az - s.uz * t) <= BAJO_W / 2 + 0.3) H[j * NX + i] = Math.round((0.02 + depthAt(sOf(x, z))) * 100);
       }
     }
   }
-  // el lienzo ya no hace falta (en iPhone los lienzos tienen un tope de memoria)
-  c.width = c.height = 1;
   return function heightAt(x, z) {
-    const i = Math.floor((x + HALF) / RES);
-    const j = Math.floor((z + HALF) / RES);
-    if (i < 0 || j < 0 || i >= N || j >= N) return 0;
-    return H[j * N + i];
+    const i = Math.floor((x - X0) / RES);
+    const j = Math.floor((z - Z0) / RES);
+    if (i < 0 || j < 0 || i >= NX || j >= NZ) return 0;
+    return H[j * NX + i] / 100;
   };
 }
 

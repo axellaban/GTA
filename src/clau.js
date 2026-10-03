@@ -1,5 +1,5 @@
-// La casa de Clau (pedido del dueño): una casa de dos pisos sobre Av. Eva Perón (la esquina real, con Emilio
-// Castro, cae afuera del mapa: va en la casa más cercana sobre la avenida, src/map.js `CLAU`). En la terraza,
+// La casa de Clau (pedido del dueño): una casa de dos pisos en la esquina de Av. Eva Perón y Emilio Castro (la
+// franja este del mapa llega hasta ahí, src/map.js `CLAU`). En la terraza,
 // Clau y sus amigos juegan al truco en una mesa de plástico: Pablo el alto, Ale con la vincha de call center
 // y Laban el creador de traje y sombrero amarillos; Gonza toca la guitarra, Martín acuna a los mellizos y Nico
 // está con su caballo. Se sube con E en la puerta (y se juega una mano con E en la mesa).

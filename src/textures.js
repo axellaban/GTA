@@ -97,6 +97,7 @@ export const ATLAS = {
   estadio: [],
   galpon: [],
   escuela: [],
+  sanatorio: [], // un piso de clínica: blanco, ventanal corrido
   edificio: [], // pisos de edificio
   entrada: [],
   medianera: [],
@@ -848,6 +849,49 @@ function drawEscuela(ctx, x, y, rng) {
   stains(ctx, x, y, W, H, rng);
 }
 
+// Un piso de sanatorio: revoque blanco, ventanal corrido de aluminio con vidrio celeste y una franja
+// celeste abajo (el Sanatorio Juncal, src/norte.js)
+function drawSanatorio(ctx, x, y, rng) {
+  const W = CELL_W;
+  const H = CELL_H;
+  const base = '#eef1f2';
+  ctx.fillStyle = base;
+  ctx.fillRect(x, y, W, H);
+  if (CUR) CUR.base = base;
+  const n = 6;
+  const cw = (W - 20) / n;
+  for (let i = 0; i < n; i++) {
+    const wx = x + 10 + i * cw + 3;
+    const wy = y + 26;
+    const ww = cw - 6;
+    const wh = 66;
+    record('window', wx, wy, ww, wh);
+    const g = ctx.createLinearGradient(wx, wy, wx + ww * 0.5, wy + wh);
+    g.addColorStop(0, '#7f9fb1');
+    g.addColorStop(0.5, '#4d6b7c');
+    g.addColorStop(1, '#2c4250');
+    ctx.fillStyle = g;
+    ctx.fillRect(wx, wy, ww, wh);
+    // persianas americanas blancas a distintas alturas
+    if (rng.chance(0.6)) {
+      ctx.fillStyle = 'rgba(240,242,240,0.9)';
+      const bh = wh * rng.range(0.2, 0.7);
+      ctx.fillRect(wx, wy, ww, bh);
+      ctx.fillStyle = 'rgba(0,0,0,0.08)';
+      for (let k = wy + 3; k < wy + bh; k += 5) ctx.fillRect(wx, k, ww, 1);
+    }
+    ctx.fillStyle = '#b9c2c8';
+    ctx.fillRect(wx - 3, wy - 3, ww + 6, 3);
+    ctx.fillRect(wx - 3, wy + wh, ww + 6, 4);
+    ctx.fillRect(wx - 3, wy, 3, wh);
+    ctx.fillRect(wx + ww, wy, 3, wh);
+    ctx.fillRect(wx + ww / 2 - 1, wy, 2, wh);
+  }
+  ctx.fillStyle = '#8fbfe0';
+  ctx.fillRect(x, y + H - 18, W, 10);
+  noise(ctx, W, H, rng, 200, 0.03, x, y);
+}
+
 // Grano fino y manchones grandes de pintura despareja sobre todo el lienzo.
 function grain(ctx, w, h, rng) {
   const img = ctx.getImageData(0, 0, w, h);
@@ -930,6 +974,7 @@ export function buildAtlas() {
   ATLAS.galpon.push(at((x, y) => drawGalpon(ctx, x, y, rng)));
   ATLAS.galpon.push(at((x, y) => drawGalpon(ctx, x, y, rng)));
   ATLAS.escuela.push(at((x, y) => drawEscuela(ctx, x, y, rng)));
+  ATLAS.sanatorio.push(at((x, y) => drawSanatorio(ctx, x, y, rng)));
   for (let k = 0; k < 4; k++) ATLAS.edificio.push(at((x, y) => drawEdificio(ctx, x, y, rng)));
   for (let k = 0; k < 2; k++) ATLAS.entrada.push(at((x, y) => drawEntrada(ctx, x, y, rng)));
   for (let k = 0; k < 4; k++) ATLAS.medianera.push(at((x, y) => drawMedianera(ctx, x, y, rng, null)));

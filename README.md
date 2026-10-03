@@ -53,7 +53,7 @@ Para comparar la misma calle de día, al atardecer y con lluvia: `npm run dev` y
 
 ## Temperley real (0.3)
 
-- **Mapa real** de 1,2 km alrededor de la estación, sacado de Overture Maps (datos de OpenStreetMap y huellas de edificios): calles con su nombre y ancho, vías, andenes, la playa de maniobras, casi 3.000 edificios con su forma real, plazas, canchas, árboles, faroles y semáforos.
+- **Mapa real** de 1,2 km alrededor de la estación (y desde la 0.38 dos franjas más: al norte por Almirante Brown hasta Cerrito y al este por Eva Perón hasta Emilio Castro), sacado de Overture Maps (datos de OpenStreetMap y huellas de edificios): calles con su nombre y ancho, vías, andenes, la playa de maniobras, casi 3.000 edificios con su forma real, plazas, canchas, árboles, faroles y semáforos.
 - Los negocios reales tienen su cartel; sobre Av. Meeks, Almirante Brown y alrededor de la estación la planta baja es comercial.
 - **Gaspi se mueve como una persona**: el ritmo del paso está medido para que el pie apoyado no patine, se inclina en las curvas, da pasitos al girar en el lugar, queda agitado después de correr y, si está quieto un rato, mira el reloj, se acomoda la corbata o estira el cuello.
 - La gente camina por las veredas reales, cruza en las esquinas y el tránsito sigue las calles de verdad. Arrancan y frenan de a poco, se esquivan entre ellos (y a Gaspi), a veces se paran en la esquina o a mirar el celu, y giran la cabeza para mirar a Gaspi cuando pasa cerca. Hay grupitos charlando en la vereda: se turnan para hablar, gesticulan, asienten, y con los tiros se dispersan.
@@ -116,8 +116,10 @@ npm run build    # genera dist/index.html (un solo archivo) y dist/artifact.html
 
 ```bash
 cd scripts/map
-python3 fetch.py                                   # baja de Overture Maps el cuadrado alrededor de la estación
+python3 fetch.py                                   # baja de Overture Maps la zona del mapa (area.py)
 python3 preprocess.py ../../src/data/temperley.json  # calles, veredas, manzanas, edificios, árboles, etc.
+# o, para sumar franjas nuevas sin tocar lo que ya está:
+python3 preprocess.py --ext ext.json && python3 merge.py ext.json
 python3 osm_pois.py                                # negocios con nombre de OpenStreetMap -> src/data/osm.json
 python3 places_extra.py                            # más negocios de Overture (confianza media) -> src/data/places.json
 python3 osm_streets.py                             # revisa los nombres de las calles contra OSM y los corrige
@@ -228,9 +230,13 @@ Como las misiones de ambulancia y bomberos de Vice City. La **ambulancia** está
 
 Como en Vice City, la chapa se hunde donde pega el golpe (choques, tiros, explosiones) y queda arrugada; con mucho daño se rompen los vidrios, sale humo del motor y al final se prende fuego. Chapa y pintura (o que el auto vuelva al tránsito) lo deja como nuevo.
 
+## Mapa más grande: todo en su lugar real (0.38)
+
+El mapa creció hacia el norte por Almirante Brown hasta Cerrito y hacia el este por Av. Eva Perón hasta Emilio Castro, con las calles, los edificios y los negocios reales de OpenStreetMap y Overture. Sobre Almirante Brown, en la esquina de Juncal, está el **Sanatorio Juncal**: enorme, blanco, de ocho pisos, con el nombre arriba, la cruz roja, la H y la entrada de la guardia. En Cerrito las vías cruzan la calle en un **paso a nivel** con barreras y campana, como el de la estación. En la esquina de Cerrito y Almirante Brown hay un **puesto de flores** con la florista: con E le comprás un ramo. Y la casa de Clau ahora está en su esquina real.
+
 ## La casa de Clau (0.37)
 
-Sobre Av. Eva Perón (la esquina real con Emilio Castro queda un poco afuera del mapa) está la casa de Clau, de dos pisos, con el cartel en el frente. En la terraza Clau, Pablo el alto, Ale con su vincha de call center y Laban el creador de traje y sombrero amarillos juegan al truco en una mesa de plástico; Gonza toca la guitarra, Martín acuna a los mellizos y Nico está con su caballo. Se sube con E en la puerta y en la mesa se puede jugar una mano.
+En la esquina de Av. Eva Perón y Emilio Castro está la casa de Clau, de dos pisos, con el cartel en el frente. En la terraza Clau, Pablo el alto, Ale con su vincha de call center y Laban el creador de traje y sombrero amarillos juegan al truco en una mesa de plástico; Gonza toca la guitarra, Martín acuna a los mellizos y Nico está con su caballo. Se sube con E en la puerta y en la mesa se puede jugar una mano.
 
 ## La estación con gente (0.36)
 
@@ -355,6 +361,7 @@ Box de CrossFit en su dirección real, **Rivadavia 321**, en la vereda de enfren
 | `src/moves.js` | Pelea y armas: guardia, golpes por fases, patada, reacción, apuntado con la cámara |
 | `src/andenes.js` | Gente en los andenes: espera, sube y baja del Roca, sale por la estación |
 | `src/clau.js` | La casa de Clau: terraza, truco y los amigos |
+| `src/norte.js` | La franja norte: Sanatorio Juncal y el puesto de flores de Cerrito |
 | `src/aura.js` | Ronda de chicos farmeando aura en la plaza (turnos, puntaje, Gaspi baila) |
 | `src/fx.js` | Partículas, trazas, marcas de frenada, casquillos, agujeros de bala, restos de choque, lluvia y salpicaduras |
 | `src/carfx.js` | Escape, petardeos y rocío de los autos andando |

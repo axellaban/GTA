@@ -1,6 +1,8 @@
 // HUD: tarjeta SUBE, plata, reloj, minimapa, zócalo, diálogos, globos y carteles.
 import * as THREE from 'three';
-import { HALF, DATA as D, TRACKS, nearestStreetName } from './map.js';
+import { X0, Z0, X1, Z1, AREA, DATA as D, TRACKS, nearestStreetName } from './map.js';
+
+const MAPK = 1; // px del plano por metro
 import gaspiUrl from './gaspi.webp';
 import { WEAPONS } from './weapons.js';
 import { drawIcon, iconCanvas, ICONS, LEGEND, PICKUP_ICON } from './icons.js';
@@ -334,16 +336,17 @@ export class Hud {
 
   // ---------- Minimapa ----------
   drawBaseMap() {
-    // 1536: en iPhone los lienzos tienen tope de memoria (2048 eran 16 MB solo para esto)
-    const S = 1536;
+    // 1 px por metro: en iPhone los lienzos tienen tope de memoria (son ~11 MB solo para esto)
+    const k = MAPK;
     const c = document.createElement('canvas');
-    c.width = c.height = S;
+    c.width = Math.ceil((X1 - X0) * k);
+    c.height = Math.ceil((Z1 - Z0) * k);
     const g = c.getContext('2d');
-    const k = S / (HALF * 2);
-    const X = (x) => (x + HALF) * k;
+    const X = (x) => (x - X0) * k;
+    const Z = (z) => (z - Z0) * k;
     const path = (rings) => {
       for (const r of rings) {
-        r.forEach(([x, z], i) => (i ? g.lineTo(X(x), X(z)) : g.moveTo(X(x), X(z))));
+        r.forEach(([x, z], i) => (i ? g.lineTo(X(x), Z(z)) : g.moveTo(X(x), Z(z))));
         g.closePath();
       }
     };
@@ -355,9 +358,10 @@ export class Hud {
         g.fill('evenodd');
       }
     };
-    // calles de fondo (todo lo que no es manzana es calle)
-    g.fillStyle = '#c9c3b2';
-    g.fillRect(0, 0, S, S);
+    // afuera del mapa, oscuro; adentro, calles de fondo (todo lo que no es manzana es calle)
+    g.fillStyle = '#2d3328';
+    g.fillRect(0, 0, c.width, c.height);
+    fillPolys([[AREA]], '#c9c3b2');
     fillPolys(D.yard, '#4b453e');
     fillPolys(D.blocks, '#5b6152');
     // plazas y canchas
@@ -379,7 +383,7 @@ export class Hud {
       g.strokeStyle = '#efe0a8';
       g.lineWidth = r.w * k * 0.9;
       g.beginPath();
-      r.p.forEach(([x, z], i) => (i ? g.lineTo(X(x), X(z)) : g.moveTo(X(x), X(z))));
+      r.p.forEach(([x, z], i) => (i ? g.lineTo(X(x), Z(z)) : g.moveTo(X(x), Z(z))));
       g.stroke();
     }
     // vías
@@ -387,7 +391,7 @@ export class Hud {
     g.lineWidth = 2.2;
     for (const t of TRACKS) {
       g.beginPath();
-      t.forEach(([x, z], i) => (i ? g.lineTo(X(x), X(z)) : g.moveTo(X(x), X(z))));
+      t.forEach(([x, z], i) => (i ? g.lineTo(X(x), Z(z)) : g.moveTo(X(x), Z(z))));
       g.stroke();
     }
     fillPolys(D.platforms, '#e3dccb');
@@ -400,9 +404,15 @@ export class Hud {
     const g = cv.getContext('2d');
     const S = cv.width;
     const { player } = world;
-    const k = S / (HALF * 2);
-    const X = (x) => (x + HALF) * k;
-    g.drawImage(this.baseMap, 0, 0, S, S);
+    // el mapa entero centrado en el cuadro (no es cuadrado: tiene las franjas al norte y al este)
+    const k = S / Math.max(X1 - X0, Z1 - Z0);
+    const ox = (S - (X1 - X0) * k) / 2;
+    const oz = (S - (Z1 - Z0) * k) / 2;
+    const X = (x) => (x - X0) * k + ox;
+    const Z = (z) => (z - Z0) * k + oz;
+    g.fillStyle = '#2d3328';
+    g.fillRect(0, 0, S, S);
+    g.drawImage(this.baseMap, ox, oz, (X1 - X0) * k, (Z1 - Z0) * k);
     // nombres de calles: uno por calle, en su tramo más largo
     if (!this.labels) {
       const best = new Map();
@@ -424,7 +434,7 @@ export class Hud {
       if (a > Math.PI / 2) a -= Math.PI;
       if (a < -Math.PI / 2) a += Math.PI;
       g.save();
-      g.translate(X((v.ax + v.bx) / 2), X((v.az + v.bz) / 2));
+      g.translate(X((v.ax + v.bx) / 2), Z((v.az + v.bz) / 2));
       g.rotate(a);
       g.font = `${v.av ? 700 : 600} ${v.av ? 15 : 12}px 'Barlow Condensed', 'Arial Narrow', sans-serif`;
       g.lineWidth = 3;
@@ -439,8 +449,8 @@ export class Hud {
       g.strokeStyle = '#111';
       g.lineWidth = 2;
       g.beginPath();
-      if (shape === 'square') g.rect(X(x) - r, X(z) - r, r * 2, r * 2);
-      else g.arc(X(x), X(z), r, 0, Math.PI * 2);
+      if (shape === 'square') g.rect(X(x) - r, Z(z) - r, r * 2, r * 2);
+      else g.arc(X(x), Z(z), r, 0, Math.PI * 2);
       g.fill();
       g.stroke();
     };
@@ -449,21 +459,21 @@ export class Hud {
       g.lineWidth = 5;
       g.lineJoin = 'round';
       g.beginPath();
-      this.route.forEach(([x, z], i) => (i ? g.lineTo(X(x), X(z)) : g.moveTo(X(x), X(z))));
+      this.route.forEach(([x, z], i) => (i ? g.lineTo(X(x), Z(z)) : g.moveTo(X(x), Z(z))));
       g.stroke();
     }
     for (const m of world.police.markers()) dot(m.x, m.z, '#3060ff', 5, 'square');
     // íconos a lo GTA (los objetos del piso, más chicos)
     for (const m of world.pickups.markers({ x: player.x, z: player.z }, true)) {
-      if (PICKUP_ICON[m.kind]) drawIcon(g, PICKUP_ICON[m.kind], X(m.x), X(m.z), 26);
+      if (PICKUP_ICON[m.kind]) drawIcon(g, PICKUP_ICON[m.kind], X(m.x), Z(m.z), 26);
       else dot(m.x, m.z, '#6ec3ea', 5);
     }
-    for (const m of this.pois(world)) drawIcon(g, m.kind, X(m.x), X(m.z), m.kind === 'mision' || m.kind === 'ovni' ? 46 : 38, m.letter);
+    for (const m of this.pois(world)) drawIcon(g, m.kind, X(m.x), Z(m.z), m.kind === 'mision' || m.kind === 'ovni' ? 46 : 38, m.letter);
     const o = this.objective;
     if (o?.target) dot(o.target.x, o.target.z, '#ffe14a', 9);
     // Gaspi
     g.save();
-    g.translate(X(player.x), X(player.z));
+    g.translate(X(player.x), Z(player.z));
     g.rotate(-player.heading + Math.PI);
     g.fillStyle = '#ffffff';
     g.strokeStyle = '#0f5fa8';
@@ -484,8 +494,7 @@ export class Hud {
     const { player, events, crime } = world;
     const g = this.mctx;
     const W = this.mini.width;
-    const S = this.baseMap.width;
-    const k = S / (HALF * 2);
+    const k = MAPK;
     const scale = player.vehicle ? 0.55 : 0.8; // px de minimapa por metro
     g.save();
     g.clearRect(0, 0, W, W);
@@ -498,11 +507,11 @@ export class Hud {
     // "arriba" es hacia donde mira la cámara
     g.rotate(player.camYaw);
     g.scale(scale / k, scale / k);
-    g.translate(-(player.x + HALF) * k, -(player.z + HALF) * k);
+    g.translate(-(player.x - X0) * k, -(player.z - Z0) * k);
     g.drawImage(this.baseMap, 0, 0);
     const mark = (x, z, color, r, shape = 'dot') => {
-      const px = (x + HALF) * k;
-      const pz = (z + HALF) * k;
+      const px = (x - X0) * k;
+      const pz = (z - Z0) * k;
       const rr = (r * k) / scale;
       g.fillStyle = color;
       g.strokeStyle = '#111';
@@ -520,7 +529,7 @@ export class Hud {
       g.lineJoin = 'round';
       g.lineCap = 'round';
       g.beginPath();
-      this.route.forEach(([x, z], i) => (i ? g.lineTo((x + HALF) * k, (z + HALF) * k) : g.moveTo((x + HALF) * k, (z + HALF) * k)));
+      this.route.forEach(([x, z], i) => (i ? g.lineTo((x - X0) * k, (z - Z0) * k) : g.moveTo((x - X0) * k, (z - Z0) * k)));
       g.stroke();
     }
     for (const m of crime.markers()) mark(m.x, m.z, m.kind === 'moto' ? '#e5484d' : '#6ec3ea', 5);

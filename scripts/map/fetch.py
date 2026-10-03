@@ -1,13 +1,15 @@
-# Baja de Overture Maps (release fijo en ov.py) todo lo que hay en un cuadrado de 1,3 km
-# alrededor de la estación Temperley. Deja seg/bld/lu/land/inf/places.json en esta carpeta.
+# Baja de Overture Maps (release fijo en ov.py) todo lo que hay en la zona del mapa (area.py) más 50 m
+# de margen. Deja seg/bld/lu/land/inf/places.json en esta carpeta.
 import ov, json, math, sys
+from area import BOUNDS
 from shapely import wkb
 from shapely.geometry import mapping
 LAT0, LON0 = -34.7761, -58.3963
 KX = math.cos(math.radians(LAT0)) * 111320.0
 KZ = 110950.0
-R = 650
-bbox = (LON0 - R / KX, LAT0 - R / KZ, LON0 + R / KX, LAT0 + R / KZ)
+M = 50
+x0, z0, x1, z1 = BOUNDS
+bbox = (LON0 + (x0 - M) / KX, LAT0 - (z1 + M) / KZ, LON0 + (x1 + M) / KX, LAT0 - (z0 - M) / KZ)
 def P(lon, lat): return [round((lon - LON0) * KX, 2), round((LAT0 - lat) * KZ, 2)]
 def ring(coords): return [P(x, y) for x, y in coords]
 def geo(g):

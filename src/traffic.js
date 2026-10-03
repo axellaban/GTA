@@ -1,5 +1,5 @@
 // Grafo de calles, autos con IA, colectivos y autos estacionados.
-import { ROADS, HALF } from './map.js';
+import { ROADS, X0, Z0, X1, Z1 } from './map.js';
 import { makeCar, makeBus, makeMoto, makeTruck, makeCarro, CAR_COLORS, DELIVERY, deliveryPack } from './vehicles.js';
 import { ANIMALS, makeAnimal, animalPlay, makeLook } from './people.js';
 import { repairCar, tailMat, brakeMat, carLod, QMODELS } from './cars.js';
@@ -741,8 +741,8 @@ export class Traffic {
         a.stuck = 0;
         this.setTarget(v);
       }
-      v.x = Math.max(-HALF + 2, Math.min(HALF - 2, v.x));
-      v.z = Math.max(-HALF + 2, Math.min(HALF - 2, v.z));
+      v.x = Math.max(X0 + 2, Math.min(X1 - 2, v.x));
+      v.z = Math.max(Z0 + 2, Math.min(Z1 - 2, v.z));
       v.sync(dt);
       if (Math.abs(v.x - player.x) < 32 && Math.abs(v.z - player.z) < 32) carEffects(v, dt, world);
     }

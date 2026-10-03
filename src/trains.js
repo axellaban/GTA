@@ -1,6 +1,6 @@
 // Trenes del Roca, barreras y pasos a nivel.
 import * as THREE from 'three';
-import { ROADS, TRACKS, HALF, STATION, project, withCum } from './map.js';
+import { ROADS, TRACKS, STATION, project, withCum, edgeDist } from './map.js';
 import { makeTrainCar } from './vehicles.js';
 import { R } from './rng.js';
 
@@ -26,8 +26,10 @@ function railRoutes() {
     }
   }
   const all = [...nodes.values()];
-  const north = all.filter((n) => n.z < -HALF + 8);
-  const south = all.filter((n) => n.z > HALF - 8 || Math.abs(n.x) > HALF - 8);
+  // las puntas que salen del mapa: al norte (hacia Lomas, por la franja de Cerrito) y al sur
+  const ends = all.filter((n) => n.adj.length === 1 && edgeDist(n.x, n.z) < 8);
+  const north = ends.filter((n) => n.z < STATION.z);
+  const south = ends.filter((n) => n.z >= STATION.z);
   // Dijkstra sobre estados (nodo, nodo anterior) para no permitir giros bruscos en los cambios
   const path = (src, dst) => {
     const sk = (n, f) => `${key(n.x, n.z)}|${f ? key(f.x, f.z) : '-'}`;

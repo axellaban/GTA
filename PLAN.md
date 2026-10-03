@@ -500,9 +500,9 @@ andén yendo a trabajar, y del la plaza al andén se entra a la estación y se p
   guiada para pasar. Pruebas: `andenes.mjs`, `anddbg.mjs`, `bordeanden.mjs`.
 
 **R37 — ✅ La casa de Clau** (pedido del dueño: "Emilio Castro y Av. Eva Perón, casa de 2 pisos con terraza donde él
-y sus amigos juegan al truco"). La esquina real (OSM: Emilio Castro) queda ~270 m al este del borde del mapa
-(x ≈ 870, z ≈ -172): va en la casa de dos pisos sobre Eva Perón más cerca (`CLAU` en src/map.js marca esa
-huella con `extra: 'clau'`; city.js no le pone tanque genérico). `src/clau.js` (`CasaClau`): terraza con baldosas,
+y sus amigos juegan al truco"). Desde R38 está en la esquina real (OSM: Emilio Castro y Eva Perón, x ≈ 870,
+z ≈ -174): `CLAU` en src/map.js marca la casa de la esquina más cercana (entre 100 y 450 m²) con
+`extra: 'clau'`; city.js no le pone tanque genérico. `src/clau.js` (`CasaClau`): terraza con baldosas,
 baranda (`add3d`, `roofWalkway`), mesa redonda de plástico con cartas españolas, mazo, fernet, coca y mate,
 casilla de la escalera con tanque negro, soga con ropa y el cartel "LA CASA DE CLAU" en el frente. Gente (se
 arma con Gaspi a menos de 140 m): Clau, Pablo el alto (×1,2), Ale (vincha de call center: `wearHeadset` en
@@ -510,7 +510,33 @@ wear.js) y Laban (`makeStar('laban', { top, bottom, hat })` amarillo: el sombrer
 el shader lo pinta con `uHat`) jugando ('truco'); Gonza con la guitarra ('guitar'); Martín con los mellizos
 ('cradle'); Nico con el caballo (`makeAnimal('horse')`). Globitos y voces con frases de truco (`talker()` en
 `speakers` de main.js). E en la puerta: subir; E en la escalera: bajar; E en la mesa: jugar una mano (gana o
-pierde plata). Prueba: `clau.mjs`. Si se agranda el mapa, mover `CLAU` a la esquina real.
+pierde plata). Prueba: `clau.mjs`.
+
+**R38 — ✅ Mapa más grande: todo en su lugar real** (pedido del dueño: "agrandá para poner en lugar real").
+La zona del mapa ya no es un cuadrado: `scripts/map/area.py` define el cuadrado original de 1,2 km más dos
+franjas, NORTE (x -320…220, z -1100…-600: Almirante Brown hasta Cerrito) y ESTE (x 600…980, z -330…230:
+Av. Eva Perón hasta Emilio Castro). `temperley.json` trae `bounds`, `area` (contorno) y `wall` (borde, 2 m
+adentro); src/map.js exporta `X0, Z0, X1, Z1`, `AREA`, `WALL`, `inArea` y `edgeDist` (no hay más `HALF`).
+- Datos: `fetch.py` baja la caja de `area.py`; `preprocess.py --ext ext.json` calcula todo sobre la zona
+  entera pero escribe solo lo de las franjas; `merge.py ext.json` lo suma a `temperley.json` sin tocar lo
+  que ya estaba (los sorteos del cuadrado original quedan igual; los 29 edificios que el borde viejo
+  cortaba se cambian por el entero en el mismo índice, porque el relevamiento los nombra por número).
+  `osm_pois.py`, `places_extra.py` y `osm_streets.py` usan la zona nueva (30 negocios más de OSM). En
+  `osm_streets.py` un cambio de nombre no puede caer sobre las vías (Cerrito/José Garibaldi partía el paso
+  a nivel en dos): el corte se corre 14 m afuera.
+- Juego: piso de fondo y textura según `bounds` (city.js), borde = `WALL`; altura del piso en una grilla
+  Int16 en cm rasterizada en franjas de 1024 filas (map.js; antes Float32 de 23 MB); minimapa a 1 px/m sobre
+  la caja (lo de afuera, oscuro) y el mapa de pausa centrado (hud.js); los trenes salen por las puntas de
+  vía que tocan el borde (`edgeDist` en trains.js: al norte ahora por Cerrito); tránsito acotado a `bounds`.
+- `src/norte.js` (`Norte`): el **Sanatorio Juncal** (OSM, 2375 m², sobre Almirante Brown) pasa a edificio
+  de 8 pisos con fachada propia de clínica (`ATLAS.sanatorio` en textures.js, sin balcones), el nombre
+  arriba, la cruz roja, la H azul, la guardia con marquesina en voladizo hasta el cordón y la entrada
+  principal; no se destruye. El **puesto de flores** en la vereda de Cerrito y Almirante Brown (`FLORES`):
+  gradas con baldes y ramos (instancias), toldo a rayas, cartel y la **florista** (`Npc('florista')`, misma
+  lógica que el panchero; aparece con Gaspi a menos de 150 m). E: comprar un ramo ($2.000, +10 de vida, el
+  ramo queda en la mano de Gaspi 90 s). El **paso a nivel de Cerrito** sale solo (`findCrossings`).
+- Memoria: ~265 MB contra ~220 MB del mapa viejo en `fuga.mjs` (37 % más edificios), estable, sin fuga.
+  Pruebas: `norte.mjs` (sanatorio, guardia, flores, cruce y mapa de pausa), `clau.mjs`, smoke, `mis5173.mjs`.
 
 **R11 — Pruebas en celu real**: el dueño prueba en iPhone/Android y manda capturas; se ajusta.
 

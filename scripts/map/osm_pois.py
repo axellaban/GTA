@@ -6,16 +6,18 @@
 #
 # overpass-api.de suele estar saturado: se prueban varios servidores en orden.
 import json, math, os, sys, time, urllib.parse, urllib.request
+from shapely.geometry import Point
+from area import AREA, BOUNDS
 
 LAT0, LON0 = -34.7761, -58.3963
 KX = math.cos(math.radians(LAT0)) * 111320.0
 KZ = 110950.0
-HALF = 600  # el mapa del juego es un cuadrado de 1,2 km
-
-S = LAT0 - HALF / KZ
-N = LAT0 + HALF / KZ
-W = LON0 - HALF / KX
-E = LON0 + HALF / KX
+# la zona del mapa (area.py): el cuadrado de 1,2 km y las franjas al norte y al este
+X0, Z0, X1, Z1 = BOUNDS
+S = LAT0 - Z1 / KZ
+N = LAT0 - Z0 / KZ
+W = LON0 + X0 / KX
+E = LON0 + X1 / KX
 BB = f'({S:.5f},{W:.5f},{N:.5f},{E:.5f})'
 
 AMENITY = 'restaurant|cafe|bar|fast_food|pharmacy|bank|ice_cream|pub|fuel|clinic|dentist|doctors|veterinary|bureau_de_change|post_office|car_wash|school|place_of_worship|police|hospital|cinema|theatre|library|kindergarten|marketplace|nightclub'
@@ -30,6 +32,7 @@ QUERY = f'''[out:json][timeout:90];
 out center tags;'''
 
 SERVERS = [
+    'https://overpass.private.coffee/api/interpreter',
     'https://overpass-api.de/api/interpreter',
     'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
     'https://overpass.kumi.systems/api/interpreter',
@@ -80,7 +83,7 @@ def main():
         lon = e.get('lon') or e['center']['lon']
         x = (lon - LON0) * KX
         z = (LAT0 - lat) * KZ
-        if abs(x) > HALF or abs(z) > HALF:
+        if not AREA.contains(Point(x, z)):
             continue
         cat = t.get('shop') or t.get('amenity') or t.get('craft') or t.get('office') or t.get('leisure')
         p = {'n': name, 'k': k, 'c': cat, 'x': round(x, 1), 'z': round(z, 1)}

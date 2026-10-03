@@ -2,7 +2,7 @@
 // suelo, calles, pintura vial, edificios con sus frentes, rejas, estación, andenes, faroles y árboles.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { DATA as D, HALF, ROADS, TRACKS, CORNERS, pointAt, STATION, project, SIGN_COLORS_REAL, nearestRoad } from './map.js';
+import { DATA as D, X0, Z0, X1, Z1, WALL, ROADS, TRACKS, CORNERS, pointAt, STATION, project, SIGN_COLORS_REAL, nearestRoad } from './map.js';
 import {
   ATLAS,
   buildAtlas,
@@ -171,11 +171,12 @@ class Quads {
 
 // ---------- Suelo: manzanas, veredas, calzadas, plazas ----------
 function addGround(scene, city) {
-  const base = new THREE.PlaneGeometry(HALF * 2 + 800, HALF * 2 + 800);
+  // el piso de fondo: la caja del mapa más 400 m para cada lado (los interiores, a 1500 m, quedan afuera)
+  const base = new THREE.PlaneGeometry(X1 - X0 + 800, Z1 - Z0 + 800);
   base.rotateX(-Math.PI / 2);
-  base.translate(0, -0.02, 0);
+  base.translate((X0 + X1) / 2, -0.02, (Z0 + Z1) / 2);
   const gt = groundTexture();
-  gt.repeat.set(160, 160);
+  gt.repeat.set((X1 - X0 + 800) / 12.5, (Z1 - Z0 + 800) / 12.5);
   // (el piso, las manzanas, las veredas y las plazas se recortan donde pasa el bajo nivel)
   const bm = new THREE.Mesh(base, cutGround(new THREE.MeshLambertMaterial({ map: gt })));
   bm.receiveShadow = true;
@@ -493,6 +494,7 @@ function addBuildings(scene, atlas, colliders, rng, city) {
     const segs = colliders.addRing(ring, h, 'building');
     city.buildingList.push({ ring, h, kind, b, segs });
     const front = (floor) => {
+      if (b.extra === 'sanatorio') return ATLAS.sanatorio[0];
       if (kind === 'local') return floor === 0 ? ATLAS.local[v % ATLAS.local.length] : ATLAS.alto[(v + floor) % ATLAS.alto.length];
       if (kind === 'edificio') return floor === 0 ? ATLAS.entrada[v % ATLAS.entrada.length] : ATLAS.edificio[(v + floor) % ATLAS.edificio.length];
       if (kind === 'estacion') return ATLAS.estacion[floor === 0 ? 0 : 1];
@@ -503,6 +505,7 @@ function addBuildings(scene, atlas, colliders, rng, city) {
       return floor === 0 ? ATLAS.casa[v % ATLAS.casa.length] : ATLAS.alto[(v + floor) % ATLAS.alto.length];
     };
     const side = (floor, seg) => {
+      if (b.extra === 'sanatorio') return ATLAS.sanatorio[0];
       if (kind === 'estacion') return ATLAS.estacion[floor === 0 ? 0 : 1];
       if (kind === 'estadio') return ATLAS.estadio[0];
       if ((v + seg) % 9 === 0) return ATLAS.pintada[(v + floor) % ATLAS.pintada.length];
@@ -542,7 +545,7 @@ function addBuildings(scene, atlas, colliders, rng, city) {
         const fe = { ax: p0[0], az: p0[1], bx: p1[0], bz: p1[1], nx, nz, L: e.l };
         // el frente más largo, salvo que el relevamiento diga cuál es el de la calle
         if (rel?.frente != null ? k === rel.frente : !bestFront || e.l > bestFront.L) bestFront = fe;
-        if (kind === 'edificio') {
+        if (kind === 'edificio' && b.extra !== 'sanatorio') {
           for (let f = 1; f < floors; f++) {
             const y = f * FLOOR_H;
             det.rbox(e.l, 0.16, 0.1, plaster.clone().multiplyScalar(0.85), mx + nx * 0.05, y - 0.08, mz + nz * 0.05, angOf(ux, uz));
@@ -1531,17 +1534,7 @@ function addClutter(scene, rng) {
 }
 
 function addBounds(colliders) {
-  const H = HALF - 2;
-  colliders.addRing(
-    [
-      [-H, -H],
-      [H, -H],
-      [H, H],
-      [-H, H],
-    ],
-    99,
-    'bound',
-  );
+  colliders.addRing(WALL, 99, 'bound');
 }
 
 // ---------- Lugares: estacionamiento, trapitos, gente pidiendo ----------

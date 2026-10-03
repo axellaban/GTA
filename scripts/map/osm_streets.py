@@ -8,18 +8,21 @@
 # Datos: © colaboradores de OpenStreetMap (ODbL). Usa Overpass (prueba varios servidores).
 import json, math, os, sys, time, urllib.parse, urllib.request
 from shapely.geometry import LineString
+from shapely.ops import unary_union
 from shapely.strtree import STRtree
+from area import BOUNDS
 
 LAT0, LON0 = -34.7761, -58.3963
 KX = math.cos(math.radians(LAT0)) * 111320.0
 KZ = 110950.0
-HALF = 600
-S, N = LAT0 - (HALF + 50) / KZ, LAT0 + (HALF + 50) / KZ
-W, E = LON0 - (HALF + 50) / KX, LON0 + (HALF + 50) / KX
+X0, Z0, X1, Z1 = BOUNDS  # la zona del mapa (area.py) más 50 m
+S, N = LAT0 - (Z1 + 50) / KZ, LAT0 - (Z0 - 50) / KZ
+W, E = LON0 + (X0 - 50) / KX, LON0 + (X1 + 50) / KX
 QUERY = f'''[out:json][timeout:120];
 way["highway"~"motorway|trunk|primary|secondary|tertiary|unclassified|residential|living_street|service|pedestrian"]({S:.5f},{W:.5f},{N:.5f},{E:.5f});
 out geom tags;'''
 SERVERS = [
+    'https://overpass.private.coffee/api/interpreter',
     'https://overpass-api.de/api/interpreter',
     'https://overpass.kumi.systems/api/interpreter',
     'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
@@ -80,6 +83,19 @@ def main():
         return best[1] if best else None
 
     D = json.load(open(ROOT))
+    rails = unary_union([LineString(t) for t in D['rails'] if len(t) > 1])
+    RAIL = 14  # un cambio de nombre no puede caer en las vías: partiría el paso a nivel en dos
+
+    def off_rails(l, t, keep_before):
+        # corre el corte hasta 14 m de la última vía, del lado que deja el cruce en la parte más larga
+        if rails.distance(l.interpolate(t, normalized=True)) >= RAIL:
+            return t
+        step = 1 / l.length
+        u = t
+        while 0 < u < 1 and rails.distance(l.interpolate(u, normalized=True)) < RAIL:
+            u += step if keep_before else -step
+        return min(1, max(0, u))
+
     out = []
     changed = 0
     for r in D['roads']:
@@ -115,6 +131,10 @@ def main():
         # dos calles en un tramo: se parte donde cambia el nombre (si alguna parte queda de menos de
         # 15 m, el tramo entero se queda con el nombre que más largo cubre)
         cuts = [0.0] + [(a[1] + b[0]) / 2 for a, b in zip(names, names[1:])] + [1.0]
+        for k in range(1, len(cuts) - 1):
+            before = cuts[k] - cuts[k - 1]
+            after = cuts[k + 1] - cuts[k]
+            cuts[k] = off_rails(l, cuts[k], before >= after)
         if min(t1 - t0 for t0, t1 in zip(cuts, cuts[1:])) * l.length < 15:
             nm = max(names, key=lambda x: x[1] - x[0])[2]
             if nm != (r['n'] or ''):

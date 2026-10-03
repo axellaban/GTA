@@ -1,14 +1,22 @@
 # Convierte los datos de Overture (OSM + huellas de edificios) en el mapa del juego.
 # Coordenadas locales en metros: x al este, z al sur, origen en la estación Temperley.
+# La zona del mapa está en area.py. Con --ext solo se escribe lo que cae en las franjas nuevas (fuera del
+# cuadrado original) y después merge.py lo suma a temperley.json sin tocar lo que ya estaba (los sorteos
+# de tipo, pisos y árboles del cuadrado original quedan como estaban).
+#
+#   python3 preprocess.py --ext ext.json && python3 merge.py ext.json
 import json, math, random, collections, sys
 from shapely.geometry import LineString, Polygon, MultiPolygon, Point, box, mapping
 from shapely.ops import unary_union, linemerge
 from shapely import prepared
 from shapely.strtree import STRtree
 
+from area import AREA, EXT, SQ0, BOUNDS
+
 random.seed(1400)
-HALF = 600
-SQ = box(-HALF, -HALF, HALF, HALF)
+EXTONLY = '--ext' in sys.argv
+SQ = AREA  # todo se calcula sobre la zona entera
+CLIP = EXT if EXTONLY else AREA  # y se escribe solo esto
 R1 = lambda v: round(v, 1)
 
 seg = json.load(open('seg.json'))
@@ -143,7 +151,7 @@ for p in places:
         continue
     x = (p['x'] - LON0) * KX
     z = (LAT0 - p['y']) * KZ
-    if abs(x) < HALF and abs(z) < HALF:
+    if AREA.contains(Point(x, z)):
         place_pts.append((Point(x, z), p['name'], p['cat']))
 ptree = STRtree([p[0] for p in place_pts]) if place_pts else None
 road_prep = prepared.prep(road_poly)
@@ -153,6 +161,11 @@ buildings = []
 blocked_polys = []
 for i, b in enumerate(bld):
     for p in polys_of(b['g']):
+        seam = False
+        if EXTONLY:
+            if not p.intersects(EXT) or p.intersection(EXT).area < 1:
+                continue
+            seam = p.intersection(SQ0).area > 1  # cortado por el borde viejo: reemplaza al pedazo que había
         p = p.intersection(SQ)
         if p.is_empty or p.geom_type != 'Polygon' or p.area < 12:
             continue
@@ -235,6 +248,8 @@ for i, b in enumerate(bld):
                 fronts.append(k)
                 setbacks.append(R1(max(0, d - 3.0)))
         buildings.append({'r': [[R1(x), R1(z)] for x, z in ring], 'k': kind, 'f': int(floors), 'v': random.randint(0, 999), 'fr': fronts, 'sb': setbacks, 'n': name, 'cat': cat})
+        if seam:
+            buildings[-1]['seam'] = 1
         blocked_polys.append(p)
 
 bld_union = unary_union(blocked_polys)
@@ -401,31 +416,44 @@ for pl in platforms:
             if g.contains(q):
                 columns.append([R1(q.x), R1(q.y)])
             d += 10
+# lo que se escribe: recortado a CLIP (la zona entera o, con --ext, solo las franjas nuevas)
+def cut(ls):
+    c = ls.intersection(CLIP)
+    return [x for x in (c.geoms if hasattr(c, 'geoms') else [c]) if x.geom_type == 'LineString' and x.length >= 1]
+
+
+inside = lambda x, z: CLIP.contains(Point(x, z))
+wall = AREA.buffer(-2, join_style=2)  # el borde del mapa (2 m adentro)
 out = {
-    'half': HALF,
+    'half': 600,
+    'bounds': BOUNDS,
+    'area': [[R1(x), R1(z)] for x, z in list(AREA.exterior.coords)[:-1]],
+    'wall': [[R1(x), R1(z)] for x, z in list(wall.exterior.coords)[:-1]],
     'origin': [LAT0, LON0],
-    'roads': [{'n': r['n'], 'c': r['c'], 'w': r['w'], 'p': line(r['l'].simplify(0.3))} for r in roads],
-    'paths': [{'w': p['w'], 'c': p['c'], 'p': line(p['l'].simplify(0.3))} for p in paths],
-    'rails': [line(r.simplify(0.2)) for r in rails],
-    'platforms': rings(plat_union) if plat_union else [],
-    'roadPoly': rings(road_poly),
-    'sidewalks': rings(sidewalks),
-    'blocks': rings(blocks),
-    'yard': rings(yard),
+    'roads': [{'n': r['n'], 'c': r['c'], 'w': r['w'], 'p': line(l.simplify(0.3))} for r in roads for l in cut(r['l'])],
+    'paths': [{'w': p['w'], 'c': p['c'], 'p': line(l.simplify(0.3))} for p in paths for l in cut(p['l'])],
+    'rails': [line(l.simplify(0.2)) for r in rails for l in cut(r)],
+    'platforms': rings(plat_union.intersection(CLIP)) if plat_union else [],
+    'roadPoly': rings(road_poly.intersection(CLIP)),
+    'sidewalks': rings(sidewalks.intersection(CLIP)),
+    'blocks': rings(blocks.intersection(CLIP)),
+    'yard': rings(yard.intersection(CLIP)),
     'buildings': buildings,
-    'fences': fences,
-    'trees': tree_pts,
-    'lamps': lamps,
-    'parks': [{'c': p['c'], 'n': p['n'], 'r': rings(p['g'])} for p in parks],
-    'signals': [pt(i) for i in inf if i['cls'] == 'traffic_signals' and abs(pt(i)[0]) < HALF and abs(pt(i)[1]) < HALF],
-    'stops': [pt(i) for i in inf if i['cls'] == 'bus_stop' and abs(pt(i)[0]) < HALF and abs(pt(i)[1]) < HALF],
-    'crossings': [pt(i) for i in inf if i['cls'] == 'crossing' and abs(pt(i)[0]) < HALF and abs(pt(i)[1]) < HALF],
+    'fences': [f for f in fences if inside(f[0], f[1]) and inside(f[2], f[3])],
+    'trees': [t for t in tree_pts if inside(t[0], t[1])],
+    'lamps': [l for l in lamps if inside(l[0], l[1])],
+    # (el pasto de las plazas se dibuja arriba de todo: no tiene que tapar las calles que las cruzan)
+    'parks': [q for q in ({'c': p['c'], 'n': p['n'], 'r': rings(p['g'].difference(road_poly).intersection(CLIP))} for p in parks) if q['r']],
+    'signals': [pt(i) for i in inf if i['cls'] == 'traffic_signals' and inside(*pt(i))],
+    'stops': [pt(i) for i in inf if i['cls'] == 'bus_stop' and inside(*pt(i))],
+    'crossings': [pt(i) for i in inf if i['cls'] == 'crossing' and inside(*pt(i))],
     'bridges': [line(b) for b in bridges],
     'station': [p for p in inf if p['cls'] == 'railway_station'][0]['g']['c'],
     'named': named,
-    'canopies': canopies,
-    'columns': columns,
+    'canopies': [] if EXTONLY else canopies,
+    'columns': [] if EXTONLY else columns,
 }
 s = json.dumps(out, separators=(',', ':'), ensure_ascii=False)
-open(sys.argv[1] if len(sys.argv) > 1 else 'temperley.json', 'w').write(s)
+args = [a for a in sys.argv[1:] if not a.startswith('--')]
+open(args[0] if args else 'temperley.json', 'w').write(s)
 print('KB', len(s) // 1024, {k: len(v) for k, v in out.items() if isinstance(v, list)})

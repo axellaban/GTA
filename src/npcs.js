@@ -56,6 +56,7 @@ const LINES = {
   pelea: ['¿Qué te pasa, gil?', '¡Vení, vení!', '¡Te voy a dar!', '¡A mí no me tocás!', '¿Querés cobrar?'],
   duele: ['¡Ay!', '¡Pará, animal!', '¡Eh! ¡Qué hacés!', '¡Me mataste, loco!', '¡Uuuf!'],
   panchero: ['¡Panchos, panchos! ¡Con lluvia de papas!', '¿Con qué lo querés, jefe? ¿Mayo, ketchup, golf?', '¡Pancho y gaseosa, mil quinientos!', '¡Calentitos los panchos!', 'Pasá, pasá, que hay superpancho'],
+  florista: ['¡Flores, flores! Ramos a dos mil', 'Llevale un ramo a la novia, jefe', '¡Rosas, claveles, fresias, fresquitas!', '¿Para la vieja? Llevá las fresias', 'Ramito de jazmines, ¡perfuma toda la casa!'],
   medias: ['¡Medias, medias! Tres pares dos mil', '¡Llevá medias, jefe! De algodón', '¡Soquetes, medias, tres por dos mil!', '¡Medias de toalla para el invierno!'],
   charla: ['¿Viste lo del Celeste?', 'Y bueno, qué le vas a hacer...', '¡Jajaja, no te puedo creer!', 'No, pará, escuchá...', 'El sábado hay asado en lo de Rubén', 'Está todo carísimo, loco', '¿Y tu vieja cómo anda?', 'Le dije: "así no se puede"', '¡Noooo! ¿En serio?', 'El Roca otra vez parado...'],
   cana: ['¡Alto, policía!', '¡Quieto ahí!', '¡Al piso, al piso!', '¡Las manos donde las vea!', '¡No te hagás el vivo!'],
@@ -659,7 +660,7 @@ export class Npcs {
       if (n.down || n.type === 'cana' || n.state === 'fight') continue;
       const d = Math.hypot(n.x - x, n.z - z);
       if (d > r) continue;
-      if (n.type === 'mendigo' || n.type === 'medias' || n.type === 'panchero' || n.type === 'trapito' || n.type === 'vecino' || n.type === 'piquetero' || n.type === 'borracho' || n.type === 'chico' || n.type === 'pasajero') {
+      if (n.type === 'mendigo' || n.type === 'medias' || n.type === 'panchero' || n.type === 'florista' || n.type === 'trapito' || n.type === 'vecino' || n.type === 'piquetero' || n.type === 'borracho' || n.type === 'chico' || n.type === 'pasajero') {
         if (n.state === 'flee' || n.state === 'cower') {
           n.fleeT = Math.max(n.fleeT || 0, 6);
           continue;
@@ -848,8 +849,8 @@ export class Npcs {
           n.say(R.pick(LINES.mendigo.slice(0, 2)), 3.5);
           n.cool = 25;
         }
-      } else if (n.type === 'panchero') {
-        // atrás del carrito: si se fue (un susto), vuelve; con clientes cerca ofrece
+      } else if (n.type === 'panchero' || n.type === 'florista') {
+        // atrás del carrito (o del puesto de flores): si se fue (un susto), vuelve; con clientes cerca ofrece
         const away = Math.hypot(n.home.x - n.x, n.home.z - n.z);
         if (away > 0.4) {
           n.target = { x: n.home.x, z: n.home.z };
@@ -865,7 +866,7 @@ export class Npcs {
           }
           pose = dp < 9 ? 'talk' : n.t % 9 < 1.2 ? 'wave' : 'walk';
           if (dp < 12 && n.cool <= 0 && !player.vehicle) {
-            n.say(R.pick(LINES.panchero), 3);
+            n.say(R.pick(LINES[n.type]), 3);
             n.cool = R.range(9, 16);
           }
         }
