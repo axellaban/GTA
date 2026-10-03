@@ -255,11 +255,15 @@ export class Cielo {
 
   update(dt, world) {
     // el Comandante hecho por código pasa al de MakeHuman apenas cargan los modelos
+    // (plainParts se borra antes del cambio: swapHuman le pasa al nuevo lo que no tiene, y con la marca
+    // copiada se volvía a cambiar en cada cuadro: un Comandante nuevo por cuadro, el celu cada vez más lento)
     if (this.fort?.plainParts) {
       const h = makeStar('comandante');
       if (h) {
-        for (const o of this.fort.plainParts) o.removeFromParent();
-        this.fort = swapHuman(this.fort, h);
+        const old = this.fort;
+        for (const o of old.plainParts) o.removeFromParent();
+        delete old.plainParts;
+        this.fort = swapHuman(old, h);
       }
     }
     if (this.bubble) {

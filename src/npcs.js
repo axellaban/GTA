@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { makeHuman, animateHuman, randomCivilian, SKINS, HAIRS } from './human.js';
 import { makeDog } from './animals.js';
-import { makePerson, makeLook, PEOPLE, ANIMALS, makeAnimal, animalPlay, swapHuman } from './people.js';
+import { makePerson, makeLook, PEOPLE, ANIMALS, makeAnimal, animalPlay, swapHuman, disposeHuman } from './people.js';
 import { setLod } from './rig.js';
 import { DATA as D } from './map.js';
 import { R } from './rng.js';
@@ -950,7 +950,10 @@ export class Npcs {
       this.place(n);
     }
     this.list = this.list.filter((n) => {
-      if (n.dead) this.scene.remove(n.mesh);
+      if (n.dead) {
+        this.scene.remove(n.mesh);
+        disposeHuman(n.h);
+      }
       return !n.dead;
     });
     this.updateGroups(dt, player);

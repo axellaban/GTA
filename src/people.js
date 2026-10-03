@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { rigHuman } from './rig.js';
+import { forgetHuman } from './human.js';
 import { R } from './rng.js';
 import { TOUCH } from './input.js';
 import { freeAfterUpload } from './textures.js';
@@ -138,6 +139,7 @@ function tintMH(material, ud, o) {
       );
   };
   m.customProgramCacheKey = () => 'ropa-mh4';
+  m.userData.own = true; // de este personaje solo (disposeHuman lo libera)
   return m;
 }
 
@@ -321,6 +323,16 @@ export function makeLook(o) {
 // Cambia el cuerpo de un personaje que ya está en escena por otro: lo colgado de los huesos o de la
 // raíz (armas, la barra del gym) pasa al nuevo, que queda en el mismo lugar y con la misma vista.
 const OWN = new Set(['root', 'bones', 'mesh', 'rig', 'geos', 'lod', 'keep', 'female', 'phase', 'file', 'star']);
+// un personaje que se va del juego: se libera lo que es solo suyo (la textura de los huesos de su esqueleto y
+// su material teñido); las mallas y el atlas son compartidos y quedan. Si se vuelve a dibujar, three los rehace.
+export function disposeHuman(h) {
+  if (h?.geos) forgetHuman(h); // los hechos por código: su malla es solo suya
+  h?.root?.traverse((o) => {
+    if (o.isSkinnedMesh) o.skeleton?.dispose();
+    if (o.material?.userData?.own) o.material.dispose();
+  });
+}
+
 export function swapHuman(oldH, newH) {
   const r0 = oldH.root;
   const r1 = newH.root;
@@ -334,10 +346,17 @@ export function swapHuman(oldH, newH) {
     if (!nb) continue;
     for (const c of [...b.children]) if (!own.has(c)) nb.add(c);
   }
-  for (const c of [...r0.children]) if (c !== oldH.mesh && !own.has(c) && !c.isSkinnedMesh) r1.add(c);
+  // lo que cuelga de la raíz (accesorios) pasa al nuevo; el cuerpo viejo (con esqueleto) no
+  const skinned = (c) => {
+    let k = false;
+    c.traverse((o) => (k ||= o.isSkinnedMesh));
+    return k;
+  };
+  for (const c of [...r0.children]) if (c !== oldH.mesh && !own.has(c) && !skinned(c)) r1.add(c);
   for (const k of Object.keys(oldH)) if (!OWN.has(k) && !(k in newH)) newH[k] = oldH[k];
   r0.parent?.add(r1);
   r0.removeFromParent();
+  disposeHuman(oldH);
   return newH;
 }
 

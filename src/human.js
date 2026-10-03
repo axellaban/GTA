@@ -984,13 +984,19 @@ export function makeHuman(o = {}) {
 
 // Nivel de detalle: cerca de la cámara el cuerpo completo, lejos el liviano.
 const ALL = new Set();
+// un personaje que se fue del juego: se olvida y se liberan sus mallas de la placa (son solo suyas; si
+// volviera a escena, three las vuelve a subir)
+export function forgetHuman(h) {
+  ALL.delete(h);
+  for (const g of h.geos ?? []) g.dispose();
+}
 const wp = new THREE.Vector3();
 export function updateHumanLod(camera, near) {
   for (const h of ALL) {
     if (!h.root.parent) {
       // ya no está en escena: si no vuelve en un rato, se olvida
       h.gone = (h.gone || 0) + 1;
-      if (h.gone > 300) ALL.delete(h);
+      if (h.gone > 300) forgetHuman(h);
       continue;
     }
     h.gone = 0;
