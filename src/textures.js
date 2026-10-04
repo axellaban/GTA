@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { Rng } from './rng.js';
 import { paintFacadeDepth } from './facade-depth.js';
+import { VC, VC_PLASTER } from './vc.js';
 
 const FONT = '"Arial Black", Impact, "Helvetica Neue", Arial, sans-serif';
 
@@ -74,7 +75,9 @@ const COLS = 4;
 const ROWS = 16;
 
 // revoques del barrio más algunos pasteles a lo Vice City (rosa, agua, amarillo, lavanda, celeste, durazno)
-export const PLASTER = ['#e6d6b0', '#d6c29c', '#c5d3cb', '#e1bd9b', '#efe4cf', '#b4c6d6', '#d6ae9f', '#ccd6a9', '#eddcbd', '#c4b39a', '#a9c2b0', '#e8c8c8', '#f2b8c6', '#a8e0d8', '#f7e1a8', '#c9b8e8', '#9fd3e6', '#f6c7a5'];
+const BARRIO_PLASTER = ['#e6d6b0', '#d6c29c', '#c5d3cb', '#e1bd9b', '#efe4cf', '#b4c6d6', '#d6ae9f', '#ccd6a9', '#eddcbd', '#c4b39a', '#a9c2b0', '#e8c8c8', '#f2b8c6', '#a8e0d8', '#f7e1a8', '#c9b8e8', '#9fd3e6', '#f6c7a5'];
+// en el modo Vice City, todo pastel de Ocean Drive
+export const PLASTER = VC ? VC_PLASTER : BARRIO_PLASTER;
 
 const PINTADAS = [
   ['TEMPERLEY', '#6ec3ea'],
@@ -685,7 +688,8 @@ function drawEntrada(ctx, x, y, rng) {
 function drawMedianera(ctx, x, y, rng, pintada) {
   const W = CELL_W;
   const H = CELL_H;
-  const base = rng.pick(['#cfc6b6', '#bdb4a5', '#d8d0c2', '#b9ae9b', '#c8c0b4']);
+  // (en el modo Vice City las medianeras también son pastel, como en Ocean Drive)
+  const base = rng.pick(VC ? VC_PLASTER : ['#cfc6b6', '#bdb4a5', '#d8d0c2', '#b9ae9b', '#c8c0b4']);
   ctx.fillStyle = base;
   ctx.fillRect(x, y, W, H);
   if (CUR) CUR.base = base;
@@ -963,10 +967,11 @@ export function buildAtlas() {
   };
   // casas: revocadas, de ladrillo a la vista y sin revocar
   for (let k = 0; k < 16; k++) ATLAS.casa.push(at((x, y) => drawCasa(ctx, x, y, rng)));
-  for (let k = 0; k < 4; k++) ATLAS.casa.push(at((x, y) => drawCasa(ctx, x, y, rng, 'visto')));
-  for (let k = 0; k < 3; k++) ATLAS.casa.push(at((x, y) => drawCasa(ctx, x, y, rng, 'hueco')));
+  // (en el modo Vice City no hay ladrillo a la vista: esas casas también van revocadas)
+  for (let k = 0; k < 4; k++) ATLAS.casa.push(at((x, y) => drawCasa(ctx, x, y, rng, VC ? 'revoque' : 'visto')));
+  for (let k = 0; k < 3; k++) ATLAS.casa.push(at((x, y) => drawCasa(ctx, x, y, rng, VC ? 'revoque' : 'hueco')));
   for (let k = 0; k < 6; k++) ATLAS.alto.push(at((x, y) => drawAlto(ctx, x, y, rng)));
-  for (let k = 0; k < 2; k++) ATLAS.alto.push(at((x, y) => drawAlto(ctx, x, y, rng, 'hueco')));
+  for (let k = 0; k < 2; k++) ATLAS.alto.push(at((x, y) => drawAlto(ctx, x, y, rng, VC ? 'revoque' : 'hueco')));
   for (let k = 0; k < 8; k++) ATLAS.local.push(at((x, y) => drawLocal(ctx, x, y, rng, null)));
   ATLAS.estacion.push(at((x, y) => drawEstacion(ctx, x, y, rng, false)));
   ATLAS.estacion.push(at((x, y) => drawEstacion(ctx, x, y, rng, true)));

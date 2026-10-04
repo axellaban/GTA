@@ -4,13 +4,15 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { DATA as D } from './map.js';
 import { R } from './rng.js';
+import { VC, vcPalmSpots } from './vc.js';
 
 function trunkTexture() {
   const c = document.createElement('canvas');
   c.width = 128;
   c.height = 16;
   const g = c.getContext('2d');
-  g.fillStyle = '#9a7b55';
+  // (con el filtro del modo Vice City el tronco marrón se iba a naranja: va más gris)
+  g.fillStyle = VC ? '#8a7e70' : '#9a7b55';
   g.fillRect(0, 0, 128, 16);
   // anillos del tronco (a lo largo de u)
   for (let x = 0; x < 128; x += 8) {
@@ -96,6 +98,8 @@ export function addPalms(scene, colliders, heightAt) {
       spots.push(p);
     }
   }
+  // las de vereda del modo Vice City ya tenían lugar (eran árboles)
+  spots.push(...vcPalmSpots);
   if (!spots.length) return;
   const { trunk, crown } = palmGeometry();
   const trunkMat = new THREE.MeshStandardMaterial({ map: trunkTexture(), roughness: 0.95 });

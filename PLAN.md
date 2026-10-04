@@ -133,6 +133,18 @@ el local real con cartel de bar/café o pizzería más cerca de la estación; se
 **R7 — ✅ Guardado**: `saveGame` en `src/main.js` guarda `inv` y `ammo` enteros, así que ya incluye
 ametralladora, bazuca y su munición.
 
+**R8b — Modo Vice City (muestra, 2026-10-04)**: ✅ se prende con `?vc` en el link
+(`https://gta-6-conurba.vercel.app/?vc`); sin el parámetro el juego queda igual. Todo en código propio
+(`src/vc.js`): HUD clásico (reloj celeste, plata con ocho cifras `$00020000`, corazón rosa con la vida,
+estrellas, recuadro rosa del arma, radar con borde rosa; estilos `html.vc` al final de `src/style.css`),
+nombre de la calle grande en cursiva abajo a la derecha que aparece y se va (Kaushan Script, Google
+Fonts, OFL), filtro de la PS2 más marcado (`Post.viceCity`: más resplandor y estelas, colores pastel y
+un tinte por hora en `GradeShader`: dorado de día, rosa al atardecer, azul violáceo de noche), cielo más
+turquesa y atardecer rosa más largo (`main.js`), fachadas y medianeras pastel de Ocean Drive sin ladrillo
+a la vista (`VC_PLASTER` en `src/textures.js`), dos de cada tres árboles de vereda pasan a ser palmeras
+(`vcPalmSpots`: `city.js` los marca y `palms.js` los planta) y autos de colores ochentosos
+(`VC_CAR_COLORS`). Pendiente: que el dueño lo pruebe en el celu y decida si queda como opción.
+
 **R8 — Look**: ✅ reflejos de neón en la calle mojada (`LAMPS.neonSpot`: mapa de los carteles visto
 desde arriba, muestreado a 3,4 m en `WET_REFLECT` de `src/detail.js`); ✅ luna de borde suave con mares y
 halo (`src/sky.js`); ✅ rejas. Falta: foto del relevamiento en las fachadas.

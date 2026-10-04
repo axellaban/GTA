@@ -28,6 +28,7 @@ import { addWind } from './atmosphere.js';
 import { Colliders } from './physics.js';
 import { FastBoxes } from './builder.js';
 import { Rng } from './rng.js';
+import { VC, vcPalmSpots } from './vc.js';
 import { buildBajo, cutGround } from './bajonivel.js';
 const ni = (g) => (g.index ? g.toNonIndexed() : g);
 // instancias que no se mueven nunca: chunks.js las reparte por cuadrado para no dibujarlas todas
@@ -1455,6 +1456,14 @@ function addTrees(scene, colliders, rng) {
     const painted = !!street && species !== 'palo' && rng.chance(0.6);
     return { x, z, sc, species, painted, street, rot: rng.range(0, Math.PI * 2), sy: rng.range(0.9, 1.15) };
   });
+  // modo Vice City: dos de cada tres árboles de vereda son palmeras (las planta src/palms.js)
+  if (VC) {
+    for (const t of plan) {
+      if (!t.street || !rng.chance(0.65)) continue;
+      t.species = 'palmera';
+      vcPalmSpots.push({ x: t.x, z: t.z });
+    }
+  }
   const m4 = new THREE.Matrix4();
   const q = new THREE.Quaternion();
   const up = new THREE.Vector3(0, 1, 0);

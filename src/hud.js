@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { X0, Z0, X1, Z1, AREA, DATA as D, TRACKS, nearestStreetName } from './map.js';
 import gaspiUrl from './gaspi.webp';
 import { WEAPONS, SLOT_OF } from './weapons.js';
+import { VC } from './vc.js';
 import { TOUCH } from './input.js';
 import { drawIcon, iconCanvas, ICONS, LEGEND, PICKUP_ICON } from './icons.js';
 
@@ -113,6 +114,11 @@ export class Hud {
     // arriba del plato volador la barra muestra cómo está la nave (la baleó el helicóptero)
     const hp = player.ufo ? (player.ufo.hp ?? 100) : player.health;
     $('health').style.width = `${Math.max(0, hp)}%`;
+    if (VC) {
+      $('vc-hp').textContent = String(Math.max(0, Math.ceil(hp)));
+      $('vc-armor-wrap').hidden = !(player.armor > 0);
+      if (player.armor > 0) $('vc-armor').textContent = String(Math.ceil(player.armor));
+    }
     $('health').style.backgroundColor = player.ufo ? (hp < 35 ? 'var(--alerta)' : '#7dffb0') : hp < 35 ? 'var(--alerta)' : hp < 65 ? 'var(--sodio)' : 'var(--pasto)';
     $('respeto').textContent = player.respeto > 0 ? `+${player.respeto}` : String(player.respeto);
     const ph = $('phone');
@@ -123,12 +129,23 @@ export class Hud {
     const diff = player.money - this.moneyShown;
     this.moneyShown += Math.sign(diff) * Math.min(Math.abs(diff), Math.max(50, Math.abs(diff) * dt * 4));
     const m = $('money');
-    m.textContent = fmt(this.moneyShown);
+    // Vice City: ocho cifras con ceros adelante ($00020000)
+    m.textContent = VC ? `${this.moneyShown < 0 ? '-' : ''}$${String(Math.round(Math.abs(this.moneyShown))).padStart(8, '0')}` : fmt(this.moneyShown);
     m.className = diff < -1 ? 'lost' : '';
     $('clock').textContent = time.label;
     this.streetT = (this.streetT || 0) - dt;
     if (this.streetT <= 0) {
-      $('street').textContent = nearestStreetName(player.x, player.z);
+      const name = nearestStreetName(player.x, player.z);
+      const st = $('street');
+      if (st.textContent !== name) {
+        st.textContent = name;
+        // Vice City: el nombre aparece grande abajo a la derecha y se va solo
+        if (VC) {
+          st.classList.remove('vc-pop');
+          void st.offsetWidth;
+          st.classList.add('vc-pop');
+        }
+      }
       this.streetT = 0.3;
     }
     // chaleco

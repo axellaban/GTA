@@ -61,6 +61,7 @@ import { buildTower, Heli } from './heli.js';
 import { buildTobogan, Tobogan } from './tobogan.js';
 import { Cielo } from './cielo.js';
 import { markOver, BAJO } from './bajonivel.js';
+import { VC } from './vc.js';
 
 setupInstall();
 
@@ -617,11 +618,12 @@ function updateWeather(dt) {
 const lampColor = new THREE.Color();
 const nightTop = new THREE.Color(0x040817);
 const nightBottom = new THREE.Color(0x17213a);
-const dayTop = new THREE.Color(0x2c6bd3);
-const dayBottom = new THREE.Color(0xb3d0ea);
+// (en el modo Vice City el cielo de día es más turquesa y el atardecer más rosa)
+const dayTop = new THREE.Color(VC ? 0x1f86e0 : 0x2c6bd3);
+const dayBottom = new THREE.Color(VC ? 0xb8ecf6 : 0xb3d0ea);
 // atardecer a lo Vice City: horizonte rosa coral y cielo violeta
-const duskBottom = new THREE.Color(0xff6f7d);
-const duskTop = new THREE.Color(0x5a2f8a);
+const duskBottom = new THREE.Color(VC ? 0xff6f9e : 0xff6f7d);
+const duskTop = new THREE.Color(VC ? 0x6a35a8 : 0x5a2f8a);
 const greyTmp = new THREE.Color();
 const cityGlow = new THREE.Color(0x4a3240);
 function updateTime(dt) {
@@ -636,7 +638,8 @@ function updateTime(dt) {
   time.label = `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
   const elev = Math.sin(((h - 6.5) / 13) * Math.PI); // >0 de día
   const day = THREE.MathUtils.clamp(elev * 3 + 0.12, 0, 1);
-  const dusk = THREE.MathUtils.clamp(1 - Math.abs(elev) * 3.2, 0, 1) * (h > 12 ? 1 : 0.6);
+  // (en el modo Vice City el atardecer rosa dura más)
+  const dusk = THREE.MathUtils.clamp(1 - Math.abs(elev) * (VC ? 2.2 : 3.2), 0, 1) * (h > 12 ? 1 : 0.6);
   const rain = weather.rain;
   time.night = day < 0.15;
   const U = sky.uniforms;

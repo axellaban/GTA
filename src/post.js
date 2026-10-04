@@ -9,6 +9,7 @@ import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { AfterimagePass } from 'three/examples/jsm/postprocessing/AfterimagePass.js';
 import { N8AOPass } from 'n8ao';
+import { VC } from './vc.js';
 
 const GradeShader = {
   uniforms: {
@@ -23,6 +24,8 @@ const GradeShader = {
     grain: { value: 0.016 },
     time: { value: 0 },
     gray: { value: 0 },
+    filterColor: { value: new THREE.Vector3(0, 0, 0) },
+    filterAmt: { value: 0 },
   },
   vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
   fragmentShader: /* glsl */ `
@@ -37,6 +40,8 @@ const GradeShader = {
     uniform float sharpen;
     uniform float grain;
     uniform float time;
+    uniform vec3 filterColor;
+    uniform float filterAmt;
     varying vec2 vUv;
     void main() {
       vec2 px = 1.0 / resolution;
@@ -49,6 +54,9 @@ const GradeShader = {
       col = clamp(col, 0.0, 1.0);
       // sombras hacia el azul, luces hacia el naranja
       col = col * gain + lift * (1.0 - col);
+      // filtro de color de la PS2 (modo Vice City): la imagen se suma a sí misma teñida por la hora,
+      // así las luces se lavan a pastel y todo brilla un poco
+      col = min(col + col * filterColor * filterAmt, 1.0);
       // curva en S
       col = mix(col, col * col * (3.0 - 2.0 * col), contrast);
       // saturación que respeta los colores que ya están saturados
@@ -161,8 +169,28 @@ export class Post {
     u.sharpen.value = this.q.sharpen * (1 + clear * 0.45);
     u.vignette.value = 0.2 + k * 0.35 + w * 0.5;
     u.time.value = performance.now() / 1000;
+    if (VC) this.viceCity(k, dusk, rain, clear);
     const ao = 2.4 - k * 0.9;
     if (this.ao && Math.abs(this.ao.configuration.intensity - ao) > 0.02) this.ao.configuration.intensity = ao;
+  }
+  // Modo Vice City: más resplandor (la "radiosidad" de la PS2), estelas más largas, colores pastel
+  // saturados y un filtro por hora: dorado de día, rosa al atardecer, azul violáceo de noche.
+  viceCity(k, dusk, rain, clear) {
+    this.bloom.strength += 0.2 + dusk * 0.1 - clear * 0.04;
+    this.bloom.threshold -= 0.14;
+    this.bloom.radius = 0.85;
+    this.trails.uniforms.damp.value = 0.7 + k * 0.18;
+    this.trails.uniforms.thr.value -= 0.08;
+    const u = this.grade.uniforms;
+    const day = (1 - k) * (1 - dusk);
+    u.filterColor.value.set(0.5 * day + 0.62 * dusk + 0.2 * k, 0.4 * day + 0.3 * dusk + 0.24 * k, 0.24 * day + 0.42 * dusk + 0.52 * k);
+    u.filterAmt.value = 0.32 * (1 - rain * 0.5);
+    u.saturation.value += 0.14;
+    u.contrast.value -= 0.08;
+    u.lift.value.x += 0.02;
+    u.lift.value.z += 0.025;
+    u.sharpen.value *= 0.5;
+    u.vignette.value *= 0.7;
   }
   dispose() {
     if (!this.enabled) return;
