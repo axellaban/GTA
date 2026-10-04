@@ -17,8 +17,8 @@ iguales a la realidad (cada negocio en su lugar).
 ## 2. Reglas acordadas (no negociables)
 
 1. **Nada con derechos de autor de terceros sin licencia**: ni modelos/texturas/sonidos sacados de
-   Vice City u otros juegos (rips), ni código descompilado (re3/reVC). Aunque se pida. Si el dueño
-   tiene una licencia real, que suba él los archivos al repo; recién ahí se integran.
+   Vice City u otros juegos (rips). Aunque se pida. Si el dueño tiene una licencia real, que suba
+   él los archivos al repo; recién ahí se integran.
 2. **Modelos de internet: solo licencias abiertas** (CC0, CC-BY con crédito, MIT). El crédito va en
    la pausa (`index.html`, párrafo `.fine`) y en el README.
 3. **Google Maps / Street View**: no se copian imágenes ni datos (sus términos lo prohíben). Sirven
