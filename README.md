@@ -38,11 +38,12 @@ La opción **Sin sonido** también silencia la presentación. El video se carga 
 
 ### Modo Vice City
 
-Agregá `?vc` al final del link (https://gta-6-conurba.vercel.app/?vc) para jugar con el look de Vice City:
+El juego se ve como Vice City:
 HUD clásico (reloj celeste, plata con ocho cifras, corazón rosa, recuadro rosa del arma y radar con borde
 rosa), el nombre de la calle en cursiva que aparece y se va, filtro de la PS2 más marcado (resplandor,
 colores pastel, atardecer rosa y noche violeta), casas pastel, palmeras en las veredas y autos ochentosos.
-Todo hecho por código para este juego. Sin `?vc` se ve como siempre.
+Todo hecho por código para este juego. Para ver el look anterior, agregá `?vc=0` al final del link
+(https://gta-6-conurba.vercel.app/?vc=0).
 
 ### Materiales de calles y veredas
 

@@ -1,9 +1,10 @@
-// Modo Vice City (muestra): HUD clásico, nombre de zona en cursiva, filtro PS2 más marcado,
+// Modo Vice City: HUD clásico, nombre de zona en cursiva, filtro PS2 más marcado,
 // fachadas pastel, palmeras en las veredas y autos de colores ochentosos. Todo hecho por
 // código propio, sin nada sacado del juego original.
-// Se prende con ?vc en el link (?vc=0 lo apaga). Un build con VITE_VC=1 lo trae prendido.
+// Es el look normal del juego (lo eligió el dueño). ?vc=0 en el link vuelve al look anterior;
+// un build con VITE_VC=0 sale con el look anterior.
 const q = new URLSearchParams(globalThis.location?.search ?? '');
-export const VC = q.has('vc') ? q.get('vc') !== '0' : import.meta.env?.VITE_VC === '1';
+export const VC = q.has('vc') ? q.get('vc') !== '0' : import.meta.env?.VITE_VC !== '0';
 if (VC) globalThis.document?.documentElement.classList.add('vc');
 
 // Revoques de Ocean Drive: rosa, agua, lavanda, durazno, crema, celeste y menta
