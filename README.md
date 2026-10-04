@@ -36,6 +36,14 @@ La opción **Sin sonido** también silencia la presentación. El video se carga 
 - **Noche**: ventanas y vidrieras que se prenden, halos en faroles, faros y luces traseras, foco del auto de Gaspi y el fuego de los cortes brillando.
 - Gráficos siempre en calidad alta. Para que ande fluido también en pantallas grandes, se dibuja como máximo lo equivalente a Full HD, y la resolución baja o sube sola según los cuadros por segundo (resolución dinámica, como en GTA V o Fortnite). Si agregás `?fps` al final del link aparece un contador. Si el navegador no usa la placa de video, el juego avisa. La rueda del mouse acerca o aleja la cámara.
 
+### Modo Vice City
+
+Agregá `?vc` al final del link (https://gta-6-conurba.vercel.app/?vc) para jugar con el look de Vice City:
+HUD clásico (reloj celeste, plata con ocho cifras, corazón rosa, recuadro rosa del arma y radar con borde
+rosa), el nombre de la calle en cursiva que aparece y se va, filtro de la PS2 más marcado (resplandor,
+colores pastel, atardecer rosa y noche violeta), casas pastel, palmeras en las veredas y autos ochentosos.
+Todo hecho por código para este juego. Sin `?vc` se ve como siempre.
+
 ### Materiales de calles y veredas
 
 El asfalto y las baldosas usan fotos de 1K con mapas de relieve y rugosidad, a escala real,

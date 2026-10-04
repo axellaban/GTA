@@ -143,7 +143,23 @@ un tinte por hora en `GradeShader`: dorado de día, rosa al atardecer, azul viol
 turquesa y atardecer rosa más largo (`main.js`), fachadas y medianeras pastel de Ocean Drive sin ladrillo
 a la vista (`VC_PLASTER` en `src/textures.js`), dos de cada tres árboles de vereda pasan a ser palmeras
 (`vcPalmSpots`: `city.js` los marca y `palms.js` los planta) y autos de colores ochentosos
-(`VC_CAR_COLORS`). Pendiente: que el dueño lo pruebe en el celu y decida si queda como opción.
+(`VC_CAR_COLORS`). El dueño lo vio y le encantó; falta decidir si queda prendido por defecto.
+
+**R8c — Gaspi hecho con Meshy (⬜ esperando el archivo, 2026-10-04)**: el dueño generó a Gaspi en Meshy
+(imagen → 3D, modelo Meshy T2.5, 15.618 caras). Cómo tiene que venir: **GLB** con textura, origen "Fondo"
+(pies en el piso) y, si se puede, riggeado con "Animar" de Meshy (esqueleto humanoide estándar: `rigHuman`
+de `src/rig.js` ya reconoce los nombres tipo Mixamo). Presupuesto del iPhone: ≤ 5.000 triángulos y textura de
+1024 (si viene más pesado, se baja con `tools/models/lite.mjs`). Va en `public/models/people/gaspi_meshy.glb`
+y reemplaza al Gaspi de `makeStar` (`src/people.js`). Licencia: el plan gratis de Meshy es CC BY 4.0, se usa
+con crédito ("Gaspi: modelo hecho con Meshy, CC BY 4.0") en la pausa (`.fine` en `index.html`) y en el README.
+
+**Camino gráfico (decisión del dueño, 2026-10-04)**: el dueño ve el juego en ~3/10 (10/10 = Unreal Engine).
+Orden acordado: 1) ✅ modo Vice City (R8b); 2) Blender + Meshy: personajes y edificios mejores y la luz
+horneada en las texturas (sombras suaves y luz que rebota); sigue siendo web y anda en el celu; 3) recién
+después, evaluar Unreal con un prototipo chico (la estación y dos cuadras) en la Mac M5 de 24 GB del dueño.
+Unreal no se juega desde un link en el celu y hay que rehacer la jugabilidad. Las funciones de juego (piñas,
+apuntar, armas, robar autos) ya están en este juego: la idea es ajustarlas para que se sientan como en Vice
+City, en el código de este juego (el motor de reVC es C++ sobre RenderWare y no se puede enchufar acá).
 
 **R8 — Look**: ✅ reflejos de neón en la calle mojada (`LAMPS.neonSpot`: mapa de los carteles visto
 desde arriba, muestreado a 3,4 m en `WET_REFLECT` de `src/detail.js`); ✅ luna de borde suave con mares y
