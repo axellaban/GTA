@@ -511,6 +511,18 @@ bool LoadINISettings()
 #ifdef EXTENDED_COLOURFILTER
 	ReadIniIfExists("CustomPipesValues", "PostFXIntensity", &CPostFX::Intensity);
 #endif
+#ifdef MODERN_POSTFX
+#ifndef CUSTOM_FRONTEND_OPTIONS // otherwise the menu option does it
+	ReadIniIfExists("ModernPostFX", "Preset", &CPostFX::ModernFXPreset);
+#endif
+	ReadIniIfExists("ModernPostFX", "FXAA", &CPostFX::FxaaOn);
+	ReadIniIfExists("ModernPostFX", "Sharpen", &CPostFX::Sharpen);
+	ReadIniIfExists("ModernPostFX", "BloomIntensity", &CPostFX::BloomIntensity);
+	ReadIniIfExists("ModernPostFX", "BloomThreshold", &CPostFX::BloomThreshold);
+	ReadIniIfExists("ModernPostFX", "Contrast", &CPostFX::Contrast);
+	ReadIniIfExists("ModernPostFX", "Vibrance", &CPostFX::Vibrance);
+	ReadIniIfExists("ModernPostFX", "Vignette", &CPostFX::Vignette);
+#endif
 #ifdef EXTENDED_PIPELINES
 	ReadIniIfExists("CustomPipesValues", "NeoVehicleShininess", &CustomPipes::VehicleShininess);
 	ReadIniIfExists("CustomPipesValues", "NeoVehicleSpecularity", &CustomPipes::VehicleSpecularity);
@@ -609,6 +621,18 @@ void SaveINISettings()
 
 #ifdef EXTENDED_COLOURFILTER
 	StoreIni("CustomPipesValues", "PostFXIntensity", CPostFX::Intensity);
+#endif
+#ifdef MODERN_POSTFX
+#ifndef CUSTOM_FRONTEND_OPTIONS
+	StoreIni("ModernPostFX", "Preset", CPostFX::ModernFXPreset);
+#endif
+	StoreIni("ModernPostFX", "FXAA", CPostFX::FxaaOn);
+	StoreIni("ModernPostFX", "Sharpen", CPostFX::Sharpen);
+	StoreIni("ModernPostFX", "BloomIntensity", CPostFX::BloomIntensity);
+	StoreIni("ModernPostFX", "BloomThreshold", CPostFX::BloomThreshold);
+	StoreIni("ModernPostFX", "Contrast", CPostFX::Contrast);
+	StoreIni("ModernPostFX", "Vibrance", CPostFX::Vibrance);
+	StoreIni("ModernPostFX", "Vignette", CPostFX::Vignette);
 #endif
 #ifdef EXTENDED_PIPELINES
 	StoreIni("CustomPipesValues", "NeoVehicleShininess", CustomPipes::VehicleShininess);
@@ -1032,6 +1056,18 @@ extern bool gbRenderWorld2;
 		DebugMenuAddVar("Render", "Intensity", &CPostFX::Intensity, nil, 0.05f, 0, 10.0f);
 		DebugMenuAddVarBool8("Render", "Blur", &CPostFX::BlurOn, nil);
 		DebugMenuAddVarBool8("Render", "Motion Blur", &CPostFX::MotionBlurOn, nil);
+#endif
+#ifdef MODERN_POSTFX
+		static const char *modernfxnames[] = { "Off", "Subtle", "Vivid", "Custom" };
+		e = DebugMenuAddVar("Render|Modern PostFX", "Preset", &CPostFX::ModernFXPreset, nil, 1, CPostFX::MODERNFX_OFF, CPostFX::MODERNFX_CUSTOM, modernfxnames);
+		DebugMenuEntrySetWrap(e, true);
+		DebugMenuAddVarBool8("Render|Modern PostFX", "FXAA", &CPostFX::FxaaOn, nil);
+		DebugMenuAddVar("Render|Modern PostFX", "Custom: Sharpen", &CPostFX::Sharpen, nil, 0.05f, 0.0f, 1.0f);
+		DebugMenuAddVar("Render|Modern PostFX", "Custom: Bloom Intensity", &CPostFX::BloomIntensity, nil, 0.05f, 0.0f, 1.0f);
+		DebugMenuAddVar("Render|Modern PostFX", "Custom: Bloom Threshold", &CPostFX::BloomThreshold, nil, 0.05f, 0.0f, 1.0f);
+		DebugMenuAddVar("Render|Modern PostFX", "Custom: Contrast", &CPostFX::Contrast, nil, 0.05f, -1.0f, 1.0f);
+		DebugMenuAddVar("Render|Modern PostFX", "Custom: Vibrance", &CPostFX::Vibrance, nil, 0.05f, -1.0f, 1.0f);
+		DebugMenuAddVar("Render|Modern PostFX", "Custom: Vignette", &CPostFX::Vignette, nil, 0.05f, 0.0f, 1.0f);
 #endif
 		DebugMenuAddVar("Render", "Drunkness", &CMBlur::Drunkness, nil, 0.05f, 0, 1.0f);
 #ifndef MASTER

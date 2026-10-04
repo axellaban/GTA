@@ -84,6 +84,12 @@ endif()
 
 target_compile_definitions(${EXECUTABLE} PRIVATE )
 
+# skel/glfw/glfw.cpp reads keyboard input from X11 directly on Linux/BSD
+if(LIBRW_PLATFORM_GL3 AND UNIX AND NOT APPLE)
+    find_package(X11 REQUIRED)
+    target_link_libraries(${EXECUTABLE} PRIVATE X11::X11)
+endif()
+
 option(${PROJECT}_WITH_SANITIZERS "Use UB sanitizers (better crash log)" OFF)
 option(${PROJECT}_WITH_ASAN "Use Address sanitizer (better crash log)" OFF)
 

@@ -281,6 +281,7 @@ enum Config {
 //#define USE_TEXTURE_POOL
 #ifdef LIBRW
 #define EXTENDED_COLOURFILTER		// more options for colour filter (replaces mblur)
+#define MODERN_POSTFX			// FXAA, bloom, sharpening and colour grading (needs EXTENDED_COLOURFILTER)
 #define EXTENDED_PIPELINES		// custom render pipelines (includes Neo)
 #define SCREEN_DROPLETS			// neo water droplets
 #define NEW_RENDERER		// leeds-like world rendering, needs librw
@@ -290,6 +291,7 @@ enum Config {
 
 #ifndef EXTENDED_COLOURFILTER
 #undef SCREEN_DROPLETS		// we need the backbuffer for this effect
+#undef MODERN_POSTFX		// same here
 #endif
 
 // Water & Particle
@@ -463,6 +465,7 @@ static_assert(false, "SUPPORT_XBOX_SCRIPT and SUPPORT_MOBILE_SCRIPT are mutually
 #undef DISABLE_VSYNC_ON_TEXTURE_CONVERSION
 
 #undef FIX_SPRITES
+#undef MODERN_POSTFX
 
 #define PC_WATER
 #undef WATER_CHEATS

@@ -77,6 +77,12 @@
 	#define POSTFX_SELECTORS
 #endif	
 
+#ifdef MODERN_POSTFX
+	#define MODERNFX_SELECTOR MENUACTION_CFO_SELECT, "FED_MPF", { new CCFOSelect(&CPostFX::ModernFXPreset, "ModernPostFX", "Preset", modernFXNames, ARRAY_SIZE(modernFXNames), false) }, 0, 0, MENUALIGN_LEFT,
+#else
+	#define MODERNFX_SELECTOR
+#endif
+
 #ifdef INVERT_LOOK_FOR_PAD
 	#define INVERT_PAD_SELECTOR MENUACTION_CFO_SELECT, "FEC_ILU", { new CCFOSelect((int8*)&CPad::bInvertLook4Pad, "Controller", "InvertPad", off_on, 2, false) }, 0, 0, MENUALIGN_LEFT,
 #else
@@ -91,6 +97,9 @@
 
 const char *filterNames[] = { "FEM_NON", "FEM_SIM", "FEM_NRM", "FEM_MOB" };
 const char *off_on[] = { "FEM_OFF", "FEM_ON" };
+#ifdef MODERN_POSTFX
+const char *modernFXNames[] = { "FEM_OFF", "FED_MPS", "FED_MPV", "FED_MPC" };
+#endif
 
 void RestoreDefGraphics(int8 action) {
 	if (action != FEOPTION_ACTION_SELECT)
@@ -121,6 +130,9 @@ void RestoreDefGraphics(int8 action) {
 		FrontEndMenuManager.m_PrefsUseWideScreen = false;
 		FrontEndMenuManager.m_nDisplayVideoMode = FrontEndMenuManager.m_nPrefsVideoMode;
 		CMBlur::BlurOn = false;
+	#ifdef MODERN_POSTFX
+		CPostFX::ModernFXPreset = CPostFX::MODERNFX_SUBTLE;
+	#endif
 		FrontEndMenuManager.SaveSettings();
 	#endif
 }
@@ -413,6 +425,7 @@ CMenuScreenCustom aScreens[] = {
 		CUTSCENE_BORDERS_TOGGLE
 		FREE_CAM_TOGGLE
 		POSTFX_SELECTORS
+		MODERNFX_SELECTOR
 		// re3.cpp inserts here pipeline selectors if neo/neo.txd exists and EXTENDED_PIPELINES defined
 		MENUACTION_RESTOREDEF,	"FET_DEF", {nil, SAVESLOT_NONE, MENUPAGE_DISPLAY_SETTINGS}, 320, 0, MENUALIGN_CENTER,
 		MENUACTION_GOBACK,		"FEDS_TB", {nil, SAVESLOT_NONE, MENUPAGE_NONE}, 320, 0, MENUALIGN_CENTER,
@@ -733,6 +746,7 @@ CMenuScreenCustom aScreens[] = {
 		DUALPASS_SELECTOR
 #ifdef EXTENDED_COLOURFILTER
 		POSTFX_SELECTORS
+		MODERNFX_SELECTOR
 #elif defined LEGACY_MENU_OPTIONS
 		MENUACTION_TRAILS,		"FED_TRA", { nil, SAVESLOT_NONE, MENUPAGE_GRAPHICS_SETTINGS }, 0, 0, MENUALIGN_LEFT,
 #endif

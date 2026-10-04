@@ -28,6 +28,8 @@ x86/
 bld/
 [Bb]in/
 [Oo]bj/
+# precompiled shaders are part of the source
+!src/extras/shaders/obj/
 [Ll]og/
 [Bb]uild/
 

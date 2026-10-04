@@ -1,0 +1,61 @@
+const char *modernGrade_frag_src =
+"uniform sampler2D tex0;\n"
+"uniform vec4 u_texel;	// xy: size of one source texel, z: screen aspect ratio\n"
+"uniform vec4 u_bounds;	// valid source texcoords: xy min, zw max\n"
+"uniform vec4 u_screenScale;	// xy: maps v_tex0 to 0..1 over the visible screen\n"
+"uniform vec4 u_gradeParams;	// x: sharpen, y: contrast, z: vibrance, w: vignette\n"
+
+"FSIN vec4 v_color;\n"
+"FSIN vec2 v_tex0;\n"
+"FSIN float v_fog;\n"
+
+"vec3\n"
+"Fetch(vec2 uv)\n"
+"{\n"
+"	return texture(tex0, clamp(uv, u_bounds.xy, u_bounds.zw)).rgb;\n"
+"}\n"
+
+"void\n"
+"main(void)\n"
+"{\n"
+"	vec2 uv = vec2(v_tex0.x, 1.0-v_tex0.y);\n"
+"	vec2 px = u_texel.xy;\n"
+"	float sharpen = u_gradeParams.x;\n"
+"	float contrast = u_gradeParams.y;\n"
+"	float vibrance = u_gradeParams.z;\n"
+"	float vignette = u_gradeParams.w;\n"
+
+"	// contrast adaptive sharpening: sharpen less where the neighbourhood\n"
+"	// already has strong contrast so edges don't ring\n"
+"	vec3 c = Fetch(uv);\n"
+"	vec3 n = Fetch(uv + vec2(0.0, -px.y));\n"
+"	vec3 s = Fetch(uv + vec2(0.0,  px.y));\n"
+"	vec3 e = Fetch(uv + vec2( px.x, 0.0));\n"
+"	vec3 w = Fetch(uv + vec2(-px.x, 0.0));\n"
+"	vec3 mn = min(c, min(min(n, s), min(e, w)));\n"
+"	vec3 mx = max(c, max(max(n, s), max(e, w)));\n"
+"	vec3 amp = sqrt(clamp(min(mn, 1.0 - mx) / max(mx, vec3(0.0001)), 0.0, 1.0));\n"
+"	vec3 wgt = -amp * (sharpen * 0.2);\n"
+"	c = clamp((c + (n + s + e + w)*wgt) / (1.0 + 4.0*wgt), 0.0, 1.0);\n"
+
+"	// filmic S-curve, keeps black and white where they are\n"
+"	c = mix(c, c*c*(3.0 - 2.0*c), contrast);\n"
+
+"	// vibrance: saturate dull colours more than already saturated ones\n"
+"	float luma = dot(c, vec3(0.2126, 0.7152, 0.0722));\n"
+"	float sat = max(c.r, max(c.g, c.b)) - min(c.r, min(c.g, c.b));\n"
+"	c = clamp(mix(vec3(luma), c, 1.0 + vibrance*(1.0 - sat)), 0.0, 1.0);\n"
+
+"	// vignette, 1.0 in the corners regardless of aspect ratio\n"
+"	vec2 sc = v_tex0*u_screenScale.xy - 0.5;\n"
+"	sc.x *= u_texel.z;\n"
+"	float dist = length(sc) / length(vec2(0.5*u_texel.z, 0.5));\n"
+"	c *= 1.0 - vignette*smoothstep(0.45, 1.0, dist);\n"
+
+"	vec4 color;\n"
+"	color.rgb = c;\n"
+"	color.a = 1.0;\n"
+
+"	FRAGCOLOR(color);\n"
+"}\n"
+;

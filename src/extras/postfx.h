@@ -41,6 +41,26 @@ public:
 	static bool NeedFrontBuffer(int32 type);
 	static void GetBackBuffer(RwCamera *cam);
 	static bool UseBlurColours(void) { return EffectSwitch != POSTFX_SIMPLE; }
+
+#ifdef MODERN_POSTFX
+	// FXAA, bloom, sharpening and colour grading on top of the original look
+	enum {
+		MODERNFX_OFF,
+		MODERNFX_SUBTLE,
+		MODERNFX_VIVID,
+		MODERNFX_CUSTOM	// uses the values below, set from reVC.ini or the debug menu
+	};
+	static int8 ModernFXPreset;
+	static bool FxaaOn;
+	static float Sharpen;
+	static float BloomIntensity;
+	static float BloomThreshold;
+	static float Contrast;
+	static float Vibrance;
+	static float Vignette;
+
+	static void RenderModern(RwCamera *cam);
+#endif
 };
 
 #endif

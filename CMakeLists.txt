@@ -34,6 +34,8 @@ if(${PROJECT}_VENDORED_LIBRW)
 else()
     find_package(librw REQUIRED)
 endif()
+# librw only sets LIBRW_PLATFORM_<platform> in its own directory scope
+set("LIBRW_PLATFORM_${LIBRW_PLATFORM}" ON)
 add_subdirectory(src)
 
 if(${PROJECT}_INSTALL)

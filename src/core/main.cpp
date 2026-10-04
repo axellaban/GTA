@@ -1627,6 +1627,10 @@ Idle(void *arg)
 		TheCamera.RenderMotionBlur();
 		tbEndTimer("RenderMotionBlur");
 
+#ifdef MODERN_POSTFX
+		CPostFX::RenderModern(Scene.camera);
+#endif
+
 		tbStartTimer(0, "Render2dStuff");
 		Render2dStuff();
 		tbEndTimer("Render2dStuff");
