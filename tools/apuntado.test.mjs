@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Input } from '../src/input.js';
-import { canAim, updateAiming, updateAimHud, shotSpread } from '../src/aim.js';
+import * as THREE from 'three';
+import { canAim, updateAiming, updateAimHud, shotSpread, FLY_AIM, flyAimDir } from '../src/aim.js';
 class El extends EventTarget {
   constructor(btn){super();this.dataset={btn};this.style={};this.classList={add(){},remove(){},toggle(){}};this.tagName='BUTTON'}
   closest(){return this}
@@ -56,6 +57,22 @@ test('mira sólo con arma y al apuntar; no en auto, durante diálogo, muerte o c
   }
   updateAimHud(f.p,gun,{crosshair,button},true);assert.equal(crosshair.hidden,true);assert.equal(button.hidden,true);
   updateAimHud(f.p,melee,{crosshair,button});assert.equal(crosshair.hidden,true);
+});
+test('volando (helicóptero o plato) la mira va arriba de la nave, como en los GTA, y vuelve al centro al bajar',()=>{
+  const f=fixture();
+  const crosshair={style:{left:'',top:''}},hitmark={style:{left:'',top:''}},button={setAttribute(){},classList:{toggle(){}}};
+  updateAimHud({...f.p,ufo:{}},melee,{crosshair,button,hitmark});
+  assert.equal(crosshair.hidden,false);assert.equal(crosshair.style.top,`${FLY_AIM.y*100}%`);assert.equal(hitmark.style.top,crosshair.style.top);
+  assert.ok(FLY_AIM.y<0.45,'más arriba que el centro');
+  updateAimHud(f.p,melee,{crosshair,button,hitmark});
+  assert.equal(crosshair.style.top,'');assert.equal(hitmark.style.left,'');
+});
+test('el tiro en vuelo sale por el punto de la mira, no por el centro',()=>{
+  const cam=new THREE.PerspectiveCamera(62,16/9,0.1,1000);cam.position.set(0,10,20);cam.lookAt(0,0,0);cam.updateMatrixWorld();
+  const d=flyAimDir(cam,new THREE.Vector3());const c=cam.getWorldDirection(new THREE.Vector3());
+  assert.ok(Math.abs(d.length()-1)<1e-6);assert.ok(d.y>c.y,'apunta más arriba que el centro de la pantalla');
+  const p=cam.position.clone().addScaledVector(d,10).project(cam);
+  assert.ok(Math.abs(p.x-(FLY_AIM.x*2-1))<1e-4&&Math.abs(p.y-(1-FLY_AIM.y*2))<1e-4,'pasa por la mira');
 });
 test('apuntar reduce dispersión; caminar rápido sigue empeorando la precisión',()=>{
   const p={speed:0,aiming:false};const hip=shotSpread(p,gun);p.aiming=true;assert.equal(shotSpread(p,gun),hip/2);

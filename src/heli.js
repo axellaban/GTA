@@ -9,6 +9,8 @@ import { FastBoxes } from './builder.js';
 import { pointInRing, outward } from './city.js';
 import { roofWalkway, walkwayHeight } from './physics.js';
 import { textTexture } from './textures.js';
+import { WEAPONS } from './weapons.js';
+import { flyAimDir } from './aim.js';
 
 const STEEL = 0x3a4046;
 const STEP = 0x5b6167;
@@ -236,9 +238,15 @@ function heliModel() {
   return { g, rotor, tail };
 }
 
+const aimDir = new THREE.Vector3();
+const shotDir = new THREE.Vector3();
+
 export class Heli {
   constructor(scene, tower) {
     this.scene = scene;
+    // (el HUD lo distingue del plato volador: otro botón de disparo y sin rayo tractor)
+    this.isHeli = true;
+    this.gunCd = 0;
     const m = heliModel();
     this.g = m.g;
     this.rotor = m.rotor;
@@ -285,7 +293,7 @@ export class Heli {
     P.mvx = P.mvz = 0;
     this.vx = this.vy = this.vz = 0;
     world.combat.syncHand(P);
-    world.hud.flash('¡TE ROBASTE UN HELICÓPTERO!', matchMedia('(pointer: coarse)').matches ? 'Joystick: volar · Subir/Bajar · F (cuando tocás el piso) para bajarte' : 'WASD volar · Espacio sube · Shift baja · F para bajarte cuando tocás el piso', 'ok', 4);
+    world.hud.flash('¡TE ROBASTE UN HELICÓPTERO!', matchMedia('(pointer: coarse)').matches ? 'Joystick: volar · Subir/Bajar · Disparar · F (cuando tocás el piso) para bajarte' : 'WASD volar · Espacio sube · Shift baja · Clic: ametralladora · F para bajarte cuando tocás el piso', 'ok', 4);
     if (!this.once) {
       this.once = true;
       P.addRespeto(3);
@@ -338,6 +346,9 @@ export class Heli {
     P.y = this.y - 1.2;
     P.speed = sp;
     P.heading = this.yaw;
+    // ametralladora de la trompa, como los helicópteros armados de los GTA: tira adonde marca la mira
+    this.gunCd -= dt;
+    if (input.down('mouse0', 'attack') && this.gunCd <= 0) this.fire(world);
     const low = this.y - floor < 0.5;
     world.hud.prompt('F', low ? 'Bajarse del helicóptero' : 'Bajá hasta el piso para bajarte');
     if (input.hit('f')) {
@@ -345,6 +356,28 @@ export class Heli {
       if (low) this.leave(world);
       else world.hud.toast('Bajá más (Shift) para bajarte', 1.6);
     }
+  }
+
+  fire(world) {
+    const { camera, combat, player: P } = world;
+    const w = WEAPONS.ametralladora;
+    this.gunCd = w.rate * 1.4;
+    // adónde apunta la mira (arriba de la nave) y de ahí, la bala desde abajo de la trompa
+    const aim = combat.trace(world, camera.position, flyAimDir(camera, aimDir), 240, P);
+    const fx = Math.sin(this.yaw);
+    const fz = Math.cos(this.yaw);
+    const o = { x: this.x + fx * 2.1, y: this.y - 0.55, z: this.z + fz * 2.1 };
+    shotDir.set(aim.x - o.x, aim.y - o.y, aim.z - o.z).normalize();
+    shotDir.x += (Math.random() - 0.5) * 0.02;
+    shotDir.y += (Math.random() - 0.5) * 0.012;
+    shotDir.z += (Math.random() - 0.5) * 0.02;
+    shotDir.normalize();
+    combat.shot(world, o, shotDir, { ...w, range: 240 }, P, w.dmg);
+    world.fx.muzzle(o.x, o.y, o.z, fx, fz, true);
+    combat.audio.disparo(w.sound, 0.9);
+    world.fx.shake += 0.04;
+    world.npcs.panic(o.x, o.z, 60, P);
+    world.police.crime('tiros', o.x, o.z);
   }
 
   leave(world) {

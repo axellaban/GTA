@@ -189,13 +189,18 @@ export class Hud {
     $('w-ammo').textContent = w.gun ? (player.reloadT > 0 ? 'recargando' : `${a?.mag ?? 0} / ${a?.res ?? 0}`) : w.throw ? `${a?.mag ?? 0}` : '';
     // controles táctiles: a pie, en auto o en moto; el botón de ataque dice qué hace
     const v = player.vehicle;
-    const mode = player.ufo ? 'ufo' : v ? (v.kind === 'moto' ? 'car moto' : 'car') : canAim(player, w, !!this.dialog) ? 'foot armed' : 'foot';
+    const heli = !!player.ufo?.isHeli;
+    const mode = player.ufo ? (heli ? 'ufo heli' : 'ufo') : v ? (v.kind === 'moto' ? 'car moto' : 'car') : canAim(player, w, !!this.dialog) ? 'foot armed' : 'foot';
     const touch = $('touch');
     if (touch.className !== mode) touch.className = mode;
+    // el helicóptero tira con la ametralladora; el plato, con el rayo
+    const laser = $('btn-laser');
+    const shoot = heli ? 'Disparar' : 'Rayo';
+    if (laser.textContent !== shoot) laser.textContent = shoot;
     const verb = w.gun ? 'Disparar' : w.throw ? 'Tirar' : w.verb || 'Pegar';
     const atk = $('btn-attack');
     if (atk.textContent !== verb) atk.textContent = verb;
-    updateAimHud(player, w, { crosshair: $('crosshair'), button: $('btn-aim') }, !!this.dialog);
+    updateAimHud(player, w, { crosshair: $('crosshair'), button: $('btn-aim'), hitmark: $('hitmark') }, !!this.dialog);
     $('hitmark').hidden = !(player.hitMarker > 0);
     if (this.radioT > 0) {
       this.radioT -= dt;

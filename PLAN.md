@@ -754,6 +754,15 @@ en weapons.js): 1 piñas, 2 motosierra/bastón/palo, 3 revólver/pistola, 4 tumb
 ninguna de ese casillero lo avisa. Q recorre en ese mismo orden. En la compu el recuadro del arma muestra el
 número ("8 · Bazuca"). Prueba: `teclas2.mjs`.
 
+**R42 — ✅ Mira en vuelo a lo GTA y ametralladora del helicóptero (2026-10-05)** (pedido del dueño: "la mira
+en helicóptero/plato volador sigue estando en el centro, la idea es que sea como el GTA original"). En vuelo la
+cámara mira a la nave, así que la mira del centro quedaba arriba de ella. `src/aim.js`: `FLY_AIM` (x 0,5, y 0,36
+de la pantalla) y `flyAimDir(camera)`, la dirección que pasa por ese punto; `updateAimHud` mueve `#crosshair` y
+`#hitmark` ahí mientras `player.ufo` (vuelve al centro al bajar). El rayo del plato (`Ufo.shoot`) sale por la mira.
+El helicóptero de la torre (`Heli.fire`) tira con la ametralladora desde la trompa hacia donde marca la mira
+(clic o el botón Disparar en el celu; el HUD lo distingue con `isHeli` y oculta el Tractor). Pruebas en
+`tools/apuntado.test.mjs`.
+
 **R41 — ✅ Mira independiente, autos sólidos y vuelcos (2026-10-04, Codex)**:
 Entrega: «Apuntado independiente y autos sólidos con vuelcos».
 - `src/aim.js`: mira sólo al apuntar, clic derecho mantenido en compu y botón Apuntar con un toque en

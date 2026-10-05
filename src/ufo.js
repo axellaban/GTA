@@ -6,6 +6,7 @@ import { makeHuman } from './human.js';
 import { Npc } from './npcs.js';
 import { R } from './rng.js';
 import { TOUCH } from './input.js';
+import { flyAimDir } from './aim.js';
 
 const RADIUS = 4.3;
 const MAX_SPEED = 32;
@@ -606,12 +607,11 @@ export class Ufo {
     world.combat.syncHand(P);
     world.hud.prompt(null);
   }
-  // rayo: va adonde apunta la cámara y hace volar lo que toca
+  // rayo: va adonde marca la mira (arriba de la nave) y hace volar lo que toca
   shoot(world) {
     const { camera, combat, player: P } = world;
     this.laserT = 0.4;
-    const dir = new THREE.Vector3();
-    camera.getWorldDirection(dir);
+    const dir = flyAimDir(camera, new THREE.Vector3());
     const hit = combat.trace(world, camera.position, dir, 260, P);
     // ¿pasó cerca del helicóptero de la cana (y antes de pegar en otra cosa)?
     const h = world.police.heli;

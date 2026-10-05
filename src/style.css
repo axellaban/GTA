@@ -1254,7 +1254,8 @@ body {
   #touch:not(.ufo) .on-ufo,
   #touch.ufo .on-foot,
   #touch.ufo .on-car,
-  #touch.ufo .on-moto {
+  #touch.ufo .on-moto,
+  #touch.heli #btn-beam {
     display: none;
   }
   /* plato volador: rayo grande abajo, tractor al lado y subir/bajar en columna */
