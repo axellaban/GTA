@@ -15,6 +15,7 @@ from PIL import Image, ImageFilter
 
 from cast import CAST
 from paint import classify, pad, repaint
+from coverage import under_cloth
 from skin import cavity, scalp
 from skin import photo as photo_bake
 from skin import beard as beard_paint
@@ -523,16 +524,7 @@ def build(name, spec):
         if clo['name'].startswith(('shoes', 'fedora')):
             continue
         G = fit(clo, V)
-        NG = np.zeros_like(G)
-        for f in clo['F']:
-            n = np.cross(G[f[1]] - G[f[0]], G[f[-1]] - G[f[0]])
-            NG[f] += n
-        NG /= np.linalg.norm(NG, axis=1, keepdims=True) + 1e-9
-        for i0 in range(0, len(P), 256):
-            d = np.linalg.norm(P[i0:i0 + 256, None, :] - G[None, :, :], axis=2)
-            j = d.argmin(1)
-            under = ((P[i0:i0 + 256] - G[j]) * NG[j]).sum(1) < 0.03
-            hid[i0:i0 + 256] |= (d[np.arange(len(j)), j] < 0.18) & under & ~neck[i0:i0 + 256]
+        hid |= under_cloth(P, G, clo['F'], neck)
     keep = np.array([not (all(hid[v] for v in f) if any(neck[v] for v in f) else any(hid[v] for v in f)) for f in px['F']])
     pos, uv, wts, tris = part_mesh(px, P, clo_weights(px, W), keep)
     # la cara va a su zona ampliada del atlas; el resto del cuerpo a la de piel

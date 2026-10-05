@@ -5,6 +5,10 @@ import D from './data/temperley.json';
 import REL from './data/relevamiento.json';
 import OSM from './data/osm.json';
 import PLACES from './data/places.json';
+
+// Edificio policial relevado en OSM; numeración corregida por el dueño.
+export const COMISARIA = OSM.pois.find(p => p.n === 'Comisaría Lomas de Zamora 3°');
+COMISARIA.a = 'Santa María de Oro 366';
 import { LANES as BAJO_LANES, W as BAJO_W, NAME as BAJO_NAME, SEGS as BAJO_SEGS, laneDist, depthAt, sOf } from './bajo-geo.js';
 
 // Lo cargado a mano en /relevamiento.html (exportado a src/data/relevamiento.json) pisa lo que trae

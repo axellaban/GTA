@@ -1032,3 +1032,14 @@ Lo que espera al dueño: relevamiento cargado (JSON) (ver §7).
    poly.pizza (403; su API pide clave) ni overpass-api.de.
 2. ✅ Dirección del gym: Rivadavia 321 (sacada de sus redes oficiales).
 3. Cuando cargue el relevamiento, subir el JSON exportado (o pasarlo) para integrarlo.
+
+
+### Correcciones de Ciro y comisaría · 2026-10-05
+- Ciro: piel clara y musculatura reforzada en pecho, dorsales, hombros y brazos; cuerpo sin remera completo; el generador ya no oculta piel por vértices de ropa eliminada.
+  Mantiene sus 3,5 m, 700 HP y ataques. GLB: 4884 triángulos cerca / 1115 lejos, 315 KB.
+- Caídas del rig ajustadas a la cadera real y a la escala; impactos y apuntado al torso usan la altura
+  real, también durante la carga inicial. Ciro no entra aleatoriamente en la pose de teléfono.
+- Comisaría: el punto de salida, radar y patrulleros usan la vereda del edificio OSM en Santa María
+  de Oro 366 (pedido del dueño), en lugar de una avenida elegida al azar. Huella real conservada.
+- Validación: regresión de geometría y poses con los GLB reales, cobertura de ropa y apuntado;
+  revisión visual de pie y caído. Commit: «Corregir el cuerpo de Ciro y ubicar la comisaría real».

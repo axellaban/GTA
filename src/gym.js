@@ -267,11 +267,11 @@ export class Gym {
   spawnCiro(s) {
     const p = this.world(s.lx, s.lz);
     const look = { ...randomCivilian(),
-      ...CLEAN, female: false, muscle: true, top: 'none', bottom: 'shorts', shorts: 0x151515, pants: 0x151515, hairStyle: 'buzz', hair: 0x1a1410, skin: 0xc68a5e, beard: true, stubble: true, glasses: false, lipstick: false, scale: 2 };
+      ...CLEAN, female: false, muscle: true, top: 'none', bottom: 'shorts', shorts: 0x151515, pants: 0x151515, hairStyle: 'buzz', hair: 0x1a1410, skin: 0xe8b99c, beard: true, stubble: true, glasses: false, lipstick: false, scale: 2 };
     // con modelo de artista si ya cargó (si no, el nuestro y después upgrade() lo cambia)
     const n = this.npcs.spawnWalker({ x: p.x, z: p.z, heading: this.h }, null, 0, 0, look, makeStar('ciro'));
     if (!n) return;
-    Object.assign(n, { vmax: 0, mission: true, brave: 1, hp: 700, r: 0.75, reach: 2.3, chaseV: 4.8, dmgMul: 2.6, knocks: true, ciro: true, killMsg: 'Te fajó Ciro, el profe del gym', t: R.range(0, 10) });
+    Object.assign(n, { vmax: 0, mission: true, phone: false, brave: 1, hp: 700, r: 0.75, bodyHeight: 3.5, reach: 2.3, chaseV: 4.8, dmgMul: 2.6, knocks: true, ciro: true, killMsg: 'Te fajó Ciro, el profe del gym', t: R.range(0, 10) });
     s.n = n;
     s.home = p;
   }

@@ -7,6 +7,7 @@ import { R } from './rng.js';
 import { TOUCH } from './input.js';
 import { updateAiming, shotSpread } from './aim.js';
 import { allVehicles, sameVehicleLevel } from './vehicle-physics.js';
+import { npcBody } from './npc-body.js';
 
 // combo de piñas: directo de izquierda, cruzado de derecha, gancho, uppercut y patada (poses en
 // src/moves.js; el golpe cuenta cerca de la mitad, cuando el brazo llega estirado)
@@ -541,8 +542,9 @@ export class Combat {
     for (const n of world.npcs.list) {
       // a los chicos no les pegan las balas (pasan de largo)
       if (n === shooter || n.type === 'chico' || !near(n.x, n.z)) continue;
-      const h = n.down ? 0.45 : n.state === 'cower' || n.state === 'sit' ? 1.1 : 1.8;
-      test(n.x, n.z, n.down ? 0.6 : 0.36, n.y, n.y + h, 'npc', n);
+      const body = npcBody(n);
+      const y = n.y + (n.fly?.y ?? 0);
+      test(n.x, n.z, body.radius, y, y + body.height, 'npc', n);
     }
     for (const m of world.crime.motos) if (near(m.v.x, m.v.z)) test(m.v.x, m.v.z, 0.75, 0, 1.9, 'moto', m);
     for (const p of world.nafta?.pumps || []) if (!p.dead && near(p.x, p.z)) test(p.x, p.z, 0.45, 0, 2.1, 'pump', p);
@@ -576,7 +578,7 @@ export class Combat {
         best = { x, y, z };
       }
     };
-    for (const n of world.npcs.list) if (!n.down && n.type !== 'chico') consider(n.x, n.y + 1.25, n.z, n.state === 'fight' || n.type === 'cana' || n.type === 'zombie' || (n.type === 'banda' && n.gang?.war));
+    for (const n of world.npcs.list) if (!n.down && n.type !== 'chico') consider(n.x, n.y + (n.fly?.y ?? 0) + npcBody(n).aimHeight, n.z, n.state === 'fight' || n.type === 'cana' || n.type === 'zombie' || (n.type === 'banda' && n.gang?.war));
     for (const m of world.crime.motos) if (m.state !== 'down') consider(m.v.x, 1.2, m.v.z, true);
     // con la bazuca también los autos (al medio de la carrocería); los patrulleros primero
     if (cars) for (const v of this.vehicles(world)) if (!v.wreck && v !== P.vehicle && v.kind !== 'moto') consider(v.x, 0.75, v.z, !!v.police);

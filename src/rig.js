@@ -119,6 +119,10 @@ export function rigHuman(source, { height = 1.75, female = false } = {}) {
   const invRoot = root.getWorldQuaternion(new THREE.Quaternion()).invert();
   const wq = (o) => invRoot.clone().multiply(o.getWorldQuaternion(new THREE.Quaternion()));
   const wp = (o) => root.worldToLocal(o.getWorldPosition(new THREE.Vector3()));
+  // El giro al caer se hace alrededor de la cadera real. El fantasma mide 1,75 m:
+  // usar siempre su cadera de 0,95 m dejaba a Ciro (3,5 m) flotando sobre el piso.
+  const hipAnchor = wp(map.hips);
+  const motionScale = height / 1.75;
   const ours = new Map(Object.entries(map).map(([n, b]) => [b, n]));
   const A = {};
   for (const n of BONES) {
@@ -177,8 +181,11 @@ export function rigHuman(source, { height = 1.75, female = false } = {}) {
       else G[n].copy(bones[n].quaternion);
     }
     // la cadera arrastra el modelo entero (sentarse, caerse, colgarse)
-    _v.copy(bones.hips.position).applyQuaternion(G.root).add(bones.root.position);
-    shift.position.set(_v.x, _v.y - 0.95, _v.z);
+    _v.copy(bones.hips.position);
+    _v.y -= 0.95;
+    _v.multiplyScalar(motionScale).add(hipAnchor).applyQuaternion(G.root)
+      .addScaledVector(bones.root.position, motionScale).sub(hipAnchor);
+    shift.position.copy(_v);
     for (const t of list) {
       const pw = t.parent < 0 ? hipsParentW : list[t.parent].w;
       if (t.name) {
@@ -195,7 +202,7 @@ export function rigHuman(source, { height = 1.75, female = false } = {}) {
     }
   }
 
-  const h = { root, bones, phase: Math.random() * 10, geos: null, lod: 0, keep: true, female, rig: { apply, map, model } };
+  const h = { root, bones, height, phase: Math.random() * 10, geos: null, lod: 0, keep: true, female, rig: { apply, map, model } };
   // los de MakeHuman traen otra malla más liviana para de lejos ('lejos'): arranca escondida
   const far = model.getObjectByName('lejos');
   if (far) {

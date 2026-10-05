@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import './style.css';
 import { ATMO, LAMPS, NIGHT, buildLampMap } from './atmosphere.js';
 import { buildCity } from './city.js';
-import { makeGround, ROADS, project, STATION, cornerName, nearestStreetName, nearestRoad } from './map.js';
+import { makeGround, ROADS, project, STATION, COMISARIA, cornerName, nearestStreetName, nearestRoad } from './map.js';
 import { Input } from './input.js';
 import { beginVehicleFrame, resolveVehicleFrame } from './vehicle-physics.js';
 import { Audio } from './audio.js';
@@ -201,10 +201,16 @@ function spawnPoint() {
   const off = r.w / 2 + 1.6;
   return { x: p.x + (tx / l) * off, z: p.z + (tz / l) * off, face: Math.atan2(tx, tz) };
 }
-// la comisaría: sobre una avenida, a un par de cuadras
+// Salida sobre la vereda del edificio real de Santa María de Oro 366.
 function stationHouse() {
-  const c = city.curbSpots.find((c) => c.road.avenue && c.d > 180 && c.d < 280) ?? city.curbSpots[0];
-  return { x: c.x - Math.cos(c.heading) * 3, z: c.z + Math.sin(c.heading) * 3, face: c.heading + Math.PI / 2 };
+  const options = ROADS.filter(r => r.name === 'Fray Justo Santa María de Oro')
+    .map(r => ({ r, p: project(r.pts, r.cum, COMISARIA.x, COMISARIA.z) }))
+    .sort((a, b) => a.p.dist - b.p.dist);
+  const { r, p } = options[0];
+  const dx = COMISARIA.x - p.x, dz = COMISARIA.z - p.z;
+  const d = Math.hypot(dx, dz) || 1;
+  const off = r.w / 2 + 1.6;
+  return { x: p.x + dx / d * off, z: p.z + dz / d * off, face: Math.atan2(-dx, -dz) };
 }
 
 const audio = new Audio();
