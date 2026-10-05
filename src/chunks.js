@@ -140,7 +140,8 @@ export function chunkScene(scene, { cell = 200, instCell = 320, minTris = 15000 
   });
   let n = 0;
   for (const o of list) if (chunkMesh(o, cell)) n++;
-  for (const o of inst) if (chunkInstanced(o, instCell)) n++;
+  // (userData.cell: cuadrados más chicos para las cosas chicas y numerosas, así se apagan más cerca)
+  for (const o of inst) if (chunkInstanced(o, o.userData.cell ?? instCell)) n++;
   return n;
 }
 

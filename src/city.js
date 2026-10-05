@@ -32,6 +32,7 @@ import { VC, vcPalmSpots } from './vc.js';
 import { loadStationKit } from './anden-kit.js';
 import { StationFacade } from './estacion-kit.js';
 import { loadBlenderTrees } from './arboles-kit.js';
+import { useStreetKit } from './mobiliario-kit.js';
 import { swapGeometry, loadBlenderMeshes } from './blender.js';
 import { buildBajo, cutGround } from './bajonivel.js';
 const ni = (g) => (g.index ? g.toNonIndexed() : g);
@@ -832,18 +833,28 @@ function addBuildings(scene, atlas, colliders, rng, city) {
     city.neonMesh = neon;
     scene.add(neon);
   }
-  // tanques de agua
+  // tanques de agua: el tricapa negro casi siempre, alguno beige y los viejos de fibrocemento (cuando carga,
+  // el tanque y la base de Blender: src/mobiliario-kit.js)
   const ti = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.7, 0.7, 1.4, 12), new THREE.MeshLambertMaterial({ color: 0x1f2426 }), tanks.length);
   const bi = new THREE.InstancedMesh(new THREE.BoxGeometry(1.5, 0.5, 1.5), new THREE.MeshLambertMaterial({ color: 0x9e5a3c }), tanks.length);
   const m4 = new THREE.Matrix4();
+  const tankCol = [new THREE.Color(0x353a3e), new THREE.Color(0xe6dcc2), new THREE.Color(0xa9aaa4)];
   tanks.forEach(([x, y, z], i) => {
-    m4.makeTranslation(x, y + 1.2, z);
+    const h = Math.abs(Math.round(x * 7.1 + z * 3.3));
+    // girados al azar: el caño de bajada sale para cualquier lado
+    m4.makeRotationY((h % 628) / 100).setPosition(x, y + 1.2, z);
     ti.setMatrixAt(i, m4);
-    m4.makeTranslation(x, y + 0.25, z);
+    ti.setColorAt(i, tankCol[h % 10 < 7 ? 0 : h % 10 < 9 ? 1 : 2]);
+    m4.setPosition(x, y + 0.25, z);
     bi.setMatrixAt(i, m4);
   });
   ti.castShadow = true;
-  scene.add(...fixed(220, ti, bi));
+  ti.name = 'tanques';
+  // de a cuadrados de 120 m: así se dibujan solo los cercanos (son muchos)
+  ti.userData.cell = bi.userData.cell = 120;
+  scene.add(...fixed(170, ti), ...fixed(110, bi));
+  useStreetKit(ti, 'tanque', { white: true });
+  useStreetKit(bi, 'tanque_base', { white: true });
 }
 
 // ---------- Rejas ----------

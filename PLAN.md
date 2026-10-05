@@ -207,7 +207,11 @@ curvo, panel esmerilado, cartel de publicidad y banco de listones) y el contened
 hacia arriba, tapa abovedada, refuerzos, muñones, banda reflectiva y ruedas), con la sombra de contacto horneada:
 `public/models/street/mobiliario.glb`. `src/mobiliario-kit.js` cambia la geometría de las instancias de `props.js`
 (los refugios y contenedores, que eran cajas sueltas en una malla, ahora son instancias en el mismo marco). 610,
-500 y 496 triángulos: hay 106 semáforos y unos pocos refugios y contenedores.
+500 y 496 triángulos: hay 106 semáforos y unos pocos refugios y contenedores. También el tanque de agua de los
+techos (tricapa con nervadura, hombro redondeado y tapa; 118 triángulos) y su base (pilares de ladrillo, losita y
+caño de bajada con la llave de paso; 64): son 1.652, de color negro, beige o fibrocemento (`setColorAt` en
+`addBuildings`) y girados al azar. Para que no pesen se parten en cuadrados de 120 m (`userData.cell`, nuevo en
+`chunkScene`) y se dibujan hasta 170 m (la base hasta 110 m): todo el kit suma ~4 % de triángulos por cuadro.
 
 **Camino gráfico (decisión del dueño, 2026-10-04)**: el dueño ve el juego en ~3/10 (10/10 = Unreal Engine).
 Orden acordado: 1) ✅ modo Vice City, prendido por defecto (R8b); 2) 🔶 Blender + Meshy (R8c a R8h): personajes y edificios mejores y la luz

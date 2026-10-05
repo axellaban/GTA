@@ -11,6 +11,11 @@
 #               hacia -z.
 #   contenedor  contenedor de basura de la muni: cuerpo que se abre hacia arriba, tapa abovedada, refuerzos,
 #               muñones para el camión, banda reflectiva y cuatro ruedas. Origen en el piso, al medio.
+#   tanque      tanque de agua tricapa de los techos: nervaduras, hombro redondeado, tapa a rosca. Gris claro
+#               (el color de cada tanque lo pone el juego: negro, beige o fibrocemento). Origen en el centro,
+#               1,2 m arriba del techo (como el cilindro de antes).
+#   tanque_base la base: dos pilares de ladrillo con la losita arriba y el caño de bajada con la llave de paso.
+#               Origen 0,25 m arriba del techo.
 # Colores en los vértices con la sombra de contacto horneada (Cycles); el material del juego queda blanco.
 import math
 import os
@@ -120,7 +125,7 @@ class Kit:
         bmesh.ops.recalc_face_normals(tmp, faces=tmp.faces[:])
         self._merge(tmp, col)
 
-    def lathe(self, center, prof, sides, col, smooth=True):
+    def lathe(self, center, prof, sides, col, smooth=True, bottom=True):
         # sólido de revolución alrededor del eje vertical; prof: [(radio, y)] de abajo para arriba
         tmp = bmesh.new()
         cx, cy, cz = center
@@ -129,7 +134,8 @@ class Kit:
             for j in range(sides):
                 k = (j + 1) % sides
                 tmp.faces.new((a[j], a[k], b[k], b[j]))
-        tmp.faces.new(list(reversed(rings[0])))
+        if bottom:
+            tmp.faces.new(list(reversed(rings[0])))
         tmp.faces.new(rings[-1])
         bmesh.ops.recalc_face_normals(tmp, faces=tmp.faces[:])
         self._merge(tmp, col, smooth)
@@ -260,6 +266,31 @@ def contenedor():
     return k.done()
 
 
+# ---------------- tanque de agua ----------------
+def tanque():
+    k = Kit('tanque')
+    # perfil (radio, y) desde el centro del tanque: apoya en -0,7 (arriba de la base) y la tapa llega a 0,74
+    # (8 lados: hay 1.652 tanques; con las normales suaves no se notan las caras)
+    prof = [(0.52, -0.7), (0.66, -0.56), (0.66, -0.1), (0.69, -0.04), (0.66, 0.02), (0.66, 0.38), (0.5, 0.6),
+            (0.3, 0.71)]
+    k.lathe((0, 0, 0), prof, 8, 0xd9d9d9, bottom=False)
+    return k.done()
+
+
+def tanque_base():
+    k = Kit('tanque_base')
+    BRICK = 0x9e5a3c
+    # dos pilares de ladrillo y la losita (la base ocupa de -0,25 a 0,25)
+    for x in (-0.5, 0.5):
+        k.box((x, -0.06, 0), (0.28, 0.38, 1.2), BRICK)
+    k.box((0, 0.19, 0), (1.45, 0.12, 1.45), 0xa6a29a)
+    # caño de bajada: sale de abajo del tanque, baja al techo y dobla; llave de paso con manija roja
+    P = 0x5b8a5e
+    k.tube([(0.2, 0.25, 0.45), (0.2, -0.2, 0.76), (0.2, -0.24, 1.15)], 0.03, 4, P, caps=False)
+    k.box((0.2, 0.0, 0.76), (0.16, 0.06, 0.06), 0xc0392b)
+    return k.done()
+
+
 def bake(ob):
     scene.render.engine = 'CYCLES'
     scene.cycles.device = 'CPU'
@@ -289,12 +320,15 @@ def bake(ob):
 
 
 os.makedirs(os.path.dirname(GLB), exist_ok=True)
-parts = [semaforo(), refugio(), contenedor()]
+parts = [semaforo(), refugio(), contenedor(), tanque(), tanque_base()]
 bpy.ops.mesh.primitive_plane_add(size=30)
 floor = bpy.context.active_object
+# dónde está el piso de cada pieza (el tanque apoya en su base y la base en el techo)
+FLOOR = {'tanque': -0.7, 'tanque_base': -0.25}
 for ob in parts:
     for o in parts:
         o.hide_render = o is not ob
+    floor.location.z = FLOOR.get(ob.name, 0.0)
     bake(ob)
 for o in parts:
     o.hide_render = False
