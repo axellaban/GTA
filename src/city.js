@@ -34,7 +34,7 @@ import { StationFacade } from './estacion-kit.js';
 import { HouseKit } from './casas-kit.js';
 import { OpeningKit, SHUTTERS } from './aberturas-kit.js';
 import { addChurchTowers } from './iglesia-kit.js';
-import { buildGableRoofs } from './techos-kit.js';
+import { buildGableRoofs, buildVaultRoofs } from './techos-kit.js';
 import { loadBlenderTrees } from './arboles-kit.js';
 import { useStreetKit } from './mobiliario-kit.js';
 import { swapGeometry, loadBlenderMeshes } from './blender.js';
@@ -500,6 +500,7 @@ function addBuildings(scene, atlas, colliders, rng, city) {
   const det = new FastBoxes();
   const awn = { pos: [], uv: [], idx: [] };
   const gables = [];
+  const vaults = [];
   const tanks = [];
   // carteles: nombres reales primero, después genéricos
   const real = [...new Set(D.buildings.filter((b) => (b.k === 'local' || b.k === 'escuela') && b.n).map((b) => b.n))];
@@ -713,7 +714,9 @@ function addBuildings(scene, atlas, colliders, rng, city) {
     }
     // (el mojinete con el sombreado de la pared, que oscurece un poco el revoque)
     if (pitched) gables.push({ ring, h, kind, color: (wallTint ? plaster.clone() : plaster.clone().multiplyScalar(shade * 0.9)) });
-    else if (kind !== 'estadio' && !b.extra && v % 20 < 11) {
+    // los galpones, con techo parabólico de chapa (src/techos-kit.js)
+    if (kind === 'galpon') vaults.push({ ring, h, color: plaster.clone().multiplyScalar(shade * 0.9) });
+    else if (kind !== 'estadio' && kind !== 'galpon' && !b.extra && v % 20 < 11) {
       let cx = 0;
       let cz = 0;
       for (const [x, z] of ring) {
@@ -796,6 +799,11 @@ function addBuildings(scene, atlas, colliders, rng, city) {
     for (const t of [map, normal]) t.repeat.set(1 / ROOF_M.tejas, 1 / ROOF_M.tejas);
     const roofs = buildGableRoofs(gables, new THREE.MeshLambertMaterial({ map, normalMap: normal }));
     scene.add(...roofs.meshes, ...fixed(150, ...roofs.pieces));
+  }
+  if (vaults.length) {
+    const chapa = roofTexture('chapa');
+    for (const t of [chapa.map, chapa.normal]) t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    scene.add(...buildVaultRoofs(vaults, chapa, ROOF_M.chapa));
   }
   if (awn.pos.length) {
     const ag = new THREE.BufferGeometry();

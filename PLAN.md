@@ -300,8 +300,14 @@ su dado de hormigón, con la ménsula (tubo y tirante), los aisladores y el braz
 `catenary` (`src/props.js`) ahora pone instancias giradas hacia la vía y suma el hilo portador un metro arriba del
 de contacto (las péndolas, líneas de un píxel, se veían como rayitas sueltas en el cielo: no van).
 
+**R8r — Galpones con techo parabólico (✅ 2026-10-05)**: `buildVaultRoofs` (`src/techos-kit.js`) les pone a los
+galpones rectangulares la bóveda de chapa acanalada (las canaletas de punta a punta de la curva) que arranca detrás
+del pretil, con los mojinetes curvos del color de la pared; los de más de 16 m de ancho llevan varias bóvedas una al
+lado de la otra. Solo 10 de los 134 galpones del mapa son rectángulos (el resto son polígonos de 10 a 31 lados: la
+bóveda del rectángulo que los encierra salía a la calle); pendiente: partirlos en rectángulos.
+
 **Camino gráfico (decisión del dueño, 2026-10-04)**: el dueño ve el juego en ~3/10 (10/10 = Unreal Engine).
-Orden acordado: 1) ✅ modo Vice City, prendido por defecto (R8b); 2) 🔶 Blender + Meshy (R8c a R8q): personajes y edificios mejores y la luz
+Orden acordado: 1) ✅ modo Vice City, prendido por defecto (R8b); 2) 🔶 Blender + Meshy (R8c a R8r): personajes y edificios mejores y la luz
 horneada en las texturas (sombras suaves y luz que rebota); sigue siendo web y anda en el celu; 3) recién
 después, evaluar Unreal con un prototipo chico (la estación y dos cuadras) en la Mac M5 de 24 GB del dueño.
 Unreal no se juega desde un link en el celu y hay que rehacer la jugabilidad. Las funciones de juego (piñas,

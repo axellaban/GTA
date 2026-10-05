@@ -179,3 +179,123 @@ export function buildGableRoofs(gables, tiles) {
     .catch((e) => console.warn('techos de Blender:', e.message));
   return { meshes: out, pieces: [ridgeMesh, boardMesh] };
 }
+
+// Galpones con techo parabólico de chapa (los de los talleres y depósitos del conurbano): la bóveda arranca
+// detrás del pretil de los costados largos y los mojinetes curvos van del color de la pared. La chapa
+// acanalada de siempre (roofTexture('chapa'): las ondas a lo largo de u), con las canaletas de punta a
+// punta de la curva. vaults: [{ ring, h, color }]; chapa: { map, normal } y M (metros por repetición).
+export function buildVaultRoofs(vaults, chapa, M) {
+  const sp = [];
+  const suv = [];
+  const fp = [];
+  const fc = [];
+  const N = 10;
+  const SPRING = 0.45; // la bóveda arranca casi arriba del pretil (0,55): de la calle no se ve el borde
+  const tri = (arr, a, b, c, want) => {
+    const e1 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+    const e2 = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+    const n = [e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]];
+    const ok = n[0] * want[0] + n[1] * want[1] + n[2] * want[2] >= 0;
+    arr.push(...a, ...(ok ? b : c), ...(ok ? c : b));
+    return ok;
+  };
+  for (const t of vaults) {
+    const r = t.ring;
+    let best = 0;
+    let ux = 1;
+    let uz = 0;
+    for (let i = 0; i < r.length; i++) {
+      const [ax, az] = r[i];
+      const [bx, bz] = r[(i + 1) % r.length];
+      const l = Math.hypot(bx - ax, bz - az);
+      if (l > best) {
+        best = l;
+        ux = (bx - ax) / l;
+        uz = (bz - az) / l;
+      }
+    }
+    const nx = -uz;
+    const nz = ux;
+    let a0 = Infinity;
+    let a1 = -Infinity;
+    let b0 = Infinity;
+    let b1 = -Infinity;
+    for (const [x, z] of r) {
+      a0 = Math.min(a0, x * ux + z * uz);
+      a1 = Math.max(a1, x * ux + z * uz);
+      b0 = Math.min(b0, x * nx + z * nz);
+      b1 = Math.max(b1, x * nx + z * nz);
+    }
+    const fullSpan = b1 - b0;
+    const len = a1 - a0;
+    if (fullSpan < 4 || len < 4) continue;
+    // solo los galpones rectangulares (si no, la bóveda del rectángulo que los encierra sale a la calle)
+    let area = 0;
+    for (let i = 0, j = r.length - 1; i < r.length; j = i++) area += (r[j][0] + r[i][0]) * (r[j][1] - r[i][1]);
+    if (Math.abs(area / 2) < fullSpan * len * 0.9) continue;
+    // los anchos van con varias bóvedas una al lado de la otra (de 16 m como mucho)
+    const nv = Math.ceil(fullSpan / 16);
+    for (let kv = 0; kv < nv; kv++) {
+    const span = fullSpan / nv;
+    const rise = Math.min(3.2, span * 0.16);
+    const cx = ux * ((a0 + a1) / 2) + nx * (b0 + span * (kv + 0.5));
+    const cz = uz * ((a0 + a1) / 2) + nz * (b0 + span * (kv + 0.5));
+    const hs = span / 2 + (nv > 1 ? 0 : 0.12);
+    const hl = len / 2 + 0.12;
+    const P = (s, y, l) => [cx + nx * s + ux * l, t.h + y, cz + nz * s + uz * l];
+    // la curva (parábola) y lo largo de cada tramo, para la uv
+    const arc = [];
+    let acc = 0;
+    for (let i = 0; i <= N; i++) {
+      const s = -hs + (2 * hs * i) / N;
+      const y = SPRING + rise * (1 - (s / hs) ** 2);
+      if (i) acc += Math.hypot(s - arc[i - 1].s, y - arc[i - 1].y);
+      arc.push({ s, y, d: acc });
+    }
+    for (let i = 0; i < N; i++) {
+      const A = arc[i];
+      const Bp = arc[i + 1];
+      const up = [nx * -(Bp.y - A.y), Bp.s - A.s, nz * -(Bp.y - A.y)];
+      const q = [P(A.s, A.y, -hl), P(Bp.s, Bp.y, -hl), P(Bp.s, Bp.y, hl), P(A.s, A.y, hl)];
+      const uvq = [[-hl / M, A.d / M], [-hl / M, Bp.d / M], [hl / M, Bp.d / M], [hl / M, A.d / M]];
+      for (const [i0, i1, i2] of [[0, 1, 2], [0, 2, 3]]) {
+        const ok = tri(sp, q[i0], q[i1], q[i2], up);
+        suv.push(...uvq[i0], ...(ok ? uvq[i1] : uvq[i2]), ...(ok ? uvq[i2] : uvq[i1]));
+      }
+    }
+    // mojinetes curvos, del color de la pared (de la losa del techo a la curva)
+    const wall = t.color ?? new THREE.Color(0xc9c4b8);
+    for (const l of [-len / 2, len / 2]) {
+      const out = [ux * Math.sign(l), 0, uz * Math.sign(l)];
+      const base = P(0, 0, l);
+      for (let i = 0; i < N; i++) {
+        const A = arc[i];
+        const Bp = arc[i + 1];
+        const sa = Math.max(-span / 2, Math.min(span / 2, A.s));
+        const sb = Math.max(-span / 2, Math.min(span / 2, Bp.s));
+        tri(fp, base, P(sa, A.y - 0.02, l), P(sb, Bp.y - 0.02, l), out);
+        tri(fp, P(sa, 0, l), P(sa, A.y - 0.02, l), base, out);
+        for (let k = 0; k < 6; k++) fc.push(wall.r, wall.g, wall.b);
+      }
+    }
+    }
+  }
+  const out = [];
+  if (sp.length) {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(suv, 2));
+    g.computeVertexNormals();
+    const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: chapa.map, normalMap: chapa.normal, roughness: 0.5, metalness: 0.45, side: THREE.DoubleSide }));
+    m.castShadow = m.receiveShadow = true;
+    out.push(m);
+    const fg = new THREE.BufferGeometry();
+    fg.setAttribute('position', new THREE.Float32BufferAttribute(fp, 3));
+    fg.setAttribute('color', new THREE.Float32BufferAttribute(fc, 3));
+    fg.computeVertexNormals();
+    const fm = new THREE.Mesh(fg, new THREE.MeshLambertMaterial({ vertexColors: true }));
+    fm.castShadow = fm.receiveShadow = true;
+    out.push(fm);
+  }
+  return out;
+}
