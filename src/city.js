@@ -30,6 +30,7 @@ import { FastBoxes } from './builder.js';
 import { Rng } from './rng.js';
 import { VC, vcPalmSpots } from './vc.js';
 import { loadStationKit } from './anden-kit.js';
+import { StationFacade } from './estacion-kit.js';
 import { swapGeometry, loadBlenderMeshes } from './blender.js';
 import { buildBajo, cutGround } from './bajonivel.js';
 const ni = (g) => (g.index ? g.toNonIndexed() : g);
@@ -397,7 +398,11 @@ function wall(arr, ax, az, bx, bz, y0, y1, pickUv, shade, tint = null) {
       const partial = yy - y < FLOOR_H * 0.6;
       const uv = partial ? ATLAS.medianera[(s + floor) % ATLAS.medianera.length] : pickUv(floor, s);
       pushQuad(arr, [x0, y, z0], [x1, y, z1], [x1, yy, z1], [x0, yy, z0], uv, shade, floor === 0 ? shade * 0.6 : shade * 0.97, partial ? null : tint);
-      if (!partial && arr.frames && uv.open && uv.open.length && (x1 - x0) ** 2 + (z1 - z0) ** 2 > 16) addFrames(arr.frames, x0, z0, x1, z1, y, y + FLOOR_H, uv.open, floor === 0 && arr.rejas ? arr.grilles : null);
+      if (!partial && uv.open && uv.open.length && (x1 - x0) ** 2 + (z1 - z0) ** 2 > 16) {
+        // la estación lleva las molduras de Blender (src/estacion-kit.js) en vez de los marcos de cajas
+        if (arr.station) arr.station.openings(x0, z0, x1, z1, y, y + FLOOR_H, uv.open);
+        else if (arr.frames) addFrames(arr.frames, x0, z0, x1, z1, y, y + FLOOR_H, uv.open, floor === 0 && arr.rejas ? arr.grilles : null);
+      }
     }
   }
 }
@@ -448,7 +453,8 @@ function addFrames(F, x0, z0, x1, z1, y, yy, open, grilles = null) {
 const GENERIC_SHOPS = ['KIOSCO 24 HS', 'FARMACIA', 'PIZZERÍA', 'ROTISERÍA', 'QUINIELA', 'FERRETERÍA', 'VERDULERÍA', 'CELULARES', 'EMPANADAS', 'CARNICERÍA', 'PANADERÍA', 'COTILLÓN', 'LAVADERO', 'CERRAJERÍA', 'FIAMBRERÍA', 'AUTOSERVICIO', 'LIBRERÍA', 'HELADERÍA', 'PELUQUERÍA', 'ÓPTICA', 'MERCERÍA', 'ZAPATERÍA', 'DIETÉTICA', 'VETERINARIA'];
 
 function addBuildings(scene, atlas, colliders, rng, city) {
-  const arr = { pos: [], uvs: [], col: [], idx: [], frames: new FastBoxes(), grilles: new Quads(), rejas: false };
+  const arr = { pos: [], uvs: [], col: [], idx: [], frames: new FastBoxes(), grilles: new Quads(), rejas: false, station: null };
+  const stationFacade = new StationFacade();
   // techos planos agrupados por tipo (membrana, cerámica, losa, chapa)
   const roofs = {};
   const roofBucket = (t) => (roofs[t] ??= { pos: [], uv: [], col: [], idx: [] });
@@ -539,7 +545,9 @@ function addBuildings(scene, atlas, colliders, rng, city) {
       const isFront = fronts.has(k) || kind === 'estacion';
       // rejas en las ventanas de planta baja: lo que diga el relevamiento; si no, casi todas las casas
       arr.rejas = isFront && (rel?.rejas ?? ((kind === 'casa' && v % 3 !== 0) || (kind === 'alto' && v % 5 < 2)));
+      arr.station = kind === 'estacion' ? stationFacade : null;
       wall(arr, p0[0], p0[1], p1[0], p1[1], 0, h, isFront ? front : side, isFront ? shade : shade * 0.9, isFront ? wallTint : null);
+      if (kind === 'estacion') stationFacade.edge(p0[0], p0[1], p1[0], p1[1], h);
       const mx = (a[0] + c[0]) / 2;
       const mz = (a[1] + c[1]) / 2;
       if (!pitched) {
@@ -693,6 +701,8 @@ function addBuildings(scene, atlas, colliders, rng, city) {
   mesh.receiveShadow = true;
   scene.add(mesh);
   scene.add(arr.frames.mesh(new THREE.MeshLambertMaterial({ vertexColors: true })));
+  const sf = stationFacade.build();
+  if (sf.length) scene.add(...fixed(260, ...sf));
   const grilleMesh = new THREE.Mesh(arr.grilles.geometry(), new THREE.MeshLambertMaterial({ map: windowGrilleTexture(), alphaTest: 0.5, side: THREE.DoubleSide }));
   grilleMesh.castShadow = true;
   scene.add(grilleMesh);

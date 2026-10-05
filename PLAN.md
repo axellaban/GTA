@@ -161,8 +161,8 @@ el relieve de la chapa acanalada, horneado de una chapa con ondas (`public/textu
 cada 1 m). Salen en `public/models/station/anden.glb`. `src/anden-kit.js` los carga y cambia en el lugar las
 geometrías (los pedazos de `chunks.js` las comparten): las 73 columnas, la puntilla en tramos de 2 m por todo el
 borde de los techos (790 tramos, armados en `addStation` de `src/city.js`) y el relieve de la chapa. Si no
-cargan, queda la estación de antes (columnas y tablas lisas). Siguiente: el Gaspi de Meshy (R8c), la palmera y el farol (R8e) y el
-edificio de la estación con la luz horneada.
+cargan, queda la estación de antes (columnas y tablas lisas). Siguiente: el Gaspi de Meshy (R8c), la palmera y el farol (R8e) y las
+molduras del edificio de la estación (R8f).
 
 **R8e — Blender: palmera y farol (✅ 2026-10-05)**: `tools/blender/palmera.py` modela una hoja de palmera
 (nervio y 128 folíolos anchos: finitos desaparecían de lejos) y la renderiza vista desde arriba como textura
@@ -176,8 +176,19 @@ prende de noche (`public/models/street/farol.glb`, 258 triángulos, colores en l
 `swapGeometry`). Además `chunks.js` ahora pasa `customDepthMaterial` a los pedazos: antes las copas de árboles
 y palmeras tiraban sombra de placa llena.
 
+**R8f — Blender: molduras de la estación (✅ 2026-10-05)**: `tools/blender/estacion.py` arma las molduras del
+edificio del Ferrocarril del Sud (`public/models/station/fachada.glb`, sombra de contacto contra la pared horneada
+en los colores de vértice): arquivolta de medio punto con clave e impostas (154 triángulos), jambas, alféizar,
+tramo de 2 m de cornisa (faja, gola y corona), guarda entre pisos y zócalo. `src/estacion-kit.js` las pone sobre
+los arcos que ya pinta `drawEstacion` (usa los mismos vanos que registra la textura, así calzan con cualquier largo
+de pared): 200 arcos, la cornisa ocupa la franja de arriba (6,2 a 7,4 m), la guarda tapa las franjas crema entre
+pisos y el zócalo llega hasta donde arrancan las puertas. En las esquinas los tramos se estiran lo que sobresalen
+para cruzarse. ~47.000 triángulos en toda la estación; tiran sombra solo la cornisa y los arcos. En la estación
+reemplazan los marcos de cajas de `addFrames`. Hasta que carga el modelo (o si no carga) se ve la fachada pintada
+de antes.
+
 **Camino gráfico (decisión del dueño, 2026-10-04)**: el dueño ve el juego en ~3/10 (10/10 = Unreal Engine).
-Orden acordado: 1) ✅ modo Vice City, prendido por defecto (R8b); 2) 🔶 Blender + Meshy (R8c, R8d): personajes y edificios mejores y la luz
+Orden acordado: 1) ✅ modo Vice City, prendido por defecto (R8b); 2) 🔶 Blender + Meshy (R8c a R8f): personajes y edificios mejores y la luz
 horneada en las texturas (sombras suaves y luz que rebota); sigue siendo web y anda en el celu; 3) recién
 después, evaluar Unreal con un prototipo chico (la estación y dos cuadras) en la Mac M5 de 24 GB del dueño.
 Unreal no se juega desde un link en el celu y hay que rehacer la jugabilidad. Las funciones de juego (piñas,
