@@ -226,8 +226,17 @@ caño de bajada con la llave de paso; 64): son 1.652, de color negro, beige o fi
 `addBuildings`) y girados al azar. Para que no pesen se parten en cuadrados de 120 m (`userData.cell`, nuevo en
 `chunkScene`) y se dibujan hasta 170 m (la base hasta 110 m): todo el kit suma ~4 % de triángulos por cuadro.
 
+**R8i — Blender: cornisas y aires de las casas (✅ 2026-10-05)**: `tools/blender/casas.py` hace un tramo de 2 m
+de cornisa escalonada (faja, dos escalones, gola y corona, como las casas de los 50 y el art déco de Miami) con la
+albardilla del pretil, y el equipo de afuera de un aire split (rejilla del ventilador, aletas, ménsulas y caños),
+con la sombra de contacto contra la pared horneada: `public/models/houses/casas.glb`. `src/casas-kit.js` pone una
+cornisa por frente (3.571), estirada al largo de la pared (el perfil no cambia a lo largo, así que no se deforma),
+del color del revoque aclarado hacia el blanco (`setColorAt`); en las esquinas entre dos frentes cada tramo se
+estira lo que sobresale para cruzarse, y en los locales y escuelas de una planta sale más chata para quedar detrás
+del cartel. Los aires reemplazan la caja blanca de los frentes. 50 y 180 triángulos; en la calle suma ~3 %.
+
 **Camino gráfico (decisión del dueño, 2026-10-04)**: el dueño ve el juego en ~3/10 (10/10 = Unreal Engine).
-Orden acordado: 1) ✅ modo Vice City, prendido por defecto (R8b); 2) 🔶 Blender + Meshy (R8c a R8h): personajes y edificios mejores y la luz
+Orden acordado: 1) ✅ modo Vice City, prendido por defecto (R8b); 2) 🔶 Blender + Meshy (R8c a R8i): personajes y edificios mejores y la luz
 horneada en las texturas (sombras suaves y luz que rebota); sigue siendo web y anda en el celu; 3) recién
 después, evaluar Unreal con un prototipo chico (la estación y dos cuadras) en la Mac M5 de 24 GB del dueño.
 Unreal no se juega desde un link en el celu y hay que rehacer la jugabilidad. Las funciones de juego (piñas,

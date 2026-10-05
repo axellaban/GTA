@@ -31,6 +31,7 @@ import { Rng } from './rng.js';
 import { VC, vcPalmSpots } from './vc.js';
 import { loadStationKit } from './anden-kit.js';
 import { StationFacade } from './estacion-kit.js';
+import { HouseKit } from './casas-kit.js';
 import { loadBlenderTrees } from './arboles-kit.js';
 import { useStreetKit } from './mobiliario-kit.js';
 import { swapGeometry, loadBlenderMeshes } from './blender.js';
@@ -410,6 +411,7 @@ function wall(arr, ax, az, bx, bz, y0, y1, pickUv, shade, tint = null) {
 }
 
 const FRAME_COLORS = [0xe9e4d8, 0xd9d2c4, 0xc9c0b0, 0xf2eee6];
+const WHITE_TRIM = new THREE.Color(0xf4f0e6);
 function addFrames(F, x0, z0, x1, z1, y, yy, open, grilles = null) {
   const len = Math.hypot(x1 - x0, z1 - z0);
   const dx = (x1 - x0) / len;
@@ -457,6 +459,7 @@ const GENERIC_SHOPS = ['KIOSCO 24 HS', 'FARMACIA', 'PIZZERÍA', 'ROTISERÍA', 'Q
 function addBuildings(scene, atlas, colliders, rng, city) {
   const arr = { pos: [], uvs: [], col: [], idx: [], frames: new FastBoxes(), grilles: new Quads(), rejas: false, station: null };
   const stationFacade = new StationFacade();
+  const houseKit = new HouseKit();
   // techos planos agrupados por tipo (membrana, cerámica, losa, chapa)
   const roofs = {};
   const roofBucket = (t) => (roofs[t] ??= { pos: [], uv: [], col: [], idx: [] });
@@ -534,6 +537,7 @@ function addBuildings(scene, atlas, colliders, rng, city) {
       wallTint = { r: k(c.r, base.r), g: k(c.g, base.g), b: k(c.b, base.b) };
     }
     let bestFront = null;
+    const ringSign = signedArea(ring) > 0 ? 1 : -1;
     for (let k = 0; k < ring.length; k++) {
       const e = outward(ring, k);
       if (e.l < 0.05) continue;
@@ -554,7 +558,22 @@ function addBuildings(scene, atlas, colliders, rng, city) {
       const mz = (a[1] + c[1]) / 2;
       if (!pitched) {
         det.rbox(e.l + 0.1, 0.55, 0.18, plaster.clone().multiplyScalar(0.92), mx - nx * 0.09, h + 0.27, mz - nz * 0.09, angOf(ux, uz));
-        if (isFront) det.rbox(e.l + 0.1, 0.22, 0.14, plaster.clone().multiplyScalar(1.08), mx + nx * 0.07, h - 0.14, mz + nz * 0.07, angOf(ux, uz));
+        // la cornisa moldurada de Blender (src/casas-kit.js); en una esquina con otro frente se estira para cruzarse
+        if (isFront) {
+          const n = ring.length;
+          const convex = (i) => {
+            const [px, pz] = ring[(i - 1 + n) % n];
+            const [qx, qz] = ring[i];
+            const [sx, sz] = ring[(i + 1) % n];
+            return ((qx - px) * (sz - qz) - (qz - pz) * (sx - qx)) * ringSign > 0;
+          };
+          const ea = fronts.has((k - 1 + n) % n) && convex(k) ? 1 : 0;
+          const eb = fronts.has((k + 1) % n) && convex((k + 1) % n) ? 1 : 0;
+          // (más clara que el revoque, como las molduras pintadas de blanco; en los locales y escuelas de una
+          // planta, más chata: queda detrás del cartel, que va a esa altura)
+          const flat = (kind === 'local' || kind === 'escuela') && h < 5;
+          houseKit.cornice(p0, p1, h, p0 === a ? ea : eb, p0 === a ? eb : ea, plaster.clone().lerp(WHITE_TRIM, 0.45), flat ? 0.5 : 1);
+        }
       }
       if (isFront && e.l > 3) {
         const fe = { ax: p0[0], az: p0[1], bx: p1[0], bz: p1[1], nx, nz, L: e.l };
@@ -571,7 +590,7 @@ function addBuildings(scene, atlas, colliders, rng, city) {
           }
         }
         if ((v + k) % 5 === 0 && kind !== 'estacion') {
-          det.rbox(0.8, 0.45, 0.28, 0xe6e6e6, fe.ax + (fe.bx - fe.ax) * 0.72 + nx * 0.14, floors > 1 ? 5.6 : 2.4, fe.az + (fe.bz - fe.az) * 0.72 + nz * 0.14, angOf(ux, uz));
+          houseKit.air(fe.ax + (fe.bx - fe.ax) * 0.72 + nx * 0.14, floors > 1 ? 5.6 : 2.4, fe.az + (fe.bz - fe.az) * 0.72 + nz * 0.14, Math.atan2(-(fe.bz - fe.az), fe.bx - fe.ax));
         }
       }
     }
@@ -705,6 +724,8 @@ function addBuildings(scene, atlas, colliders, rng, city) {
   scene.add(arr.frames.mesh(new THREE.MeshLambertMaterial({ vertexColors: true })));
   const sf = stationFacade.build();
   if (sf.length) scene.add(...fixed(260, ...sf));
+  const hk = houseKit.build();
+  scene.add(...fixed(260, hk.cornices), ...fixed(110, hk.airs));
   const grilleMesh = new THREE.Mesh(arr.grilles.geometry(), new THREE.MeshLambertMaterial({ map: windowGrilleTexture(), alphaTest: 0.5, side: THREE.DoubleSide }));
   grilleMesh.castShadow = true;
   scene.add(grilleMesh);
