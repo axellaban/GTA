@@ -31,6 +31,7 @@ import { Rng } from './rng.js';
 import { VC, vcPalmSpots } from './vc.js';
 import { loadStationKit } from './anden-kit.js';
 import { StationFacade } from './estacion-kit.js';
+import { loadBlenderTrees } from './arboles-kit.js';
 import { swapGeometry, loadBlenderMeshes } from './blender.js';
 import { buildBajo, cutGround } from './bajonivel.js';
 const ni = (g) => (g.index ? g.toNonIndexed() : g);
@@ -1517,6 +1518,7 @@ function addTrees(scene, colliders, rng) {
   const col = new THREE.Color();
   const pos = new THREE.Vector3();
   const scl = new THREE.Vector3();
+  const kits = [];
   for (const [name, sp] of Object.entries(SPECIES)) {
     const list = plan.filter((t) => t.species === name);
     if (!list.length) continue;
@@ -1532,7 +1534,8 @@ function addTrees(scene, colliders, rng) {
     const li = new THREE.InstancedMesh(leaves, lm, list.length);
     li.customDepthMaterial = addWind(new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: leafTex, alphaTest: 0.45 }));
     const ci = new THREE.InstancedMesh(core, new THREE.MeshLambertMaterial({ color: sp.coreColor }), list.length);
-    const trunkMat = new THREE.MeshLambertMaterial({ vertexColors: true });
+    // (con viento, como las hojas: las ramas se mueven junto con los ramilletes)
+    const trunkMat = addWind(new THREE.MeshLambertMaterial({ vertexColors: true }));
     const groups = [false, true].map((p) => ({ list: list.filter((t) => t.painted === p), geo: treeTrunk(sp, p) }));
     const trunks = groups.filter((g) => g.list.length).map((g) => ({ ...g, mesh: new THREE.InstancedMesh(g.geo, trunkMat, g.list.length), n: 0 }));
     list.forEach((t, i) => {
@@ -1554,7 +1557,10 @@ function addTrees(scene, colliders, rng) {
       g.mesh.receiveShadow = true;
       scene.add(...fixed(g.mesh));
     }
+    kits.push({ name, leaves: li, core: ci, trunks: trunks.map((g) => ({ painted: g.list === groups[1].list, mesh: g.mesh })) });
   }
+  // los árboles hechos en Blender (src/arboles-kit.js) reemplazan a estos cuando cargan
+  loadBlenderTrees(kits);
   // cazuelas de tierra en la vereda, alineadas con la calle
   const street = plan.filter((t) => t.street);
   if (street.length) {

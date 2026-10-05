@@ -29,3 +29,30 @@ export function meshesByName(gltf) {
   });
   return out;
 }
+
+// Hojas recortadas (alphaTest) que no se ralean de lejos: en los mipmaps el alfa de las hojas finitas se
+// promedia con el fondo y queda por debajo del corte, así que de lejos la copa se veía pelada. Se sube
+// el alfa según qué tan lejos está el mipmap que se lee (como el "alpha to coverage" con escala por
+// mipmap). Sirve para el material de la copa y para el de su sombra.
+const MIP_ALPHA = /* glsl */ `
+#ifdef USE_MAP
+{
+  vec2 mt = vMapUv * vec2(textureSize(map, 0));
+  vec2 mdx = dFdx(mt);
+  vec2 mdy = dFdy(mt);
+  float lod = max(0.0, 0.5 * log2(max(dot(mdx, mdx), dot(mdy, mdy))));
+  diffuseColor.a *= 1.0 + lod * MIP_ALPHA_K;
+}
+#endif
+#include <alphatest_fragment>`;
+export function denseAlpha(mat, k = 0.3) {
+  const prev = mat.onBeforeCompile;
+  const key = mat.customProgramCacheKey();
+  mat.onBeforeCompile = (shader, renderer) => {
+    prev.call(mat, shader, renderer);
+    shader.fragmentShader = shader.fragmentShader.replace('#include <alphatest_fragment>', MIP_ALPHA.replace('MIP_ALPHA_K', k.toFixed(3)));
+  };
+  mat.customProgramCacheKey = () => `${key}-denso${k}`;
+  mat.needsUpdate = true;
+  return mat;
+}

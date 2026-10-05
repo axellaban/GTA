@@ -2,7 +2,7 @@
 // con anillos y una corona de hojas que caen. Instanciadas: dos mallas para todas.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { swapGeometry, loadBlenderMeshes } from './blender.js';
+import { swapGeometry, loadBlenderMeshes, denseAlpha } from './blender.js';
 import { DATA as D } from './map.js';
 import { R } from './rng.js';
 import { VC, vcPalmSpots } from './vc.js';
@@ -137,14 +137,18 @@ function loadBlenderPalm(T, C, crownMat) {
     .then(([geo, leaf]) => {
       if (!geo.tronco || !geo.copa) return;
       leaf.colorSpace = THREE.SRGBColorSpace;
+      // las coordenadas del glTF ya vienen con la v para abajo (con el flipY de siempre la hoja quedaba
+      // dada vuelta: los folíolos apuntaban al tronco)
+      leaf.flipY = false;
       leaf.anisotropy = 4;
       swapGeometry(T, geo.tronco);
       swapGeometry(C, geo.copa);
       crownMat.map = leaf;
       crownMat.alphaTest = 0.4;
       crownMat.alphaToCoverage = true;
+      denseAlpha(crownMat);
       // sombra con la forma de las hojas (también en los pedazos de chunks.js)
-      const depth = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: leaf, alphaTest: 0.4 });
+      const depth = denseAlpha(new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: leaf, alphaTest: 0.4 }));
       C.traverse((m) => {
         if (m.isInstancedMesh) m.customDepthMaterial = depth;
       });

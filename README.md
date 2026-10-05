@@ -52,8 +52,10 @@ relieve de la chapa acanalada se modelan en Blender con un script (`python3 tool
 `pip install bpy`), con la sombra de contacto horneada. También la palmera (hoja modelada y renderizada como
 textura, `tools/blender/palmera.py`) y el farol de la calle (palo de madera con cruceta, brazo curvo y
 carcasa tipo cobra, `tools/blender/farol.py`) y las molduras del edificio de la estación: arcos con clave,
-jambas, alféizares, cornisa, guarda entre pisos y zócalo (`tools/blender/estacion.py`). Cada pieza cuesta los mismos triángulos que la de antes o
-poco más, y si no carga queda la anterior.
+jambas, alféizares, cornisa, guarda entre pisos y zócalo (`tools/blender/estacion.py`). Los árboles de la vereda
+(fresno, tipa, jacarandá y palo borracho) tienen tronco con ramas y copa de ramilletes con las hojas y las flores
+modeladas y renderizadas en Blender (`tools/blender/arboles.py`). Cada pieza cuesta los mismos triángulos que la de
+antes o poco más, y si no carga queda la anterior.
 
 ### Materiales de calles y veredas
 

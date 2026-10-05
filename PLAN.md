@@ -187,8 +187,21 @@ para cruzarse. ~47.000 triángulos en toda la estación; tiran sombra solo la co
 reemplazan los marcos de cajas de `addFrames`. Hasta que carga el modelo (o si no carga) se ve la fachada pintada
 de antes.
 
+**R8g — Blender: árboles de la vereda (✅ 2026-10-05)**: `tools/blender/arboles.py` hace las cuatro especies
+(fresno, tipa, jacarandá y palo borracho) con las mismas medidas que `SPECIES` de `src/city.js`: tronco con la base
+ensanchada (el del palo borracho, de botella), ramas maestras y ramitas hasta los ramilletes de abajo, con la
+sombra de contacto horneada, y la versión con el metro de abajo pintado a la cal. La copa son 20 a 31 ramilletes de
+tres hojas cruzadas con normales de copa redonda y lo de adentro más oscuro. Las hojas se modelan una por una
+(compuestas en el fresno y la tipa, de helecho en el jacarandá con sus panojas violetas, palmeadas en el palo
+borracho con sus flores rosadas) y se renderizan en Cycles desde arriba: `public/textures/hojas_<especie>.webp`, dos
+ramilletes por textura. `src/arboles-kit.js` cambia geometrías y texturas en el lugar y apaga el bulto oscuro que
+llenaba la copa de antes. 350 a 480 triángulos por árbol (antes 250 a 370 con el bulto): en la calle sube ~2 % lo que
+se dibuja por cuadro y baja la cantidad de dibujos (de 1.196 a 1.084). `denseAlpha` (`src/blender.js`) sube el alfa
+de las hojas según el mipmap: de lejos las copas y las palmeras ya no se ralean. De paso, la hoja de la palmera estaba
+dada vuelta (la textura con `flipY` sobre coordenadas de glTF): ahora los folíolos apuntan a la punta.
+
 **Camino gráfico (decisión del dueño, 2026-10-04)**: el dueño ve el juego en ~3/10 (10/10 = Unreal Engine).
-Orden acordado: 1) ✅ modo Vice City, prendido por defecto (R8b); 2) 🔶 Blender + Meshy (R8c a R8f): personajes y edificios mejores y la luz
+Orden acordado: 1) ✅ modo Vice City, prendido por defecto (R8b); 2) 🔶 Blender + Meshy (R8c a R8g): personajes y edificios mejores y la luz
 horneada en las texturas (sombras suaves y luz que rebota); sigue siendo web y anda en el celu; 3) recién
 después, evaluar Unreal con un prototipo chico (la estación y dos cuadras) en la Mac M5 de 24 GB del dueño.
 Unreal no se juega desde un link en el celu y hay que rehacer la jugabilidad. Las funciones de juego (piñas,
