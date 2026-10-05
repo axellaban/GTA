@@ -153,8 +153,19 @@ de `src/rig.js` ya reconoce los nombres tipo Mixamo). Presupuesto del iPhone: �
 y reemplaza al Gaspi de `makeStar` (`src/people.js`). Licencia: el plan gratis de Meshy es CC BY 4.0, se usa
 con crédito ("Gaspi: modelo hecho con Meshy, CC BY 4.0") en la pausa (`.fine` en `index.html`) y en el README.
 
+**R8d — Blender: kit de los andenes (✅ 2026-10-05)**: primer paso del camino Blender. `tools/blender/anden.py`
+(Blender 5.0 como módulo de Python: `pip install bpy`; corre sin interfaz, también en la nube) arma la columna de
+hierro fundido (base, fuste estriado, capitel y cuatro ménsulas; 982 triángulos, con la sombra de contacto
+horneada en los colores de vértice), un tramo de 2 m de la puntilla de madera (50 cm de alto, 132 triángulos) y
+el relieve de la chapa acanalada, horneado de una chapa con ondas (`public/textures/chapa_normal.webp`, se repite
+cada 1 m). Salen en `public/models/station/anden.glb`. `src/anden-kit.js` los carga y cambia en el lugar las
+geometrías (los pedazos de `chunks.js` las comparten): las 73 columnas, la puntilla en tramos de 2 m por todo el
+borde de los techos (790 tramos, armados en `addStation` de `src/city.js`) y el relieve de la chapa. Si no
+cargan, queda la estación de antes (columnas y tablas lisas). Siguiente: el Gaspi de Meshy (R8c) y el edificio
+de la estación con la luz horneada.
+
 **Camino gráfico (decisión del dueño, 2026-10-04)**: el dueño ve el juego en ~3/10 (10/10 = Unreal Engine).
-Orden acordado: 1) ✅ modo Vice City, prendido por defecto (R8b); 2) Blender + Meshy: personajes y edificios mejores y la luz
+Orden acordado: 1) ✅ modo Vice City, prendido por defecto (R8b); 2) 🔶 Blender + Meshy (R8c, R8d): personajes y edificios mejores y la luz
 horneada en las texturas (sombras suaves y luz que rebota); sigue siendo web y anda en el celu; 3) recién
 después, evaluar Unreal con un prototipo chico (la estación y dos cuadras) en la Mac M5 de 24 GB del dueño.
 Unreal no se juega desde un link en el celu y hay que rehacer la jugabilidad. Las funciones de juego (piñas,

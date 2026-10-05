@@ -29,6 +29,7 @@ import { Colliders } from './physics.js';
 import { FastBoxes } from './builder.js';
 import { Rng } from './rng.js';
 import { VC, vcPalmSpots } from './vc.js';
+import { loadStationKit } from './anden-kit.js';
 import { buildBajo, cutGround } from './bajonivel.js';
 const ni = (g) => (g.index ? g.toNonIndexed() : g);
 // instancias que no se mueven nunca: chunks.js las reparte por cuadrado para no dibujarlas todas
@@ -1006,14 +1007,16 @@ function addStation(scene, colliders, city) {
     }
   }
   scene.add(edge.mesh(new THREE.MeshLambertMaterial({ vertexColors: true })));
-  // techos de andén con columnas
-  const roofMat = new THREE.MeshLambertMaterial({ color: 0x8a9399, side: THREE.DoubleSide });
+  // techos de andén con columnas (la columna de hierro, la puntilla y la chapa acanalada se hicieron en
+  // Blender: src/anden-kit.js las pone cuando cargan; mientras tanto, columnas y tablas lisas)
+  // (chapa pintada y mate: con brillo de metal, por abajo, sin nada que reflejar, quedaba negra)
+  const roofMat = new THREE.MeshStandardMaterial({ color: 0x97a2a1, roughness: 0.8, metalness: 0, side: THREE.DoubleSide });
   if (D.canopies.length) {
     const cm = new THREE.Mesh(flat(D.canopies.map((r) => [r]), 4.9, 4), roofMat);
     cm.castShadow = true;
     scene.add(cm);
   }
-  const col = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.13, 0.13, 3.8, 8), new THREE.MeshLambertMaterial({ color: 0x3f5563 }), D.columns.length);
+  const col = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.13, 0.13, 3.8, 8), new THREE.MeshStandardMaterial({ color: VC ? 0x3d8a74 : 0x2f5a46, roughness: 0.6, metalness: 0.3 }), D.columns.length);
   const m4 = new THREE.Matrix4();
   D.columns.forEach(([x, z], i) => {
     m4.makeTranslation(x, 3.0, z);
@@ -1022,6 +1025,29 @@ function addStation(scene, colliders, city) {
   });
   col.castShadow = true;
   scene.add(...fixed(col));
+  // puntilla de madera colgando de todo el borde de los techos, en tramos de 2 m (estirados para que
+  // cada lado entre justo)
+  const runs = [];
+  for (const ring of D.canopies) {
+    for (let i = 0; i < ring.length; i++) {
+      const [ax, az] = ring[i];
+      const [bx, bz] = ring[(i + 1) % ring.length];
+      const l = Math.hypot(bx - ax, bz - az);
+      if (l < 1) continue;
+      const n = Math.max(1, Math.round(l / 2));
+      for (let k = 0; k < n; k++) runs.push([ax + ((bx - ax) * (k + 0.5)) / n, az + ((bz - az) * (k + 0.5)) / n, l / (n * 2), Math.atan2(-(bz - az), bx - ax)]);
+    }
+  }
+  const val = new THREE.InstancedMesh(new THREE.BoxGeometry(2, 0.5, 0.03).translate(0, -0.25, 0), new THREE.MeshLambertMaterial({ color: 0xf1e6c8, side: THREE.DoubleSide }), runs.length);
+  const vq = new THREE.Quaternion();
+  const vs = new THREE.Vector3();
+  const vp = new THREE.Vector3();
+  runs.forEach(([x, z, sx, ang], i) => {
+    m4.compose(vp.set(x, 4.9, z), vq.setFromAxisAngle(new THREE.Vector3(0, 1, 0), ang), vs.set(sx, 1, 1));
+    val.setMatrixAt(i, m4);
+  });
+  scene.add(...fixed(160, val));
+  loadStationKit({ columns: col, valance: val, roof: roofMat });
   // carteles azules TEMPERLEY colgando en los andenes
   const hs = new Quads();
   D.columns.forEach(([x, z], i) => {
