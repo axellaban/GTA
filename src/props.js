@@ -8,6 +8,7 @@ import { DATA as D, TRACKS, CORNERS, ROADS, nearestRoad } from './map.js';
 import { outward, pointInRing, fixed } from './city.js';
 import { FastBoxes } from './builder.js';
 import { Rng } from './rng.js';
+import { useStreetKit } from './mobiliario-kit.js';
 const ni = (g) => (g.index ? g.toNonIndexed() : g);
 
 const UP = new THREE.Vector3(0, 1, 0);
@@ -87,6 +88,8 @@ export class TrafficLights {
     this.posts.castShadow = true;
     this.posts.count = this.heads.length;
     scene.add(this.posts);
+    // el semáforo hecho en Blender (src/mobiliario-kit.js), con las luces en el mismo lugar
+    useStreetKit(this.posts, 'semaforo');
     const lg = new THREE.CylinderGeometry(0.1, 0.1, 0.05, 12).rotateX(Math.PI / 2);
     this.lamps = new THREE.InstancedMesh(lg, new THREE.MeshBasicMaterial({ color: 0xffffff }), Math.max(1, lamps.length));
     this.lampY = lamps;
@@ -361,6 +364,7 @@ function busStops(scene, rng, colliders) {
   tex.colorSpace = THREE.SRGBColorSpace;
   const F = new FastBoxes();
   const signs = [];
+  const shelters = [];
   for (const [sx, sz] of D.stops) {
     const nr = nearestRoad(sx, sz);
     if (!nr || nr.dist > 25) continue;
@@ -379,17 +383,28 @@ function busStops(scene, rng, colliders) {
       const nz = ux * side;
       const bx = x + ux * 2.2 + nx * 1.1;
       const bz = z + uz * 2.2 + nz * 1.1;
-      const rot = Math.atan2(-uz, ux);
-      F.rbox(3.2, 0.08, 1.3, 0x2d6e8a, bx, 2.45, bz, rot);
-      F.rbox(3.2, 2.3, 0.06, 0x7fa9b8, bx + nx * 0.6, 1.25, bz + nz * 0.6, rot);
-      F.rbox(2.6, 0.08, 0.4, 0x444444, bx + nx * 0.35, 0.6, bz + nz * 0.35, rot);
-      for (const k of [-1.5, 1.5]) F.box(0.07, 2.4, 0.07, 0x555555, bx + ux * k - nx * 0.6, 1.25, bz + uz * k - nz * 0.6);
+      // (en el marco del refugio, +z va hacia (nx, nz): lejos de la calle)
+      shelters.push([bx, bz, Math.atan2(-uz, ux) + (side < 0 ? Math.PI : 0)]);
       // el refugio: la pared de atrás y los dos parantes de adelante
       colliders?.addSegment(bx + nx * 0.6 - ux * 1.6, bz + nz * 0.6 - uz * 1.6, bx + nx * 0.6 + ux * 1.6, bz + nz * 0.6 + uz * 1.6, 2.4, 'wall');
       for (const k of [-1.5, 1.5]) colliders?.addCircle(bx + ux * k - nx * 0.6, bz + uz * k - nz * 0.6, 0.06, 2.4, 'post');
     }
   }
   scene.add(F.mesh());
+  if (shelters.length) {
+    // el refugio de cajas (techo, panel de atrás, banco y parantes de adelante) hasta que carga el de Blender
+    const S = new FastBoxes();
+    S.box(3.2, 0.08, 1.3, 0x2d6e8a, 0, 2.3, 0);
+    S.box(3.2, 2.3, 0.06, 0x7fa9b8, 0, 1.1, 0.6);
+    S.box(2.6, 0.08, 0.4, 0x444444, 0, 0.45, 0.35);
+    for (const k of [-1.5, 1.5]) S.box(0.07, 2.4, 0.07, 0x555555, k, 1.1, -0.6);
+    const inst = new THREE.InstancedMesh(S.mesh().geometry, new THREE.MeshLambertMaterial({ vertexColors: true }), shelters.length);
+    inst.name = 'refugios';
+    shelters.forEach(([x, z, rot], i) => place(inst, i, x, 0.15, z, rot));
+    inst.castShadow = inst.receiveShadow = true;
+    scene.add(...fixed(160, inst));
+    useStreetKit(inst, 'refugio');
+  }
   const geo = new THREE.PlaneGeometry(0.5, 0.75);
   const inst = new THREE.InstancedMesh(geo, new THREE.MeshLambertMaterial({ map: tex, side: THREE.DoubleSide }), signs.length);
   signs.forEach((p, i) => place(inst, i, p.x, p.y, p.z, p.rot));
@@ -442,20 +457,29 @@ function baskets(scene, city, rng) {
 
 // ---------- Contenedores verdes en las esquinas de las avenidas ----------
 function containers(scene, city, rng) {
-  const F = new FastBoxes();
   const placed = [];
+  const at = [];
   for (const c of city.curbSpots) {
     if (!c.road.avenue || placed.length > 18) continue;
     if (!CORNERS.some((n) => Math.hypot(n.x - c.x, n.z - c.z) < 18 && Math.hypot(n.x - c.x, n.z - c.z) > 9)) continue;
     if (placed.some((p) => Math.hypot(p.x - c.x, p.z - c.z) < 90) || !rng.chance(0.5)) continue;
     placed.push(c);
     const rot = Math.atan2(-Math.cos(c.heading), Math.sin(c.heading));
-    F.rbox(1.8, 1.15, 1.1, 0x2f6b3a, c.x, 0.72, c.z, rot);
     boxCollider(city.colliders, c.x, c.z, 1.8, 1.1, rot, 1.4, 'container');
-    F.rbox(1.86, 0.08, 1.16, 0x245530, c.x, 1.33, c.z, rot);
-    F.rbox(1.82, 0.06, 1.12, 0xdcdcdc, c.x, 0.55, c.z, rot);
+    at.push([c.x, c.z, rot]);
   }
-  scene.add(F.mesh());
+  if (!at.length) return;
+  // el contenedor de cajas hasta que carga el de Blender (src/mobiliario-kit.js); origen en el piso
+  const F = new FastBoxes();
+  F.box(1.8, 1.15, 1.1, 0x2f6b3a, 0, 0.72, 0);
+  F.box(1.86, 0.08, 1.16, 0x245530, 0, 1.33, 0);
+  F.box(1.82, 0.06, 1.12, 0xdcdcdc, 0, 0.55, 0);
+  const inst = new THREE.InstancedMesh(F.mesh().geometry, new THREE.MeshLambertMaterial({ vertexColors: true }), at.length);
+  inst.name = 'contenedores';
+  at.forEach(([x, z, rot], i) => place(inst, i, x, 0, z, rot));
+  inst.castShadow = inst.receiveShadow = true;
+  scene.add(...fixed(160, inst));
+  useStreetKit(inst, 'contenedor');
 }
 
 // ---------- Terrazas: antenas, parabólicas, hierros y ropa tendida ----------

@@ -200,8 +200,17 @@ se dibuja por cuadro y baja la cantidad de dibujos (de 1.196 a 1.084). `denseAlp
 de las hojas según el mipmap: de lejos las copas y las palmeras ya no se ralean. De paso, la hoja de la palmera estaba
 dada vuelta (la textura con `flipY` sobre coordenadas de glTF): ahora los folíolos apuntan a la punta.
 
+**R8h — Blender: mobiliario de la calle (✅ 2026-10-05)**: `tools/blender/mobiliario.py` arma el semáforo (caño
+redondo con brida, cabezal de cantos redondos con tres viseras y placa negra de contraste con borde blanco; las
+luces de `props.js` quedan adentro de las viseras, en el mismo lugar), el refugio de colectivo (parantes, techo
+curvo, panel esmerilado, cartel de publicidad y banco de listones) y el contenedor de la muni (cuerpo que se abre
+hacia arriba, tapa abovedada, refuerzos, muñones, banda reflectiva y ruedas), con la sombra de contacto horneada:
+`public/models/street/mobiliario.glb`. `src/mobiliario-kit.js` cambia la geometría de las instancias de `props.js`
+(los refugios y contenedores, que eran cajas sueltas en una malla, ahora son instancias en el mismo marco). 610,
+500 y 496 triángulos: hay 106 semáforos y unos pocos refugios y contenedores.
+
 **Camino gráfico (decisión del dueño, 2026-10-04)**: el dueño ve el juego en ~3/10 (10/10 = Unreal Engine).
-Orden acordado: 1) ✅ modo Vice City, prendido por defecto (R8b); 2) 🔶 Blender + Meshy (R8c a R8g): personajes y edificios mejores y la luz
+Orden acordado: 1) ✅ modo Vice City, prendido por defecto (R8b); 2) 🔶 Blender + Meshy (R8c a R8h): personajes y edificios mejores y la luz
 horneada en las texturas (sombras suaves y luz que rebota); sigue siendo web y anda en el celu; 3) recién
 después, evaluar Unreal con un prototipo chico (la estación y dos cuadras) en la Mac M5 de 24 GB del dueño.
 Unreal no se juega desde un link en el celu y hay que rehacer la jugabilidad. Las funciones de juego (piñas,

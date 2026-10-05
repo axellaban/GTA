@@ -54,7 +54,8 @@ textura, `tools/blender/palmera.py`) y el farol de la calle (palo de madera con 
 carcasa tipo cobra, `tools/blender/farol.py`) y las molduras del edificio de la estación: arcos con clave,
 jambas, alféizares, cornisa, guarda entre pisos y zócalo (`tools/blender/estacion.py`). Los árboles de la vereda
 (fresno, tipa, jacarandá y palo borracho) tienen tronco con ramas y copa de ramilletes con las hojas y las flores
-modeladas y renderizadas en Blender (`tools/blender/arboles.py`). Cada pieza cuesta los mismos triángulos que la de
+modeladas y renderizadas en Blender (`tools/blender/arboles.py`), y el semáforo, el refugio de colectivo y el
+contenedor de basura salen de `tools/blender/mobiliario.py`. Cada pieza cuesta los mismos triángulos que la de
 antes o poco más, y si no carga queda la anterior.
 
 ### Materiales de calles y veredas
