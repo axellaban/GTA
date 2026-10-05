@@ -14,6 +14,10 @@
 #            barra de adelante y el faldón con festones de verdad. Origen donde se engancha a la pared
 #            (y = 0); sale 1,5 m. Las rayas son la textura de los toldos de siempre (u: cuatro rayas).
 #   brazo    brazo articulado del toldo (va en cada punta), del soporte en la pared a la barra.
+#   cumbrera tramo de 1 m de la cumbrera de tejas (media caña) que tapa la punta del techo a dos aguas
+#            (origen en la línea de la cumbrera; el juego la estira al largo del techo).
+#   cenefa   tramo de 1 m de la tabla del borde del alero y de los mojinetes, con el goterón (origen en el
+#            canto de arriba; +z hacia afuera). Blanca: el color lo pone el juego.
 # La sombra de contacto (contra la pared) va horneada en los colores de vértice.
 import math
 import os
@@ -221,6 +225,23 @@ def brazo():
     return k.done()
 
 
+def cumbrera():
+    k = Kit('cumbrera')
+    # media caña de 0,13 m de radio sobre la cumbrera, con el borde un poco abierto
+    n = 7
+    prof = [(0.01 + 0.13 * math.sin(math.pi * i / n) - 0.03, -0.14 * math.cos(math.pi * i / n)) for i in range(n + 1)]
+    prof += [(prof[-1][0] - 0.03, prof[-1][1] * 0.85)] + [(y - 0.03, z * 0.85) for y, z in reversed(prof[:-1])][-n:]
+    k.profile(prof, -0.5, 0.5, 0xb4502c, caps=False)
+    return k.done()
+
+
+def cenefa():
+    k = Kit('cenefa')
+    # tabla de 2 cm x 18 cm con un goterón abajo (el canto de arriba en y = 0)
+    k.profile([(0.0, 0.0), (0.0, 0.025), (-0.15, 0.025), (-0.165, 0.035), (-0.18, 0.035), (-0.18, 0.0)], -0.5, 0.5, 0xffffff)
+    return k.done()
+
+
 def link_mesh(name, bm):
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
     me = bpy.data.meshes.new(name)
@@ -279,7 +300,7 @@ barra.select_set(True)
 lona.select_set(True)
 bpy.context.view_layer.objects.active = lona
 bpy.ops.object.join()
-parts = [cornisa(), aire(), brazo(), lona]
+parts = [cornisa(), aire(), brazo(), lona, cumbrera(), cenefa()]
 for ob in parts:
     for o in parts:
         o.hide_render = o is not ob
@@ -288,6 +309,11 @@ for ob in parts:
         occ = [((0, -1.5, -0.1), (8, 3.0, 0.2)), ((0, 0.265, -0.09), (8, 0.53, 0.18)), ((0, -0.1, -2.18), (8, 0.2, 4.0))]
     elif ob.name in ('toldo', 'brazo'):
         occ = [((0, 0, -0.1), (8, 8, 0.2))]
+    elif ob.name == 'cumbrera':
+        # los dos faldones del techo debajo de la cumbrera
+        occ = [((0, -0.35, 0), (4, 0.5, 1.6))]
+    elif ob.name == 'cenefa':
+        occ = [((0, 0.1, -0.5), (4, 0.2, 1.0))]
     else:
         occ = [((0, 0, -0.24), (6, 6, 0.2))]
     bake(ob, occ)

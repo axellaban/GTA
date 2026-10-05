@@ -276,8 +276,16 @@ aparte, porque están cortadas: casi sin pasto alto) y reacomoda unas ~1.800 mat
 cada 5 m que se mueve; en el borde se achican hasta desaparecer. Tarjetas cruzadas con la normal para arriba,
 movidas por el viento y con `denseAlpha`. Cuesta ~7.000 triángulos y cuatro dibujos.
 
+**R8o — Techos a dos aguas (✅ 2026-10-05)**: el techo de las 308 casas con tejas (y la estación) era un prisma
+con tejas en todas las caras: el mojinete y el alero por abajo también salían de tejas. `src/techos-kit.js` lo
+arma de nuevo: los dos faldones con las tejas (mismas UV en metros), los mojinetes del color de la casa (con el
+sombreado de la pared), el cielorraso de machimbre debajo del alero y, de `tools/blender/casas.py`, la cumbrera de
+media caña y las cenefas del alero y de los mojinetes (blancas, de madera o verde inglés), estiradas a la medida
+de cada techo. Las caras se orientan solas (la normal que corresponde) y las bases de las piezas inclinadas se
+arman derechas (si no, la tabla salía espejada y no se veía).
+
 **Camino gráfico (decisión del dueño, 2026-10-04)**: el dueño ve el juego en ~3/10 (10/10 = Unreal Engine).
-Orden acordado: 1) ✅ modo Vice City, prendido por defecto (R8b); 2) 🔶 Blender + Meshy (R8c a R8n): personajes y edificios mejores y la luz
+Orden acordado: 1) ✅ modo Vice City, prendido por defecto (R8b); 2) 🔶 Blender + Meshy (R8c a R8o): personajes y edificios mejores y la luz
 horneada en las texturas (sombras suaves y luz que rebota); sigue siendo web y anda en el celu; 3) recién
 después, evaluar Unreal con un prototipo chico (la estación y dos cuadras) en la Mac M5 de 24 GB del dueño.
 Unreal no se juega desde un link en el celu y hay que rehacer la jugabilidad. Las funciones de juego (piñas,

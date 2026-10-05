@@ -34,6 +34,7 @@ import { StationFacade } from './estacion-kit.js';
 import { HouseKit } from './casas-kit.js';
 import { OpeningKit, SHUTTERS } from './aberturas-kit.js';
 import { addChurchTowers } from './iglesia-kit.js';
+import { buildGableRoofs } from './techos-kit.js';
 import { loadBlenderTrees } from './arboles-kit.js';
 import { useStreetKit } from './mobiliario-kit.js';
 import { swapGeometry, loadBlenderMeshes } from './blender.js';
@@ -710,7 +711,8 @@ function addBuildings(scene, atlas, colliders, rng, city) {
       if (ny > 0) roof.idx.push(base + i0, base + i1, base + i2);
       else roof.idx.push(base + i0, base + i2, base + i1);
     }
-    if (pitched) gables.push({ ring, h, kind });
+    // (el mojinete con el sombreado de la pared, que oscurece un poco el revoque)
+    if (pitched) gables.push({ ring, h, kind, color: (wallTint ? plaster.clone() : plaster.clone().multiplyScalar(shade * 0.9)) });
     else if (kind !== 'estadio' && !b.extra && v % 20 < 11) {
       let cx = 0;
       let cz = 0;
@@ -786,61 +788,14 @@ function addBuildings(scene, atlas, colliders, rng, city) {
     scene.add(rmesh);
   }
 
-  // techos a dos aguas sobre el rectángulo orientado del edificio
-  const tg = [];
-  for (const t of gables) {
-    const r = t.ring;
-    let best = 0;
-    let ux = 1;
-    let uz = 0;
-    for (let i = 0; i < r.length; i++) {
-      const [ax, az] = r[i];
-      const [bx, bz] = r[(i + 1) % r.length];
-      const l = Math.hypot(bx - ax, bz - az);
-      if (l > best) {
-        best = l;
-        ux = (bx - ax) / l;
-        uz = (bz - az) / l;
-      }
-    }
-    const nx = -uz;
-    const nz = ux;
-    let a0 = Infinity;
-    let a1 = -Infinity;
-    let b0 = Infinity;
-    let b1 = -Infinity;
-    for (const [x, z] of r) {
-      const a = x * ux + z * uz;
-      const bb = x * nx + z * nz;
-      a0 = Math.min(a0, a);
-      a1 = Math.max(a1, a);
-      b0 = Math.min(b0, bb);
-      b1 = Math.max(b1, bb);
-    }
-    const span = b1 - b0;
-    const len = a1 - a0;
-    const shape = new THREE.Shape();
-    shape.moveTo(-span / 2 - 0.3, 0);
-    shape.lineTo(span / 2 + 0.3, 0);
-    shape.lineTo(0, t.kind === 'estacion' ? 3 : Math.min(2.2, span * 0.3));
-    shape.closePath();
-    const geo = new THREE.ExtrudeGeometry(shape, { depth: len + 0.4, bevelEnabled: false });
-    geo.translate(0, 0, -(len + 0.4) / 2);
-    // eje local z -> (ux, uz); eje local x -> (uz, -ux) = -n
-    geo.rotateY(Math.atan2(ux, uz));
-    const am = (a0 + a1) / 2;
-    const bm = (b0 + b1) / 2;
-    geo.translate(ux * am + nx * bm, t.h, uz * am + nz * bm);
-    tg.push(geo);
-  }
-  if (tg.length) {
+  // techos a dos aguas sobre el rectángulo orientado del edificio: faldones de tejas, mojinetes, alero y las
+  // piezas de Blender (src/techos-kit.js)
+  if (gables.length) {
     // tejas coloniales (la geometría del techo trae UV en metros)
     const { map, normal } = roofTexture('tejas');
     for (const t of [map, normal]) t.repeat.set(1 / ROOF_M.tejas, 1 / ROOF_M.tejas);
-    const m = new THREE.Mesh(mergeGeometries(tg), new THREE.MeshLambertMaterial({ map, normalMap: normal }));
-    m.castShadow = true;
-    m.receiveShadow = true;
-    scene.add(m);
+    const roofs = buildGableRoofs(gables, new THREE.MeshLambertMaterial({ map, normalMap: normal }));
+    scene.add(...roofs.meshes, ...fixed(150, ...roofs.pieces));
   }
   if (awn.pos.length) {
     const ag = new THREE.BufferGeometry();
