@@ -5,6 +5,7 @@ import { BoxBuilder } from './builder.js';
 import { R } from './rng.js';
 import { VC, VC_CAR_COLORS } from './vc.js';
 import { makeHorse } from './animals.js';
+import { trainKit } from './tren-kit.js';
 
 const M = (c, extra = {}) => new THREE.MeshLambertMaterial({ color: c, ...extra });
 const glass = M(0x1b2630);
@@ -335,5 +336,7 @@ export function makeTrainCar(kind = 'electrico', cab = false) {
     mesh(new THREE.BoxGeometry(0.06, 0.4, 0.06), M(0x444444), 0, 4.2, 3, g);
   }
   g.userData = { L: 20 };
+  // el coche hecho en Blender (src/tren-kit.js) reemplaza a estas cajas cuando carga
+  trainKit(g, kind, cab, side);
   return g;
 }

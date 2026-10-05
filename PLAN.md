@@ -284,8 +284,18 @@ media caña y las cenefas del alero y de los mojinetes (blancas, de madera o ver
 de cada techo. Las caras se orientan solas (la normal que corresponde) y las bases de las piezas inclinadas se
 arman derechas (si no, la tabla salía espejada y no se veía).
 
+**R8p — Blender: los trenes del Roca (✅ 2026-10-05)**: los coches eran una caja de 19,6 m con la textura del
+costado. `tools/blender/tren.py` hace la carrocería con un poco de panza abajo y los hombros del techo redondeados
+(la uv de los costados es la de la textura de siempre: ventanas con gente, puertas y franjas), la del coche con
+cabina con la trompa que se angosta, los bogies (bastidor, cajas de grasa, resortes y ruedas sobre la trocha
+ancha de 1,68 m), los equipos de abajo y los de aire acondicionado del techo, los fuelles, el frente con
+parabrisas, faros y la franja (azul y celeste el eléctrico, naranja el diésel) y el pantógrafo de un brazo:
+`public/models/vehicles/tren.glb`, ~1.300 triángulos por coche. `src/tren-kit.js` le cambia las piezas a cada coche
+de `makeTrainCar` cuando carga el modelo (los que se armaron antes, también); la v de la carrocería se da vuelta
+porque la textura del costado es de lienzo (si no, las ventanas quedaban abajo).
+
 **Camino gráfico (decisión del dueño, 2026-10-04)**: el dueño ve el juego en ~3/10 (10/10 = Unreal Engine).
-Orden acordado: 1) ✅ modo Vice City, prendido por defecto (R8b); 2) 🔶 Blender + Meshy (R8c a R8o): personajes y edificios mejores y la luz
+Orden acordado: 1) ✅ modo Vice City, prendido por defecto (R8b); 2) 🔶 Blender + Meshy (R8c a R8p): personajes y edificios mejores y la luz
 horneada en las texturas (sombras suaves y luz que rebota); sigue siendo web y anda en el celu; 3) recién
 después, evaluar Unreal con un prototipo chico (la estación y dos cuadras) en la Mac M5 de 24 GB del dueño.
 Unreal no se juega desde un link en el celu y hay que rehacer la jugabilidad. Las funciones de juego (piñas,

@@ -58,7 +58,9 @@ modeladas y renderizadas en Blender (`tools/blender/arboles.py`), y el semáforo
 contenedor de basura y los tanques de agua de los techos salen de `tools/blender/mobiliario.py`, y los canastos
 de basura de metal desplegado, de `tools/blender/canasto.py`. La parroquia tiene su campanario y las capillas su
 espadaña (`tools/blender/iglesia.py`). En los terrenos, jardines y plazas hay matas de pasto, yuyos y flores
-modeladas en Blender (`tools/blender/pasto.py`) que se reparten alrededor de la cámara (`src/pasto.js`). Las casas
+modeladas en Blender (`tools/blender/pasto.py`) que se reparten alrededor de la cámara (`src/pasto.js`). Los
+coches del Roca tienen carrocería redondeada, bogies con ruedas, pantógrafo y cabina con parabrisas
+(`tools/blender/tren.py`). Las casas
 tienen cornisa moldurada y aires acondicionados split, los techos de tejas su cumbrera y sus cenefas, y los
 comercios toldos de brazos con festones, hechos en Blender (`tools/blender/casas.py`), y las
 ventanas y puertas, alféizar, guardapolvo, jambas, umbral y persianas de enrollar (`tools/blender/aberturas.py`). Cada pieza cuesta los mismos triángulos que la de
