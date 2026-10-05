@@ -587,7 +587,7 @@ function rooftops(scene, city, rng) {
 
 // ---------- Catenaria del Roca ----------
 function catenary(scene, colliders) {
-  const F = new FastBoxes();
+  const masts = [];
   const wire = [];
   const H = 5.6;
   const done = new Set();
@@ -596,7 +596,9 @@ function catenary(scene, colliders) {
     for (let i = 0; i < t.length - 1; i++) {
       const [ax, az] = t[i];
       const [bx, bz] = t[i + 1];
-      wire.push(ax, H, az, bx, H, bz);
+      // hilo de contacto y, un metro arriba, el portador (las péndolas, de un píxel, se veían como rayitas
+      // sueltas en el cielo)
+      wire.push(ax, H, az, bx, H, bz, ax, H + 0.95, az, bx, H + 0.95, bz);
       const len = Math.hypot(bx - ax, bz - az);
       carry += len;
       if (carry > 45) {
@@ -604,18 +606,29 @@ function catenary(scene, colliders) {
         const key = `${Math.round(ax / 6)},${Math.round(az / 6)}`;
         if (done.has(key)) continue;
         done.add(key);
-        // mástil al costado con ménsula sobre la vía
+        // mástil al costado con la ménsula sobre la vía
         const nx = (bz - az) / len;
         const nz = -(bx - ax) / len;
         const mx = ax + nx * 2.6;
         const mz = az + nz * 2.6;
-        F.box(0.22, 6.8, 0.22, 0x5f6a70, mx, 3.4, mz);
         colliders?.addCircle(mx, mz, 0.14, 6.8, 'column');
-        F.box(Math.abs(nx) > 0.5 ? 2.8 : 0.1, 0.1, Math.abs(nx) > 0.5 ? 0.1 : 2.8, 0x5f6a70, (mx + ax) / 2, 6.3, (mz + az) / 2);
+        // (+x del mástil hacia la vía)
+        masts.push([mx, mz, Math.atan2(nz, -nx)]);
       }
     }
   }
-  scene.add(F.mesh());
+  if (masts.length) {
+    // el mástil de cajas de antes, en el marco del de Blender (src/mobiliario-kit.js)
+    const F = new FastBoxes();
+    F.box(0.22, 6.8, 0.22, 0x5f6a70, 0, 3.4, 0);
+    F.box(2.8, 0.1, 0.1, 0x5f6a70, 1.3, 6.3, 0);
+    const inst = new THREE.InstancedMesh(F.mesh().geometry, new THREE.MeshLambertMaterial({ vertexColors: true }), masts.length);
+    masts.forEach(([x, z, rot], i) => place(inst, i, x, 0, z, rot));
+    inst.castShadow = true;
+    inst.receiveShadow = true;
+    scene.add(...fixed(240, inst));
+    useStreetKit(inst, 'catenaria');
+  }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(wire, 3));
   scene.add(new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: 0x2a2a2a })));

@@ -16,6 +16,9 @@
 #               1,2 m arriba del techo (como el cilindro de antes).
 #   tanque_base la base: dos pilares de ladrillo con la losita arriba y el caño de bajada con la llave de paso.
 #               Origen 0,25 m arriba del techo.
+#   catenaria   mástil de la catenaria del Roca: perfil doble T de acero galvanizado sobre su dado de hormigón,
+#               ménsula (tubo de abajo y tirante de arriba) con los aisladores y el brazo de atirantado que
+#               sostiene el hilo de contacto a 5,6 m. Origen al pie del mástil; +x hacia la vía (2,6 m).
 # Colores en los vértices con la sombra de contacto horneada (Cycles); el material del juego queda blanco.
 import math
 import os
@@ -291,6 +294,30 @@ def tanque_base():
     return k.done()
 
 
+# ---------------- mástil de la catenaria ----------------
+def catenaria():
+    k = Kit('catenaria')
+    G = 0x8d9499
+    H = 7.2
+    # dado de hormigón y el perfil doble T (dos alas y el alma)
+    k.box((0, 0.2, 0), (0.62, 0.5, 0.62), 0xa6a29a)
+    for sx in (-1, 1):
+        k.box((sx * 0.1, H / 2 + 0.2, 0), (0.02, H, 0.22), G)
+    k.box((0, H / 2 + 0.2, 0), (0.18, H, 0.014), G)
+    k.box((0, H + 0.22, 0), (0.26, 0.04, 0.26), G)
+    # ménsula: tubo de abajo hasta pasar la vía y tirante de arriba, con los aisladores en el mástil
+    k.tube([(0.14, 6.1, 0), (3.0, 6.1, 0)], 0.035, 6, G, caps=True)
+    k.tube([(0.14, 7.05, 0), (2.7, 6.12, 0)], 0.028, 6, G, caps=True)
+    for y in (6.1, 7.05):
+        k.tube([(0.12, y, 0), (0.4, y - (0.0 if y < 7 else 0.1), 0)], 0.06, 8, 0x6b4a32, caps=True)
+    # brazo de atirantado: del tubo al hilo de contacto (sobre el eje de la vía)
+    k.tube([(2.3, 6.1, 0), (2.6, 5.62, 0)], 0.022, 5, G, caps=True)
+    k.box((2.6, 5.6, 0), (0.12, 0.05, 0.08), 0x5a5f63)
+    # el hilo portador apoya arriba de la ménsula
+    k.box((2.6, 6.55, 0), (0.08, 0.5, 0.06), 0x5a5f63)
+    return k.done()
+
+
 def bake(ob):
     scene.render.engine = 'CYCLES'
     scene.cycles.device = 'CPU'
@@ -320,7 +347,7 @@ def bake(ob):
 
 
 os.makedirs(os.path.dirname(GLB), exist_ok=True)
-parts = [semaforo(), refugio(), contenedor(), tanque(), tanque_base()]
+parts = [semaforo(), refugio(), contenedor(), tanque(), tanque_base(), catenaria()]
 bpy.ops.mesh.primitive_plane_add(size=30)
 floor = bpy.context.active_object
 # dónde está el piso de cada pieza (el tanque apoya en su base y la base en el techo)

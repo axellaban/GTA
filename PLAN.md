@@ -294,8 +294,14 @@ parabrisas, faros y la franja (azul y celeste el eléctrico, naranja el diésel)
 de `makeTrainCar` cuando carga el modelo (los que se armaron antes, también); la v de la carrocería se da vuelta
 porque la textura del costado es de lienzo (si no, las ventanas quedaban abajo).
 
+**R8q — Blender: catenaria (✅ 2026-10-05)**: los mástiles eran una caja con un brazo que ni siquiera giraba con la
+vía (quedaba alineado con los ejes del mapa). `tools/blender/mobiliario.py` suma el mástil de perfil doble T sobre
+su dado de hormigón, con la ménsula (tubo y tirante), los aisladores y el brazo de atirantado (196 triángulos);
+`catenary` (`src/props.js`) ahora pone instancias giradas hacia la vía y suma el hilo portador un metro arriba del
+de contacto (las péndolas, líneas de un píxel, se veían como rayitas sueltas en el cielo: no van).
+
 **Camino gráfico (decisión del dueño, 2026-10-04)**: el dueño ve el juego en ~3/10 (10/10 = Unreal Engine).
-Orden acordado: 1) ✅ modo Vice City, prendido por defecto (R8b); 2) 🔶 Blender + Meshy (R8c a R8p): personajes y edificios mejores y la luz
+Orden acordado: 1) ✅ modo Vice City, prendido por defecto (R8b); 2) 🔶 Blender + Meshy (R8c a R8q): personajes y edificios mejores y la luz
 horneada en las texturas (sombras suaves y luz que rebota); sigue siendo web y anda en el celu; 3) recién
 después, evaluar Unreal con un prototipo chico (la estación y dos cuadras) en la Mac M5 de 24 GB del dueño.
 Unreal no se juega desde un link en el celu y hay que rehacer la jugabilidad. Las funciones de juego (piñas,
