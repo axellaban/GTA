@@ -16,7 +16,7 @@ import { Crime } from './crime.js';
 import { Events } from './events.js';
 import { Trains } from './trains.js';
 import { Hud } from './hud.js';
-import { lightMat, tailMat, brakeMat, paintMat, repairCar, makeFerrucho, setUnderglow, loadQCars } from './cars.js';
+import { lightMat, tailMat, brakeMat, paintMat, repairCar, makeFerrucho, setUnderglow, loadQCars, loadLujo } from './cars.js';
 import { CAR_COLORS, makeCar } from './vehicles.js';
 import { loadGaspiPhoto, updateHumanLod, animateHuman } from './human.js';
 import { Sky } from './sky.js';
@@ -225,6 +225,8 @@ const traffic = new Traffic(scene, audio);
 traffic.populate(city, player);
 // autos de artista (Quaternius, CC0): se mezclan con los clásicos cuando terminan de cargar
 loadQCars().then(() => traffic.mixArtistCars(player));
+// la Ferrucho y los autos de alta gama hechos en Blender
+loadLujo().then(() => traffic.upgradeLujo(player));
 const nav = new Nav(traffic.graph);
 const npcs = new Npcs(scene, city, traffic.graph, heightAt, audio);
 npcs.populate(player);

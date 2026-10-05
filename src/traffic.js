@@ -2,7 +2,7 @@
 import { ROADS, X0, Z0, X1, Z1 } from './map.js';
 import { makeCar, makeBus, makeMoto, makeTruck, makeCarro, CAR_COLORS, DELIVERY, deliveryPack } from './vehicles.js';
 import { ANIMALS, makeAnimal, animalPlay, makeLook } from './people.js';
-import { repairCar, tailMat, brakeMat, carLod, QMODELS } from './cars.js';
+import { repairCar, tailMat, brakeMat, carLod, QMODELS, LUJO_MODELS, LUXURY, LUXURY_COLORS } from './cars.js';
 import * as THREE from 'three';
 import { makeHuman, animateHuman, randomCivilian } from './human.js';
 import { R } from './rng.js';
@@ -13,6 +13,8 @@ import { allVehicles, vehicleContact, sameVehicleLevel } from './vehicle-physics
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 // los del montón, que pueden pasar a ser un auto de artista
 const COMMON = new Set(['duna', 'gol', 'falcon', 'p504', 'pickup']);
+// cuántos de los autos de la calle son de alta gama (pedido del dueño: "mete más coches de alta gama")
+const LUX_SHARE = 0.12;
 
 export class Vehicle {
   constructor(mesh, x, z, heading) {
@@ -298,8 +300,14 @@ export class Traffic {
   // un auto del parque automotor del conurbano
   // (y, cuando cargaron, los modernos de artista: uno de cada cuatro)
   randomCar() {
+    if (LUJO_MODELS.includes('l_sedan') && R.chance(LUX_SHARE)) return this.luxuryCar();
     const model = QMODELS.length && R.chance(0.25) ? R.pick(QMODELS) : R.pick(['duna', 'duna', 'gol', 'gol', 'gol', 'falcon', 'p504', 'p504', 'fiat600', 'pickup', 'pickup', 'remis', 'taxi', 'trafic', 'trafic']);
     return makeCar(model, R.pick(CAR_COLORS), { tune: 0.22 });
+  }
+  // uno de alta gama (Blender), con los colores de su clase
+  luxuryCar() {
+    const model = R.pick(LUXURY);
+    return makeCar(model, R.pick(LUXURY_COLORS[model]));
   }
   // los autos de artista cargan después de armar el tránsito: algunos comunes pasan a ser de esos
   mixArtistCars(player) {
@@ -310,6 +318,29 @@ export class Traffic {
       // que no cambie delante de la cámara
       if (v.mesh.visible && Math.hypot(v.x - player.x, v.z - player.z) < 70) continue;
       v.reshape(makeCar(R.pick(QMODELS), R.pick(CAR_COLORS)));
+      n++;
+    }
+    return n;
+  }
+  // cargaron los autos de Blender (src/cars.js): los que ya andaban pasan al modelo nuevo con su color, y lo
+  // que viaja arriba (Laban y las chicas en el Ferrucho amarillo) se pasa al auto nuevo
+  upgradeLujo(player) {
+    let n = 0;
+    for (const v of [...this.cars, ...this.parked]) {
+      if (!LUJO_MODELS.includes(v.model) || v.mesh.userData.lujo || v === player.vehicle || v.wreck || v.damage) continue;
+      const old = v.mesh;
+      const u = old.userData;
+      const mesh = makeCar(v.model, u.body?.material?.color?.getHex() ?? 0xc8102e);
+      for (const c of [...old.children]) if (c !== u.chassis && c !== u.wheelsFar && !u.wheels.includes(c)) mesh.add(c);
+      v.reshape(mesh);
+      n++;
+    }
+    // y algunos de los comunes pasan a ser de alta gama (lejos de la cámara, para que no cambien a la vista)
+    if (!LUJO_MODELS.includes('l_sedan')) return n;
+    for (const v of [...this.cars, ...this.parked]) {
+      if (v.keep || v.wreck || v.damage || v === player.vehicle || !COMMON.has(v.model) || v.mesh.userData.tuned || !R.chance(LUX_SHARE)) continue;
+      if (v.mesh.visible && Math.hypot(v.x - player.x, v.z - player.z) < 70) continue;
+      v.reshape(this.luxuryCar());
       n++;
     }
     return n;

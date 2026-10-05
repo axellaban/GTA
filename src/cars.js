@@ -10,7 +10,7 @@ import { Mesher, loft } from './body.js';
 // Pintura con laca: una capa de barniz (clearcoat) arriba del color, como la de los autos de
 // verdad. Los grises, azules y verdes son metalizados; el blanco, el negro y el rojo, lisos.
 const paintCache = new Map();
-const METALLIC = new Set([0x9aa3a8, 0x1f3a60, 0x3b5e2b, 0x2d6e8a, 0x6b3e26, 0xc9a227, 0x1d3f8c]);
+const METALLIC = new Set([0x9aa3a8, 0x1f3a60, 0x3b5e2b, 0x2d6e8a, 0x6b3e26, 0xc9a227, 0x1d3f8c, 0xb8bcc0, 0x1b2a4a, 0x1e4d2b, 0x3a3d40]);
 export function paintMat(color) {
   if (!paintCache.has(color)) {
     const metal = METALLIC.has(color);
@@ -617,6 +617,7 @@ function tuneCar(g, M, u, rnd) {
 
 // tune: probabilidad de que salga tuneado (el tránsito y las picadas lo piden; la cana y las misiones no)
 export function makeCar(model = 'duna', color = 0xd8d4c8, { parked = false, tune = 0 } = {}) {
+  if (LUJO[model]) return makeLujoCar(model, color);
   if (model.startsWith('q_')) {
     if (QCARS[model]) return makeQCar(model, color);
     model = 'duna';
@@ -750,6 +751,83 @@ function makeQCar(model, color) {
   g.add(wheelsFar);
   // los detalles (paragolpes, molduras, parrilla) son grandes: se ven también de lejos
   g.userData = { L, W, wheels, kind: 'car', model, tall: roof + 0.05, body, shiny: detail, glass, glassMat: qGlassMat, chassis, tail, door: null, doorway: null, hood: null, wheelsFar, lodParts: [] };
+  return g;
+}
+
+// ---------- Autos hechos en Blender (tools/blender/autos.py, public/models/vehicles/lujo.glb) ----------
+// La Ferrucho (y la descapotable de Laban) y los de alta gama: carrocería de cortes suavizados, pasarruedas,
+// vidrios con el interior atrás (tapizado, butacas, tablero y volante), detalles, cromados, luces y una
+// rueda. La chapa trae en los vértices la sombra horneada y lo que va negro (el color lo pone el juego).
+// Mientras no cargan, la Ferrucho es la de antes, hecha por código.
+const LUJO = {};
+export const LUJO_MODELS = [];
+let lujoLoad = null;
+const paintVCache = new Map();
+function paintMatV(color) {
+  if (!paintVCache.has(color)) {
+    const m = paintMat(color).clone();
+    m.vertexColors = true;
+    paintVCache.set(color, m);
+  }
+  return paintVCache.get(color);
+}
+// los de alta gama que andan por la calle y sus colores (los superdeportivos, chillones; los demás, serios)
+export const LUXURY = ['l_furia', 'l_gt', 'l_sedan', 'l_sedan', 'l_suv', 'l_suv'];
+export const LUXURY_COLORS = {
+  l_furia: [0x9acd32, 0xff6a00, 0xffcc00, 0x111111, 0xf2f2f2, 0xb0101a],
+  l_gt: [0xb8bcc0, 0x1b2a4a, 0x1e4d2b, 0x3a3d40, 0xf2f2f2, 0xb0101a],
+  l_sedan: [0x111111, 0x111111, 0xb8bcc0, 0x1b2a4a, 0x3a3d40, 0xf2f2f2],
+  l_suv: [0x111111, 0xf2f2f2, 0x3a3d40, 0xb8bcc0, 0x1b2a4a],
+};
+export function loadLujo() {
+  lujoLoad ??= new GLTFLoader()
+    .loadAsync('models/vehicles/lujo.glb')
+    .then((gltf) => {
+      for (const node of gltf.scene.children) {
+        const parts = {};
+        // (Blender numera los nombres repetidos: paint.001 llega como paint001)
+        for (const c of node.children) if (c.isMesh) parts[c.name.replace(/[._]?\d+$/, '')] = c.geometry;
+        const { wheels, wheelR, size } = node.userData;
+        if (!parts.paint || !parts.wheel || !wheels) continue;
+        LUJO[node.name] = { parts, wheelPos: wheels, wheelGeo: parts.wheel, m: { W: size[0], roof: size[1], L: size[2], wheelR } };
+        LUJO_MODELS.push(node.name);
+      }
+    })
+    .catch((e) => console.warn('autos de Blender:', e.message));
+  return lujoLoad;
+}
+const EMPTY = new THREE.BufferGeometry();
+function makeLujoCar(model, color) {
+  const Q = LUJO[model];
+  const { L, W, roof } = Q.m;
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(Q.parts.paint, paintMatV(color));
+  body.userData.paint = true;
+  const glass = new THREE.Mesh(Q.parts.glass ?? EMPTY, glassMat);
+  const detail = new THREE.Mesh(Q.parts.detail ?? EMPTY, detailMat);
+  const shiny = new THREE.Mesh(Q.parts.shiny ?? EMPTY, shinyMat);
+  const lights = new THREE.Mesh(Q.parts.lights ?? EMPTY, lightMat);
+  const tail = new THREE.Mesh(Q.parts.tail ?? EMPTY, tailMat);
+  for (const o of [body, glass, detail, shiny]) {
+    o.castShadow = true;
+    o.receiveShadow = true;
+  }
+  const chassis = new THREE.Group();
+  chassis.add(body, glass, detail, shiny, lights, tail);
+  g.add(chassis);
+  const wheels = [];
+  for (const [x, y, z] of Q.wheelPos) {
+    const w = new THREE.Mesh(Q.wheelGeo, wheelMat);
+    w.position.set(x, y, z);
+    if (x < 0) w.scale.x = -1;
+    w.castShadow = true;
+    g.add(w);
+    wheels.push(w);
+  }
+  const wheelsFar = new THREE.Mesh(farWheels(Q), wheelMat);
+  wheelsFar.visible = false;
+  g.add(wheelsFar);
+  g.userData = { L, W, wheels, kind: 'car', model, tall: roof + 0.05, body, shiny, glass, chassis, tail, door: null, doorway: null, hood: null, wheelsFar, lodParts: [shiny, detail], lujo: true };
   return g;
 }
 

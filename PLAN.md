@@ -306,6 +306,20 @@ del pretil, con los mojinetes curvos del color de la pared; los de más de 16 m 
 lado de la otra. Solo 10 de los 134 galpones del mapa son rectángulos (el resto son polígonos de 10 a 31 lados: la
 bóveda del rectángulo que los encierra salía a la calle); pendiente: partirlos en rectángulos.
 
+**R8t — Blender: la Ferrucho nueva y autos de alta gama (✅ 2026-10-05)** (pedido del dueño: "mejora la ferrari, y
+mete mas coches de alta gama"). `tools/blender/autos.py` arma cada carrocería con cortes transversales clave (alto del
+zócalo, de la cintura y del techo, anchos y comba) interpolados sin pasarse (PCHIP) y unidos en una malla; las caras
+se clasifican por corte y por punto del medio corte (chapa, vidrio, negro, abierto en el descapotable), los
+pasarruedas se cortan con cilindros (Boolean exacto) y el interior es la misma chapa hacia adentro (sin llegar a los
+pasarruedas), con butacas, tablero y volante (a la izquierda). Los detalles (faros, rejillas, aletas, cromados,
+espejos, patentes del Mercosur) se pegan a la superficie con rayos (`BVHTree`). Sombra horneada en Cycles por vértice
+en la chapa (los negros van en la paleta). `lujo.glb` (1,1 MB, normales y colores cuantizados con glTF-Transform)
+con el formato de los de Quaternius (paint, glass, detail, shiny, lights, tail y wheel; ruedas y medidas en extras).
+`loadLujo`/`makeLujoCar` en `src/cars.js` (pintura con los colores de los vértices, `paintMatV`); `traffic.upgradeLujo`
+pasa al modelo nuevo los que ya andaban (con Laban y las chicas arriba) y convierte a alta gama el 12 % de los comunes
+(`LUX_SHARE`, también en `randomCar`). Modelos: `ferrucho`, `ferrucho_open`, `l_furia`, `l_gt`, `l_sedan`, `l_suv`
+(manejo en `src/player.js`, motor en `src/motores.js`). Entre 9.500 y 12.000 triángulos con las cuatro ruedas.
+
 **R8s — Interiores de los locales con "interior mapping" (✅ 2026-10-05)**: `tools/blender/locales.py` arma
 cuatro locales (almacén / kiosco, farmacia, ropa y panadería) y los saca en dos capas desde una cámara fija a 4 m
 del vidrio y a media altura: el cuarto (piso, cielorraso con tubos y la pared del fondo con estanterías, sin paredes
@@ -322,7 +336,7 @@ hasta 0,8 de noche). Rubro según el cartel (`interiorFor`). Costo: una llamada 
 vidrieras.
 
 **Camino gráfico (decisión del dueño, 2026-10-04)**: el dueño ve el juego en ~3/10 (10/10 = Unreal Engine).
-Orden acordado: 1) ✅ modo Vice City, prendido por defecto (R8b); 2) 🔶 Blender + Meshy (R8c a R8s): personajes y edificios mejores y la luz
+Orden acordado: 1) ✅ modo Vice City, prendido por defecto (R8b); 2) 🔶 Blender + Meshy (R8c a R8t): personajes y edificios mejores y la luz
 horneada en las texturas (sombras suaves y luz que rebota); sigue siendo web y anda en el celu; 3) recién
 después, evaluar Unreal con un prototipo chico (la estación y dos cuadras) en la Mac M5 de 24 GB del dueño.
 Unreal no se juega desde un link en el celu y hay que rehacer la jugabilidad. Las funciones de juego (piñas,

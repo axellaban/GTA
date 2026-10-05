@@ -256,7 +256,8 @@ Ocho rampas amarillas con franjas negras en calles largas. Si entrás rápido (m
 
 ## Modelos de internet (0.18)
 
-- **El Ferrucho de Ciro**: superdeportivo italiano de los 80 (parodia, como los autos de los GTA), rojo, estacionado frente al gym El Kaiser: el auto más rápido del juego. Hecho por código como el resto de los autos (cuña baja, tomas laterales, cola con rejilla). Reemplazó a una Ferrari bajada de internet cuya licencia no se podía confirmar.
+- **El Ferrucho de Ciro**: superdeportivo italiano de los 80 (parodia, como los autos de los GTA), rojo, estacionado frente al gym El Kaiser. Modelado en Blender (`tools/blender/autos.py`): cuña baja y ancha con los costados redondeados, faros escamoteables, aletas laterales hasta la toma de aire, rejilla negra de punta a punta atrás con las luces detrás, escapes cromados, llantas de 5 rayos con tuerca central y el interior de cuero a la vista (butacas, tablero y volante). El amarillo descapotable de Laban es la versión sin techo. Reemplazó a una Ferrari bajada de internet cuya licencia no se podía confirmar.
+- **Autos de alta gama** (también de Blender, parodias sin marcas): el **Furia** (superdeportivo de ahora, bajísimo, con tomas enormes, alerón y llantas negras de 10 rayos: el auto más rápido del juego), el **GT** (gran turismo de capó larguísimo y cola fastback), el **sedán ejecutivo** (parrilla y molduras cromadas, cuatro puertas) y la **4x4 de lujo** (techo negro "flotante" y barras en el techo). Uno de cada ocho autos de la calle es de alta gama, con colores de su clase.
 
 ## Laban the Creator (0.19)
 

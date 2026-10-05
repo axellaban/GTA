@@ -24,6 +24,11 @@ function stats(v) {
   if (v.model === 'firetruck') return { acc: 4.5, vmax: 24, rev: 3, turn: 1.3, grip: 9, brake: 12 };
   if (v.model === 'ambulance') return { acc: 7, vmax: 31, rev: 4, turn: 1.7, grip: 8.5, brake: 14 };
   if (v.model?.startsWith('ferrucho')) return { acc: 15, vmax: 47, rev: 5, turn: 2.2, grip: 10.5, brake: 19 };
+  // los de alta gama (src/cars.js, hechos en Blender): el Furia es el más rápido del juego
+  if (v.model === 'l_furia') return { acc: 16.5, vmax: 50, rev: 5, turn: 2.25, grip: 11.5, brake: 20 };
+  if (v.model === 'l_gt') return { acc: 14, vmax: 45, rev: 5, turn: 2.1, grip: 10, brake: 18 };
+  if (v.model === 'l_sedan') return { acc: 11, vmax: 40, rev: 5, turn: 1.9, grip: 9, brake: 16 };
+  if (v.model === 'l_suv') return { acc: 10, vmax: 37, rev: 5, turn: 1.8, grip: 8.5, brake: 15 };
   if (v.model === 'falcon' || v.model === 'patrullero') return { acc: 9.5, vmax: 33, rev: 5, turn: 1.9, grip: 7.5, brake: 15 };
   // los modernos de artista: los deportivos tiran más, la SUV es más pesada
   if (v.model === 'q_coupe' || v.model === 'q_sport') return { acc: 12, vmax: 39, rev: 5, turn: 2.1, grip: 9.5, brake: 17 };

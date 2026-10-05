@@ -27,8 +27,8 @@ export function motorOf(v) {
   if (!v || v.kind === 'carro') return null; // el carro del cartonero va a caballo
   if (v.kind === 'moto') return 'moto';
   if (v.kind === 'bus' || v.kind === 'tank' || ['camion', 'trafic', 'firetruck', 'ambulance'].includes(v.model)) return 'diesel';
-  if (v.model?.startsWith('ferrucho') || v.model === 'q_sport' || v.model === 'q_coupe') return 'sport';
-  if (['falcon', 'patrullero', 'pickup', 'q_suv'].includes(v.model)) return 'seis';
+  if (v.model?.startsWith('ferrucho') || ['q_sport', 'q_coupe', 'l_furia', 'l_gt'].includes(v.model)) return 'sport';
+  if (['falcon', 'patrullero', 'pickup', 'q_suv', 'l_sedan', 'l_suv'].includes(v.model)) return 'seis';
   return 'cuatro';
 }
 
