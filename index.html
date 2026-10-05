@@ -61,7 +61,7 @@
 
       <div id="objective"><span class="obj-tag">Objetivo</span><span id="obj-text"></span><span id="obj-dist"></span></div>
 
-      <canvas id="minimap" width="200" height="200" title="Abrir el mapa (P)"></canvas>
+      <canvas id="minimap" width="200" height="200" title="Abrir el mapa (P)" role="button" tabindex="0" aria-label="Abrir el mapa de Temperley"></canvas>
       <div id="street"></div>
 
       <div id="prompt" hidden></div>
@@ -98,33 +98,56 @@
       </div>
     </div>
 
-    <div id="pausemap" hidden>
-      <canvas id="bigmap" width="1024" height="1024" aria-label="Mapa de Temperley"></canvas>
+    <div id="pausemap" hidden role="dialog" aria-modal="true" aria-labelledby="map-title">
+      <div class="pm-map">
+        <header class="pm-map-heading">
+          <div><p class="kicker">Mapa · Juego en pausa</p><h2 id="map-title">Temperley</h2></div>
+          <span class="pm-map-label">Conurba</span>
+        </header>
+        <canvas id="bigmap" width="1024" height="1024" tabindex="0" aria-label="Mapa de Temperley. Arrastrá para recorrerlo y usá los botones para acercar."></canvas>
+        <div class="pm-map-toolbar" aria-label="Controles del mapa">
+          <button id="map-minus" type="button" aria-label="Alejar el mapa">−</button>
+          <output id="map-zoom" aria-label="Nivel de zoom">1.0×</output>
+          <button id="map-plus" type="button" aria-label="Acercar el mapa">+</button>
+          <button id="map-player" type="button">Ubicar a Gaspi</button>
+          <button id="map-all" type="button">Ver todo</button>
+        </div>
+        <p class="pm-map-help">Arrastrá para recorrer · Acercá para ver objetos y calles chicas</p>
+      </div>
       <div class="pm-side">
-        <p class="kicker">Pausa</p>
-        <h2>Temperley</h2>
+        <p class="kicker">Tu próxima parada</p>
         <p id="pm-obj"></p>
-        <ul class="pm-legend" id="pm-legend"></ul>
-        <p id="stats"></p>
         <button id="resume" type="button">Seguir jugando</button>
-        <dl class="keys">
-          <div><dt>WASD</dt><dd>Moverse · manejar</dd></div>
-          <div><dt>Mouse</dt><dd>Mirar</dd></div>
-          <div><dt>Clic izq.</dt><dd>Pegar · disparar (con o sin mira)</dd></div>
-          <div><dt>Clic der.</dt><dd>Mantener para apuntar</dd></div>
-          <div><dt>Celular</dt><dd>Apuntar activa la mira · Disparar permite arrastrar para dirigir el tiro</dd></div>
-          <div><dt>Q · 1–9</dt><dd>Arma (8 bazuca)</dd></div>
-          <div><dt>R</dt><dd>Recargar · radio</dd></div>
-          <div><dt>Espacio</dt><dd>Saltar · freno de mano</dd></div>
-          <div><dt>Shift</dt><dd>Correr · willy</dd></div>
-          <div><dt>E</dt><dd>Acción</dd></div>
-          <div><dt>F</dt><dd>Subir · bajar</dd></div>
-          <div><dt>H · M</dt><dd>Bocina · sonido</dd></div>
-          <div><dt>P</dt><dd>Pausa y mapa</dd></div>
-        </dl>
-        <button id="intro" type="button">Ver la intro</button>
-        <button id="reset" type="button">Empezar de cero</button>
-        <p class="fine">Mapa: © colaboradores de OpenStreetMap y Overture Maps Foundation. Personas: MakeHuman (CC0) y elbolilloduro / Mesh2Motion (CC0). Perros y caballo: Mesh2Motion (CC0). Ambulancia y autobomba: Kenney (CC0). Autos modernos: Realistic Car Pack de Quaternius (CC0). Asfalto, veredas, ladrillos y revoque: Rob Tuytel y Charlotte Baglioni / Poly Haven (CC0).</p>
+        <details class="pm-section" open>
+          <summary>Lugares y actividades</summary>
+          <ul class="pm-legend" id="pm-legend"></ul>
+        </details>
+        <p id="stats"></p>
+        <details class="pm-section">
+          <summary>Controles</summary>
+          <p class="pm-touch-help">Movete con el joystick. Arrastrá a la derecha para mirar. Con un arma, tocá Apuntar para activar la mira y Disparar para tirar.</p>
+          <dl class="keys">
+            <div><dt>WASD</dt><dd>Moverse · manejar</dd></div>
+            <div><dt>Mouse</dt><dd>Mirar</dd></div>
+            <div><dt>Clic izq.</dt><dd>Pegar · disparar (con o sin mira)</dd></div>
+            <div><dt>Clic der.</dt><dd>Mantener para apuntar</dd></div>
+            <div><dt>Celular</dt><dd>Apuntar activa la mira · Disparar permite arrastrar para dirigir el tiro</dd></div>
+            <div><dt>Q · 1–9</dt><dd>Arma (8 bazuca)</dd></div>
+            <div><dt>R</dt><dd>Recargar · radio</dd></div>
+            <div><dt>Espacio</dt><dd>Saltar · freno de mano</dd></div>
+            <div><dt>Shift</dt><dd>Correr · willy</dd></div>
+            <div><dt>E</dt><dd>Acción</dd></div>
+            <div><dt>F</dt><dd>Subir · bajar</dd></div>
+            <div><dt>H · M</dt><dd>Bocina · sonido</dd></div>
+            <div><dt>P</dt><dd>Pausa y mapa</dd></div>
+          </dl>
+        </details>
+        <details class="pm-section pm-options">
+          <summary>Opciones y créditos</summary>
+          <button id="intro" type="button">Ver la intro</button>
+          <button id="reset" type="button">Empezar de cero</button>
+          <p class="fine">Mapa: © colaboradores de OpenStreetMap y Overture Maps Foundation. Personas: MakeHuman (CC0) y elbolilloduro / Mesh2Motion (CC0). Perros y caballo: Mesh2Motion (CC0). Ambulancia y autobomba: Kenney (CC0). Autos modernos: Realistic Car Pack de Quaternius (CC0). Asfalto, veredas, ladrillos y revoque: Rob Tuytel y Charlotte Baglioni / Poly Haven (CC0).</p>
+        </details>
       </div>
     </div>
 

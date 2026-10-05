@@ -102,7 +102,7 @@ Para comparar la misma calle de día, al atardecer y con lluvia: `npm run dev` y
 - **Manejo**: los choques descentrados te hacen pegar un trompo y al otro auto lo corren girando; raspando paredes saltan chispas; los postes de luz se voltean (y se apagan) si los llevás puestos rápido. Derrapes con freno de mano, marcas de frenada, humo de gomas, daño con humo; los autos se prenden fuego y explotan: vuelan dando vueltas (a veces caen dados vuelta), sueltan rueda, puerta y capó, empujan a los autos de al lado, que se prenden y revientan en cadena, y tiran a la gente por el aire. Bola de fuego, onda expansiva, brasas, escombros humeantes y la quemadura que queda en el piso. Alarmas en los autos estacionados. La carrocería va sobre la suspensión (se clava al frenar, se inclina en las curvas, rebota en los choques), luces de freno, humo de escape (negro en los colectivos al arrancar), petardeos, rocío con la calle mojada y pedazos de chapa y vidrio en los choques. De noche con la calle mojada, los faros y las luces de freno se reflejan estirados en el asfalto. Gaspi se agacha y se mete al subir y sale por la puerta al bajar (si apretás F andando, se tira: sale rodando por el piso, se lastima según la velocidad y el auto sigue de largo hasta frenar o chocar), que se abre y se cierra de un portazo (y queda abierta si saliste volando) y con muchos golpes se cae el paragolpes.
 - **Radio del auto** (R): cumbia, rock nacional, tango y **Flash Conurbano 89.3**, synthpop ochentoso a lo Vice City (caja de ritmos con redoblante gateado, bajo de sinte en octavas, colchones, arpegios y estribillo). Todo compuesto en el momento: no usa temas con derechos.
 - **Clima**: se larga a llover, las calles se mojan y brillan, relámpagos y truenos.
-- **GPS** violeta en el minimapa y **mapa grande** con los nombres de las calles (P o tocando el minimapa).
+- **Radar y mapa de pausa Vice City**: plano crema, parques menta, estación coral y GPS rosa, íconos claros y norte. El mapa grande (P o tocando el radar) permite arrastrar, acercar hasta 4× y ubicar a Gaspi, con nombres de calles sin encimarse y escala en metros. Al acercarse aparecen los objetos del piso. Menú adaptable al celular en vertical y horizontal.
 - **Changas**: robás un negocio con un fierro en la mano, hacés deliveries en la moto con caja, levantás armas, milanesas (vida) y chalecos.
 - **Los vecinos postean** lo que hacés: persecuciones, explosiones, willys.
 - **El vendedor de medias** en la estación: tres pares $2.000 y corrés más rápido un rato.
@@ -127,6 +127,8 @@ Para comparar la misma calle de día, al atardecer y con lluvia: `npm run dev` y
 | P | Pausa y mapa |
 | Rueda del mouse | Acercar o alejar la cámara |
 | M | Silenciar |
+
+En el mapa: arrastrá para recorrer, acercá con la rueda, los botones **+ / −** o una pinza con dos dedos. **Ubicar a Gaspi** centra su zona y **Ver todo** vuelve al plano completo. Con el mapa enfocado, las flechas desplazan y **+ / −** cambian el zoom; **Escape** o **Seguir jugando** vuelven a la partida.
 
 En el celular los controles son como en GTA mobile y Fortnite: joystick a la izquierda (aparece donde apoyás el dedo; a fondo, Gaspi corre solo) y arrastrar a la derecha para mirar. A pie están Pegar y Saltar; con un arma, **Apuntar** activa o desactiva la mira y **Disparar** funciona en ambos modos. Arrastrar desde Disparar permite dirigir el tiro con el mismo dedo; en el auto, Freno de mano y Bocina, y Willy en la moto. Un botón celeste aparece solo cuando hay algo para hacer y dice qué hace (Subir al auto, Comprar medias, Bajarse). El arma se cambia tocándola arriba a la derecha, y ☰ abre la pausa con el mapa.
 
@@ -396,6 +398,7 @@ Box de CrossFit en su dirección real, **Rivadavia 321**, en la vereda de enfren
 | `src/fx.js` | Partículas, trazas, marcas de frenada, casquillos, agujeros de bala, restos de choque, lluvia y salpicaduras |
 | `src/carfx.js` | Escape, petardeos y rocío de los autos andando |
 | `src/icons.js` | Íconos del mapa (dibujados por código) y la leyenda |
+| `src/map-view.js` | Vista del mapa, zoom anclado, límites, arrastre, pinza y controles |
 | `src/ufo.js` | Plato volador: llegada, el marciano de los panchos, robarlo, volar, rayo y tractor |
 | `src/smash.js` | Postes de luz que se caen al chocarlos |
 | `src/hud.js`, `src/style.css` | Tarjeta SUBE, estrellas, minimapa, mapa grande, zócalo, diálogos |

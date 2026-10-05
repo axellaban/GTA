@@ -145,6 +145,19 @@ a la vista (`VC_PLASTER` en `src/textures.js`), dos de cada tres árboles de ver
 (`vcPalmSpots`: `city.js` los marca y `palms.js` los planta) y autos de colores ochentosos
 (`VC_CAR_COLORS`). Al dueño le encantó y pidió dejarlo por defecto.
 
+**R8b.2 — Radar y mapa de pausa Vice City (✅ 2026-10-04, Codex)**: cartografía crema con
+avenidas claras, parques menta, estación coral y GPS rosa con contorno. Íconos planos con borde
+claro, norte en el radar y brújula/escala en metros en la pausa. `src/map-view.js` mantiene una vista
+con zoom 1–4×, arrastre, pinza, rueda y teclado; botones para ubicar a Gaspi o ver todo. Calles con
+rótulos que priorizan avenidas, usan un tramo visible y evitan encimarse con otros nombres o
+marcadores. Los objetos del piso aparecen desde 1,6×. Panel de pausa adaptable a vertical y
+horizontal, áreas seguras y poca altura; leyenda desplazable, controles/opciones plegables,
+Escape para volver y Tab dentro del menú. Los lienzos conservan sus dimensiones y la base se
+rasteriza una vez. Se mantienen la geografía real y el aspecto anterior con `?vc=0`. Pruebas:
+`node --test tools/mapa.test.mjs tools/apuntado.test.mjs` (12), build y juego en navegador a
+1280×720, 393×852, 393×667, 852×393 y 852×320. Falta verificar en un iPhone físico.
+Commit «Mejorar el radar y el mapa de pausa con estética Vice City».
+
 **R8c — Gaspi hecho con Meshy (⬜ esperando el archivo, 2026-10-04)**: el dueño generó a Gaspi en Meshy
 (imagen → 3D, modelo Meshy T2.5, 15.618 caras). Cómo tiene que venir: **GLB** con textura, origen "Fondo"
 (pies en el piso) y, si se puede, riggeado con "Animar" de Meshy (esqueleto humanoide estándar: `rigHuman`

@@ -1,6 +1,7 @@
 // Íconos del mapa a lo GTA: un círculo de color con borde oscuro y un dibujito adentro.
 // Cada uno se dibuja una sola vez en un canvas chico y después se copia (el minimapa se redibuja
 // en cada cuadro). Los dibujos están en una grilla de 64×64 con el centro en (32, 32).
+import { VC } from './vc.js';
 
 const S = 64;
 const INK = '#111418';
@@ -467,6 +468,9 @@ export function iconCanvas(kind, letter = null) {
   const key = letter ? `${kind}:${letter}` : kind;
   if (cache.has(key)) return cache.get(key);
   const d = ICONS[kind];
+  const bg = VC ? ({ mision: '#f39cce', pintura: '#329a90', lavadero: '#368fb0',
+    tren: '#387997', pancho: '#ca8c53', gym: '#a17d45', nafta: '#bd6a73',
+    jubilados: '#8869a7', vida: '#cf588b', coima: '#d8ad57' }[kind] ?? d.bg) : d.bg;
   const c = document.createElement('canvas');
   c.width = c.height = S;
   const g = c.getContext('2d');
@@ -479,24 +483,28 @@ export function iconCanvas(kind, letter = null) {
   g.beginPath();
   g.arc(32, 32, 29, 0, Math.PI * 2);
   g.fill();
-  g.fillStyle = d.bg;
+  if (VC) {
+    g.fillStyle = '#fff4e4';
+    g.beginPath(); g.arc(32, 32, 27, 0, Math.PI * 2); g.fill();
+  }
+  g.fillStyle = bg;
   g.beginPath();
   g.arc(32, 32, 25, 0, Math.PI * 2);
   g.fill();
   // brillito arriba, como los íconos de radar
-  const sh = g.createLinearGradient(0, 8, 0, 34);
-  sh.addColorStop(0, 'rgba(255,255,255,0.28)');
-  sh.addColorStop(1, 'rgba(255,255,255,0)');
-  g.fillStyle = sh;
-  g.beginPath();
-  g.arc(32, 32, 25, Math.PI, 0);
-  g.fill();
+  if (!VC) {
+    const sh = g.createLinearGradient(0, 8, 0, 34);
+    sh.addColorStop(0, 'rgba(255,255,255,0.28)');
+    sh.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = sh;
+    g.beginPath(); g.arc(32, 32, 25, Math.PI, 0); g.fill();
+  }
   g.save();
   g.beginPath();
   g.arc(32, 32, 25, 0, Math.PI * 2);
   g.clip();
   if (letter) text(g, letter, 36, INK);
-  else d.draw(g, d.bg);
+  else d.draw(g, bg);
   g.restore();
   cache.set(key, c);
   return c;

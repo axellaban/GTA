@@ -7,8 +7,20 @@ import { VC } from './vc.js';
 import { TOUCH } from './input.js';
 import { updateAimHud, canAim } from './aim.js';
 import { drawIcon, iconCanvas, ICONS, LEGEND, PICKUP_ICON } from './icons.js';
+import { MapView, bindMapControls } from './map-view.js';
 
 const MAPK = 1; // px del plano por metro
+const MAP = VC ? {
+  outside: '#18343f', road: '#fff6dd', block: '#dfd4ba', building: '#c0ae9f',
+  edge: '#7c8d89', yard: '#b3c7c2', park: '#8ac7ad', pitch: '#6bac97',
+  station: '#f19fba', platform: '#fff4dc', avenue: '#ffe4a6', track: '#547e80',
+  route: '#ed68ac', ink: '#17343e', label: '#25414a', halo: '#fff7e8',
+} : {
+  outside: '#2d3328', road: '#c9c3b2', block: '#5b6152', building: '#4a4f44',
+  edge: '#74776a', yard: '#4b453e', park: '#467a3a', pitch: '#4f8a3c',
+  station: '#a3563b', platform: '#e3dccb', avenue: '#efe0a8', track: '#1d1b19',
+  route: '#c86bff', ink: '#111418', label: '#f4efe4', halo: '#202628',
+};
 
 // inicial de quien da la misión (como las letras de los GTA): "El Turco del kiosco" → T
 const initial = (who = '') => (who.split(/[\s,]+/).find((w) => w && !['El', 'La', 'Los', 'Las', 'Don', 'Doña'].includes(w)) ?? 'M')[0].toUpperCase();
@@ -41,6 +53,16 @@ export class Hud {
     this.mctx = this.mini.getContext('2d');
     this.baseMap = this.drawBaseMap();
     this.buildLegend();
+    this.mapView = new MapView([X0, Z0, X1, Z1]);
+    const redraw = () => {
+      if (this.mapWorld && !$('pausemap').hidden) this.drawBig(this.mapWorld);
+    };
+    this.clearMapPointers = bindMapControls($('bigmap'), this.mapView, redraw, {
+      plus: $('map-plus'), minus: $('map-minus'), all: $('map-all'), player: $('map-player'),
+      position: () => this.mapWorld.player,
+    });
+    globalThis.addEventListener('resize', redraw);
+    document.fonts?.ready.then(redraw);
   }
 
   // leyenda del mapa de pausa con los mismos íconos
@@ -53,12 +75,12 @@ export class Hud {
       li.append(el, document.createTextNode(label));
       ul.append(li);
     };
-    for (const [color, label] of [['#ffe14a', 'Objetivo'], ['#c86bff', 'Ruta del GPS']]) {
+    for (const [color, label] of [['#ffe14a', 'Objetivo'], [MAP.route, 'Ruta del GPS']]) {
       const i = document.createElement('i');
       i.style.background = color;
       item(i, label);
     }
-    for (const k of LEGEND) {
+    for (const k of [...LEGEND, 'lavadero', 'bar', 'pizzeria']) {
       const img = document.createElement('img');
       img.src = iconCanvas(k).toDataURL();
       img.alt = '';
@@ -375,136 +397,189 @@ export class Hud {
         g.fill('evenodd');
       }
     };
-    // afuera del mapa, oscuro; adentro, calles de fondo (todo lo que no es manzana es calle)
-    g.fillStyle = '#2d3328';
-    g.fillRect(0, 0, c.width, c.height);
-    fillPolys([[AREA]], '#c9c3b2');
-    fillPolys(D.yard, '#4b453e');
-    fillPolys(D.blocks, '#5b6152');
+    // El área sin relevar queda transparente sobre el fondo oscuro del radar.
+    fillPolys([[AREA]], MAP.road);
+    fillPolys(D.yard, MAP.yard);
+    fillPolys(D.blocks, MAP.block);
+    g.strokeStyle = MAP.edge;
+    g.lineWidth = 1.2;
+    for (const p of D.blocks) {
+      g.beginPath(); path(p); g.stroke();
+    }
     // plazas y canchas
-    for (const p of D.parks) fillPolys(p.r, p.c === 'pitch' ? '#4f8a3c' : '#467a3a');
+    for (const p of D.parks) fillPolys(p.r, p.c === 'pitch' ? MAP.pitch : MAP.park);
     // edificios: apenas más oscuros que la manzana
-    g.fillStyle = '#4a4f44';
+    g.fillStyle = MAP.building;
     g.beginPath();
     for (const b of D.buildings) path([b.r]);
     g.fill();
-    g.fillStyle = '#a3563b';
+    g.fillStyle = MAP.station;
     g.beginPath();
     for (const b of D.buildings) if (b.k === 'estacion') path([b.r]);
     g.fill();
-    // avenidas en amarillo claro
+    // Calles crema con contorno; las avenidas se distinguen del tejido de manzanas.
     g.lineCap = 'round';
     g.lineJoin = 'round';
-    for (const r of D.roads) {
-      if (r.c !== 'primary' && r.c !== 'secondary') continue;
-      g.strokeStyle = '#efe0a8';
-      g.lineWidth = r.w * k * 0.9;
-      g.beginPath();
-      r.p.forEach(([x, z], i) => (i ? g.lineTo(X(x), Z(z)) : g.moveTo(X(x), Z(z))));
-      g.stroke();
+    for (const outline of [true, false]) {
+      for (const r of D.roads) {
+        const av = ['primary', 'secondary', 'tertiary'].includes(r.c);
+        g.strokeStyle = outline ? MAP.edge : av ? MAP.avenue : MAP.road;
+        g.lineWidth = Math.max(3, r.w * k * 0.85) + (outline ? 2 : 0);
+        g.beginPath();
+        r.p.forEach(([x, z], i) => (i ? g.lineTo(X(x), Z(z)) : g.moveTo(X(x), Z(z))));
+        g.stroke();
+      }
     }
     // vías
-    g.strokeStyle = '#1d1b19';
+    g.strokeStyle = MAP.track;
     g.lineWidth = 2.2;
     for (const t of TRACKS) {
       g.beginPath();
       t.forEach(([x, z], i) => (i ? g.lineTo(X(x), Z(z)) : g.moveTo(X(x), Z(z))));
       g.stroke();
     }
-    fillPolys(D.platforms, '#e3dccb');
+    fillPolys(D.platforms, MAP.platform);
     return c;
   }
 
-  // Mapa completo para la pausa: el plano, los nombres de las calles y los marcadores
+  // Mapa de pausa: la misma cartografía que el radar, con una vista navegable.
   drawBig(world) {
+    this.mapWorld = world;
     const cv = $('bigmap');
     const g = cv.getContext('2d');
     const S = cv.width;
     const { player } = world;
-    // el mapa entero centrado en el cuadro (no es cuadrado: tiene las franjas al norte y al este)
-    const k = S / Math.max(X1 - X0, Z1 - Z0);
-    const ox = (S - (X1 - X0) * k) / 2;
-    const oz = (S - (Z1 - Z0) * k) / 2;
-    const X = (x) => (x - X0) * k + ox;
-    const Z = (z) => (z - Z0) * k + oz;
-    g.fillStyle = '#2d3328';
+    const view = this.mapView;
+    const k = view.scale;
+    const ui = S / (cv.getBoundingClientRect().width || 560);
+    const X = (x) => view.project(x, 0)[0];
+    const Z = (z) => view.project(0, z)[1];
+    g.fillStyle = MAP.outside;
     g.fillRect(0, 0, S, S);
-    g.drawImage(this.baseMap, ox, oz, (X1 - X0) * k, (Z1 - Z0) * k);
-    // nombres de calles: uno por calle, en su tramo más largo
+    // Retícula del plano, solo visible fuera del área relevada.
+    g.strokeStyle = 'rgba(176,218,219,0.055)';
+    g.lineWidth = ui;
+    for (let i = 0; i <= S; i += 48 * ui) {
+      g.beginPath(); g.moveTo(i, 0); g.lineTo(i, S); g.moveTo(0, i); g.lineTo(S, i); g.stroke();
+    }
+    g.drawImage(this.baseMap, X(X0), Z(Z0), (X1 - X0) * k, (Z1 - Z0) * k);
+    const pois = this.pois(world);
+    // En la vista general, los lugares; al acercarse aparecen los objetos del piso.
+    const pickups = view.zoom >= 1.6 ? world.pickups.markers(player, true) : [];
+    const poiSize = (m) => (m.kind === 'mision' || m.kind === 'ovni' ? 29 : 23) * ui;
+    const reserved = pois.map((m) => {
+      const h = poiSize(m) / 2 + 3 * ui;
+      return { x: X(m.x) - h, y: Z(m.z) - h, w: h * 2, h: h * 2 };
+    });
+    for (const m of [...pickups, player]) reserved.push({ x: X(m.x) - 12 * ui, y: Z(m.z) - 12 * ui, w: 24 * ui, h: 24 * ui });
+    reserved.push({ x: S - 55 * ui, y: 0, w: 55 * ui, h: 55 * ui });
+    const overlaps = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+    const write = (name, x, y, angle, size, strong = false, available = Infinity) => {
+      g.font = `${strong ? 800 : 600} ${size * ui}px 'Barlow Condensed', 'Arial Narrow', sans-serif`;
+      const w = g.measureText(name).width;
+      if (w > available) return;
+      const h = (size + 5) * ui;
+      const box = { x: x - (Math.abs(Math.cos(angle)) * w + Math.abs(Math.sin(angle)) * h) / 2,
+        y: y - (Math.abs(Math.sin(angle)) * w + Math.abs(Math.cos(angle)) * h) / 2,
+        w: Math.abs(Math.cos(angle)) * w + Math.abs(Math.sin(angle)) * h,
+        h: Math.abs(Math.sin(angle)) * w + Math.abs(Math.cos(angle)) * h };
+      if (box.x < 10 * ui || box.y < 10 * ui || box.x + box.w > S - 10 * ui || box.y + box.h > S - 10 * ui || reserved.some((r) => overlaps(box, r))) return;
+      reserved.push(box);
+      g.save(); g.translate(x, y); g.rotate(angle);
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.lineJoin = 'round'; g.lineWidth = 3.5 * ui;
+      g.strokeStyle = MAP.halo; g.strokeText(name, 0, 0);
+      g.fillStyle = MAP.label; g.fillText(name, 0, 0);
+      g.restore();
+      return true;
+    };
+    if (view.zoom >= 1.6) write('Estación Temperley', X(D.station[0] + 18), Z(D.station[1]), -Math.PI / 2, 12, true);
+    // Un nombre por calle, priorizando las avenidas y evitando textos encimados.
     if (!this.labels) {
-      const best = new Map();
+      const streets = new Map();
       for (const r of D.roads) {
         if (!r.n) continue;
-        for (let i = 0; i < r.p.length - 1; i++) {
-          const [ax, az] = r.p[i];
-          const [bx, bz] = r.p[i + 1];
+        if (!streets.has(r.n)) streets.set(r.n, []);
+        const candidates = streets.get(r.n);
+        const av = ['primary', 'secondary', 'tertiary'].includes(r.c);
+        const add = (a, b) => {
+          const [ax, az] = a, [bx, bz] = b;
           const l = Math.hypot(bx - ax, bz - az);
-          if (!best.has(r.n) || l > best.get(r.n).l) best.set(r.n, { l, ax, az, bx, bz, av: r.c === 'primary' || r.c === 'secondary' || r.c === 'tertiary' });
+          if (l > 60) candidates.push({ l, ax, az, bx, bz, av });
+        };
+        for (let i = 0; i < r.p.length - 1; i++) add(r.p[i], r.p[i + 1]);
+        if (r.p.length > 2) {
+          const a = r.p[0], b = r.p.at(-1);
+          const dx = b[0] - a[0], dz = b[1] - a[1], l = Math.hypot(dx, dz);
+          // Unir tramos casi rectos permite rotular una avenida sin torcer su nombre.
+          if (l > 0 && r.p.every(([x, z]) => Math.abs((x - a[0]) * dz - (z - a[1]) * dx) / l < 5)) add(a, b);
         }
       }
-      this.labels = [...best.entries()].filter(([, v]) => v.l > 60);
+      this.labels = [...streets].map(([name, candidates]) => ({ name, candidates: candidates.sort((a, b) => Number(b.av) - Number(a.av) || b.l - a.l) }))
+        .filter((r) => r.candidates.length).sort((a, b) => Number(b.candidates[0].av) - Number(a.candidates[0].av) || b.candidates[0].l - a.candidates[0].l);
     }
-    g.textAlign = 'center';
-    g.textBaseline = 'middle';
-    for (const [name, v] of this.labels) {
-      let a = Math.atan2(v.bz - v.az, v.bx - v.ax);
-      if (a > Math.PI / 2) a -= Math.PI;
-      if (a < -Math.PI / 2) a += Math.PI;
-      g.save();
-      g.translate(X((v.ax + v.bx) / 2), Z((v.az + v.bz) / 2));
-      g.rotate(a);
-      g.font = `${v.av ? 700 : 600} ${v.av ? 15 : 12}px 'Barlow Condensed', 'Arial Narrow', sans-serif`;
-      g.lineWidth = 3;
-      g.strokeStyle = 'rgba(20,22,24,0.85)';
-      g.strokeText(name, 0, 0);
-      g.fillStyle = v.av ? '#ffe7a3' : '#f4efe4';
-      g.fillText(name, 0, 0);
-      g.restore();
+    for (const { name, candidates } of this.labels) for (const v of candidates) {
+      if (!v.av && view.zoom < 1.6) continue;
+      let angle = Math.atan2(v.bz - v.az, v.bx - v.ax);
+      if (angle > Math.PI / 2) angle -= Math.PI;
+      if (angle < -Math.PI / 2) angle += Math.PI;
+      if (write(name, X((v.ax + v.bx) / 2), Z((v.az + v.bz) / 2), angle, v.av ? 12 : 10.5, v.av, v.l * k * 0.9)) break;
+    }
+    if (view.zoom >= 1.6) for (const p of D.parks) {
+      if (!p.n || p.c !== 'park') continue;
+      const ring = p.r[0]?.[0];
+      if (!ring?.length) continue;
+      const xs = ring.map(([x]) => x), zs = ring.map(([, z]) => z);
+      write(p.n.replace(/^Plaza /, ''), X((Math.min(...xs) + Math.max(...xs)) / 2), Z((Math.min(...zs) + Math.max(...zs)) / 2), 0, 10);
     }
     const dot = (x, z, color, r, shape) => {
-      g.fillStyle = color;
-      g.strokeStyle = '#111';
-      g.lineWidth = 2;
+      r *= ui;
+      g.fillStyle = color; g.strokeStyle = MAP.ink; g.lineWidth = 1.5 * ui;
       g.beginPath();
       if (shape === 'square') g.rect(X(x) - r, Z(z) - r, r * 2, r * 2);
       else g.arc(X(x), Z(z), r, 0, Math.PI * 2);
-      g.fill();
-      g.stroke();
+      g.fill(); g.stroke();
     };
-    if (this.route && this.route.length > 1) {
-      g.strokeStyle = '#c86bff';
-      g.lineWidth = 5;
-      g.lineJoin = 'round';
+    if (this.route?.length > 1) {
+      g.lineJoin = g.lineCap = 'round';
       g.beginPath();
       this.route.forEach(([x, z], i) => (i ? g.lineTo(X(x), Z(z)) : g.moveTo(X(x), Z(z))));
-      g.stroke();
+      g.strokeStyle = MAP.ink; g.lineWidth = 6 * ui; g.stroke();
+      g.strokeStyle = MAP.route; g.lineWidth = 3.5 * ui; g.stroke();
     }
-    for (const m of world.police.markers()) dot(m.x, m.z, '#3060ff', 5, 'square');
-    // íconos a lo GTA (los objetos del piso, más chicos)
-    for (const m of world.pickups.markers({ x: player.x, z: player.z }, true)) {
-      if (PICKUP_ICON[m.kind]) drawIcon(g, PICKUP_ICON[m.kind], X(m.x), Z(m.z), 26);
-      else dot(m.x, m.z, '#6ec3ea', 5);
+    for (const m of world.police.markers()) dot(m.x, m.z, '#3060ff', 4, 'square');
+    for (const m of pickups) {
+      if (PICKUP_ICON[m.kind]) drawIcon(g, PICKUP_ICON[m.kind], X(m.x), Z(m.z), 16 * ui);
+      else dot(m.x, m.z, '#6ec3ea', 3);
     }
-    for (const m of this.pois(world)) drawIcon(g, m.kind, X(m.x), Z(m.z), m.kind === 'mision' || m.kind === 'ovni' ? 46 : 38, m.letter);
+    for (const m of pois) drawIcon(g, m.kind, X(m.x), Z(m.z), poiSize(m), m.letter);
     const o = this.objective;
-    if (o?.target) dot(o.target.x, o.target.z, '#ffe14a', 9);
-    // Gaspi
+    if (o?.target) dot(o.target.x, o.target.z, '#ffe14a', 6);
+    // Gaspi se distingue de los servicios incluso al alejar el plano.
     g.save();
-    g.translate(X(player.x), Z(player.z));
-    g.rotate(-player.heading + Math.PI);
-    g.fillStyle = '#ffffff';
-    g.strokeStyle = '#0f5fa8';
-    g.lineWidth = 3;
-    g.beginPath();
-    g.moveTo(0, -13);
-    g.lineTo(9, 10);
-    g.lineTo(0, 5);
-    g.lineTo(-9, 10);
-    g.closePath();
-    g.fill();
-    g.stroke();
-    g.restore();
-    $('pm-obj').textContent = o?.text ?? '';
+    g.translate(X(player.x), Z(player.z)); g.rotate(-player.heading + Math.PI); g.scale(ui, ui);
+    g.fillStyle = '#ffffff'; g.strokeStyle = MAP.ink; g.lineWidth = 2.5;
+    g.beginPath(); g.moveTo(0, -11); g.lineTo(8, 8); g.lineTo(0, 4); g.lineTo(-8, 8); g.closePath();
+    g.fill(); g.stroke(); g.restore();
+    // Norte y escala en metros: no se alteran con el zoom ni con el tamaño de pantalla.
+    g.save(); g.scale(ui, ui);
+    const C = S / ui;
+    g.fillStyle = MAP.outside; g.strokeStyle = '#9ddacc'; g.lineWidth = 1.5;
+    g.beginPath(); g.arc(C - 30, 31, 18, 0, Math.PI * 2); g.fill(); g.stroke();
+    g.fillStyle = '#fff6e7'; g.font = "800 13px 'Barlow Condensed', sans-serif";
+    g.textAlign = 'center'; g.fillText('N', C - 30, 29);
+    g.beginPath(); g.moveTo(C - 30, 34); g.lineTo(C - 34, 42); g.lineTo(C - 26, 42); g.fill();
+    const meters = [20, 50, 100, 200, 500].find((m) => m * k / ui >= 44) ?? 500;
+    const bar = meters * k / ui;
+    g.fillStyle = 'rgba(13,36,44,0.88)'; g.fillRect(12, C - 44, bar + 20, 32);
+    g.strokeStyle = '#fff6e7'; g.lineWidth = 2;
+    g.beginPath(); g.moveTo(22, C - 29); g.lineTo(22, C - 23); g.lineTo(22 + bar, C - 23); g.lineTo(22 + bar, C - 29); g.stroke();
+    g.textAlign = 'left'; g.font = "600 11px 'Barlow Condensed', sans-serif"; g.fillStyle = '#fff6e7';
+    g.fillText(`${meters} m`, 22, C - 32); g.restore();
+    $('pm-obj').textContent = o?.text ?? 'Recorré Temperley y buscá una misión.';
+    $('map-zoom').textContent = `${view.zoom.toFixed(1)}×`;
+    $('map-minus').disabled = view.zoom <= 1;
+    $('map-plus').disabled = view.zoom >= 4;
   }
 
   drawMinimap(world) {
@@ -518,7 +593,7 @@ export class Hud {
     g.beginPath();
     g.arc(W / 2, W / 2, W / 2, 0, Math.PI * 2);
     g.clip();
-    g.fillStyle = '#2d3328';
+    g.fillStyle = MAP.outside;
     g.fillRect(0, 0, W, W);
     g.translate(W / 2, W / 2);
     // "arriba" es hacia donde mira la cámara
@@ -541,12 +616,17 @@ export class Hud {
     };
     // ruta del GPS
     if (this.route && this.route.length > 1) {
-      g.strokeStyle = '#c86bff';
+      g.strokeStyle = MAP.route;
       g.lineWidth = (5 * k) / scale;
       g.lineJoin = 'round';
       g.lineCap = 'round';
       g.beginPath();
       this.route.forEach(([x, z], i) => (i ? g.lineTo((x - X0) * k, (z - Z0) * k) : g.moveTo((x - X0) * k, (z - Z0) * k)));
+      g.strokeStyle = MAP.ink;
+      g.lineWidth = (7 * k) / scale;
+      g.stroke();
+      g.strokeStyle = MAP.route;
+      g.lineWidth = (4 * k) / scale;
       g.stroke();
     }
     for (const m of crime.markers()) mark(m.x, m.z, m.kind === 'moto' ? '#e5484d' : '#6ec3ea', 5);
@@ -609,12 +689,20 @@ export class Hud {
         g.fill();
       }
     }
+    // Norte geográfico, aunque el radar acompañe la cámara.
+    const northRadius = W / 2 - 13;
+    const nx = W / 2 + Math.sin(player.camYaw) * northRadius;
+    const ny = W / 2 - Math.cos(player.camYaw) * northRadius;
+    g.fillStyle = MAP.ink;
+    g.beginPath(); g.arc(nx, ny, 9, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#fff7e8'; g.font = "900 12px 'Barlow Condensed', sans-serif";
+    g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('N', nx, ny + 0.5);
     // Gaspi: flecha en el centro
     g.save();
     g.translate(W / 2, W / 2);
     g.rotate(player.camYaw - player.heading + Math.PI);
     g.fillStyle = '#ffffff';
-    g.strokeStyle = '#0f5fa8';
+    g.strokeStyle = MAP.ink;
     g.lineWidth = 2;
     g.beginPath();
     g.moveTo(0, -9);

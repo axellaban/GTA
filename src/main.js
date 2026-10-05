@@ -1125,8 +1125,10 @@ function setPaused(p) {
   input.releaseAll();
   player.aiming = false;
   document.getElementById('pausemap').hidden = !p;
+  document.documentElement.classList.toggle('map-paused', p);
   if (p) {
     hud.drawBig(world);
+    document.getElementById('bigmap').focus({ preventScroll: true });
     // cuánto del juego hiciste, como el porcentaje de los GTA
     const mis = Math.min(missions.done, 3);
     const figus = player.figus.size;
@@ -1141,13 +1143,35 @@ function setPaused(p) {
     }
     audio.master && (audio.master.gain.value = audio.muted ? 0 : 0.15);
   } else {
+    hud.clearMapPointers();
+    document.getElementById('minimap').focus({ preventScroll: true });
     audio.master && (audio.master.gain.value = audio.muted ? 0 : 0.55);
     last = performance.now();
   }
 }
 document.getElementById('minimap').addEventListener('click', () => started && setPaused(!paused));
-document.getElementById('bigmap').addEventListener('click', () => setPaused(false));
+document.getElementById('minimap').addEventListener('keydown', (e) => {
+  if (started && (e.key === 'Enter' || e.key === ' ')) {
+    e.preventDefault();
+    setPaused(!paused);
+  }
+});
 document.getElementById('resume').addEventListener('click', () => setPaused(false));
+document.getElementById('pausemap').addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    e.stopPropagation();
+    setPaused(false);
+  } else if (e.key === 'Tab') {
+    // El Tab del juego cambia de arma. En la pausa recorre sus controles.
+    e.stopPropagation();
+    const items = [...e.currentTarget.querySelectorAll('button:not(:disabled), summary, [tabindex="0"]')].filter((el) => el.getClientRects().length);
+    const index = items.indexOf(document.activeElement);
+    if ((e.shiftKey && index <= 0) || (!e.shiftKey && index === items.length - 1)) {
+      e.preventDefault();
+      items[e.shiftKey ? items.length - 1 : 0]?.focus();
+    }
+  }
+});
 document.getElementById('intro').addEventListener('click', async () => {
   await playIntro();
   last = performance.now();
