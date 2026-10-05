@@ -5,6 +5,8 @@ import { WEAPONS, ORDER, SLOTS, handWeapon, rocketMesh } from './weapons.js';
 import { dentCar, dropBumper, looseBumper } from './cars.js';
 import { R } from './rng.js';
 import { TOUCH } from './input.js';
+import { updateAiming, shotSpread } from './aim.js';
+import { allVehicles, sameVehicleLevel } from './vehicle-physics.js';
 
 // combo de piñas: directo de izquierda, cruzado de derecha, gancho, uppercut y patada (poses en
 // src/moves.js; el golpe cuenta cerca de la mitad, cuando el brazo llega estirado)
@@ -111,9 +113,10 @@ export class Combat {
     const P = world.player;
     this.fireCd -= dt;
     P.hitMarker = Math.max(0, (P.hitMarker || 0) - dt);
-    if (!P.vehicle && !P.dead && !P.jack) this.playerCombat(dt, world);
+    if (!P.vehicle && !P.dead && !P.jack && !P.ufo && !P.riding) this.playerCombat(dt, world);
     else {
       P.aiming = false;
+      world.input.aimToggled = false;
       P.attack = null;
     }
     this.updateVehicles(dt, world);
@@ -143,7 +146,7 @@ export class Combat {
       }
     }
     const w = WEAPONS[P.weapon];
-    P.aiming = !!w.gun && input.down('mouse2');
+    updateAiming(P, input, w, !!hud.dialog);
     if (P.reloadT > 0) {
       P.reloadT -= dt;
       if (P.reloadT <= 0) {
@@ -154,7 +157,7 @@ export class Combat {
       }
     }
     if (w.gun && input.hit('r')) this.reload(P);
-    if (hud.dialog) return;
+    if (hud.dialog || P.downT > 0 || P.getupT > 0 || P.exitAnim || P.cutscene || P.auto) return;
     if (w.melee) {
       if (input.hit('mouse0', 'attack') || (w.auto && input.down('mouse0', 'attack') && !P.attack)) this.melee(P, world);
       this.meleeUpdate(dt, world);
@@ -514,9 +517,7 @@ export class Combat {
 
   // ---------- Tiros ----------
   vehicles(world) {
-    const list = world.traffic.cars.concat(world.traffic.parked, world.police.cars, world.tanks?.list.filter((t) => !world.traffic.parked.includes(t)) ?? []);
-    if (world.player.vehicle && !list.includes(world.player.vehicle)) list.push(world.player.vehicle);
-    return list;
+    return allVehicles(world);
   }
 
   trace(world, o, d, range, shooter) {
@@ -624,7 +625,7 @@ export class Combat {
     const hz = Math.cos(P.heading);
     const o = { x: P.x + hx * 0.55 - hz * 0.12, y: P.y + 1.42, z: P.z + hz * 0.55 + hx * 0.12 };
     const base = new THREE.Vector3(aim.x - o.x, aim.y - o.y, aim.z - o.z).normalize();
-    const moveSpread = (P.speed > 3 ? 2 : 1) * (w.heavy && P.speed > 1 ? 1.5 : 1);
+    const spread = shotSpread(P, w);
     if (w.rocket) {
       // el cohete sale de la boca del tubo, sobre el hombro
       const ro = { x: o.x + hx * 0.5, y: o.y + 0.12, z: o.z + hz * 0.5 };
@@ -635,9 +636,9 @@ export class Combat {
     }
     for (let i = 0; i < (w.rocket ? 0 : w.pellets); i++) {
       const d = base.clone();
-      d.x += R.range(-1, 1) * w.spread * moveSpread;
-      d.y += R.range(-1, 1) * w.spread * 0.6 * moveSpread;
-      d.z += R.range(-1, 1) * w.spread * moveSpread;
+      d.x += R.range(-1, 1) * spread;
+      d.y += R.range(-1, 1) * spread * 0.6;
+      d.z += R.range(-1, 1) * spread;
       d.normalize();
       this.shot(world, o, d, w, P, w.dmg);
     }
@@ -838,6 +839,9 @@ export class Combat {
     }
   }
   explodeVehicle(world, v) {
+    v.rollover = null;
+    v.overturned = false;
+    v.rollRisk = v.recoverHold = 0;
     v.wreck = true;
     v.burning = 0;
     v.speed = 0;
@@ -943,7 +947,7 @@ export class Combat {
     let crash = wall ? { x: ax, z: az, k: 2.4 } : null;
     if (!crash) {
       for (const o of world.traffic.cars.concat(world.traffic.parked, world.police.cars)) {
-        if (o === v || o.wreck || Math.abs(o.x - ax) > 6 || Math.abs(o.z - az) > 6) continue;
+        if (o === v || o.wreck || !sameVehicleLevel(v, o) || Math.abs(o.x - ax) > 6 || Math.abs(o.z - az) > 6) continue;
         if (o.circles().some((c) => Math.hypot(c.x - ax, c.z - az) < c.r + 0.3)) {
           crash = { x: ax, z: az, k: 2, other: o };
           break;

@@ -876,6 +876,11 @@ export function looseBumper(w) {
 }
 // chapa y pintura (o el auto vuelve al tránsito): como nuevo
 export function repairCar(v) {
+  if (!v.blast && !v.wreck) {
+    v.rollover = null; v.overturned = false; v.tilt = null;
+    v.rollRisk = v.recoverHold = 0;
+    v.sync?.(0);
+  }
   const u = v.mesh.userData;
   if (!u.dented) {
     if (u.glass && u.glass.material === crackedGlass) u.glass.material = u.glassMat ?? glassMat;

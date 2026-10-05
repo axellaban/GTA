@@ -596,16 +596,6 @@ body {
   background: #fff;
   border-radius: 50%;
 }
-#crosshair.dot {
-  width: 6px;
-  height: 6px;
-  margin: -3px 0 0 -3px;
-  border-width: 0;
-  background: rgba(255, 255, 255, 0.75);
-}
-#crosshair.dot::after {
-  display: none;
-}
 #hitmark {
   position: absolute;
   left: 50%;
@@ -1202,6 +1192,19 @@ body {
   .tbtn.down {
     transform: scale(0.9);
     background: rgba(244, 239, 228, 0.4);
+  }
+  .tbtn.active {
+    background: rgba(110, 195, 234, 0.7);
+    border-color: #fff;
+    box-shadow: 0 0 0 3px rgba(110, 195, 234, 0.2);
+  }
+  #btn-aim {
+    right: calc(24px + env(safe-area-inset-right, 0px));
+    bottom: calc(132px + env(safe-area-inset-bottom, 0px));
+  }
+  #touch.armed #btn-ctx {
+    right: calc(112px + env(safe-area-inset-right, 0px));
+    bottom: calc(140px + env(safe-area-inset-bottom, 0px));
   }
   #touch.foot .on-car,
   #touch.foot .on-moto,

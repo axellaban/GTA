@@ -7,6 +7,7 @@ import { carEffects } from './carfx.js';
 import { SIGNS } from './props.js';
 import { walkwayHeight } from './physics.js';
 import { lowFilter } from './bajonivel.js';
+import { turnRollover, recoverRollover, sideImpactRollover } from './vehicle-physics.js';
 
 const WALK = 2.3;
 const RUN = 6.3;
@@ -284,6 +285,7 @@ export class Player {
     }
     this.attack = null;
     this.aiming = false;
+    world.input.aimToggled = false;
     if (v.kind === 'moto') {
       // Gaspi va arriba de la moto, a la vista
       v.lean = 0;
@@ -345,7 +347,7 @@ export class Player {
     this.z = v.z + lz * side;
     this.heading = v.heading;
     // bajando tranquilo: arranca sentado y sale por la puerta
-    if (!forced && v.kind === 'car') {
+    if (!forced && v.kind === 'car' && !v.rollover && !v.overturned) {
       const seat = this.seatPoint(v);
       this.exitAnim = { t: 0, dur: 0.55, from: seat, to: { x: this.x, z: this.z }, h: v.heading };
       this.x = seat.x;
@@ -383,7 +385,7 @@ export class Player {
     let bd = r;
     const list = world.traffic.all().concat(world.police.cars, world.tanks?.list ?? []);
     for (const v of list) {
-      if (v.kind === 'bus' || v.wreck) continue;
+      if (v.kind === 'bus' || v.wreck || v.rollover || v.overturned) continue;
       for (const c of v.circles()) {
         const d = Math.hypot(c.x - this.x, c.z - this.z) - c.r;
         if (d < bd) {
@@ -865,6 +867,15 @@ export class Player {
       this.exitVehicle(world, true);
       return;
     }
+    if (v.rollover || v.overturned) {
+      v.throttle = 0;
+      v.brakeIn = true;
+      recoverRollover(v, dt, steerIn);
+      audio.chirrido(0);
+      v.sync(0);
+      this.x = v.x; this.z = v.z; this.heading = v.heading;
+      return;
+    }
     // el tanque se maneja aparte (src/tank.js): orugas, torreta y cañón
     if (v.kind === 'tank') {
       world.tanks.drive(dt, world, v);
@@ -971,6 +982,7 @@ export class Player {
         const cx = c.x - hit.nx * c.r;
         const cz = c.z - hit.nz * c.r;
         if (into < 0) {
+          sideImpactRollover(v, hit.nx, hit.nz, -into);
           if (-into > bump) hitAt = { x: cx, z: cz };
           bump = Math.max(bump, -into);
           v.vx -= hit.nx * into * 1.25;
@@ -994,58 +1006,7 @@ export class Player {
       }
     }
     v.heading += v.spin * dt;
-    // choques con otros vehículos
-    const others = traffic.all().concat(police.cars, world.tanks?.list ?? []);
-    for (const o of others) {
-      if (o === v || Math.abs(o.x - v.x) > 12 || Math.abs(o.z - v.z) > 12) continue;
-      for (const a of v.circles()) {
-        for (const b of o.circles()) {
-          const dx = a.x - b.x;
-          const dz = a.z - b.z;
-          const d = Math.hypot(dx, dz);
-          const min = a.r + b.r;
-          if (d < min && d > 0.001) {
-            const pen = (min - d) / 2;
-            const nx = dx / d;
-            const nz = dz / d;
-            // contra un tanque: el que rebota es uno
-            const heavy = o.kind === 'tank' ? 2 : 1;
-            v.x += nx * pen * heavy;
-            v.z += nz * pen * heavy;
-            if (heavy === 1) {
-              o.x -= nx * pen;
-              o.z -= nz * pen;
-            }
-            const ovx = o.fx * (o.speed || 0);
-            const ovz = o.fz * (o.speed || 0);
-            const rel = (v.vx - ovx) * nx + (v.vz - ovz) * nz;
-            if (rel < 0) {
-              const at = { x: a.x - nx * a.r, z: a.z - nz * a.r };
-              if (-rel * 0.8 > bump) hitAt = at;
-              bump = Math.max(bump, -rel * 0.8);
-              v.vx -= nx * rel * 0.8;
-              v.vz -= nz * rel * 0.8;
-              // los dos giran según dónde fue el golpe
-              const rx = at.x - v.x;
-              const rz = at.z - v.z;
-              v.spin -= ((rx * -nz * rel - rz * -nx * rel) / (v.L * 0.5)) * 0.25;
-              // el otro sale empujado (y con un golpe fuerte, girando y despegando un poco)
-              o.speed = (o.speed || 0) * 0.5;
-              if (-rel > 6 && o.kind !== 'bus') {
-                const k = Math.min(1.6, -rel / 12);
-                o.shove = { t: 0, vx: -nx * -rel * 0.55, vz: -nz * -rel * 0.55, vy: 1.2 * k };
-                const ox = at.x - o.x;
-                const oz = at.z - o.z;
-                o.heading += ((ox * nz - oz * nx) / (o.L * 0.5)) * 0.32 * k;
-              }
-              if (o.kind === 'moto' && o.rider && -rel > 5) traffic.ejectRider(o, world, -nx, -nz);
-              if (-rel > 7) combat.damageVehicle(world, o, -rel * 0.9, true, at.x, at.z);
-              if (o.police && -rel > 4) police.crime('pina', o.x, o.z);
-            }
-          }
-        }
-      }
-    }
+    // Los choques entre vehículos se resuelven juntos al terminar el frame.
     // cortes y marchas: despacio no se pasa (te golpean el capot); a toda velocidad se rompe el corte
     const ev = events.inside(v.x + v.fx * v.L * 0.5, v.z + v.fz * v.L * 0.5, 0.3);
     if (ev && (this.breakEv === ev || Math.abs(v.speed) > 9)) {
@@ -1158,6 +1119,7 @@ export class Player {
         if (n.type === 'vecino' && Math.hypot(n.x - v.x, n.z - v.z) < 12 && R.chance(0.4)) n.say(R.pick(['¡Tranqui, loco!', '¿Qué tocás bocina?', '¡Andá a cantarle a Gardel!']), 2);
       }
     }
+    turnRollover(v, dt, yaw, { handbrake: hb, slick: !!world.weather?.slick });
     v.sync(dt);
     carEffects(v, dt, world, { throttle, player: true });
     this.x = v.x;
@@ -1216,8 +1178,8 @@ export class Player {
     const hgt = ufo ? 3.2 : inCar ? (vk === 'moto' ? 1.8 : 2.2) : 1.7;
     const pitch = this.camPitch * (1 - this.aimK * 0.5);
     // hombro derecho
-    const sx = Math.cos(this.camYaw) * 0.6 * this.aimK;
-    const sz = -Math.sin(this.camYaw) * 0.6 * this.aimK;
+    const sx = Math.cos(this.camYaw) * 0.85 * this.aimK;
+    const sz = -Math.sin(this.camYaw) * 0.85 * this.aimK;
     const cx = this.x + Math.sin(this.camYaw) * Math.cos(pitch) * dist + sx;
     const cz = this.z + Math.cos(this.camYaw) * Math.cos(pitch) * dist + sz;
     const cy = this.y + hgt + Math.sin(pitch) * dist;

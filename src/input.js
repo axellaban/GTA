@@ -12,6 +12,7 @@ export class Input {
     this.canvas = canvas;
     this.dragging = false;
     this.locked = false;
+    this.aimToggled = false;
 
     addEventListener('keydown', (e) => {
       if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
@@ -23,10 +24,13 @@ export class Input {
       if ([' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'tab'].includes(k)) e.preventDefault();
     });
     addEventListener('keyup', (e) => this.keys.delete(e.key.toLowerCase()));
-    addEventListener('blur', () => this.keys.clear());
+    addEventListener('blur', () => this.releaseAll());
 
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
-    addEventListener('mouseup', (e) => this.keys.delete(`mouse${e.button}`));
+    addEventListener('mouseup', (e) => {
+      this.keys.delete(`mouse${e.button}`);
+      this.dragging = this.down('mouse0', 'mouse2');
+    });
     canvas.addEventListener('mousedown', (e) => {
       this.pressed.add(`mouse${e.button}`);
       this.keys.add(`mouse${e.button}`);
@@ -40,7 +44,6 @@ export class Input {
         }
       }
     });
-    addEventListener('mouseup', () => (this.dragging = false));
     addEventListener('mousemove', (e) => {
       if (this.locked || this.dragging) {
         this.look.dx += e.movementX || 0;
@@ -52,11 +55,15 @@ export class Input {
       this.wheel += e.deltaY;
       e.preventDefault();
     }, { passive: false });
-    document.addEventListener('pointerlockchange', () => (this.locked = document.pointerLockElement === canvas));
+    document.addEventListener('pointerlockchange', () => {
+      const wasLocked = this.locked;
+      this.locked = document.pointerLockElement === canvas;
+      if (wasLocked && !this.locked) this.releaseAll();
+    });
     this.setupTouch();
   }
 
-  // Controles táctiles como en GTA mobile y Fortnite: joystick flotante en la mitad izquierda
+  // Controles táctiles: joystick flotante en la mitad izquierda
   // (a fondo corre solo), arrastrar en la derecha para mirar y botones que cambian según el caso.
   setupTouch() {
     const stick = document.getElementById('stick');
@@ -78,6 +85,15 @@ export class Input {
       knob.style.transform = '';
     };
     rest();
+    const releaseButtons = [];
+    this.cancelTouch = () => {
+      stickId = lookId = null;
+      this.move.x = this.move.y = 0;
+      this.sprint = false;
+      stick.classList.remove('sprint');
+      rest();
+      for (const release of releaseButtons) release();
+    };
     const ui = (el) => el.closest && el.closest('button, [data-btn], #dialog, #minimap, #weapon, #pausemap, #start, #install, #wasted');
     const onStart = (e) => {
       for (const t of e.changedTouches) {
@@ -139,21 +155,45 @@ export class Input {
     // botones: la tecla se lee al tocar (el botón contextual cambia entre E y F)
     for (const b of document.querySelectorAll('[data-btn]')) {
       let held = null;
+      let finger = null;
+      let bx = 0;
+      let by = 0;
       b.addEventListener('touchstart', (e) => {
         e.preventDefault();
+        if (held !== null) return;
+        const touch = e.changedTouches[0];
+        if (!touch) return;
+        finger = touch.identifier;
+        bx = touch.clientX;
+        by = touch.clientY;
         held = b.dataset.btn;
         this.pressed.add(held);
         this.touchButtons.add(held);
         b.classList.add('down');
       });
-      const up = () => {
+      b.addEventListener('touchmove', (e) => {
+        if (held !== 'attack') return;
+        const touch = [...e.changedTouches].find((t) => t.identifier === finger);
+        if (!touch) return;
+        e.preventDefault();
+        this.look.dx += (touch.clientX - bx) * 1.6;
+        this.look.dy += (touch.clientY - by) * 1.6;
+        bx = touch.clientX;
+        by = touch.clientY;
+      }, { passive: false });
+      const release = () => {
         if (held) this.touchButtons.delete(held);
         held = null;
+        finger = null;
         b.classList.remove('down');
       };
+      const up = (e) => {
+        if ([...e.changedTouches].some((t) => t.identifier === finger)) release();
+      };
+      releaseButtons.push(release);
       b.addEventListener('touchend', up);
       b.addEventListener('touchcancel', up);
-      b.addEventListener('mousedown', () => this.pressed.add(b.dataset.btn));
+      b.addEventListener('mousedown', (e) => { if (e.button === 0) this.pressed.add(b.dataset.btn); });
     }
     // tocar el arma la cambia; tocar las balas recarga; el menú pausa (como en GTA mobile)
     const tap = (id, key) =>
@@ -166,6 +206,18 @@ export class Input {
     tap('w-ammo', 'r');
     tap('btn-menu', 'p');
     document.getElementById('btn-menu')?.addEventListener('click', () => this.pressed.add('p'));
+  }
+
+  releaseAll() {
+    this.keys.clear();
+    this.pressed.clear();
+    this.touchButtons.clear();
+    this.aimToggled = false;
+    this.dragging = false;
+    this.look.dx = this.look.dy = this.wheel = 0;
+    this.move.x = this.move.y = 0;
+    this.sprint = false;
+    this.cancelTouch?.();
   }
 
   down(...ks) {

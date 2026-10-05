@@ -81,7 +81,7 @@ export class Stunts {
       this.last.sync(0);
     }
     this.last = v;
-    if (!v) return;
+    if (!v || v.rollover || v.overturned) return;
     if (v.air) {
       // en el aire: sigue derecho y cae; al tocar el piso, el premio
       const a = v.air;

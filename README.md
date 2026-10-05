@@ -4,10 +4,10 @@ Juego de mundo abierto en el navegador, ambientado alrededor de la estación Tem
 
 Jugás con **Gaspi** (saco, camisa blanca, corbata a rayas rojas y blancas).
 
-Al tocar **Jugar** aparece una presentación cinematográfica de 41 segundos con once escenas de
+Al tocar **Jugar** aparece una presentación cinematográfica de 36,875 segundos con nueve planos y tres segundos de cierre negro de
 Gaspi y el barrio, música de **Los Pibes Chorros — Sentimiento villero** suministrada por el dueño
-y el cierre **TRIBUTO A GASPI**. En el primer plano de los jubilados, la música se corta para
-escuchar el diálogo original de la señora, conservando la sincronía del clip.
+y el cierre **TRIBUTO A GASPI**. El diálogo original de la señora, cuarto plano, se escucha con música de fondo ajustada;
+la última escena conserva su audio y la música. La canción empieza desde su segundo 9.
 Podés saltearla con el botón, una tecla o un toque, y repetirla desde **Ver la intro** en la pausa.
 La opción **Sin sonido** también silencia la presentación. El video se carga al reproducirlo.
 
@@ -93,11 +93,12 @@ Para comparar la misma calle de día, al atardecer y con lluvia: `npm run dev` y
 - **Lugares del barrio**: el **Colegio Eccleston** (Almirante Brown 3342: los edificios dentro del predio de OSM son la escuela, con su cartel; lo mismo para cualquier escuela con nombre) y la **estación de servicio Shell** de Av. Eva Perón y Almirante Brown (`src/nafta.js`): marquesinas con la banda amarilla y roja sobre columnas, surtidores, el cartel alto con los precios, minimercado y luces de noche. Como en GTA, los surtidores explotan si les tirás, los chocás fuerte o les cae una explosión, y prenden al de al lado. Del nombre real va solo el texto, sin logo.
 - **Mapa con íconos a lo GTA**: armería, chapa y pintura, gym, comisaría, hospitales, estación, panchos, medias, kiosco, picadas, cortes, changas (paramédico, bombero, delivery), el plato volador y los objetos del piso, cada uno con su ícono. En el minimapa quedan derechos aunque el mapa gire, y la misión ofrecida (con la inicial de quien la da) y el OVNI se pegan al borde si están lejos. El mapa de pausa (P) trae la leyenda.
 - **Plato volador**: cada tanto baja un OVNI al lado del carrito de panchos de la estación (luces que giran, zumbido de theremin, la gente lo filma). Se baja un marciano verde, pide "dos completos" y se pone a comer. Mientras come, acercate y robale la nave (F): volás con WASD (o el joystick) mirando con el mouse, Espacio sube, Shift baja; clic tira un rayo que hace volar lo que toca y clic derecho (o R) prende el rayo tractor, que levanta autos y gente: soltalos desde arriba. Para bajarte, aterrizá y F. El marciano te putea y, si dejás la nave, se la lleva. ¿Apurado? Escribí OVNI.
-- **Armas**: palo, revólver 38, pistola 9 mm, tumbera, ametralladora (cinta de 100, patea y voltea) y bazuca (cohete con estela que hace volar autos). En la armería, escondidas en el mapa o con el truco: escribí FIERROS. Clic derecho apunta sobre el hombro; sin apuntar, apunta solo. Fogonazo, trazas, chispas en las paredes, gente que se tira al piso o levanta las manos. Casquillos que rebotan en el piso, recarga animada, la mira que salta con cada tiro, agujeros de bala que quedan en paredes y veredas y astillas de revoque.
+- **Armas**: palo, revólver 38, pistola 9 mm, tumbera, ametralladora (cinta de 100, patea y voltea) y bazuca (cohete con estela que hace volar autos). En la armería, escondidas en el mapa o con el truco: escribí FIERROS. Mantené clic derecho para apuntar sobre el hombro: aparece la mira y baja la dispersión. Clic izquierdo dispara con o sin apuntado; sin apuntar conserva la asistencia hacia enemigos cercanos, sin mira permanente. Fogonazo, trazas, chispas en las paredes, gente que se tira al piso o levanta las manos. Casquillos que rebotan en el piso, recarga animada, la mira que salta con cada tiro, agujeros de bala que quedan en paredes y veredas y astillas de revoque.
 - **La Bonaerense**: estrellas de búsqueda según lo que hagas y quién te vea. Patrulleros con balizas y sirena que te persiguen por las calles (con GPS), canas a pie que te esposan o, desde dos estrellas, te tiran. Con cuatro estrellas aparece el helicóptero con reflector. Si te pierden de vista un rato, zafaste; si te agarran, comisaría, coima y te sacan los fierros.
 - **Robar autos**: Gaspi va hasta la puerta, saca al conductor (que después se enoja o se raja) y arranca. Se pueden robar patrulleros.
 - **Motos**: 20 motos en el tránsito (muchas de delivery con su caja). Se manejan con inclinación en las curvas, willy con Shift y, si chocás fuerte, volás.
 - **Vehículos**: Duna, Gol, Falcon, 504, Fiat 600, pickup, remís, taxi, Trafic, camiones de fletes, colectivos perfilados con fileteado y carro de cartonero con caballo.
+- **Colisiones y vuelcos**: las carrocerías de todos los vehículos son sólidas, incluso con centros idénticos, en cruces y choques rápidos. Los autos del puente no chocan con los del bajo nivel. El tránsito intenta destrabarse sin atravesar otros autos. Un giro cerrado sostenido a alta velocidad o un golpe lateral fuerte puede volcar un auto: queda sobre el techo, con daño. Soltá la dirección y después mantené A/D o el joystick hacia un lado para enderezarlo; también podés bajarte con F o el botón contextual.
 - **Manejo**: los choques descentrados te hacen pegar un trompo y al otro auto lo corren girando; raspando paredes saltan chispas; los postes de luz se voltean (y se apagan) si los llevás puestos rápido. Derrapes con freno de mano, marcas de frenada, humo de gomas, daño con humo; los autos se prenden fuego y explotan: vuelan dando vueltas (a veces caen dados vuelta), sueltan rueda, puerta y capó, empujan a los autos de al lado, que se prenden y revientan en cadena, y tiran a la gente por el aire. Bola de fuego, onda expansiva, brasas, escombros humeantes y la quemadura que queda en el piso. Alarmas en los autos estacionados. La carrocería va sobre la suspensión (se clava al frenar, se inclina en las curvas, rebota en los choques), luces de freno, humo de escape (negro en los colectivos al arrancar), petardeos, rocío con la calle mojada y pedazos de chapa y vidrio en los choques. De noche con la calle mojada, los faros y las luces de freno se reflejan estirados en el asfalto. Gaspi se agacha y se mete al subir y sale por la puerta al bajar (si apretás F andando, se tira: sale rodando por el piso, se lastima según la velocidad y el auto sigue de largo hasta frenar o chocar), que se abre y se cierra de un portazo (y queda abierta si saliste volando) y con muchos golpes se cae el paragolpes.
 - **Radio del auto** (R): cumbia, rock nacional, tango y **Flash Conurbano 89.3**, synthpop ochentoso a lo Vice City (caja de ritmos con redoblante gateado, bajo de sinte en octavas, colchones, arpegios y estribillo). Todo compuesto en el momento: no usa temas con derechos.
 - **Clima**: se larga a llover, las calles se mojan y brillan, relámpagos y truenos.
@@ -114,8 +115,8 @@ Para comparar la misma calle de día, al atardecer y con lluvia: `npm run dev` y
 | --- | --- |
 | WASD / flechas | Moverse o manejar |
 | Mouse | Mirar (clic para capturar el mouse) |
-| Clic | Pegar (combo) o tirar |
-| Clic derecho | Apuntar |
+| Clic izquierdo | Pegar (combo) o disparar, con o sin apuntado |
+| Clic derecho mantenido | Apuntar: mira, cámara sobre el hombro y mayor precisión |
 | Q · 1 a 9 | Cambiar de arma: 1 piñas, 2 motosierra / bastón / palo, 3 revólver / pistola, 4 tumbera, 5 metra, 6 ametralladora, 7 molotov, 8 bazuca, 9 lanzallamas (apretando de nuevo el mismo número se pasa a la otra de ese grupo) |
 | R | Recargar · cambiar la radio arriba del auto |
 | Espacio | Saltar · freno de mano |
@@ -127,7 +128,7 @@ Para comparar la misma calle de día, al atardecer y con lluvia: `npm run dev` y
 | Rueda del mouse | Acercar o alejar la cámara |
 | M | Silenciar |
 
-En el celular los controles son como en GTA mobile y Fortnite: joystick a la izquierda (aparece donde apoyás el dedo; a fondo, Gaspi corre solo) y arrastrar a la derecha para mirar. A pie hay dos botones, Pegar o Tirar (apunta solo) y Saltar; en el auto, Freno de mano y Bocina, y Willy en la moto. Un botón celeste aparece solo cuando hay algo para hacer y dice qué hace (Subir al auto, Comprar medias, Bajarse). El arma se cambia tocándola arriba a la derecha, y ☰ abre la pausa con el mapa.
+En el celular los controles son como en GTA mobile y Fortnite: joystick a la izquierda (aparece donde apoyás el dedo; a fondo, Gaspi corre solo) y arrastrar a la derecha para mirar. A pie están Pegar y Saltar; con un arma, **Apuntar** activa o desactiva la mira y **Disparar** funciona en ambos modos. Arrastrar desde Disparar permite dirigir el tiro con el mismo dedo; en el auto, Freno de mano y Bocina, y Willy en la moto. Un botón celeste aparece solo cuando hay algo para hacer y dice qué hace (Subir al auto, Comprar medias, Bajarse). El arma se cambia tocándola arriba a la derecha, y ☰ abre la pausa con el mapa.
 
 ## Correrlo
 

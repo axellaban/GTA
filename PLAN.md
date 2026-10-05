@@ -640,6 +640,23 @@ en weapons.js): 1 piñas, 2 motosierra/bastón/palo, 3 revólver/pistola, 4 tumb
 ninguna de ese casillero lo avisa. Q recorre en ese mismo orden. En la compu el recuadro del arma muestra el
 número ("8 · Bazuca"). Prueba: `teclas2.mjs`.
 
+**R41 — ✅ Mira independiente, autos sólidos y vuelcos (2026-10-04, Codex)**:
+Entrega: «Apuntado independiente y autos sólidos con vuelcos».
+- `src/aim.js`: mira sólo al apuntar, clic derecho mantenido en compu y botón Apuntar con un toque en
+  celular. Disparo con y sin apuntado; cámara de hombro y menor dispersión al apuntar. Arrastrar desde
+  Disparar dirige el tiro. `Input.releaseAll` suelta controles al pausar, perder foco o salir del pointer lock.
+- `src/vehicle-physics.js`: carrocerías orientadas para tránsito, estacionados, policía, tanques y motos;
+  separación e impulso después de moverlos, barrido para choques entre cuadros y altura para distinguir
+  puente/bajo nivel. Quitado el destrabe que ignoraba autos (`ghost`); retroceso breve con espacio libre.
+  Reaparición lejos comprueba todas las carrocerías. Golpes conservan daño, empujón, giro y caída de motos.
+- Vuelcos por giro cerrado sostenido a velocidad alta o golpe lateral fuerte. Deslizamiento, apoyo sobre
+  el techo y daño, sin acelerar durante el vuelco. Soltar dirección y mantener un giro endereza; F/botón
+  permite bajarse. La IA no maneja ni recicla un auto volcado; rampas, reparación y explosiones respetan
+  este estado. No usa código ni assets de GTA: física propia inspirada en su manejo.
+- Pruebas: `node --test tools/apuntado.test.mjs tools/vehiculos.test.mjs`; prueba visual dentro del juego
+  con ambos disparos, centros idénticos, choque frontal, vuelco y recuperación. Build de producción.
+  Validación de botones en viewport de celular; prueba física en iPhone real pendiente.
+
 **R11 — Pruebas en celu real**: el dueño prueba en iPhone/Android y manda capturas; se ajusta.
 
 **R12 — Acercarse al look del video de Higgsfield** (Gaspi de traje y corbata roja en una vereda a lo

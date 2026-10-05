@@ -5,6 +5,7 @@ import gaspiUrl from './gaspi.webp';
 import { WEAPONS, SLOT_OF } from './weapons.js';
 import { VC } from './vc.js';
 import { TOUCH } from './input.js';
+import { updateAimHud, canAim } from './aim.js';
 import { drawIcon, iconCanvas, ICONS, LEGEND, PICKUP_ICON } from './icons.js';
 
 const MAPK = 1; // px del plano por metro
@@ -165,16 +166,13 @@ export class Hud {
     $('w-ammo').textContent = w.gun ? (player.reloadT > 0 ? 'recargando' : `${a?.mag ?? 0} / ${a?.res ?? 0}`) : w.throw ? `${a?.mag ?? 0}` : '';
     // controles táctiles: a pie, en auto o en moto; el botón de ataque dice qué hace
     const v = player.vehicle;
-    const mode = player.ufo ? 'ufo' : v ? (v.kind === 'moto' ? 'car moto' : 'car') : 'foot';
+    const mode = player.ufo ? 'ufo' : v ? (v.kind === 'moto' ? 'car moto' : 'car') : canAim(player, w, !!this.dialog) ? 'foot armed' : 'foot';
     const touch = $('touch');
     if (touch.className !== mode) touch.className = mode;
-    const verb = w.gun || w.throw ? 'Tirar' : w.verb || 'Pegar';
+    const verb = w.gun ? 'Disparar' : w.throw ? 'Tirar' : w.verb || 'Pegar';
     const atk = $('btn-attack');
     if (atk.textContent !== verb) atk.textContent = verb;
-    // mira: círculo al apuntar, punto si tiene un arma de fuego en la mano
-    const ch = $('crosshair');
-    ch.hidden = !((w.gun && !player.vehicle && !player.dead) || player.ufo);
-    ch.className = player.aiming || player.ufo ? '' : 'dot';
+    updateAimHud(player, w, { crosshair: $('crosshair'), button: $('btn-aim') }, !!this.dialog);
     $('hitmark').hidden = !(player.hitMarker > 0);
     if (this.radioT > 0) {
       this.radioT -= dt;

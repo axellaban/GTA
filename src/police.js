@@ -7,6 +7,7 @@ import { handWeapon, WEAPONS } from './weapons.js';
 import { R } from './rng.js';
 import { radialTexture } from './city.js';
 import { carEffects } from './carfx.js';
+import { sideImpactRollover } from './vehicle-physics.js';
 
 const HEAT = { colado: 1.05, ovni: 2.2, choque: 0.15, robo_negocio: 1.7, pina: 0.1, ko: 0.45, herido: 0.45, muerte: 0.9, tiros: 0.2, cana: 1.2, robo_auto: 0.6, atropello: 0.4, explosion: 1.1 };
 const beaconMat = (c) => new THREE.MeshBasicMaterial({ color: c });
@@ -246,36 +247,13 @@ export class Police {
       if (hit) {
         v.x += p.x - c.x;
         v.z += p.z - c.z;
-        bump = Math.max(bump, Math.abs(v.speed) * Math.abs(hit.nx * v.fx + hit.nz * v.fz));
+        const impact = Math.abs(v.speed) * Math.abs(hit.nx * v.fx + hit.nz * v.fz);
+        sideImpactRollover(v, hit.nx, hit.nz, impact);
+        bump = Math.max(bump, impact);
       }
     }
     const P = world.player;
-    const others = world.traffic.cars.concat(world.traffic.parked, this.cars);
-    if (P.vehicle && !others.includes(P.vehicle)) others.push(P.vehicle);
-    for (const o of others) {
-      if (o === v || Math.abs(o.x - v.x) > 9 || Math.abs(o.z - v.z) > 9) continue;
-      for (const a of v.circles()) {
-        for (const b of o.circles()) {
-          const dx = a.x - b.x;
-          const dz = a.z - b.z;
-          const d = Math.hypot(dx, dz);
-          const min = a.r + b.r;
-          if (d < min && d > 0.001) {
-            const pen = (min - d) / 2;
-            v.x += (dx / d) * pen;
-            v.z += (dz / d) * pen;
-            o.x -= (dx / d) * pen;
-            o.z -= (dz / d) * pen;
-            const rel = Math.abs(v.speed - (o.speed || 0));
-            bump = Math.max(bump, rel * 0.6);
-            if (o === P.vehicle && rel > 6) {
-              o.damage = Math.min(100, o.damage + rel * 0.25);
-              world.fx.shake += 0.15;
-            }
-          }
-        }
-      }
-    }
+    // Las carrocerías y los golpes entre autos los resuelve vehicle-physics al final del frame.
     if (bump > 3) {
       v.speed *= 0.3;
       v.damage = Math.min(100, v.damage + bump * 0.2);
@@ -369,7 +347,7 @@ export class Police {
       const tx = P.vehicle ? P.vehicle.x + P.vehicle.fx * Math.max(0, P.vehicle.speed) * 0.4 : P.x;
       const tz = P.vehicle ? P.vehicle.z + P.vehicle.fz * Math.max(0, P.vehicle.speed) * 0.4 : P.z;
       const d = Math.hypot(P.x - v.x, P.z - v.z);
-      if (v.wreck) continue;
+      if (v.wreck || v.rollover || v.overturned || v.blast) continue;
       if (v.mode === 'chase') {
         if (!P.vehicle && d < 14) {
           // frena y bajan los canas

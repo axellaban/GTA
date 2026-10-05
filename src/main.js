@@ -5,6 +5,7 @@ import { ATMO, LAMPS, NIGHT, buildLampMap } from './atmosphere.js';
 import { buildCity } from './city.js';
 import { makeGround, ROADS, project, STATION, cornerName, nearestStreetName, nearestRoad } from './map.js';
 import { Input } from './input.js';
+import { beginVehicleFrame, resolveVehicleFrame } from './vehicle-physics.js';
 import { Audio } from './audio.js';
 import { Player } from './player.js';
 import { Traffic, Vehicle } from './traffic.js';
@@ -1121,6 +1122,8 @@ document.getElementById('reset').addEventListener('click', () => {
 let paused = false;
 function setPaused(p) {
   paused = p;
+  input.releaseAll();
+  player.aiming = false;
   document.getElementById('pausemap').hidden = !p;
   if (p) {
     hud.drawBig(world);
@@ -1190,7 +1193,9 @@ function frame(now) {
     camera.lookAt(STATION.x, 0, STATION.z);
     trains.update(dt, null);
     events.update(dt, world);
+    const poses = beginVehicleFrame(world, dt);
     traffic.update(dt, world);
+    resolveVehicleFrame(world, poses);
     glows.update(world, time.glow);
     lights.update(dt);
     fx.update(dt);
@@ -1209,6 +1214,7 @@ function frame(now) {
     requestAnimationFrame(frame);
     return;
   }
+  const vehiclePoses = beginVehicleFrame(world, dt);
   saveT += dt;
   if (saveT > 8) {
     saveT = 0;
@@ -1233,6 +1239,10 @@ function frame(now) {
     interactions();
     player.update(dt, world);
     combat.update(dt, world);
+  }
+  if (player.riding || player.busted > 0) {
+    player.aiming = false;
+    input.aimToggled = false;
   }
   if (player.bubble) {
     player.bubble.t -= dt;
@@ -1272,6 +1282,7 @@ function frame(now) {
   updateCop(dt);
   rescue.update(dt);
   missions.update(dt, step >= steps.length - 1 && !job.active && !fare.active && !cop.active && !rescue.active);
+  resolveVehicleFrame(world, vehiclePoses);
   updateObjective();
   updateGps(dt);
   // adentro del taller la cámara queda afuera, mirando el portón
@@ -1322,6 +1333,8 @@ else start(window.claude?.hot?.data ?? {});
 // La versión evita que una instalación anterior conserve el video viejo en el caché.
 const INTRO_VERSION = 'gaspi-20261004-cierre';
 const playIntro = async () => {
+  input.releaseAll();
+  player.aiming = false;
   const gameVolume = audio.master?.gain.value;
   if (audio.master) audio.master.gain.value = 0;
   window.speechSynthesis?.cancel();

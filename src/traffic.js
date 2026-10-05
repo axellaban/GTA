@@ -8,6 +8,7 @@ import { makeHuman, animateHuman, randomCivilian } from './human.js';
 import { R } from './rng.js';
 import { carEffects } from './carfx.js';
 import { vehicleY } from './bajonivel.js';
+import { allVehicles, vehicleContact, sameVehicleLevel } from './vehicle-physics.js';
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 // los del montón, que pueden pasar a ser un auto de artista
@@ -16,6 +17,7 @@ const COMMON = new Set(['duna', 'gol', 'falcon', 'p504', 'pickup']);
 export class Vehicle {
   constructor(mesh, x, z, heading) {
     this.mesh = mesh;
+    mesh.rotation.order = 'YXZ';
     const u = mesh.userData;
     this.kind = u.kind;
     this.model = u.model;
@@ -50,6 +52,7 @@ export class Vehicle {
     old.parent?.remove(old);
     mesh.visible = old.visible;
     this.mesh = mesh;
+    mesh.rotation.order = 'YXZ';
     const u = mesh.userData;
     this.kind = u.kind;
     this.model = u.model;
@@ -483,10 +486,10 @@ export class Traffic {
   }
 
   // los autos que quedan lejos reaparecen cerca de Gaspi (así siempre hay tránsito)
-  recycle(v, player) {
-    if (v.keep) return false;
+  recycle(v, player, others = this.all(), minDistance = 260) {
+    if (v.keep || v.rollover || v.overturned || v.blast || v.wreck) return false;
     const d = Math.hypot(v.x - player.x, v.z - player.z);
-    if (d < 260) return false;
+    if (d < minDistance) return false;
     const cand = this.spawnEdges.filter((e) => {
       const m = Math.hypot(e.from.x + e.dx * e.len * 0.5 - player.x, e.from.z + e.dz * e.len * 0.5 - player.z);
       return m > 110 && m < 230 && (v.kind !== 'bus' || e.street.avenue);
@@ -498,7 +501,8 @@ export class Traffic {
     const x = e.from.x + e.dx * at + e.rx * lane;
     const z = e.from.z + e.dz * at + e.rz * lane;
     // que no aparezca encima de otro
-    if (this.cars.some((o) => o !== v && Math.abs(o.x - x) < 8 && Math.abs(o.z - z) < 8)) return false;
+    const candidate = { ...v, x, z, y: vehicleY(x, z, v.y), heading: Math.atan2(e.dx, e.dz) };
+    if (others.some((o) => o !== v && vehicleContact(candidate, o))) return false;
     v.x = x;
     v.z = z;
     v.heading = Math.atan2(e.dx, e.dz);
@@ -533,7 +537,7 @@ export class Traffic {
       if (v.mesh.visible) lod(v);
     }
     this.recycleI = ((this.recycleI || 0) + 1) % 30;
-    for (let i = this.recycleI; i < this.cars.length; i += 30) this.recycle(this.cars[i], world.interiors?.focus(player) ?? player);
+    for (let i = this.recycleI; i < this.cars.length; i += 30) this.recycle(this.cars[i], world.interiors?.focus(player) ?? player, allVehicles(world));
     const police = world.police?.cars || [];
     // cosas tiradas en la calle: el plato volador apoyado y los postes de luz caídos
     const obs = this.obs || (this.obs = []);
@@ -574,6 +578,18 @@ export class Traffic {
     };
     for (const v of this.cars) {
       const a = v.ai;
+      if (v.rollover || v.overturned || v.blast || v.wreck) continue;
+      // Destrabar sin atravesar: retrocede brevemente si no tiene a nadie detrás.
+      if (a.backoff > 0 && !a.hold) {
+        a.backoff -= dt;
+        const clear = !near(vgrid, v.x, v.z).some((o) => o !== v && sameVehicleLevel(v, o) &&
+          Math.hypot(o.x - v.x + v.fx * 2, o.z - v.z + v.fz * 2) < (v.L + o.L) / 2 + 1) &&
+          !near(pgrid, v.x - v.fx * 4, v.z - v.fz * 4).some((p) => Math.hypot(p.x - v.x + v.fx * 3, p.z - v.z + v.fz * 3) < 3);
+        v.speed = clear ? -1.5 : 0;
+        v.x += v.fx * v.speed * dt; v.z += v.fz * v.speed * dt;
+        v.sync(dt);
+        continue;
+      }
       // alguien lo está robando: frena
       if (a.hold) {
         v.speed = Math.max(0, v.speed - 12 * dt);
@@ -603,7 +619,7 @@ export class Traffic {
       while (diff < -Math.PI) diff += Math.PI * 2;
       const turnRate = 1.6;
       v.steer = Math.max(-1, Math.min(1, diff * 2));
-      v.heading += Math.max(-turnRate * dt, Math.min(turnRate * dt, diff)) * Math.min(1, v.speed / 3 + 0.3);
+      v.heading += Math.max(-turnRate * dt, Math.min(turnRate * dt, diff)) * Math.max(0, Math.min(1, v.speed / 3 + 0.3));
 
       // velocidad objetivo
       let target = a.vmax * (v.flat ? 0.4 : 1) * (a.panic > 0 ? 1.6 : 1) * (world.weather?.slick ? 0.85 : 1);
@@ -636,11 +652,9 @@ export class Traffic {
       let block = Infinity;
       let reason = null;
       // otros vehículos
-      a.ghost = Math.max(0, (a.ghost || 0) - dt);
       for (const o of near(vgrid, v.x + fx * 11, v.z + fz * 11)) {
         if (o === v) continue;
-        // destrabar cruces: por un rato ignora a los otros autos de la IA
-        if (a.ghost > 0 && o.ai) continue;
+        if (!sameVehicleLevel(v, o)) continue;
         const ox = o.x - v.x;
         const oz = o.z - v.z;
         const ahead = ox * fx + oz * fz;
@@ -716,7 +730,7 @@ export class Traffic {
           v.honkT = R.range(1.5, 5);
         }
         if (reason === 'car' && a.wait > 6) {
-          a.ghost = 2.5;
+          a.backoff = R.range(0.8, 1.4);
           a.wait = 0;
         }
         if (reason === 'corte' && a.wait > 10) {
@@ -732,14 +746,7 @@ export class Traffic {
       if (v.speed < 0.2) a.stuck += dt;
       else a.stuck = 0;
       if (a.stuck > 35 && Math.hypot(player.x - v.x, player.z - v.z) > 120) {
-        const e = R.pick(this.spawnEdges);
-        v.x = e.from.x + e.dx * 20 + e.rx * e.lane;
-        v.z = e.from.z + e.dz * 20 + e.rz * e.lane;
-        v.heading = Math.atan2(e.dx, e.dz);
-        a.edge = e;
-        a.stage = 'run';
-        a.stuck = 0;
-        this.setTarget(v);
+        this.recycle(v, player, allVehicles(world), 120);
       }
       v.x = Math.max(X0 + 2, Math.min(X1 - 2, v.x));
       v.z = Math.max(Z0 + 2, Math.min(Z1 - 2, v.z));
