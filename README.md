@@ -45,11 +45,14 @@ colores pastel, atardecer rosa y noche violeta), casas pastel, palmeras en las v
 Todo hecho por código para este juego. Para ver el look anterior, agregá `?vc=0` al final del link
 (https://gta-6-conurba.vercel.app/?vc=0).
 
-### Andenes hechos en Blender
+### Piezas hechas en Blender
 
 Las columnas de hierro fundido (con capitel y ménsulas), la puntilla de madera del borde de los techos y el
 relieve de la chapa acanalada se modelan en Blender con un script (`python3 tools/blender/anden.py`, con
-`pip install bpy`), con la sombra de contacto horneada. Pesan 67 KB.
+`pip install bpy`), con la sombra de contacto horneada. También la palmera (hoja modelada y renderizada como
+textura, `tools/blender/palmera.py`) y el farol de la calle (palo de madera con cruceta, brazo curvo y
+carcasa tipo cobra, `tools/blender/farol.py`). Cada pieza cuesta los mismos triángulos que la de antes o
+poco más, y si no carga queda la anterior.
 
 ### Materiales de calles y veredas
 

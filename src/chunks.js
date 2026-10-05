@@ -60,6 +60,8 @@ export function chunkMesh(mesh, cell = 120) {
     ng.setIndex(new THREE.BufferAttribute(order.length > 65535 ? idx : Uint16Array.from(idx), 1));
     ng.computeBoundingSphere();
     const m = new THREE.Mesh(ng, mesh.material);
+    // (la sombra recortada de las hojas: sin esto los pedazos tiraban sombra de placa llena)
+    m.customDepthMaterial = mesh.customDepthMaterial;
     m.castShadow = mesh.castShadow;
     m.receiveShadow = mesh.receiveShadow;
     m.renderOrder = mesh.renderOrder;
@@ -99,6 +101,7 @@ export function chunkInstanced(mesh, cell = 120) {
       if (col) m.instanceColor.array.set(col.array.subarray(i * 3, i * 3 + 3), k * 3);
     });
     m.computeBoundingSphere();
+    m.customDepthMaterial = mesh.customDepthMaterial;
     m.castShadow = mesh.castShadow;
     m.receiveShadow = mesh.receiveShadow;
     m.renderOrder = mesh.renderOrder;

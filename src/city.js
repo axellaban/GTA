@@ -30,6 +30,7 @@ import { FastBoxes } from './builder.js';
 import { Rng } from './rng.js';
 import { VC, vcPalmSpots } from './vc.js';
 import { loadStationKit } from './anden-kit.js';
+import { swapGeometry, loadBlenderMeshes } from './blender.js';
 import { buildBajo, cutGround } from './bajonivel.js';
 const ni = (g) => (g.index ? g.toNonIndexed() : g);
 // instancias que no se mueven nunca: chunks.js las reparte por cuadrado para no dibujarlas todas
@@ -1273,6 +1274,16 @@ function addLamps(scene, city, rng) {
   // fijos para chunks.js, pero los voltea smash.js por índice (movable)
   for (const m of [poles, arms, heads]) m.userData.movable = true;
   scene.add(...fixed(poles, arms, heads));
+  // el farol hecho en Blender (tools/blender/farol.py): palo de madera con cruceta, brazo curvo con
+  // tirante y carcasa de aluminio tipo cobra, en los mismos marcos que estas piezas (y que smash.js)
+  loadBlenderMeshes('models/street/farol.glb')
+    .then((g) => {
+      if (!g.poste || !g.brazo || !g.vidrio) return;
+      swapGeometry(poles, g.poste, { white: true });
+      swapGeometry(arms, g.brazo, { white: true });
+      swapGeometry(heads, g.vidrio);
+    })
+    .catch((e) => console.warn('farol de Blender:', e.message));
   city.lampMats.push(lampMat);
   // manchas de luz de sodio en el piso
   const poolGeo = new THREE.PlaneGeometry(13, 13);

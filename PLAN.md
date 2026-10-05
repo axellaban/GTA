@@ -161,8 +161,20 @@ el relieve de la chapa acanalada, horneado de una chapa con ondas (`public/textu
 cada 1 m). Salen en `public/models/station/anden.glb`. `src/anden-kit.js` los carga y cambia en el lugar las
 geometrías (los pedazos de `chunks.js` las comparten): las 73 columnas, la puntilla en tramos de 2 m por todo el
 borde de los techos (790 tramos, armados en `addStation` de `src/city.js`) y el relieve de la chapa. Si no
-cargan, queda la estación de antes (columnas y tablas lisas). Siguiente: el Gaspi de Meshy (R8c) y el edificio
-de la estación con la luz horneada.
+cargan, queda la estación de antes (columnas y tablas lisas). Siguiente: el Gaspi de Meshy (R8c), la palmera y el farol (R8e) y el
+edificio de la estación con la luz horneada.
+
+**R8e — Blender: palmera y farol (✅ 2026-10-05)**: `tools/blender/palmera.py` modela una hoja de palmera
+(nervio y 128 folíolos anchos: finitos desaparecían de lejos) y la renderiza vista desde arriba como textura
+recortada (`public/textures/palmera_hoja.webp`); la palmera (`public/models/trees/palmera.glb`) tiene la base
+del tronco ancha y 12 hojas en dos pisos con pliegue en V, con la sombra de la copa horneada: 408 triángulos,
+igual que la de antes (hay ~1.400 palmeras con el modo Vice City). `tools/blender/farol.py` arma el farol del
+conurbano en los mismos tres marcos que `addLamps` y `smash.js`: palo de madera con collar de hormigón y cruceta,
+brazo que sube pegado al poste y sale derecho, tirante y carcasa de aluminio tipo cobra, más el vidrio que se
+prende de noche (`public/models/street/farol.glb`, 258 triángulos, colores en los vértices). Los cargan
+`loadBlenderPalm` (`src/palms.js`) y `addLamps` (`src/city.js`) con `src/blender.js` (`loadBlenderMeshes`,
+`swapGeometry`). Además `chunks.js` ahora pasa `customDepthMaterial` a los pedazos: antes las copas de árboles
+y palmeras tiraban sombra de placa llena.
 
 **Camino gráfico (decisión del dueño, 2026-10-04)**: el dueño ve el juego en ~3/10 (10/10 = Unreal Engine).
 Orden acordado: 1) ✅ modo Vice City, prendido por defecto (R8b); 2) 🔶 Blender + Meshy (R8c, R8d): personajes y edificios mejores y la luz

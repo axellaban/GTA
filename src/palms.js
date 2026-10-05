@@ -2,6 +2,7 @@
 // con anillos y una corona de hojas que caen. Instanciadas: dos mallas para todas.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { swapGeometry, loadBlenderMeshes } from './blender.js';
 import { DATA as D } from './map.js';
 import { R } from './rng.js';
 import { VC, vcPalmSpots } from './vc.js';
@@ -124,5 +125,29 @@ export function addPalms(scene, colliders, heightAt) {
     o.receiveShadow = true;
     scene.add(o);
   }
+  loadBlenderPalm(T, C, crownMat);
   return spots;
+}
+
+// La palmera hecha en Blender (tools/blender/palmera.py): mismos triángulos que la de arriba, con la hoja
+// modelada (nervio y folíolos) como textura recortada, hojas con pliegue en V en dos pisos, la base del
+// tronco ancha y la sombra de la copa horneada. Si no carga, queda la de arriba.
+function loadBlenderPalm(T, C, crownMat) {
+  Promise.all([loadBlenderMeshes('models/trees/palmera.glb'), new THREE.TextureLoader().loadAsync('textures/palmera_hoja.webp')])
+    .then(([geo, leaf]) => {
+      if (!geo.tronco || !geo.copa) return;
+      leaf.colorSpace = THREE.SRGBColorSpace;
+      leaf.anisotropy = 4;
+      swapGeometry(T, geo.tronco);
+      swapGeometry(C, geo.copa);
+      crownMat.map = leaf;
+      crownMat.alphaTest = 0.4;
+      crownMat.alphaToCoverage = true;
+      // sombra con la forma de las hojas (también en los pedazos de chunks.js)
+      const depth = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: leaf, alphaTest: 0.4 });
+      C.traverse((m) => {
+        if (m.isInstancedMesh) m.customDepthMaterial = depth;
+      });
+    })
+    .catch((e) => console.warn('palmera de Blender:', e.message));
 }
