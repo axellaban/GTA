@@ -117,6 +117,7 @@ export class Hud {
     for (const m of world.matanzas?.markers(P) || []) add('matanza', m);
     if (world.heli && world.heli.state === 'parked') add('heli', world.heli);
     if (world.tobogan?.t) add('tobogan', world.tobogan.t.door);
+    if (world.aura) add('aura', world.aura.spot);
     for (const m of world.events?.markers() || []) add('corte', m);
     const r = world.rescue;
     if (r?.ambulance && !r.ambulance.wreck && P.vehicle !== r.ambulance) add('ambulancia', r.ambulance);

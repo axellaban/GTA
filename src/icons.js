@@ -415,6 +415,18 @@ export const ICONS = {
       }
     },
   },
+  aura: {
+    bg: '#7b1fa2',
+    label: 'Ronda de aura (plaza, de 10 a 23 h)',
+    draw(g) {
+      // un destello de cuatro puntas y dos chiquitos
+      g.fillStyle = WHITE;
+      for (const [cx, cy, r] of [[29, 34, 17], [46, 18, 7], [47, 45, 5]]) {
+        star(g, cx, cy, r, r * 0.28, 4);
+        g.fill();
+      }
+    },
+  },
   heli: {
     bg: '#c8102e',
     label: 'Helicóptero (terraza de las torres)',
@@ -516,6 +528,6 @@ export function drawIcon(g, kind, x, y, size, letter = null) {
 }
 
 // lo que se muestra en la leyenda del mapa de pausa, en orden
-export const LEGEND = ['mision', 'armeria', 'arbolitos', 'jubilados', 'pintura', 'gym', 'nafta', 'comisaria', 'hospital', 'tren', 'pancho', 'medias', 'kiosco', 'picada', 'corte', 'ambulancia', 'bombero', 'delivery', 'ovni', 'heli', 'tobogan', 'matanza', 'arma', 'vida', 'chaleco', 'coima'];
+export const LEGEND = ['mision', 'armeria', 'arbolitos', 'jubilados', 'pintura', 'gym', 'nafta', 'comisaria', 'hospital', 'tren', 'pancho', 'medias', 'kiosco', 'picada', 'corte', 'ambulancia', 'bombero', 'delivery', 'ovni', 'heli', 'tobogan', 'aura', 'matanza', 'arma', 'vida', 'chaleco', 'coima'];
 // de los objetos del piso (pickups) al ícono
 export const PICKUP_ICON = { weapon: 'arma', health: 'vida', armor: 'chaleco', coima: 'coima' };

@@ -288,7 +288,7 @@ Las piñas se pegan con todo el cuerpo: Gaspi se pone en guardia de boxeo, carga
 
 ## Chicos farmeando aura (0.34)
 
-En la Plaza Comandante Tomás Espora, a la tarde, hay una ronda de 30 chicos "farmeando aura": de a uno pasan al medio y hacen el baile del nene del bote, con cara seria, mientras los demás aplauden y filman con el celu. Al final le ponen puntaje ("¡+4.200 de aura!" o "Ese es un NPC: −800") y queda el récord. Si Gaspi se para quieto en el medio, baila él y gana respeto. A los chicos no se los puede lastimar.
+En la Plaza Comandante Tomás Espora, de 10 a 23 h (en el mapa: el ícono violeta con un destello), hay una ronda de 30 chicos "farmeando aura": de a uno pasan al medio y hacen el baile del nene del bote, con cara seria, mientras los demás aplauden y filman con el celu. Al final le ponen puntaje ("¡+4.200 de aura!" o "Ese es un NPC: −800") y queda el récord. Si Gaspi se para quieto en el medio, baila él y gana respeto. A los chicos no se los puede lastimar.
 
 ## Motores y sonido en el celu (0.33)
 

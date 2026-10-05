@@ -13,6 +13,9 @@ const N = 30;
 const RADIUS = 5.4;
 // un claro de la plaza, lejos de árboles, faroles y palmeras (medido con los datos del mapa)
 export const AURA_SPOT = { x: -71, z: -95 };
+// de qué hora a qué hora está la ronda (el día del juego dura unos 17 minutos: con una franja corta, el que
+// llegaba a la plaza a la noche o a la mañana no veía a nadie)
+export const AURA_HOURS = [10, 23];
 const NAMES = ['Thiago', 'Benja', 'Valen', 'Mili', 'Lauti', 'Juli', 'Santi', 'Delfi', 'Tomi', 'Cami', 'Bauti', 'Martu', 'Fran', 'Agus', 'Lola', 'Joaco', 'Male', 'Nico', 'Sofi', 'Gonza', 'Uma', 'Facu', 'Pili', 'Mateo', 'Isa', 'Lucho', 'Abril', 'Dylan', 'Mía', 'Elías'];
 const CHEER = ['¡Aura, aura, aura!', '¡Está cocinando!', '¡Dale que farmea!', 'Uhhh, los mogeó', '¡Re piola!', 'Tiene aura de protagonista', '¡Mirá esa cara de nada!', 'Filmalo, filmalo', '¡Que no pare!'];
 const GOOD = ['¡+{n} de aura!', '¡Aura infinita! +{n}', '¡Nos mogeó a todos! +{n}', '+{n} de aura, bro'];
@@ -33,6 +36,8 @@ export class Aura {
     this.best = { name: null, score: 0 };
     this.gaspiT = 0;
     this.prizeT = 0;
+    this.spot = AURA_SPOT; // (el ícono del mapa)
+    this.hintT = 0;
   }
 
   spawn() {
@@ -86,9 +91,16 @@ export class Aura {
   update(dt, world) {
     const P = world.player;
     const hour = world.time.hour;
-    // a la tarde, después del colegio, hasta la noche; solo si Gaspi anda cerca (30 chicos pesan)
+    // de la mañana a la noche; solo si Gaspi anda cerca (30 chicos pesan)
     const d = Math.hypot(P.x - AURA_SPOT.x, P.z - AURA_SPOT.z);
-    const want = hour > 13 && hour < 21.5 && d < 150;
+    const open = hour > AURA_HOURS[0] && hour < AURA_HOURS[1];
+    const want = open && d < 150;
+    // si llega a la plaza fuera de hora (y ya se fueron), que sepa cuándo vienen
+    this.hintT -= dt;
+    if (!open && !this.kids.length && d < 45 && this.hintT <= 0) {
+      world.hud?.flash('AURA', `Los chicos vienen a farmear aura de ${AURA_HOURS[0]} a ${AURA_HOURS[1]} h`, 'ok', 4);
+      this.hintT = 90;
+    }
     if (want && !this.kids.length) this.spawn();
     if (!want && this.kids.length && d > 170) this.clear();
     if (!this.kids.length) return;

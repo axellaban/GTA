@@ -645,7 +645,9 @@ lento cuando empezás a jugar más", "el sonido no anda en el celu", "más poten
 
 **R34 — ✅ Chicos farmeando aura** (pedido del dueño: "30 chicos en ronda farmeando aura, modo
 competencia, en la plaza de Temperley"). `src/aura.js`: en un claro de la Plaza Comandante Tomás Espora
-(`AURA_SPOT`, lejos de árboles, faroles y palmeras), de 13 a 21:30 y con Gaspi a menos de 150 m. 30 chicos
+(`AURA_SPOT`, lejos de árboles, faroles y palmeras), de 10 a 23 h (`AURA_HOURS`; al principio era de 13 a 21:30
+y el dueño no los encontraba: el día del juego dura unos 17 minutos) y con Gaspi a menos de 150 m. Ícono 'aura'
+en el mapa y el minimapa; si Gaspi llega a la plaza fuera de hora, un cartel le dice cuándo vienen. 30 chicos
 de tipo 'chico' (no se lastiman) con `n.aura` (`Barrio.brain` les delega a `Aura.brain`). Turnos: uno pasa
 al medio y baila 7 s (pose 'aura' en human.js), los demás 'clap', 'film' (con un celu en la mano) o
 'listen'; después un juez le pone puntaje (+ o −) y queda el récord. Gaspi quieto en el medio: baila
