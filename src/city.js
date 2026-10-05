@@ -32,6 +32,7 @@ import { VC, vcPalmSpots } from './vc.js';
 import { loadStationKit } from './anden-kit.js';
 import { StationFacade } from './estacion-kit.js';
 import { HouseKit } from './casas-kit.js';
+import { OpeningKit, SHUTTERS } from './aberturas-kit.js';
 import { loadBlenderTrees } from './arboles-kit.js';
 import { useStreetKit } from './mobiliario-kit.js';
 import { swapGeometry, loadBlenderMeshes } from './blender.js';
@@ -404,7 +405,7 @@ function wall(arr, ax, az, bx, bz, y0, y1, pickUv, shade, tint = null) {
       if (!partial && uv.open && uv.open.length && (x1 - x0) ** 2 + (z1 - z0) ** 2 > 16) {
         // la estación lleva las molduras de Blender (src/estacion-kit.js) en vez de los marcos de cajas
         if (arr.station) arr.station.openings(x0, z0, x1, z1, y, y + FLOOR_H, uv.open);
-        else if (arr.frames) addFrames(arr.frames, x0, z0, x1, z1, y, y + FLOOR_H, uv.open, floor === 0 && arr.rejas ? arr.grilles : null);
+        else if (arr.frames) addFrames(arr.frames, x0, z0, x1, z1, y, y + FLOOR_H, uv.open, floor === 0 && arr.rejas ? arr.grilles : null, arr.openings);
       }
     }
   }
@@ -412,7 +413,8 @@ function wall(arr, ax, az, bx, bz, y0, y1, pickUv, shade, tint = null) {
 
 const FRAME_COLORS = [0xe9e4d8, 0xd9d2c4, 0xc9c0b0, 0xf2eee6];
 const WHITE_TRIM = new THREE.Color(0xf4f0e6);
-function addFrames(F, x0, z0, x1, z1, y, yy, open, grilles = null) {
+// K: los marcos de Blender (src/aberturas-kit.js) para ventanas y puertas; si no, cajas
+function addFrames(F, x0, z0, x1, z1, y, yy, open, grilles = null, K = null) {
   const len = Math.hypot(x1 - x0, z1 - z0);
   const dx = (x1 - x0) / len;
   const dz = (z1 - z0) / len;
@@ -424,6 +426,9 @@ function addFrames(F, x0, z0, x1, z1, y, yy, open, grilles = null) {
   const put = (t, cy, w, h, d, col = color) => {
     F.rbox(w, h, d, col, x0 + dx * t + nx * (d / 2), cy, z0 + dz * t + nz * (d / 2), rot);
   };
+  // pieza del kit en el punto t de la pared (en su marco, +z va hacia afuera)
+  const rotK = Math.atan2(-dz, dx);
+  const kit = (name, t, cy, sx, sy, sz = 1, col = color) => K.put(name, x0 + dx * t, cy, z0 + dz * t, rotK, sx, sy, sz, col);
   for (const o of open) {
     const ta = o.x0 * len;
     const tb = o.x1 * len;
@@ -437,10 +442,29 @@ function addFrames(F, x0, z0, x1, z1, y, yy, open, grilles = null) {
         const off = 0.13;
         grilles.vert(x0 + dx * (ta - 0.04) + nx * off, z0 + dz * (ta - 0.04) + nz * off, x0 + dx * (tb + 0.04) + nx * off, z0 + dz * (tb + 0.04) + nz * off, bot, top, { u0: 0, v0: 0, u1: Math.max(1, Math.round((w + 0.08) / 0.75)), v1: 1 });
       }
-      put(tc, bot - 0.035, w + 0.2, 0.07, 0.17);
-      put(tc, top + 0.05, w + 0.12, 0.1, 0.09);
-      put(ta - 0.03, (top + bot) / 2, 0.06, top - bot, 0.05);
-      put(tb + 0.03, (top + bot) / 2, 0.06, top - bot, 0.05);
+      if (K) {
+        kit('alfeizar', tc, bot, w + 0.2, 1);
+        kit('dintel', tc, top, w + 0.12, 1);
+        kit('jamba', ta - 0.03, bot, 1, top - bot);
+        kit('jamba', tb + 0.03, bot, 1, top - bot);
+        // la mitad, con la persiana de enrollar más o menos baja
+        const hs = Math.abs(Math.round(x0 * 13.1 + z0 * 7.7 + tc * 5.3 + bot * 3));
+        if (hs % 10 < 5) kit('persiana', tc, top, w, 0.7 + (hs % 7) * 0.12, 1, SHUTTERS[hs % SHUTTERS.length]);
+      } else {
+        put(tc, bot - 0.035, w + 0.2, 0.07, 0.17);
+        put(tc, top + 0.05, w + 0.12, 0.1, 0.09);
+        put(ta - 0.03, (top + bot) / 2, 0.06, top - bot, 0.05);
+        put(tb + 0.03, (top + bot) / 2, 0.06, top - bot, 0.05);
+      }
+    } else if ((o.kind === 'door' || o.kind === 'garage') && K) {
+      kit('dintel', tc, top, w + 0.2, 1.2, 1.1);
+      kit('jamba', ta - 0.05, bot, 1.67, top - bot, 1.6);
+      kit('jamba', tb + 0.05, bot, 1.67, top - bot, 1.6);
+      // el umbral: en planta baja, de la vereda (0,15) hasta el borde de abajo de la puerta
+      if (o.kind === 'door') {
+        const base = y === 0 ? 0.15 : bot - 0.125;
+        kit('umbral', tc, base, w + 0.3, Math.max(0.06, bot - base) / 0.125, 1, 0x9a948a);
+      }
     } else if (o.kind === 'door' || o.kind === 'garage') {
       put(tc, top + 0.06, w + 0.2, 0.12, 0.1);
       put(ta - 0.05, (top + bot) / 2, 0.1, top - bot, 0.08);
@@ -457,7 +481,7 @@ function addFrames(F, x0, z0, x1, z1, y, yy, open, grilles = null) {
 const GENERIC_SHOPS = ['KIOSCO 24 HS', 'FARMACIA', 'PIZZERÍA', 'ROTISERÍA', 'QUINIELA', 'FERRETERÍA', 'VERDULERÍA', 'CELULARES', 'EMPANADAS', 'CARNICERÍA', 'PANADERÍA', 'COTILLÓN', 'LAVADERO', 'CERRAJERÍA', 'FIAMBRERÍA', 'AUTOSERVICIO', 'LIBRERÍA', 'HELADERÍA', 'PELUQUERÍA', 'ÓPTICA', 'MERCERÍA', 'ZAPATERÍA', 'DIETÉTICA', 'VETERINARIA'];
 
 function addBuildings(scene, atlas, colliders, rng, city) {
-  const arr = { pos: [], uvs: [], col: [], idx: [], frames: new FastBoxes(), grilles: new Quads(), rejas: false, station: null };
+  const arr = { pos: [], uvs: [], col: [], idx: [], frames: new FastBoxes(), grilles: new Quads(), rejas: false, station: null, openings: new OpeningKit() };
   const stationFacade = new StationFacade();
   const houseKit = new HouseKit();
   // techos planos agrupados por tipo (membrana, cerámica, losa, chapa)
@@ -721,11 +745,14 @@ function addBuildings(scene, atlas, colliders, rng, city) {
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   scene.add(mesh);
-  scene.add(arr.frames.mesh(new THREE.MeshLambertMaterial({ vertexColors: true })));
+  const frames = arr.frames.mesh(new THREE.MeshLambertMaterial({ vertexColors: true }));
+  frames.name = 'marcos';
+  scene.add(frames);
   const sf = stationFacade.build();
   if (sf.length) scene.add(...fixed(260, ...sf));
   const hk = houseKit.build();
   scene.add(...fixed(260, hk.cornices), ...fixed(110, hk.airs));
+  scene.add(...fixed(180, ...arr.openings.build()));
   const grilleMesh = new THREE.Mesh(arr.grilles.geometry(), new THREE.MeshLambertMaterial({ map: windowGrilleTexture(), alphaTest: 0.5, side: THREE.DoubleSide }));
   grilleMesh.castShadow = true;
   scene.add(grilleMesh);

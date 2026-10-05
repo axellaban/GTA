@@ -235,8 +235,18 @@ del color del revoque aclarado hacia el blanco (`setColorAt`); en las esquinas e
 estira lo que sobresale para cruzarse, y en los locales y escuelas de una planta sale más chata para quedar detrás
 del cartel. Los aires reemplazan la caja blanca de los frentes. 50 y 180 triángulos; en la calle suma ~3 %.
 
+**R8j — Blender: marcos de ventanas y puertas (✅ 2026-10-05)**: `tools/blender/aberturas.py` hace piezas de 1 m
+que se estiran a la medida de cada abertura pintada (el perfil no cambia a lo largo): alféizar con pendiente,
+nariz y goterón; guardapolvo con gola; jambas molduradas; umbral de granito; y la persiana de enrollar a medio
+bajar, con las tablillas de PVC modeladas y renderizadas en Cycles (`public/textures/persiana.webp`). Salen en
+`public/models/houses/aberturas.glb`; `src/aberturas-kit.js` las pone desde `addFrames` (ventanas, puertas y
+portones; las vidrieras siguen con cajas). La mitad de las ventanas tiene persiana (blanca, gris, beige, de madera
+o verde) más o menos baja; el umbral de las puertas de planta baja va de la vereda hasta la puerta. Antes eran
+53.000 cajas (637.000 triángulos) que se dibujaban a cualquier distancia; ahora son instancias que se apagan a
+180 m: ~6 % menos triángulos por cuadro y ~5 % más dibujos.
+
 **Camino gráfico (decisión del dueño, 2026-10-04)**: el dueño ve el juego en ~3/10 (10/10 = Unreal Engine).
-Orden acordado: 1) ✅ modo Vice City, prendido por defecto (R8b); 2) 🔶 Blender + Meshy (R8c a R8i): personajes y edificios mejores y la luz
+Orden acordado: 1) ✅ modo Vice City, prendido por defecto (R8b); 2) 🔶 Blender + Meshy (R8c a R8j): personajes y edificios mejores y la luz
 horneada en las texturas (sombras suaves y luz que rebota); sigue siendo web y anda en el celu; 3) recién
 después, evaluar Unreal con un prototipo chico (la estación y dos cuadras) en la Mac M5 de 24 GB del dueño.
 Unreal no se juega desde un link en el celu y hay que rehacer la jugabilidad. Las funciones de juego (piñas,
