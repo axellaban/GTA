@@ -245,8 +245,15 @@ o verde) más o menos baja; el umbral de las puertas de planta baja va de la ver
 53.000 cajas (637.000 triángulos) que se dibujaban a cualquier distancia; ahora son instancias que se apagan a
 180 m: ~6 % menos triángulos por cuadro y ~5 % más dibujos.
 
+**R8k — Blender: toldos de los comercios (✅ 2026-10-05)**: `tools/blender/casas.py` suma el módulo de 1,2 m del
+toldo de brazos (lona que cae en panza, barra de adelante y faldón con seis festones de verdad, 34 triángulos) y
+el brazo articulado (va en cada punta). `src/casas-kit.js` reparte los módulos a lo largo de cada toldo, con las
+mismas cuatro combinaciones de rayas de `awningTexture` (una sola textura: cada combinación corre la v del módulo a
+su fila, porque el lienzo se libera después de subirlo a la placa y las copias quedaban vacías). Hasta que carga el
+modelo quedan los toldos planos de siempre (`hideOnLoad`).
+
 **Camino gráfico (decisión del dueño, 2026-10-04)**: el dueño ve el juego en ~3/10 (10/10 = Unreal Engine).
-Orden acordado: 1) ✅ modo Vice City, prendido por defecto (R8b); 2) 🔶 Blender + Meshy (R8c a R8j): personajes y edificios mejores y la luz
+Orden acordado: 1) ✅ modo Vice City, prendido por defecto (R8b); 2) 🔶 Blender + Meshy (R8c a R8k): personajes y edificios mejores y la luz
 horneada en las texturas (sombras suaves y luz que rebota); sigue siendo web y anda en el celu; 3) recién
 después, evaluar Unreal con un prototipo chico (la estación y dos cuadras) en la Mac M5 de 24 GB del dueño.
 Unreal no se juega desde un link en el celu y hay que rehacer la jugabilidad. Las funciones de juego (piñas,

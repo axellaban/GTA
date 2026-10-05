@@ -56,7 +56,8 @@ jambas, alféizares, cornisa, guarda entre pisos y zócalo (`tools/blender/estac
 (fresno, tipa, jacarandá y palo borracho) tienen tronco con ramas y copa de ramilletes con las hojas y las flores
 modeladas y renderizadas en Blender (`tools/blender/arboles.py`), y el semáforo, el refugio de colectivo, el
 contenedor de basura y los tanques de agua de los techos salen de `tools/blender/mobiliario.py`. Las casas
-tienen cornisa moldurada y aires acondicionados split hechos en Blender (`tools/blender/casas.py`), y las
+tienen cornisa moldurada y aires acondicionados split, y los comercios toldos de brazos con festones, hechos en
+Blender (`tools/blender/casas.py`), y las
 ventanas y puertas, alféizar, guardapolvo, jambas, umbral y persianas de enrollar (`tools/blender/aberturas.py`). Cada pieza cuesta los mismos triángulos que la de
 antes o poco más, y si no carga queda la anterior.
 

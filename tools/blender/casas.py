@@ -10,6 +10,10 @@
 #   aire     equipo de afuera de un aire acondicionado split: gabinete de cantos redondos, rejilla del
 #            ventilador, aletas al costado, ménsulas de hierro y los caños que entran a la pared. Origen
 #            en el centro del gabinete; la espalda toca la pared (z = -0,14).
+#   toldo    módulo de 1,2 m del toldo de brazos de los comercios: la lona que cae un poco en panza, la
+#            barra de adelante y el faldón con festones de verdad. Origen donde se engancha a la pared
+#            (y = 0); sale 1,5 m. Las rayas son la textura de los toldos de siempre (u: cuatro rayas).
+#   brazo    brazo articulado del toldo (va en cada punta), del soporte en la pared a la barra.
 # La sombra de contacto (contra la pared) va horneada en los colores de vértice.
 import math
 import os
@@ -169,6 +173,65 @@ def aire():
     return k.done()
 
 
+# ---------------- toldo ----------------
+def toldo():
+    bm = bmesh.new()
+    uv = bm.loops.layers.uv.new('UVMap')
+    W = 0.6
+    U = 0.5  # cuatro rayas por módulo (la textura tiene ocho a lo ancho)
+
+    def quad(pts, uvs):
+        f = bm.faces.new([bm.verts.new(B(*p)) for p in pts])
+        for loop, t in zip(f.loops, uvs):
+            loop[uv].uv = t
+        return f
+
+    # lona: de la pared (y = 0) a la barra (y = -0,52; z = 1,46), con un poco de panza
+    segs = 3
+    row = []
+    for i in range(segs + 1):
+        t = i / segs
+        row.append((-0.52 * t - 0.05 * math.sin(math.pi * t), 0.02 + 1.44 * t, 1 - 0.85 * t))
+    for (y0, z0, v0), (y1, z1, v1) in zip(row, row[1:]):
+        quad([(-W, y0, z0), (W, y0, z0), (W, y1, z1), (-W, y1, z1)], [(0, v0), (U, v0), (U, v1), (0, v1)])
+    # faldón: tira derecha y seis festones (medio círculo cada uno)
+    zf = 1.49
+    quad([(-W, -0.52, zf), (W, -0.52, zf), (W, -0.64, zf), (-W, -0.64, zf)], [(0, 0.15), (U, 0.15), (U, 0.06), (0, 0.06)])
+    n = 6
+    for k in range(n):
+        x0 = -W + 2 * W * k / n
+        x1 = x0 + 2 * W / n
+        cx = (x0 + x1) / 2
+        r = (x1 - x0) / 2
+        pts = [(x0, -0.64, zf)] + [(cx - r * math.cos(math.pi * j / 4), -0.64 - r * 0.9 * math.sin(math.pi * j / 4), zf) for j in range(1, 4)] + [(x1, -0.64, zf)]
+        f = bm.faces.new([bm.verts.new(B(*p)) for p in pts])
+        for loop, (x, y, _) in zip(f.loops, pts):
+            loop[uv].uv = ((x + W) / (2 * W) * U, 0.06 + (y + 0.64) * 0.5)
+    ob = link_mesh('toldo', bm)
+    # barra de adelante (aluminio): otra malla, se une abajo
+    k = Kit('toldo_barra')
+    k.tube([(-W, -0.53, 1.47), (W, -0.53, 1.47)], 0.03, 4, 0xb8bcc0)
+    return ob, k.done()
+
+
+def brazo():
+    k = Kit('brazo')
+    k.box((0, -0.62, 0.03), (0.08, 0.16, 0.06), 0x8c9094)
+    k.tube([(0, -0.62, 0.05), (0.06, -0.78, 0.78), (0, -0.55, 1.45)], 0.022, 4, 0xa9adb1)
+    return k.done()
+
+
+def link_mesh(name, bm):
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    me = bpy.data.meshes.new(name)
+    bm.to_mesh(me)
+    bm.free()
+    ob = bpy.data.objects.new(name, me)
+    scene.collection.objects.link(ob)
+    ob['palette'] = list(hexc(0xffffff))
+    return ob
+
+
 def occluder(c, s):
     # caja (en coordenadas del juego) que hace sombra durante el horneado: la pared, el pretil, el techo
     bpy.ops.mesh.primitive_cube_add(size=1.0, location=B(*c))
@@ -209,13 +272,22 @@ def bake(ob, occluders):
 
 
 os.makedirs(os.path.dirname(GLB), exist_ok=True)
-parts = [cornisa(), aire()]
+lona, barra = toldo()
+# la barra va en la misma malla que la lona (toma el color de la raya)
+bpy.ops.object.select_all(action='DESELECT')
+barra.select_set(True)
+lona.select_set(True)
+bpy.context.view_layer.objects.active = lona
+bpy.ops.object.join()
+parts = [cornisa(), aire(), brazo(), lona]
 for ob in parts:
     for o in parts:
         o.hide_render = o is not ob
     if ob.name == 'cornisa':
         # la pared de abajo, el pretil (hasta la albardilla) y la losa del techo detrás del pretil
         occ = [((0, -1.5, -0.1), (8, 3.0, 0.2)), ((0, 0.265, -0.09), (8, 0.53, 0.18)), ((0, -0.1, -2.18), (8, 0.2, 4.0))]
+    elif ob.name in ('toldo', 'brazo'):
+        occ = [((0, 0, -0.1), (8, 8, 0.2))]
     else:
         occ = [((0, 0, -0.24), (6, 6, 0.2))]
     bake(ob, occ)
@@ -224,7 +296,7 @@ for o in parts:
 for ob in scene.objects:
     ob.select_set(ob in parts)
 bpy.ops.export_scene.gltf(filepath=GLB, export_format='GLB', use_selection=True, export_yup=True, export_apply=True,
-                          export_vertex_color='ACTIVE', export_normals=True, export_texcoords=False, export_materials='NONE')
+                          export_vertex_color='ACTIVE', export_normals=True, export_texcoords=True, export_materials='NONE')
 for ob in parts:
     print(f'{ob.name}: {sum(len(p.vertices) - 2 for p in ob.data.polygons)} triángulos')
 print('listo:', GLB)

@@ -639,6 +639,8 @@ function addBuildings(scene, atlas, colliders, rng, city) {
         const u = (len - inset * 2) / 1.2;
         awn.uv.push(0, 1 - row / 4, u, 1 - row / 4, u, 1 - (row + 1) / 4 + 0.02, 0, 1 - (row + 1) / 4 + 0.02);
         awn.idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
+        // el toldo de Blender (src/casas-kit.js) reemplaza a este plano cuando carga
+        houseKit.awning(ax, az, bx, bz, 2.95, row);
       }
       const nm = b.n && signs.uv(b.n) ? b.n : GENERIC_SHOPS[v % GENERIC_SHOPS.length];
       const uv = signs.uv(nm);
@@ -750,8 +752,8 @@ function addBuildings(scene, atlas, colliders, rng, city) {
   scene.add(frames);
   const sf = stationFacade.build();
   if (sf.length) scene.add(...fixed(260, ...sf));
-  const hk = houseKit.build();
-  scene.add(...fixed(260, hk.cornices), ...fixed(110, hk.airs));
+  const hk = houseKit.build({ awningTexture: awningTexture() });
+  scene.add(...fixed(260, hk.cornices), ...fixed(110, hk.airs), ...fixed(200, ...hk.awnings), ...fixed(120, hk.arms));
   scene.add(...fixed(180, ...arr.openings.build()));
   const grilleMesh = new THREE.Mesh(arr.grilles.geometry(), new THREE.MeshLambertMaterial({ map: windowGrilleTexture(), alphaTest: 0.5, side: THREE.DoubleSide }));
   grilleMesh.castShadow = true;
@@ -846,6 +848,7 @@ function addBuildings(scene, atlas, colliders, rng, city) {
     const am = new THREE.Mesh(ag, new THREE.MeshLambertMaterial({ map: t, side: THREE.DoubleSide }));
     am.castShadow = true;
     scene.add(am);
+    houseKit.hideOnLoad.push(am);
   }
   // carteles con el nombre del comercio (brillan de noche)
   if (signQ.pos.length) {
