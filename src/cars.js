@@ -834,7 +834,7 @@ function makeLujoCar(model, color) {
 // ---------- Abolladuras (como en Vice City): la chapa se hunde donde pegó ----------
 // La primera vez que un auto se golpea pasa a tener su propia copia de la chapa (las geometrías
 // son compartidas por modelo). Los triángulos aplastados quedan facetados, como metal arrugado.
-const crackedGlass = new THREE.MeshStandardMaterial({ color: 0x8e979e, roughness: 0.55, metalness: 0.1, transparent: true, opacity: 0.85 });
+export const crackedGlass = new THREE.MeshStandardMaterial({ color: 0x8e979e, roughness: 0.55, metalness: 0.1, transparent: true, opacity: 0.85 });
 function ownGeometry(u) {
   if (u.dented) return;
   u.dented = true;
@@ -954,12 +954,26 @@ export function looseBumper(w) {
 }
 // chapa y pintura (o el auto vuelve al tránsito): como nuevo
 export function repairCar(v) {
+  const u = v.mesh.userData;
+  // gomas pinchadas y vidrios rotos a tiros
+  if (v.flatWheels) {
+    for (const i of v.flatWheels) {
+      const w = u.wheels?.[i];
+      if (w?.userData.y0 != null) w.position.y = w.userData.y0;
+    }
+    v.flatWheels = null;
+    v.sag = null;
+    v.flatPull = 0;
+  }
+  if (u.glassGone) {
+    u.glass.visible = true;
+    u.glassGone = false;
+  }
   if (!v.blast && !v.wreck) {
     v.rollover = null; v.overturned = false; v.tilt = null;
     v.rollRisk = v.recoverHold = 0;
     v.sync?.(0);
   }
-  const u = v.mesh.userData;
   if (!u.dented) {
     if (u.glass && u.glass.material === crackedGlass) u.glass.material = u.glassMat ?? glassMat;
     return;

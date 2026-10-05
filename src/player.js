@@ -183,7 +183,7 @@ export class Player {
       const dz = door.z - this.z;
       const d = Math.hypot(dx, dz);
       if (d < 0.35 || j.t > 1.4) {
-        j.phase = v.ai || v.rider || v.tankAI ? 'pull' : 'enter';
+        j.phase = v.ai || v.rider || v.tankAI || v.deadDriver ? 'pull' : 'enter';
         j.t = 0;
         this.heading = Math.atan2(v.x - this.x, v.z - this.z);
       } else {
@@ -904,7 +904,8 @@ export class Player {
     // velocidad en el mundo con el rumbo viejo
     const wx = fx * vf + fz * vl;
     const wz = fz * vf - fx * vl;
-    v.heading += yaw * dt * (v.flat ? 0.8 : 1) + (v.flat ? Math.sin(performance.now() / 300) * 0.002 : 0);
+    // en llanta: tiembla y, si la goma la pinchó un tiro, tira para el lado de esa rueda
+    v.heading += yaw * dt * (v.flat ? 0.8 : 1) + (v.flat ? Math.sin(performance.now() / 300) * 0.002 : 0) + (v.flatPull || 0) * dt * Math.min(1, sp / 12) * Math.sign(vf || 1);
     fx = v.fx;
     fz = v.fz;
     vf = wx * fx + wz * fz;

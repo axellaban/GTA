@@ -768,6 +768,17 @@ en weapons.js): 1 piñas, 2 motosierra/bastón/palo, 3 revólver/pistola, 4 tumb
 ninguna de ese casillero lo avisa. Q recorre en ese mismo orden. En la compu el recuadro del arma muestra el
 número ("8 · Bazuca"). Prueba: `teclas2.mjs`.
 
+**R43 — ✅ Tiros a los autos a lo GTA (2026-10-05)** (pedido del dueño: "que se pinchen las gomas, se puedan romper
+los vidrios del auto [...] si le das a la persona que maneja, que se pueda morir y que choque"). `carZone` en
+`src/combat.js` pasa el impacto al marco del auto: abajo y cerca de una rueda (`u.wheels`), la goma; arriba del 62 %
+del alto, el vidrio, y en la mitad de adelante del habitáculo (o el frente del colectivo), el chofer.
+`Combat.punctureTire`: esa rueda baja 7 cm (`userData.y0` para el arreglo), `v.flat` (anda en llanta), `v.sag`
+(cabeceo, rolido y altura que `Vehicle.suspend` suma a la carrocería) y `v.flatPull` (el volante tira para ese lado,
+en `player.drive`). `breakGlass`: el primer tiro pone `crackedGlass`, el segundo esconde los vidrios (`glassGone`).
+`shootDriver`: el chofer tiene 100 de vida (`driverHp`); herido, el auto se apura; muerto (`v.deadDriver`), sale del
+tránsito y sigue suelto en `coastStep` con el pie en el acelerador 2,2 s, el volante corrido y la bocina pegada 7 s.
+Robarlo saca el cuerpo (`traffic.ejectDriver`). `repairCar` y el reciclado del tránsito dejan todo sano.
+
 **R42 — ✅ Mira en vuelo a lo GTA y ametralladora del helicóptero (2026-10-05)** (pedido del dueño: "la mira
 en helicóptero/plato volador sigue estando en el centro, la idea es que sea como el GTA original"). En vuelo la
 cámara mira a la nave, así que la mira del centro quedaba arriba de ella. `src/aim.js`: `FLY_AIM` (x 0,5, y 0,36

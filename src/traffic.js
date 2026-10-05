@@ -84,7 +84,9 @@ export class Vehicle {
   }
   sync(dt) {
     const moto = this.kind === 'moto';
-    this.mesh.position.set(this.x, (this.flat ? -0.08 : 0) + (this.lift || 0), this.z);
+    // en llanta: si la pinchó un tiro, se ladea para el lado de esa rueda (sag, en la suspensión); si no, toda
+    const flatAll = this.flat && !this.sag;
+    this.mesh.position.set(this.x, (flatAll ? -0.08 : 0) + (this.lift || 0), this.z);
     this.mesh.rotation.y = this.heading;
     if (moto) {
       // inclinación en curvas, willy o tirada en el piso
@@ -92,7 +94,7 @@ export class Vehicle {
       this.mesh.rotation.x = -(this.wheelie || 0);
       if (this.wheelie) this.mesh.position.y += Math.sin(this.wheelie) * 0.72 - (1 - Math.cos(this.wheelie)) * 0.3;
       if (this.fallen) this.mesh.position.y = 0.15;
-    } else this.mesh.rotation.z = this.flat ? 0.04 : 0;
+    } else this.mesh.rotation.z = flatAll ? 0.04 : 0;
     // chatarra que voló por una explosión: girada en el aire o dada vuelta en el piso
     if (this.tilt) {
       this.mesh.rotation.x = this.tilt.x;
@@ -183,9 +185,10 @@ export class Vehicle {
     const sp = Math.abs(this.speed);
     const buzz = sp > 1 ? Math.sin(this.wheelSpin * 2.3) * Math.sin(this.wheelSpin * 0.71 + 1) * Math.min(0.01, sp * 0.0005) : 0;
     const c = u.chassis;
-    c.rotation.x = clamp(s.p, -0.09, 0.09);
-    c.rotation.z = clamp(s.r, -0.11, 0.11);
-    c.position.y = clamp(s.y, -0.12, 0.08) + buzz + (u.ride || 0);
+    const sag = this.sag;
+    c.rotation.x = clamp(s.p, -0.09, 0.09) + (sag?.p || 0);
+    c.rotation.z = clamp(s.r, -0.11, 0.11) + (sag?.r || 0);
+    c.position.y = clamp(s.y, -0.12, 0.08) + buzz + (u.ride || 0) + (sag?.y || 0);
     // luces de freno: pie en el freno o parado con alguien al volante
     if (u.tail && !this.wreck) {
       const driven = this.driver || this.ai || this.police;
@@ -487,6 +490,13 @@ export class Traffic {
     if (v.eject) return v.eject(v, world);
     const lx = -Math.cos(v.heading);
     const lz = Math.sin(v.heading);
+    // el chofer que mató un tiro: se lo saca y queda tirado al lado del auto
+    if (v.deadDriver) {
+      v.deadDriver = null;
+      const d = world.npcs.spawnWalker({ x: v.x + lx * (v.W / 2 + 0.9), z: v.z + lz * (v.W / 2 + 0.9), heading: v.heading + Math.PI / 2 });
+      if (d) world.npcs.hurt(d, 999, lx, lz, { knock: true, world });
+      return;
+    }
     const d = world.npcs.spawnWalker({ x: v.x + lx * (v.W / 2 + 1.3), z: v.z + lz * (v.W / 2 + 1.3), heading: v.heading + Math.PI / 2 });
     if (!d) return;
     world.npcs.hurt(d, 5, lx, lz, { knock: true, knockT: 1.4, world });
@@ -537,9 +547,11 @@ export class Traffic {
     v.x = x;
     v.z = z;
     v.heading = Math.atan2(e.dx, e.dz);
-    // vuelve como un auto nuevo
-    if (v.damage) {
+    // vuelve como un auto nuevo (con las gomas y los vidrios sanos)
+    if (v.damage || v.flat) {
       v.damage = 0;
+      v.flat = false;
+      v.driverHp = 100;
       repairCar(v);
     }
     v.ai.edge = e;

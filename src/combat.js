@@ -2,7 +2,7 @@
 // balas de la cana, autos que se prenden fuego y explotan.
 import * as THREE from 'three';
 import { WEAPONS, ORDER, SLOTS, handWeapon, rocketMesh } from './weapons.js';
-import { dentCar, dropBumper, looseBumper } from './cars.js';
+import { dentCar, dropBumper, looseBumper, crackedGlass } from './cars.js';
 import { R } from './rng.js';
 import { TOUCH } from './input.js';
 import { updateAiming, shotSpread } from './aim.js';
@@ -23,6 +23,42 @@ const charred = new THREE.MeshStandardMaterial({ color: 0x1b1816, roughness: 1, 
 const camDir = new THREE.Vector3();
 
 // rayo (en 3D, d normalizado) contra un cilindro vertical: devuelve t o null
+// dónde pegó un tiro en un auto (en su marco: lz para adelante, lx para la izquierda del que maneja): abajo y
+// cerca de una rueda, en la goma; a la altura de los vidrios, en el vidrio; y adelante, en el que maneja
+function carZone(v, hit) {
+  const u = v.mesh.userData;
+  const dx = hit.x - v.x;
+  const dz = hit.z - v.z;
+  const c = Math.cos(v.heading);
+  const s = Math.sin(v.heading);
+  const lx = dx * c - dz * s;
+  const lz = dx * s + dz * c;
+  const ly = hit.y - (v.y || 0) - (v.lift || 0);
+  const out = {};
+  const wheels = u.wheels || [];
+  const wr = wheels.length ? Math.max(0.26, wheels[0].userData.y0 ?? wheels[0].position.y) : 0.32;
+  if (ly < wr * 1.9) {
+    let best = -1;
+    let bd = wr + 0.25;
+    wheels.forEach((w, i) => {
+      if (Math.sign(w.position.x) !== Math.sign(lx) && Math.abs(lx) > 0.3) return;
+      const d = Math.abs(w.position.z - lz);
+      if (d < bd) {
+        bd = d;
+        best = i;
+      }
+    });
+    if (best >= 0) out.wheel = best;
+    return out;
+  }
+  const tall = v.tall ?? 1.5;
+  if (ly > tall * (v.kind === 'bus' ? 0.5 : 0.62)) {
+    out.glass = true;
+    out.cabin = v.kind === 'bus' ? lz > v.L / 2 - 2.4 : Math.abs(lz - v.L * 0.02) < v.L * 0.24;
+  }
+  return out;
+}
+
 function rayCircle(o, d, cx, cz, r) {
   const ox = o.x - cx;
   const oz = o.z - cz;
@@ -686,9 +722,16 @@ export class Combat {
       if (hit.obj.state !== 'down') world.crime.knockDown(hit.obj, world);
     } else if (hit.type === 'veh') {
       const v = hit.obj;
-      this.fx.sparks(hit.x, hit.y, hit.z, 6, 5);
-      this.audio.metal(0.5);
       if (v.kind === 'moto' && v.rider) world.traffic.ejectRider(v, world, fx, fz);
+      // como en los GTA: según dónde pega, pincha la goma, rompe el vidrio o le da al que maneja
+      const zone = v.kind === 'moto' || v.kind === 'carro' || v.kind === 'tank' ? {} : carZone(v, hit);
+      if (zone.wheel != null) this.punctureTire(world, v, zone.wheel, hit);
+      else {
+        this.fx.sparks(hit.x, hit.y, hit.z, 6, 5);
+        this.audio.metal(0.5);
+      }
+      if (zone.glass) this.breakGlass(world, v, hit, fx, fz);
+      if (zone.cabin) this.shootDriver(world, v, dmg, hit, fx, fz, byPlayer);
       this.damageVehicle(world, v, dmg * 0.45, byPlayer, hit.x, hit.z, true);
       if (v === world.player.vehicle && !byPlayer) world.player.hurt(dmg * 0.12, 'Te balearon el auto');
     } else if (hit.type === 'player') {
@@ -710,6 +753,72 @@ export class Combat {
       this.fx.bulletHole(hit.x, this.fx.ground(hit.x, hit.z) + 0.03, hit.z, 0, 1, 0);
     }
     return hit;
+  }
+
+  // goma pinchada por un tiro: se baja esa rueda, el auto se ladea para ese lado y anda en llanta
+  punctureTire(world, v, i, hit) {
+    const u = v.mesh.userData;
+    const w = u.wheels?.[i];
+    v.flatWheels ??= new Set();
+    if (!w || v.flatWheels.has(i)) return;
+    v.flatWheels.add(i);
+    v.flat = true;
+    w.userData.y0 ??= w.position.y;
+    w.position.y = w.userData.y0 - 0.07;
+    // cuánto se ladea la carrocería y para dónde tira el volante (adelante tira más)
+    let p = 0;
+    let r = 0;
+    let pull = 0;
+    for (const k of v.flatWheels) {
+      const q = u.wheels[k].position;
+      p += q.z > 0 ? 0.022 : -0.022;
+      r -= Math.sign(q.x) * 0.03;
+      pull += Math.sign(q.x) * (q.z > 0 ? 0.1 : 0.04);
+    }
+    v.sag = { p, r, y: -0.025 * v.flatWheels.size };
+    v.flatPull = pull;
+    this.audio.burst(0.22, 900, 'highpass', 0.6);
+    this.audio.burst(0.5, 260, 'lowpass', 0.35, 0.05);
+    this.fx.dust(hit.x, 0.3, hit.z, 5, [0.16, 0.16, 0.16], 0.7);
+    this.fx.chips(hit.x, 0.35, hit.z, -v.fz, v.fx, [0.1, 0.1, 0.1], 5);
+  }
+  // vidrio: el primer tiro lo astilla; el segundo lo hace volar
+  breakGlass(world, v, hit, fx, fz) {
+    const u = v.mesh.userData;
+    if (!u.glass || u.glassGone) return;
+    if (u.glass.material !== crackedGlass) u.glass.material = crackedGlass;
+    else {
+      u.glass.visible = false;
+      u.glassGone = true;
+      this.fx.chips(hit.x, hit.y, hit.z, fx, fz, [0.78, 0.86, 0.9], 12);
+    }
+    this.fx.chips(hit.x, hit.y, hit.z, fx, fz, [0.82, 0.9, 0.95], 7);
+    this.audio.burst(0.16, 3600, 'highpass', 0.55);
+    this.audio.burst(0.3, 5200, 'highpass', 0.3, 0.04);
+  }
+  // el que maneja un auto del tránsito (o el colectivo): los tiros al habitáculo lo lastiman y lo apuran; si
+  // se muere, el auto sigue sin control con la bocina pegada hasta que se la da contra algo
+  shootDriver(world, v, dmg, hit, fx, fz, byPlayer) {
+    if (!v.ai || v.deadDriver || v.laban || v.police || v.keep || v.tankAI || v.kind === 'moto' || v.kind === 'carro') return;
+    this.fx.blood(hit.x, hit.y, hit.z, fx, fz, 6, 2);
+    v.driverHp = (v.driverHp ?? 100) - dmg * 1.4;
+    if (v.driverHp > 0) {
+      v.ai.panic = 6;
+      return;
+    }
+    world.traffic.release(v);
+    if (!world.traffic.parked.includes(v)) world.traffic.parked.push(v);
+    v.parked = true;
+    v.deadDriver = { t: 0, steer: R.range(0.18, 0.4) * (R.chance(0.5) ? 1 : -1), horn: 7, hornT: 0 };
+    v.coast = Math.abs(v.speed) > 0.3;
+    v.vx = v.fx * v.speed;
+    v.vz = v.fz * v.speed;
+    if (byPlayer) {
+      world.police.crime('muerte', v.x, v.z);
+      world.social?.('muerte', v.x, v.z);
+      world.player.hitMarker = 0.2;
+    }
+    world.npcs.panic(v.x, v.z, 30, world.player);
   }
 
   // la cana tira: acierta menos de lejos y si Gaspi corre (wid: pistola, metra o ametralladora)
@@ -825,6 +934,16 @@ export class Combat {
       }
       if (v.shove) this.shoveStep(v, dt);
       if (v.coast) this.coastStep(v, dt, world);
+      if (v.deadDriver?.horn > 0 && !v.wreck) {
+        const dd = v.deadDriver;
+        dd.horn -= dt;
+        dd.hornT -= dt;
+        const d = Math.hypot(P.x - v.x, P.z - v.z);
+        if (dd.hornT <= 0 && d < 80) {
+          this.audio.bocina((1 - d / 80) * 0.7);
+          dd.hornT = 0.32;
+        }
+      }
       if (vis && v.damage > 55 && Math.random() < dt * (v.damage - 50) * 0.15) this.fx.smoke(hx, 1.1, hz, 1, { black: v.damage > 82, s0: 0.5, s1: 2.5, vx: -v.fx * v.speed * 0.3, vz: -v.fz * v.speed * 0.3 });
       if (v.burning > 0) {
         v.burning -= dt;
@@ -985,8 +1104,14 @@ export class Combat {
         }
       }
     }
-    // sin nadie al volante frena de a poco (motor y rozamiento)
-    v.speed = Math.sign(v.speed) * Math.max(0, Math.abs(v.speed) - (2.4 + Math.abs(v.speed) * 0.04) * dt);
+    // sin nadie al volante frena de a poco (motor y rozamiento); con el chofer muerto, el pie queda un rato
+    // en el acelerador, el volante se va para un costado y la bocina queda pegada
+    const dd = v.deadDriver;
+    if (dd) {
+      dd.t += dt;
+      if (Math.abs(v.speed) > 0.5) v.heading += dd.steer * dt * Math.min(1, sp / 6) * s;
+    }
+    if (!dd || dd.t > 2.2 || crash) v.speed = Math.sign(v.speed) * Math.max(0, Math.abs(v.speed) - (2.4 + Math.abs(v.speed) * 0.04) * dt);
     v.vx = v.fx * v.speed;
     v.vz = v.fz * v.speed;
     v.sync(dt);

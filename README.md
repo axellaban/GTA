@@ -275,6 +275,8 @@ Como las misiones de ambulancia y bomberos de Vice City. La **ambulancia** está
 
 Como en Vice City, la chapa se hunde donde pega el golpe (choques, tiros, explosiones) y queda arrugada; con mucho daño se rompen los vidrios, sale humo del motor y al final se prende fuego. Chapa y pintura (o que el auto vuelva al tránsito) lo deja como nuevo.
 
+**A los tiros, como en los GTA**: un tiro bajo, en una rueda, pincha esa goma (se baja, el auto se ladea para ese lado, anda en llanta, tira para ese costado y saca chispas); a la altura de los vidrios, el primer tiro los astilla y el segundo los hace volar; y si le das al que maneja un auto del tránsito (o el colectivo), se muere: el auto sigue sin control, con la bocina pegada, hasta que se va de la calle o se la da contra algo. Si después lo robás, sacás el cuerpo. La cana también te puede pinchar las gomas a tiros.
+
 ## Mapa más grande: todo en su lugar real (0.38)
 
 El mapa creció hacia el norte por Almirante Brown hasta Cerrito y hacia el este por Av. Eva Perón hasta Emilio Castro, con las calles, los edificios y los negocios reales de OpenStreetMap y Overture. Sobre Almirante Brown, en la esquina de Juncal, está el **Sanatorio Juncal**: enorme, blanco, de ocho pisos, con el nombre arriba, la cruz roja, la H y la entrada de la guardia. En Cerrito las vías cruzan la calle en un **paso a nivel** con barreras y campana, como el de la estación. En la esquina de Cerrito y Almirante Brown hay un **puesto de flores** con la florista: con E le comprás un ramo. Y la casa de Clau ahora está en su esquina real.
