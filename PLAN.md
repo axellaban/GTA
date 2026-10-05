@@ -623,13 +623,16 @@ número ("8 · Bazuca"). Prueba: `teclas2.mjs`.
 **R12 — Acercarse al look del video de Higgsfield** (Gaspi de traje y corbata roja en una vereda a lo
 GTA V; el video es IA pre-renderizada, no se puede generar así en tiempo real en un celu). Pasos:
 1. Cinemáticas con videos de Higgsfield del dueño (intro, entre misiones).
-   ✅ 2026-10-03: intro aprobada de 41 s, once planos, 1080p/24 fps a velocidad natural:
-   `public/cine/intro.mp4` (H.264/AAC, 34,1 MB, faststart) + `.webm` (VP9/Opus, 19,1 MB).
+   ✅ 2026-10-04: intro aprobada de 36,875 s, nueve planos más tres segundos finales
+   de negro con música, mismo logo y **TRIBUTO A GASPI**; 1080p/24 fps a velocidad natural.
+   `public/cine/intro.mp4` (H.264/AAC, 24,0 MB, faststart) + `.webm` (VP9/Opus, 13,2 MB).
    Se reproduce al tocar **Jugar** en cada sesión y desde **Ver la intro** en la pausa.
-   Música proporcionada por el dueño: Sentimiento villero, Los Pibes Chorros. En 6C la música se
-   silencia y se conserva la voz original de la señora, sincronizada con la imagen (ver guion).
-   Cierre con logo del juego y **TRIBUTO A GASPI**. `src/cine.js` respeta Sin sonido, conserva el
-   encuadre completo y detiene el audio antes de devolver el control al terminar o saltear.
+   Música proporcionada por el dueño: Sentimiento villero, Los Pibes Chorros, desde el
+   segundo 9 de la canción. 6C es el cuarto plano: voz original sincronizada y música de
+   fondo ajustada durante el diálogo. La última escena mantiene su audio y la música.
+   `src/cine.js` respeta Sin sonido y detiene el audio antes de devolver el control al
+   terminar o saltear. En celular conserva el cuadro completo, usa el viewport visible
+   y las áreas seguras, y ofrece pantalla completa nativa para video si está disponible.
    Los videos sólo se cargan al reproducirlos; URL versionada para no usar la intro vieja del caché.
    Detalles y guion inicial archivado: `tools/cine/guion-intro.md`. Pruebas del reproductor:
    `node --test tools/cine.test.mjs`. Antes de gastar créditos en nuevas escenas, el dueño las aprueba.
@@ -825,6 +828,15 @@ Ideas para seguir: capó que se levanta con mucho daño; semáforos y carteles q
 - ⛔ A2 / B1: esperan red o archivos del dueño.
 
 ## 6b. Última sesión (para quien siga)
+
+- ✅ 2026-10-04, Codex: revisión aprobada de la intro, nueve planos y tres segundos de
+  cierre negro con música, logo y tributo (36,875 s). Voz de la señora cuarta, Falcon
+  antes de la bazuca, música desde el segundo 9 de la canción y audio original en el
+  último plano. Exportados MP4 y WebM; retraso añadido de voz medido 0 ms en ambos.
+  Ajustado el reproductor para viewport visible, áreas seguras y pantalla completa
+  nativa; verificado el encuadre en 390×844 y 844×390. iPhone físico pendiente.
+  Integración trabajada en una copia separada sobre origin/main para preservar los
+  cambios simultáneos de Vice City y modelos de estación.
 
 - ✅ 2026-10-03, Codex: presentación de Gaspi de 41 s integrada después de Jugar, con la mezcla
   y el tributo aprobados. Audio de la señora: retraso añadido medido 0 ms en MP4 y WebM;

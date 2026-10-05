@@ -1320,7 +1320,7 @@ else start(window.claude?.hot?.data ?? {});
 
 // Presentación al tocar Jugar en cada sesión; también se puede repetir desde la pausa.
 // La versión evita que una instalación anterior conserve el video viejo en el caché.
-const INTRO_VERSION = 'gaspi-20261003';
+const INTRO_VERSION = 'gaspi-20261004-cierre';
 const playIntro = async () => {
   const gameVolume = audio.master?.gain.value;
   if (audio.master) audio.master.gain.value = 0;

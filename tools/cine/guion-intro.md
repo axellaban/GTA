@@ -1,37 +1,52 @@
-# Cinemática de presentación de Gaspi — entrega aprobada (41 s)
+# Cinemática de presentación de Gaspi — entrega aprobada (36,875 s)
 
-Entregada el 2026-10-03: once planos 16:9, 1920×1080, 24 fps, a velocidad natural.
-El usuario aprobó las variantes 4A, 4B, 5A, 6A, 6C, 7A, 7C y 8A, y pidió integrarlas
-como presentación inmediatamente después de tocar **Jugar**. Se conservan las referencias
-de cara, traje negro, camisa blanca y corbata roja a rayas de Gaspi.
+Revisada el 2026-10-04: nueve planos 16:9, 1920×1080, 24 fps a velocidad natural,
+y un cierre adicional de **tres segundos sobre negro**. Se reproduce inmediatamente
+al tocar **Jugar** y conserva la cara, el traje negro, la camisa blanca y la corbata roja
+aprobados de Gaspi. La revisión elimina los planos de aura y colectivo, adelanta a la
+señora hablando al cuarto lugar e intercambia los lugares del Falcon y la bazuca.
 
 | Inicio–fin (s) | Escena |
 | --- | --- |
 | 0–3,750 | Llegada del Roca a Temperley |
 | 3,750–7,375 | Gaspi baja del tren |
 | 7,375–10,875 | Gaspi se acomoda la corbata |
-| 10,875–14,125 | 4A: farmea aura en la plaza |
-| 14,125–17,625 | 4B: motochorros |
-| 17,625–21,500 | 5A: peaje del carrito cartonero |
-| 21,500–25,375 | 6C: escuadrón de jubilados, habla la señora |
-| 25,375–29,250 | 6A: duelo frente a ANSES |
-| 29,250–33,125 | 7A: persecución en Falcon |
-| 33,125–37,000 | 7C: colectivo y SUBE |
-| 37,000–41,000 | 8A: moneda pendiente; logo del juego y TRIBUTO A GASPI |
+| 10,875–14,750 | 6C: escuadrón de jubilados; habla la señora |
+| 14,750–18,250 | 4B: motochorros |
+| 18,250–22,125 | 5A: peaje del carrito cartonero |
+| 22,125–26,000 | 7A: persecución en Falcon |
+| 26,000–29,875 | 6A: duelo frente a ANSES; bazuca |
+| 29,875–33,875 | 8A: moneda pendiente; audio original y música |
+| 33,875–36,875 | Negro, música, mismo logo y **TRIBUTO A GASPI** |
 
-La música es el MP3 de **Sentimiento villero — Los Pibes Chorros** proporcionado por el usuario:
-arranca en 0,333 s de la fuente, ganancia −6 dB, entrada de 0,5 s y salida de 1,1 s.
-Se silencia entre 21,375 y 25,375 s para la voz original de 6C. El audio de ese clip
-va desde 0 a 4 s y la imagen desde 0,125 a 4 s: su entrada anticipada de tres cuadros
-conserva la primera palabra y mantiene el mismo reloj de origen cuando aparece la señora.
-Sin voces superpuestas del juego; los demás audios de los clips quedan silenciados.
-Los títulos principales usan ArtDeco de GTA VI y el cierre usa el logo de la portada del juego.
+La música es el MP3 de **Sentimiento villero — Los Pibes Chorros** proporcionado por
+el usuario. Se usa desde el **segundo 9 de la canción**, con entrada de 0,5 s,
+ganancia base −6 dB y salida de 1,1 s al final del cierre negro. La señora habla con
+música de fondo; un ajuste de frecuencias y nivel de la música sigue su voz para dejarla
+más clara. La última escena conserva su audio original junto a la música.
 
-Distribución: `public/cine/intro.mp4` (H.264/AAC con faststart), `intro.webm` (VP9/Opus)
-y `intro.jpg` como imagen de carga. Ambas versiones conservan el mismo montaje y mezcla.
-La versión de la URL evita reproducir un archivo anterior guardado por el service worker.
-El reproductor mantiene la imagen entera, respeta **Sin sonido**, pausa y libera el video
-al terminar o saltear, y permite repetirlo desde la pausa.
+El diálogo de 6C ocupa 10,750–14,750 s, fuente 0–4 s. Su imagen ocupa
+10,875–14,750 s, fuente 0,125–4 s: la entrada anticipada de tres cuadros mantiene
+la primera palabra y ambos usan el mismo reloj de origen. Retraso añadido medido en
+las dos entregas: **0 ms**. Los demás clips quedan sin su audio original. Los motores,
+la radio y las voces del juego se silencian durante la presentación.
+
+Los títulos principales usan ArtDeco de GTA VI. El logo de la portada y el texto
+**TRIBUTO A GASPI** mantienen su estilo, posición y tamaño aprobados; permanecen
+visibles durante los tres segundos finales sin escena.
+
+Distribución: `public/cine/intro.mp4` (H.264/AAC, faststart, 24,0 MB),
+`intro.webm` (VP9/Opus, 13,2 MB) y `intro.jpg` como imagen de carga.
+La URL versionada evita reproducir un archivo anterior del caché. El reproductor
+respeta **Sin sonido**, pausa y libera el video al terminar o saltear y permite
+repetirlo desde la pausa. Usa el viewport visible y las áreas seguras del celular,
+conserva el encuadre completo con `contain` y ofrece pantalla completa nativa para
+video cuando Safari la permite. Los controles van arriba para dejar libre el tributo.
+
+Validación: 885 cuadros, 72 de cierre negro, chequeo estricto de la composición sin
+errores ni advertencias, voz sincronizada, pico real −1,3 dBFS en MP4 y build de
+producción. Pruebas del reproductor: `node --test tools/cine.test.mjs`. Comprobación
+visual en tamaños 390×844 y 844×390; la prueba en un iPhone físico queda pendiente.
 
 ## Guion inicial de 30 s (histórico, anterior a la revisión aprobada)
 
