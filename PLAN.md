@@ -267,8 +267,17 @@ esquineros de piedra, óculo, reloj en las cuatro caras, campanario con arcos, c
 Trinity): `public/models/landmarks/iglesia.glb`. `src/iglesia-kit.js` los pone en el medio del frente de cada
 iglesia según el nombre (las evangélicas no llevan) y le suma el colisionador a la torre, que sobresale 2,1 m.
 
+**R8n — Blender: matas de pasto y yuyos (✅ 2026-10-05)**: los terrenos, jardines y plazas eran pasto pintado y
+plano. `tools/blender/pasto.py` modela cuatro matas hoja por hoja (pasto, yuyos con dientes de león y flores de
+trébol, pasto seco alto con espigas, trébol) y las renderiza de costado en Cycles (`public/textures/pasto_matas.webp`).
+Como hay ~0,8 km² de pasto, `src/pasto.js` no planta todo: arma una máscara de dónde hay pasto (las manzanas menos
+veredas, edificios con medio metro de margen, senderos, andenes y el bajo nivel; las plazas, canchas y escuelas
+aparte, porque están cortadas: casi sin pasto alto) y reacomoda unas ~1.800 matas en 44 m alrededor de la cámara
+cada 5 m que se mueve; en el borde se achican hasta desaparecer. Tarjetas cruzadas con la normal para arriba,
+movidas por el viento y con `denseAlpha`. Cuesta ~7.000 triángulos y cuatro dibujos.
+
 **Camino gráfico (decisión del dueño, 2026-10-04)**: el dueño ve el juego en ~3/10 (10/10 = Unreal Engine).
-Orden acordado: 1) ✅ modo Vice City, prendido por defecto (R8b); 2) 🔶 Blender + Meshy (R8c a R8m): personajes y edificios mejores y la luz
+Orden acordado: 1) ✅ modo Vice City, prendido por defecto (R8b); 2) 🔶 Blender + Meshy (R8c a R8n): personajes y edificios mejores y la luz
 horneada en las texturas (sombras suaves y luz que rebota); sigue siendo web y anda en el celu; 3) recién
 después, evaluar Unreal con un prototipo chico (la estación y dos cuadras) en la Mac M5 de 24 GB del dueño.
 Unreal no se juega desde un link en el celu y hay que rehacer la jugabilidad. Las funciones de juego (piñas,

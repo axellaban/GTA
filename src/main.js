@@ -31,6 +31,7 @@ import { Nafta } from './nafta.js';
 import { playCine, CINE } from './cine.js';
 import { Stunts, RAMPS } from './stunts.js';
 import { chunkScene, updateChunks } from './chunks.js';
+import { Grass } from './pasto.js';
 import { GPU, flushTextures } from './textures.js';
 import { Gangs } from './gangs.js';
 import { Barrio } from './barrio.js';
@@ -179,6 +180,8 @@ function showFps(dt) {
 const city = buildCity(scene);
 flushTextures();
 const heightAt = makeGround();
+// matas de pasto y yuyos alrededor de la cámara (src/pasto.js)
+const grass = new Grass(scene, heightAt);
 
 // Gaspi arranca en la vereda de Av. Meeks, del lado de la estación
 function spawnPoint() {
@@ -1325,6 +1328,7 @@ function frame(now) {
   blobs.update(world, heightAt);
   if ((frame.n = (frame.n || 0) + 1) % 8 === 1) updateHumanLod(camera, Q.lodNear);
   if (frame.n % 8 === 5) updateChunks(camera.position);
+  grass.update(camera.position);
   sky.follow(camera);
   // los retoques de pose de Gaspi (agacharse, inclinarse, apuntar) llegan a su modelo de artista
   player.h.rig?.apply();
