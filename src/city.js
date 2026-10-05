@@ -33,6 +33,7 @@ import { loadStationKit } from './anden-kit.js';
 import { StationFacade } from './estacion-kit.js';
 import { HouseKit } from './casas-kit.js';
 import { OpeningKit, SHUTTERS } from './aberturas-kit.js';
+import { addChurchTowers } from './iglesia-kit.js';
 import { loadBlenderTrees } from './arboles-kit.js';
 import { useStreetKit } from './mobiliario-kit.js';
 import { swapGeometry, loadBlenderMeshes } from './blender.js';
@@ -484,6 +485,7 @@ function addBuildings(scene, atlas, colliders, rng, city) {
   const arr = { pos: [], uvs: [], col: [], idx: [], frames: new FastBoxes(), grilles: new Quads(), rejas: false, station: null, openings: new OpeningKit() };
   const stationFacade = new StationFacade();
   const houseKit = new HouseKit();
+  const churches = [];
   // techos planos agrupados por tipo (membrana, cerámica, losa, chapa)
   const roofs = {};
   const roofBucket = (t) => (roofs[t] ??= { pos: [], uv: [], col: [], idx: [] });
@@ -618,6 +620,8 @@ function addBuildings(scene, atlas, colliders, rng, city) {
         }
       }
     }
+    // las iglesias: la torre o la espadaña de Blender va en el medio de su frente (src/iglesia-kit.js)
+    if (kind === 'iglesia' && bestFront) churches.push({ name: b.n || '', e: bestFront, h });
     // toldo y cartel del comercio sobre el frente más largo
     if (kind === 'local' && bestFront) {
       const e = bestFront;
@@ -755,6 +759,7 @@ function addBuildings(scene, atlas, colliders, rng, city) {
   const hk = houseKit.build({ awningTexture: awningTexture() });
   scene.add(...fixed(260, hk.cornices), ...fixed(110, hk.airs), ...fixed(200, ...hk.awnings), ...fixed(120, hk.arms));
   scene.add(...fixed(180, ...arr.openings.build()));
+  addChurchTowers(scene, colliders, churches);
   const grilleMesh = new THREE.Mesh(arr.grilles.geometry(), new THREE.MeshLambertMaterial({ map: windowGrilleTexture(), alphaTest: 0.5, side: THREE.DoubleSide }));
   grilleMesh.castShadow = true;
   scene.add(grilleMesh);

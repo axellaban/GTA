@@ -260,8 +260,15 @@ marco de hierro con el caño, la placa y la ménsula (180), con la sombra hornea
 `baskets` (`src/props.js`); el caño ahora va en el mismo marco que el canasto. Con `denseAlpha` la malla se sigue
 viendo a unos metros (si no, quedaba solo el marco).
 
+**R8m — Blender: torres de las iglesias (✅ 2026-10-05)**: la parroquia Nuestra Señora del Rosario se veía como un
+galpón de ladrillo con arcos. `tools/blender/iglesia.py` hace un campanario de 20 m (portal con arco y escalinata,
+esquineros de piedra, óculo, reloj en las cuatro caras, campanario con arcos, cornisas, aguja de cobre y cruz;
+3.159 triángulos, una sola pieza en el mapa) y una espadaña para las capillas (Ntra. Sra. del Huerto y Holy
+Trinity): `public/models/landmarks/iglesia.glb`. `src/iglesia-kit.js` los pone en el medio del frente de cada
+iglesia según el nombre (las evangélicas no llevan) y le suma el colisionador a la torre, que sobresale 2,1 m.
+
 **Camino gráfico (decisión del dueño, 2026-10-04)**: el dueño ve el juego en ~3/10 (10/10 = Unreal Engine).
-Orden acordado: 1) ✅ modo Vice City, prendido por defecto (R8b); 2) 🔶 Blender + Meshy (R8c a R8l): personajes y edificios mejores y la luz
+Orden acordado: 1) ✅ modo Vice City, prendido por defecto (R8b); 2) 🔶 Blender + Meshy (R8c a R8m): personajes y edificios mejores y la luz
 horneada en las texturas (sombras suaves y luz que rebota); sigue siendo web y anda en el celu; 3) recién
 después, evaluar Unreal con un prototipo chico (la estación y dos cuadras) en la Mac M5 de 24 GB del dueño.
 Unreal no se juega desde un link en el celu y hay que rehacer la jugabilidad. Las funciones de juego (piñas,
