@@ -191,6 +191,29 @@ export class Colliders {
     }
     return best;
   }
+  // Cámara: altura real a lo largo del recorrido, incluida una baranda elevada.
+  // Deja margen para que el plano cercano tampoco atraviese la pared.
+  cameraFraction(a, b, margin = 0.4) {
+    const dx = b.x - a.x, dz = b.z - a.z;
+    const len = Math.hypot(dx, dz);
+    if (len < 1e-6) return 1;
+    let best = 1;
+    for (const s of this.query((a.x + b.x) / 2, (a.z + b.z) / 2, len / 2 + margin + 1)) {
+      if (!s.s) continue;
+      for (const offset of [-margin, 0, margin]) {
+        const ox = -dz / len * offset, oz = dx / len * offset;
+        const t = segT(a.x + ox, a.z + oz, b.x + ox, b.z + oz, s.ax, s.az, s.bx, s.bz);
+        if (t === null) continue;
+        const y = a.y + (b.y - a.y) * t;
+        if (y + margin < (s.y0 ?? 0) || y - margin > s.h) continue;
+        const wallLen = Math.hypot(s.bx - s.ax, s.bz - s.az) || 1;
+        const incidence = Math.abs(dx * (s.bz - s.az) - dz * (s.bx - s.ax)) / wallLen;
+        best = Math.min(best, Math.max(0, t - margin / Math.max(incidence, 1e-6)));
+      }
+    }
+    return best;
+  }
+
   blocked(ax, az, bx, bz, minH = 2.5) {
     let tmin = 1;
     const r = Math.hypot(bx - ax, bz - az) / 2 + 1;

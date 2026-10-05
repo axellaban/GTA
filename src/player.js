@@ -6,6 +6,7 @@ import { R } from './rng.js';
 import { carEffects } from './carfx.js';
 import { SIGNS } from './props.js';
 import { walkwayHeight } from './physics.js';
+import { safeCamera } from './camera-safe.js';
 import { lowFilter } from './bajonivel.js';
 import { turnRollover, recoverRollover, sideImpactRollover } from './vehicle-physics.js';
 
@@ -1189,12 +1190,9 @@ export class Player {
     const cx = this.x + Math.sin(this.camYaw) * Math.cos(pitch) * dist + sx;
     const cz = this.z + Math.cos(this.camYaw) * Math.cos(pitch) * dist + sz;
     const cy = this.y + hgt + Math.sin(pitch) * dist;
-    // si hay una pared en el medio, acercar la cámara
-    const t = cy < 12 ? colliders.blocked(this.x, this.z, cx, cz, Math.max(2, cy - 0.5)) : 1;
-    const k = Math.max(0.25, t * 0.95);
-    const tx = this.x + (cx - this.x) * k;
-    const tz = this.z + (cz - this.z) * k;
-    const ty = this.y + hgt + (cy - this.y - hgt) * k;
+    const anchor = { x: this.x, y: this.y + hgt, z: this.z };
+    const goal = safeCamera(anchor, { x: cx, y: cy, z: cz }, colliders, this.heightAt);
+    const { x: tx, y: ty, z: tz } = goal;
     if (!this.camPos) this.camPos = new THREE.Vector3(tx, ty, tz);
     this.camPos.lerp(tmpV.set(tx, ty, tz), Math.min(1, dt * (this.aiming ? 18 : 10)));
     camera.position.copy(this.camPos);
@@ -1210,6 +1208,9 @@ export class Player {
     }
     const sh = fx ? Math.min(0.8, fx.shake) : 0;
     if (sh > 0.001) camera.position.add(tmpV.set((Math.random() - 0.5) * sh, (Math.random() - 0.5) * sh, (Math.random() - 0.5) * sh));
+    // Suavizar entre dos puntos seguros también puede cortar la esquina de una casa.
+    safeCamera(anchor, camera.position, colliders, this.heightAt);
+    this.camPos.copy(camera.position);
     // al apuntar se mira más lejos: la mira queda en el centro de la pantalla
     const lx = this.x + sx - Math.sin(this.camYaw) * this.aimK * 6;
     const lz = this.z + sz - Math.cos(this.camYaw) * this.aimK * 6;

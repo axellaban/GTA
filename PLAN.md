@@ -1092,3 +1092,16 @@ Lo que espera al dueño: relevamiento cargado (JSON) (ver §7).
   de Oro 366 (pedido del dueño), en lugar de una avenida elegida al azar. Huella real conservada.
 - Validación: regresión de geometría y poses con los GLB reales, cobertura de ropa y apuntado;
   revisión visual de pie y caído. Commit: «Corregir el cuerpo de Ciro y ubicar la comisaría real».
+
+
+### Cámara: evitar imagen tapada por suelo/paredes · 2026-10-05
+- El ángulo mínimo con cámara larga podía dar una altura negativa (auto: −0,71 m con pitch −0,35).
+  Ahora la posición final mantiene 40 cm de margen sobre el terreno.
+- Se eliminó el mínimo del 25% de distancia que atravesaba paredes cercanas; el barrido de cámara
+  considera altura del rayo, paredes altas, barandas elevadas y margen del plano cercano.
+- Cuando la pared obliga a acercar la cámara dentro de Gaspi, se oculta su modelo sólo durante
+  ese render; así su espalda no tapa la imagen y reaparece al alejar la cámara.
+- La posición se verifica también después del suavizado y temblor, evitando cortar esquinas.
+- Validación: siete regresiones de cámara y ocho de apuntado, build y comparación visual en el juego.
+  No se reprodujo una pantalla totalmente negra en esta sesión: se confirmó el cruce del terreno y
+  la imagen visible con el arreglo. Commit: «Evitar que la cámara atraviese el suelo y las paredes».
