@@ -306,8 +306,23 @@ del pretil, con los mojinetes curvos del color de la pared; los de más de 16 m 
 lado de la otra. Solo 10 de los 134 galpones del mapa son rectángulos (el resto son polígonos de 10 a 31 lados: la
 bóveda del rectángulo que los encierra salía a la calle); pendiente: partirlos en rectángulos.
 
+**R8s — Interiores de los locales con "interior mapping" (✅ 2026-10-05)**: `tools/blender/locales.py` arma
+cuatro locales (almacén / kiosco, farmacia, ropa y panadería) y los saca en dos capas desde una cámara fija a 4 m
+del vidrio y a media altura: el cuarto (piso, cielorraso con tubos y la pared del fondo con estanterías, sin paredes
+a los costados y con copias a los lados para que se repita cada 3 m con su luz) y los muebles con el que atiende
+(fondo transparente y la sombra en el piso con un "shadow catcher"). Atlas `public/textures/locales.webp` de
+1536×768 (arriba los cuartos, abajo los muebles). `OpeningKit.shop/buildShops` (`src/aberturas-kit.js`): un quad por
+vidriera debajo de la persiana pintada, con uv en metros (a lo largo, desde el medio, y altura sobre el piso del
+local) y el atributo `room` (rubro, espejado, dirección de la fachada); el shader (`ROOM_GLSL`, en lugar de
+`emissivemap_fragment`) sigue la mirada hasta el piso, el cielorraso o el fondo, la proyecta como la cámara de
+Blender y la busca en la foto del cuarto; los muebles van en un plano a 1 m, espejados uno sí y uno no
+(`textureGrad` con los gradientes sin el salto de cada repetición, y el rubro y el espejado redondeados: interpolados
+llegaban como 0,99999 y salía salpicado). Vidrio negro con reflejo del cielo y el local como emisión (0,42 de día,
+hasta 0,8 de noche). Rubro según el cartel (`interiorFor`). Costo: una llamada y 1.300 triángulos para las 651
+vidrieras.
+
 **Camino gráfico (decisión del dueño, 2026-10-04)**: el dueño ve el juego en ~3/10 (10/10 = Unreal Engine).
-Orden acordado: 1) ✅ modo Vice City, prendido por defecto (R8b); 2) 🔶 Blender + Meshy (R8c a R8r): personajes y edificios mejores y la luz
+Orden acordado: 1) ✅ modo Vice City, prendido por defecto (R8b); 2) 🔶 Blender + Meshy (R8c a R8s): personajes y edificios mejores y la luz
 horneada en las texturas (sombras suaves y luz que rebota); sigue siendo web y anda en el celu; 3) recién
 después, evaluar Unreal con un prototipo chico (la estación y dos cuadras) en la Mac M5 de 24 GB del dueño.
 Unreal no se juega desde un link en el celu y hay que rehacer la jugabilidad. Las funciones de juego (piñas,

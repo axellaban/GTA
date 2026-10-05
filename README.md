@@ -63,8 +63,12 @@ coches del Roca tienen carrocería redondeada, bogies con ruedas, pantógrafo y 
 (`tools/blender/tren.py`). Las casas
 tienen cornisa moldurada y aires acondicionados split, los techos de tejas su cumbrera y sus cenefas, y los
 comercios toldos de brazos con festones, hechos en Blender (`tools/blender/casas.py`), y las
-ventanas y puertas, alféizar, guardapolvo, jambas, umbral y persianas de enrollar (`tools/blender/aberturas.py`). Cada pieza cuesta los mismos triángulos que la de
-antes o poco más, y si no carga queda la anterior.
+ventanas y puertas, alféizar, guardapolvo, jambas, umbral y persianas de enrollar (`tools/blender/aberturas.py`).
+Por las vidrieras de los locales se ve el negocio por dentro, con fondo y perspectiva al pasar: almacén con
+mostrador de golosinas y góndola, farmacia u óptica, ropa con percheros y maniquí, y panadería con la vitrina de
+facturas, según el rubro del cartel, cada uno con el que atiende (`tools/blender/locales.py`, "interior mapping":
+el vidrio sigue la mirada hacia adentro y la busca en las fotos de Blender). Cada pieza cuesta los mismos
+triángulos que la de antes o poco más, y si no carga queda la anterior.
 
 ### Materiales de calles y veredas
 

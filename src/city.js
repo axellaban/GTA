@@ -32,7 +32,7 @@ import { VC, vcPalmSpots } from './vc.js';
 import { loadStationKit } from './anden-kit.js';
 import { StationFacade } from './estacion-kit.js';
 import { HouseKit } from './casas-kit.js';
-import { OpeningKit, SHUTTERS } from './aberturas-kit.js';
+import { OpeningKit, SHUTTERS, interiorFor } from './aberturas-kit.js';
 import { addChurchTowers } from './iglesia-kit.js';
 import { buildGableRoofs, buildVaultRoofs } from './techos-kit.js';
 import { loadBlenderTrees } from './arboles-kit.js';
@@ -473,6 +473,8 @@ function addFrames(F, x0, z0, x1, z1, y, yy, open, grilles = null, K = null) {
       put(tb + 0.05, (top + bot) / 2, 0.1, top - bot, 0.08);
       if (o.kind === 'door') put(tc, y + 0.06, w + 0.3, 0.12, 0.4, 0x9a948a);
     } else if (o.kind === 'shop') {
+      // el interior del local (Blender) detrás del vidrio, debajo de la persiana
+      if (K && o.up != null) K.shop(x0 + dx * ta, z0 + dz * ta, x0 + dx * tb, z0 + dz * tb, bot, top - (top - bot) * o.up, y === 0 ? 0.15 : y, nx, nz);
       put(tc, top + 0.08, w + 0.5, 0.16, 0.32, 0x5f646a);
       put(ta - 0.12, (top + bot) / 2, 0.24, top - bot, 0.12);
       put(tb + 0.12, (top + bot) / 2, 0.24, top - bot, 0.12);
@@ -580,6 +582,8 @@ function addBuildings(scene, atlas, colliders, rng, city) {
       // rejas en las ventanas de planta baja: lo que diga el relevamiento; si no, casi todas las casas
       arr.rejas = isFront && (rel?.rejas ?? ((kind === 'casa' && v % 3 !== 0) || (kind === 'alto' && v % 5 < 2)));
       arr.station = kind === 'estacion' ? stationFacade : null;
+      // el rubro del local (el mismo nombre que va en el cartel): qué interior se ve por la vidriera
+      if (kind === 'local') arr.openings.shopVariant = interiorFor(b.n && signs.uv(b.n) ? b.n : GENERIC_SHOPS[v % GENERIC_SHOPS.length]);
       wall(arr, p0[0], p0[1], p1[0], p1[1], 0, h, isFront ? front : side, isFront ? shade : shade * 0.9, isFront ? wallTint : null);
       if (kind === 'estacion') stationFacade.edge(p0[0], p0[1], p1[0], p1[1], h);
       const mx = (a[0] + c[0]) / 2;
@@ -764,6 +768,8 @@ function addBuildings(scene, atlas, colliders, rng, city) {
   const hk = houseKit.build({ awningTexture: awningTexture() });
   scene.add(...fixed(260, hk.cornices), ...fixed(110, hk.airs), ...fixed(200, ...hk.awnings), ...fixed(120, hk.arms));
   scene.add(...fixed(180, ...arr.openings.build()));
+  const shops = arr.openings.buildShops(() => city.windowMat?.emissiveIntensity ?? 0);
+  if (shops) scene.add(shops);
   addChurchTowers(scene, colliders, churches);
   const grilleMesh = new THREE.Mesh(arr.grilles.geometry(), new THREE.MeshLambertMaterial({ map: windowGrilleTexture(), alphaTest: 0.5, side: THREE.DoubleSide }));
   grilleMesh.castShadow = true;

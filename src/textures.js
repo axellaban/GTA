@@ -609,6 +609,9 @@ function drawLocal(ctx, x, y, rng, name) {
     ctx.fillRect(vx + rng.range(4, vw - 14), y + rng.range(60, H - 20), rng.range(5, 12), rng.range(6, 12));
   }
   const up = rng.range(0.25, 0.75);
+  // (cuánto baja la persiana: src/aberturas-kit.js pone el interior del local debajo)
+  const shop = CUR?.list.find((o) => o.kind === 'shop');
+  if (shop) shop.up = up;
   if (EM) {
     EM.fillStyle = sc;
     EM.fillRect(x + 8, y + 4, W - 16, 30);
