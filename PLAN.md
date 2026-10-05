@@ -252,8 +252,16 @@ mismas cuatro combinaciones de rayas de `awningTexture` (una sola textura: cada 
 su fila, porque el lienzo se libera después de subirlo a la placa y las copias quedaban vacías). Hasta que carga el
 modelo quedan los toldos planos de siempre (`hideOnLoad`).
 
+**R8l — Blender: canastos de basura (✅ 2026-10-05)**: `tools/blender/canasto.py` modela el metal desplegado
+(rombos de alambre doblado) y lo renderiza en Cycles con fondo transparente (`public/textures/canasto.webp`, se
+repite cada 25 cm), y arma el canasto en dos piezas: la malla (los cuatro lados y el fondo, 10 triángulos) y el
+marco de hierro con el caño, la placa y la ménsula (180), con la sombra horneada:
+`public/models/street/canasto.glb`. `useBasketKit` (`src/mobiliario-kit.js`) las cambia en las instancias de
+`baskets` (`src/props.js`); el caño ahora va en el mismo marco que el canasto. Con `denseAlpha` la malla se sigue
+viendo a unos metros (si no, quedaba solo el marco).
+
 **Camino gráfico (decisión del dueño, 2026-10-04)**: el dueño ve el juego en ~3/10 (10/10 = Unreal Engine).
-Orden acordado: 1) ✅ modo Vice City, prendido por defecto (R8b); 2) 🔶 Blender + Meshy (R8c a R8k): personajes y edificios mejores y la luz
+Orden acordado: 1) ✅ modo Vice City, prendido por defecto (R8b); 2) 🔶 Blender + Meshy (R8c a R8l): personajes y edificios mejores y la luz
 horneada en las texturas (sombras suaves y luz que rebota); sigue siendo web y anda en el celu; 3) recién
 después, evaluar Unreal con un prototipo chico (la estación y dos cuadras) en la Mac M5 de 24 GB del dueño.
 Unreal no se juega desde un link en el celu y hay que rehacer la jugabilidad. Las funciones de juego (piñas,

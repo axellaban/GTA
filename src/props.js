@@ -8,7 +8,7 @@ import { DATA as D, TRACKS, CORNERS, ROADS, nearestRoad } from './map.js';
 import { outward, pointInRing, fixed } from './city.js';
 import { FastBoxes } from './builder.js';
 import { Rng } from './rng.js';
-import { useStreetKit } from './mobiliario-kit.js';
+import { useStreetKit, useBasketKit } from './mobiliario-kit.js';
 const ni = (g) => (g.index ? g.toNonIndexed() : g);
 
 const UP = new THREE.Vector3(0, 1, 0);
@@ -439,7 +439,9 @@ function baskets(scene, city, rng) {
     const t = rng.range(0.25, 0.75);
     list.push([e.ax + (e.bx - e.ax) * t + e.nx * d, e.az + (e.bz - e.az) * t + e.nz * d, rng.chance(0.55)]);
   }
-  const post = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.03, 0.03, 1.05, 5), new THREE.MeshLambertMaterial({ color: 0x2a2d30 }), list.length);
+  // el caño en el mismo marco que el canasto (su centro, a 1,2 m de la vereda): así el de Blender, que trae
+  // el marco y el caño juntos, entra en las mismas instancias (src/mobiliario-kit.js)
+  const post = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.03, 0.03, 1.05, 5).translate(0, -0.68, 0), new THREE.MeshLambertMaterial({ color: 0x2a2d30 }), list.length);
   const box = new THREE.BoxGeometry(0.6, 0.35, 0.45);
   const basket = new THREE.InstancedMesh(box, new THREE.MeshLambertMaterial({ map: basketTexture(), alphaTest: 0.5, alphaToCoverage: true, side: THREE.DoubleSide }), list.length);
   const full = list.filter((l) => l[2]);
@@ -447,12 +449,15 @@ function baskets(scene, city, rng) {
   let j = 0;
   list.forEach(([x, z, f], i) => {
     city.colliders.addCircle(x, z, 0.1, 1.5, 'post');
-    place(post, i, x, 0.15 + 0.52, z);
-    place(basket, i, x, 0.15 + 1.2, z, rng.range(0, 0.3));
+    const rot = rng.range(0, 0.3);
+    place(post, i, x, 0.15 + 1.2, z, rot);
+    place(basket, i, x, 0.15 + 1.2, z, rot);
     if (f) place(bag, j++, x, 0.15 + 1.25, z, 0, 1.2, 0.9, 1);
   });
   post.castShadow = basket.castShadow = true;
+  basket.name = 'canastos';
   scene.add(...fixed(120, post, basket, bag));
+  useBasketKit(basket, post);
 }
 
 // ---------- Contenedores verdes en las esquinas de las avenidas ----------
