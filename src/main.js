@@ -8,7 +8,7 @@ import { Input } from './input.js';
 import { beginVehicleFrame, resolveVehicleFrame } from './vehicle-physics.js';
 import { Audio } from './audio.js';
 import { Player } from './player.js';
-import { cameraInsidePlayer } from './camera-safe.js';
+import { renderGameView } from './camera-occlusion.js';
 import { Traffic, Vehicle } from './traffic.js';
 import { Smash } from './smash.js';
 import { Ufo } from './ufo.js';
@@ -1341,10 +1341,7 @@ function frame(now) {
   sky.follow(camera);
   // los retoques de pose de Gaspi (agacharse, inclinarse, apuntar) llegan a su modelo de artista
   player.h.rig?.apply();
-  const playerVisible = player.h.root.visible;
-  if (cameraInsidePlayer(camera.position, player)) player.h.root.visible = false;
-  post.render();
-  player.h.root.visible = playerVisible;
+  renderGameView(world, () => post.render());
   input.endFrame();
   requestAnimationFrame(frame);
 }

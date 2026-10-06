@@ -1105,3 +1105,19 @@ Lo que espera al dueño: relevamiento cargado (JSON) (ver §7).
 - Validación: siete regresiones de cámara y ocho de apuntado, build y comparación visual en el juego.
   No se reprodujo una pantalla totalmente negra en esta sesión: se confirmó el cruce del terreno y
   la imagen visible con el arreglo. Commit: «Evitar que la cámara atraviese el suelo y las paredes».
+
+
+### Cámara dentro de vehículos y recuperación de render · 2026-10-05
+- Reproducida una vista tapada por la chapa de un colectivo al comprimir la cámara contra una pared,
+  con el HUD visible. Las paredes ya se respetaban, pero el volumen de los vehículos no.
+- `camera-occlusion.js` comprueba carrocerías orientadas, altura, vuelcos y plano cercano para
+  autos propios/ajenos, colectivos, motos y patrulleros. Oculta sólo la carrocería que contiene
+  la cámara durante ese render, y restaura su visibilidad con `finally`; conserva la física.
+- `Post.render` conserva el error del compositor y vuelve al render directo de la escena si lanza
+  una excepción: restablece el framebuffer, autoClear y XR para que siga visible y el loop continúe.
+  El look alto/Vice City sigue igual cuando el compositor funciona.
+- Pruebas: 22 regresiones (render, cámara, bloom y apuntado), build y comparación visual
+  del mismo colectivo contra pared: chapa tapando antes, calle visible después, sin errores GL.
+  No se reprodujo un negro total independiente de las carrocerías ni una pérdida de contexto GPU;
+  por eso no se considera demostrado que estos cambios cubran todos los casos reportados.
+- Commit de entrega: «Evitar que las carrocerías tapen la cámara y recuperar el render».

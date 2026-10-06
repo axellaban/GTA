@@ -198,7 +198,23 @@ export class Post {
     this.composer.dispose();
   }
   render() {
-    if (this.enabled) this.composer.render();
-    else this.renderer.render(this.scene, this.camera);
+    if (this.enabled && !this.renderError) {
+      const autoClear = this.renderer.autoClear;
+      const xrEnabled = this.renderer.xr?.enabled;
+      try {
+        this.composer.render();
+        return;
+      } catch (error) {
+        // El compositor puede dejar un framebuffer activo y abortar el loop.
+        // Conservar el juego visible y el error original para diagnosticarlo.
+        this.renderError = error;
+        console.error('Falló el postprocesado; sigue el render de la escena.', error);
+      } finally {
+        this.renderer.autoClear = autoClear;
+        if (this.renderer.xr) this.renderer.xr.enabled = xrEnabled;
+      }
+    }
+    this.renderer.setRenderTarget(null);
+    this.renderer.render(this.scene, this.camera);
   }
 }
