@@ -686,7 +686,7 @@ export class Traffic {
       // inundación (src/agua.js): con agua van despacio; no se meten donde está hondo y, si el agua les tapa
       // el motor, quedan ahogados ahí mismo
       const ag = world.agua;
-      if (ag && ag.level > -5.9) {
+      if (ag && ag.wet) {
         const wd = ag.depth(v.x, v.z);
         const ahead = ag.depth(v.x + fx * 9, v.z + fz * 9);
         const deep = v.kind === 'bus' || v.model === 'camion' ? 0.9 : v.kind === 'moto' ? 0.4 : 0.55;

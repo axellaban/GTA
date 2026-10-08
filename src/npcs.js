@@ -940,7 +940,7 @@ export class Npcs {
       }
       // inundación (src/agua.js): con agua a la cintura caminan despacio; sin hacer pie, nadan
       const ag = world.agua;
-      const wd = ag && ag.level > -5.9 && !n.fly ? ag.depth(n.x, n.z, this.heightAt(n.x, n.z)) : 0;
+      const wd = ag && ag.wet && !n.fly ? ag.depth(n.x, n.z, this.heightAt(n.x, n.z)) : 0;
       n.swim = wd > NADAR;
       if (wd > VADEO) want *= n.swim ? 0.5 : 1 - 0.5 * Math.min(1, (wd - VADEO) / (NADAR - VADEO));
       if (n.swim && !n.down) {

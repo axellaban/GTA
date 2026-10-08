@@ -17,7 +17,8 @@ export const LANES = [
 export const AXIS = { x: 16.6, z: 388.4, ux: -0.8995, uz: 0.4368 };
 const FLAT = 24; // tramo hondo (abajo de las vías y un poco más)
 const RAMP = 72; // largo de cada rampa
-export const DEPTH = 5.4;
+// (el real tiene unos 5,4 m; el dueño lo pidió más hondo: con la inundación queda una pileta para bucear)
+export const DEPTH = 10;
 
 export function sOf(x, z) {
   return (x - AXIS.x) * AXIS.ux + (z - AXIS.z) * AXIS.uz;

@@ -280,7 +280,7 @@ Como en Vice City, la chapa se hunde donde pega el golpe (choques, tiros, explos
 
 ## Inundaciones: Temperley bajo el agua (0.39)
 
-Cuando llueve fuerte **el agua se junta**: primero se llena el **bajo nivel** (5,4 m de hondo, queda como una
+Cuando llueve fuerte **el agua se junta**: primero se llena el **bajo nivel** (10 m de hondo, queda como una
 pileta), después **sube por las calles**, pasa el cordón, tapa las veredas y entra a los pulmones de manzana.
 Con lluvia común el agua llega a la rodilla; con **tormenta** (casi la mitad de las veces que llueve) llega al
 pecho y **Gaspi nada**. Cuando para, el agua baja despacio y el bajo nivel es lo último que se vacía (tiene
@@ -386,7 +386,7 @@ Además: los **vecinos cruzan las vías por el puente de la estación** (suben, 
 
 ## El bajo nivel de Temperley (0.31)
 
-El **Paso bajo nivel Manuel Belgrano**, la avenida de dos manos que une Av. Eva Perón con Av. 9 de Julio, ahora existe: la calzada **baja en rampa 5,4 m, pasa por debajo de las vías** del Roca (con el techo del túnel y luces en las paredes) y vuelve a subir. Tiene paredes de hormigón con baranda, y García del Río y 9 de Julio la cruzan por arriba como **puentes** (los autos y la gente de arriba siguen arriba). El tránsito la usa sola. Geometría de OpenStreetMap.
+El **Paso bajo nivel Manuel Belgrano**, la avenida de dos manos que une Av. Eva Perón con Av. 9 de Julio, ahora existe: la calzada **baja en rampa 10 m (el real tiene 5,4; lo pidió el dueño más hondo, para bucear con la inundación), pasa por debajo de las vías** del Roca (con el techo del túnel y luces en las paredes) y vuelve a subir. Tiene paredes de hormigón con baranda, y García del Río y 9 de Julio la cruzan por arriba como **puentes** (los autos y la gente de arriba siguen arriba). El tránsito la usa sola. Geometría de OpenStreetMap.
 
 ## El final: el cielo del Comandante (0.30)
 

@@ -216,7 +216,7 @@ export class Police {
     // inundación (src/agua.js): flotando lo lleva el agua (src/flote.js); en el agua van despacio, no se
     // meten donde está hondo y levantan olas
     const ag = world.agua;
-    if (ag && ag.level > -5.9) {
+    if (ag && ag.wet) {
       if (v.floating) {
         v.speed = 0;
         return;

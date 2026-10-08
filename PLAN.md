@@ -1016,6 +1016,12 @@ Ideas para seguir: capó que se levanta con mucho daño; semáforos y carteles q
 
 ## 6b. Última sesión (para quien siga)
 
+- ✅ 2026-10-08, Claude: el bajo nivel pasa de 5,4 a **10 m** de hondo (pedido del dueño, para bucear con la
+  inundación): `DEPTH` en `src/bajo-geo.js` (todo lo demás sale de ahí: calzada, paredes, luces, puentes,
+  altura de los autos y el fondo del agua en `src/agua-nivel.js`). Las rampas siguen de 72 m (más empinadas).
+  "Seco" del agua pasó a -50 (y -99 en los shaders) y se pregunta con `agua.wet`: antes era -6 y con el fondo
+  a -10 hubiera querido decir 4 m de agua. Prueba nueva en `tools/agua.test.mjs`.
+
 - ✅ 2026-10-08 (segunda tanda), Claude: auditoría de la inundación y mejoras. Arreglos: en el celu el botón
   "Subir" buceando quedaba tapado por el de acción ("Subir al auto" de los autos que flotan) → nadando el botón
   de acción se corre y buceando no se ofrecen autos; Subir sube derecho aunque el joystick apunte abajo.

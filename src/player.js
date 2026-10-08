@@ -1557,7 +1557,7 @@ export class Player {
     // la cámara no se mete abajo del agua (nadando queda más baja, a ras del agua)
     const ag = this.agua;
     const diving = this.diving && ag;
-    const floor = diving ? this.heightAt : ag && ag.level > -5.9 ? (x, z) => Math.max(this.heightAt(x, z), ag.level + 0.25) : this.heightAt;
+    const floor = diving ? this.heightAt : ag && ag.wet ? (x, z) => Math.max(this.heightAt(x, z), ag.level + 0.25) : this.heightAt;
     if (this.swimming) anchor.y = this.y + (diving ? 0.35 : 1.05);
     let gy = this.swimming ? cy - hgt + (diving ? 0.35 : 1.05) : cy;
     // buceando, la cámara queda abajo del agua (no corta la superficie)

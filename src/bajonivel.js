@@ -1,5 +1,5 @@
 // El bajo nivel de Temperley (Paso bajo nivel Manuel Belgrano): la calzada de las dos manos, que baja
-// en rampa a 5,4 m para pasar por abajo de las vías y vuelve a subir; paredes de hormigón con baranda,
+// en rampa (DEPTH en src/bajo-geo.js: 10 m) para pasar por abajo de las vías y vuelve a subir; paredes de hormigón con baranda,
 // el techo del túnel abajo de las vías, y los puentes de las calles que la cruzan por arriba (García del
 // Río, 9 de Julio). La geometría está en src/bajo-geo.js; acá se arma lo que se ve y lo que choca.
 // - El piso de la ciudad (manzanas, veredas, plazas) se recorta con una máscara donde pasa la avenida

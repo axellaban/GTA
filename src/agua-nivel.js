@@ -1,8 +1,10 @@
+import { DEPTH } from './bajo-geo.js';
+
 // El nivel de la inundación (sin three ni el mapa, para poder probarlo con node --test):
 // un solo nivel para todo el mapa (el agua busca su nivel) que sube con la lluvia y baja por los desagües.
 // ---------- El nivel del agua ----------
-const FONDO = -5.38; // el fondo del bajo nivel (la calzada más honda del mapa)
-const SECO = -6; // sin agua
+const FONDO = 0.02 - DEPTH; // el fondo del bajo nivel (la calzada más honda del mapa)
+const SECO = -50; // sin agua (bien abajo de todo: el bajo nivel tiene 10 m)
 const CALLE = 0.02; // la calzada
 // cuánto "cuesta" subir un metro según dónde está el agua: el bajo nivel es angosto (se llena rápido),
 // las calles son la mitad del mapa y desde las veredas para arriba está todo

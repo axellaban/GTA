@@ -124,18 +124,18 @@ export const NIGHT = {
 // juntan en el fondo, horneadas con la simulación de océano de Blender: tools/blender/agua.py) y pierde
 // luz con la profundidad (el agua turbia se come primero el rojo y el azul y deja un verde marrón).
 export const AGUA = {
-  // nivel del agua (-9 = seco), reloj, fuerza del sol (0 de noche), cuadro del ciclo de cáusticas
-  aguaParams: { value: new THREE.Vector4(-9, 0, 0, 0) },
+  // nivel del agua (-99 = seco), reloj, fuerza del sol (0 de noche), cuadro del ciclo de cáusticas
+  aguaParams: { value: new THREE.Vector4(-99, 0, 0, 0) },
   causticTex: { value: null },
   // hasta dónde llegó el agua (m) y qué tan fresca está la marca (1 recién bajó, 0 ya se secó)
-  aguaMarca: { value: new THREE.Vector2(-9, 0) },
+  aguaMarca: { value: new THREE.Vector2(-99, 0) },
 };
 THREE.ShaderChunk.lights_fragment_end += /* glsl */ `
 #ifdef USE_FOG
   {
     vec3 aguaW = cameraPosition + vFogRay;
     float aguaD = aguaParams.x - aguaW.y;
-    if (aguaD > 0.0 && aguaParams.x > -8.0) {
+    if (aguaD > 0.0 && aguaParams.x > -90.0) {
       // la luz baja siguiendo al sol: el dibujo se corre según la profundidad
       vec2 cp = (aguaW.xz + fogSunDir.xz / max(fogSunDir.y, 0.25) * aguaD) / 6.0;
       // dos cuadros del ciclo mezclados (atlas de 4 x 4) y otra capa más chica que va para otro lado
@@ -151,10 +151,11 @@ THREE.ShaderChunk.lights_fragment_end += /* glsl */ `
       float cb = mix(texture2D(causticTex, (c1 + q2) / 4.0).r, texture2D(causticTex, (c0 + q2) / 4.0).r, fk);
       float caus = min(ca, cb) * 3.0 + ca * 0.6;
       vec3 aguaN = inverseTransformDirection(normal, viewMatrix);
-      float cauK = aguaParams.z * exp(-aguaD * 0.3) * smoothstep(0.0, 0.15, aguaD) * (0.3 + 0.7 * max(aguaN.y, 0.0));
+      float cauK = aguaParams.z * exp(-aguaD * 0.22) * smoothstep(0.0, 0.15, aguaD) * (0.3 + 0.7 * max(aguaN.y, 0.0));
       reflectedLight.directDiffuse += diffuseColor.rgb * caus * cauK * 3.2;
       // el agua turbia apaga la luz con la profundidad (rojo y azul primero)
-      vec3 aguaT = exp(-vec3(0.4, 0.22, 0.45) * aguaD);
+      // (suave: en el fondo del bajo nivel, a 10 m, todavía se ve algo, verde y oscuro)
+      vec3 aguaT = exp(-vec3(0.3, 0.16, 0.34) * aguaD);
       reflectedLight.directDiffuse *= aguaT;
       reflectedLight.indirectDiffuse *= mix(aguaT, vec3(1.0), 0.35);
       reflectedLight.directSpecular *= aguaT;
@@ -267,7 +268,7 @@ export function buildLampMap(lamps, shops = [], neon = null) {
   }
 }
 
-const MARCA_OFF = { value: new THREE.Vector2(-9, 0) };
+const MARCA_OFF = { value: new THREE.Vector2(-99, 0) };
 // Los materiales de lo que hay en la escena ahora (la ciudad recién armada) llevan la marca del agua.
 export function marcarCiudad(scene, soloFijos = false) {
   scene.traverse((o) => {

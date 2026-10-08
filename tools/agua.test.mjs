@@ -16,8 +16,8 @@ test('sin lluvia queda seco', () => {
 test('con tormenta se llena primero el bajo nivel y después la calle', () => {
   const a = run(SECO, 1, 10);
   assert.ok(a > FONDO && a < CALLE, `a los 10 s el agua está en el bajo nivel (${a})`);
-  const b = run(SECO, 1, 40);
-  assert.ok(b > CALLE, `a los 40 s ya hay agua en la calle (${b})`);
+  const b = run(SECO, 1, 60);
+  assert.ok(b > CALLE, `al minuto ya hay agua en la calle (${b})`);
 });
 
 test('una tormenta larga inunda hasta nadar; una lluvia común, hasta la rodilla', () => {
@@ -39,4 +39,10 @@ test('cuando para de llover baja: primero la calle y al final se vacía el bajo 
 
 test('el diluvio sube mucho más rápido', () => {
   assert.ok(run(0.45 + CALLE, 1, 60, true) > NADAR);
+});
+
+test('"seco" queda abajo del fondo del bajo nivel (si no, habría agua sin llover)', () => {
+  assert.ok(SECO < FONDO - 1, `SECO ${SECO} tiene que estar abajo del fondo ${FONDO}`);
+  // con lluvia, el bajo nivel se llena desde el fondo
+  assert.ok(Math.abs(stepLevel(SECO, 1, 0.01) - FONDO) < 0.05);
 });

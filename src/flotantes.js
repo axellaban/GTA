@@ -87,7 +87,7 @@ export class Flotantes {
   update(dt, world, camera) {
     const ag = this.agua;
     if (!this.ready) return;
-    const wet = ag.level > -5.9 && !world.inside;
+    const wet = ag.wet && !world.inside;
     if (!wet) {
       if (this.items.length) {
         for (const im of Object.values(this.meshes)) im.count = 0;

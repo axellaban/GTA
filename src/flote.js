@@ -22,7 +22,7 @@ export class Flote {
     const ag = world.agua;
     this.t += dt;
     if (!ag) return;
-    const wet = ag.level > -5.9;
+    const wet = ag.wet;
     const P = world.player;
     const ai = new Set(world.traffic.cars);
     for (const v of allVehicles(world)) {

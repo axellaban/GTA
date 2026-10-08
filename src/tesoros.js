@@ -40,7 +40,8 @@ export class Tesoros {
           const x = ax + ((bx - ax) * k) / n;
           const z = az + ((bz - az) * k) / n;
           const s = sOf(x, z);
-          if (depthAt(s) < -3) out.push({ x, z });
+          // en la parte más honda (para bucear de verdad)
+          if (depthAt(s) < -6) out.push({ x, z });
         }
       }
     }
@@ -73,9 +74,10 @@ export class Tesoros {
   update(dt, world) {
     const ag = world.agua;
     if (!ag) return;
-    const lleno = ag.level > -1.5;
+    // (con el bajo nivel lleno hasta la mitad ya hay cosas en el fondo)
+    const lleno = ag.level > -6;
     if (lleno && !this.armado) this.armar(world);
-    if (!lleno && this.armado && ag.level < -4) {
+    if (!lleno && this.armado && ag.level < -8.5) {
       for (const t of this.list) this.scene.remove(t.g);
       this.list = [];
       this.armado = false;

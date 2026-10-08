@@ -1,4 +1,4 @@
-// Inundación: cuando llueve fuerte el agua se junta, primero llena el bajo nivel (5,4 m de hondo) y
+// Inundación: cuando llueve fuerte el agua se junta, primero llena el bajo nivel (10 m de hondo) y
 // después sube por las calles, las veredas y los pulmones de manzana. Con tormenta se puede nadar.
 //
 // El nivel es uno solo para todo el mapa (el agua busca su nivel) y sube o baja según cuánto llueve y
@@ -86,6 +86,10 @@ export class Agua {
   setDepth(m) {
     this.level = m <= 0 ? SECO : CALLE + m;
   }
+  // ¿hay agua en algún lado? (aunque sea en el fondo del bajo nivel)
+  get wet() {
+    return this.level > SECO + 0.1;
+  }
   get streetDepth() {
     return Math.max(0, this.level - CALLE);
   }
@@ -108,15 +112,15 @@ export class Agua {
     this.below.visible = this.under;
     // cáusticas en todo lo que queda abajo (src/atmosphere.js): el sol de día, nada de noche
     const P = AGUA.aguaParams.value;
-    P.set(on ? this.level : -9, this.t, (world.sunK ?? 1) * (1 - rain * 0.55), (this.t * 9) % 16);
+    P.set(on ? this.level : -99, this.t, (world.sunK ?? 1) * (1 - rain * 0.55), (this.t * 9) % 16);
     // la marca del agua en las paredes y el barro: queda hasta donde llegó y se seca en unos 6 minutos
-    if (this.level >= (this.marca ?? -9) - 0.01) {
+    if (this.level >= (this.marca ?? -99) - 0.01) {
       this.marca = this.level;
       this.marcaK = 1;
     } else this.marcaK = Math.max(0, (this.marcaK ?? 0) - dt / 360);
     if (this.marcaK <= 0) this.marca = this.level;
     // (solo desde la calle para arriba: el bajo nivel está siempre embarrado igual)
-    AGUA.aguaMarca.value.set(world.inside || this.marca < 0.06 ? -9 : this.marca, world.inside ? 0 : this.marcaK);
+    AGUA.aguaMarca.value.set(world.inside || this.marca < 0.06 ? -99 : this.marca, world.inside ? 0 : this.marcaK);
     if (!on) return;
     this.mesh.position.y = this.level;
     this.below.position.y = this.level;
