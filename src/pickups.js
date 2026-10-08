@@ -222,7 +222,9 @@ export class Pickups {
       p.g.visible = near;
       if (!near) continue;
       p.item.rotation.y += dt * 2;
-      p.item.position.y = 0.8 + Math.sin(p.t * 2.6) * 0.1;
+      // con la calle inundada flotan arriba del agua
+      const wd = world.agua ? world.agua.depth(p.x, p.z) : 0;
+      p.item.position.y = Math.max(0.8, wd + 0.35) + Math.sin(p.t * 2.6) * 0.1;
       const d = Math.hypot(player.x - p.x, player.z - p.z);
       const reach = player.vehicle ? (p.kind === 'money' || p.kind === 'loot' ? 2.6 : 0) : 1.3;
       if (d > reach || player.dead) continue;

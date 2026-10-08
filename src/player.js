@@ -9,9 +9,14 @@ import { walkwayHeight } from './physics.js';
 import { safeCamera } from './camera-safe.js';
 import { lowFilter } from './bajonivel.js';
 import { turnRollover, recoverRollover, sideImpactRollover } from './vehicle-physics.js';
+import { NADAR, VADEO } from './agua.js';
+import { carWake } from './traffic.js';
 
 const WALK = 2.3;
 const RUN = 6.3;
+// nadando (m/s): pecho tranquilo y crol a fondo
+const SWIM = 1.5;
+const SWIM_FAST = 2.7;
 const tmpV = new THREE.Vector3();
 
 // cómo anda cada vehículo
@@ -406,6 +411,7 @@ export class Player {
   update(dt, world) {
     const { input, trains, audio } = world;
     this.dt = dt;
+    this.agua = world.agua;
     if (this.dead) {
       this.deadT -= dt;
       animateHuman(this.h, dt, 0, 'knocked');
@@ -510,7 +516,21 @@ export class Player {
   }
   walk(dt, world) {
     const { input } = world;
+    // en el agua (src/agua.js): sin hacer pie se nada; con agua a la rodilla o a la cintura se camina lento
+    const ag = world.agua;
+    this.wade = 0;
+    if (ag) {
+      const wd = ag.depth(this.x, this.z, this.groundAt());
+      this.waterDepth = wd;
+      if (!this.swimming && wd > NADAR && this.y < ag.level + 0.25) this.startSwim(world);
+      else if (this.swimming && !this.diving && wd < NADAR - 0.18) this.stopSwim(world);
+      if (this.swimming) return this.swim(dt, world);
+      this.wade = smooth(VADEO, NADAR, wd);
+      if (wd > 0.04) this.wading(dt, world, wd);
+    }
     const ax = input.axis();
+    // afuera del agua se recupera el aire
+    if (this.air < 1) this.air = Math.min(1, this.air + dt * 0.5);
     this.reactT = (this.reactT || 0) - dt;
     this.shootT = (this.shootT || 0) - dt;
     this.recoil = Math.max(0, (this.recoil || 0) - dt * 5);
@@ -572,6 +592,8 @@ export class Player {
       wantH = Math.atan2(tvx, tvz);
       const mag = Math.min(1, Math.hypot(ax.x, ax.y));
       let sp = (run ? RUN : WALK) * mag * buff * (this.grabbed > 0 ? 0.45 : 1);
+      // el agua frena: a la cintura se camina a la mitad y correr casi no sirve
+      if (this.wade > 0) sp *= 1 - this.wade * (run ? 0.72 : 0.55);
       if (this.aiming) sp = Math.min(sp, 2.2);
       if (this.attack) sp *= 0.25;
       tvx *= sp;
@@ -605,7 +627,7 @@ export class Player {
     if (this.aiming) this.heading = this.camYaw + Math.PI;
     // salto
     const ground = this.groundAt();
-    if (input.hit(' ', 'jump') && this.y <= ground + 0.05 && !this.attack) {
+    if (input.hit(' ', 'jump') && this.y <= ground + 0.05 && !this.attack && this.wade < 0.6) {
       this.vy = 4.6;
       world.audio.whoosh(0.15);
     }
@@ -678,6 +700,281 @@ export class Player {
     const stepIn = this.speed < 0.6 ? Math.min(1.1, Math.abs(this.turnW || 0) * 0.3) : 0;
     animateHuman(this.h, dt, Math.max(this.speed, stepIn), pose, t);
     this.naturalize(dt, ground, pose === 'walk');
+    if (this.wade > 0 && pose === 'walk') {
+      // con el agua a la cintura: los brazos se abren para hacer equilibrio y el cuerpo empuja adelante
+      const b = this.h.bones;
+      const w = this.wade;
+      b.uaR.rotation.z -= 0.45 * w;
+      b.uaL.rotation.z += 0.45 * w;
+      b.faR.rotation.x -= 0.35 * w;
+      b.faL.rotation.x -= 0.35 * w;
+      b.spine.rotation.x += 0.12 * w * Math.min(1, this.speed);
+      b.thR.rotation.x -= 0.2 * w * Math.min(1, this.speed);
+      b.thL.rotation.x -= 0.2 * w * Math.min(1, this.speed);
+    }
+    this.drip(dt, world);
+  }
+
+  // ---------- En el agua ----------
+  startSwim(world) {
+    const ag = world.agua;
+    const fall = Math.max(0, -(this.vy || 0));
+    this.swimming = true;
+    this.downT = this.getupT = 0;
+    this.roll = null;
+    this.attack = null;
+    this.aiming = false;
+    this.vy = 0;
+    this.y = Math.max(this.y, ag.level - 0.4);
+    this.swimT = 0;
+    this.swimY = ag.level;
+    // chapuzón: más grande si cayó de arriba
+    const k = Math.min(1.5, 0.35 + fall * 0.12);
+    splash(world.fx, this.x, ag.level, this.z, 10 + fall * 4, 1.2 + fall * 0.25);
+    ag.ripple(this.x, this.z, k);
+    world.audio.chapuzon?.(k);
+  }
+  // ---------- Buceando ----------
+  startDive(world) {
+    const ag = world.agua;
+    this.diving = true;
+    this.vy = -1.2;
+    this.air ??= 1;
+    this.y = ag.level - 0.55;
+    this.divePitch = -0.6;
+    splash(world.fx, this.x, ag.level, this.z, 8, 0.8);
+    ag.ripple(this.x, this.z, 0.9);
+    world.audio.chapuzon?.(0.6);
+  }
+  surface(world) {
+    const ag = world.agua;
+    this.diving = false;
+    this.vy = 0;
+    this.y = ag.level - 0.3;
+    this.swimY = ag.level;
+    splash(world.fx, this.x, ag.level, this.z, 6, 0.6);
+    ag.ripple(this.x, this.z, 0.7);
+    world.audio.bocanada?.(this.air < 0.4 ? 1.3 : 0.8);
+  }
+  dive(dt, world) {
+    const { input, fx } = world;
+    const ag = world.agua;
+    const ax = input.axis();
+    const fast = input.down('shift') || input.sprint;
+    this.aiming = false;
+    this.attack = null;
+    // para donde mira la cámara: con la cámara mirando hacia abajo, adelante es hacia el fondo
+    const pitch = Math.max(-1.2, Math.min(1.2, (this.camPitch - 0.12) * 1.3));
+    let tx = 0;
+    let ty = 0;
+    let tz = 0;
+    if (ax.x || ax.y) {
+      const fx0 = -Math.sin(this.camYaw);
+      const fz0 = -Math.cos(this.camYaw);
+      let hx = fx0 * -ax.y + -fz0 * ax.x;
+      let hz = fz0 * -ax.y + fx0 * ax.x;
+      const l = Math.hypot(hx, hz) || 1;
+      hx /= l;
+      hz /= l;
+      const fwd = -ax.y > 0 ? Math.cos(pitch) : 1;
+      tx = hx * fwd;
+      tz = hz * fwd;
+      if (-ax.y > 0) ty = -Math.sin(pitch);
+    }
+    if (input.down(' ', 'jump')) ty += 1;
+    if (input.down('c', 'control')) ty -= 1;
+    const tl = Math.hypot(tx, ty, tz);
+    const sp = fast ? 2.4 : 1.45;
+    if (tl > 1e-3) {
+      tx = (tx / tl) * sp;
+      ty = (ty / tl) * sp;
+      tz = (tz / tl) * sp;
+    }
+    // agua: inercia y un poco de flotación (sin moverse, sube despacio)
+    if (tl < 1e-3) ty = 0.12;
+    this.mvx ??= 0;
+    this.mvz ??= 0;
+    const k = Math.min(1, dt * (tl > 1e-3 ? 1.8 : 1.1));
+    this.mvx += (tx - this.mvx) * k;
+    this.mvz += (tz - this.mvz) * k;
+    this.vy += (ty - this.vy) * k;
+    const hs = Math.hypot(this.mvx, this.mvz);
+    if (hs > 0.2) {
+      let diff = Math.atan2(this.mvx, this.mvz) - this.heading;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      this.heading += diff * Math.min(1, dt * 3);
+    }
+    this.x += this.mvx * dt;
+    this.z += this.mvz * dt;
+    this.collide(world);
+    this.y += this.vy * dt;
+    const floor = this.groundAt() + 0.35;
+    if (this.y < floor) {
+      this.y = floor;
+      this.vy = Math.max(0, this.vy);
+    }
+    this.speed = Math.hypot(hs, this.vy);
+    // arriba: sale a respirar
+    if (this.y > ag.level - 0.35 && this.vy > -0.05) return this.surface(world);
+    // pose: pecho bajo el agua, el cuerpo inclinado hacia donde va
+    const want = this.speed > 0.2 ? Math.atan2(this.vy, Math.max(hs, 0.01)) : 0;
+    this.divePitch += (want - this.divePitch) * Math.min(1, dt * 3);
+    this.h.divePitch = this.divePitch;
+    this.swimT = (this.swimT || 0) + dt * (this.speed > 0.2 ? 0.5 + this.speed * 0.25 : 0.32);
+    animateHuman(this.h, dt, this.speed, 'dive', this.swimT);
+    // aire: unos 30 segundos; después se ahoga de a poco
+    this.air = (this.air ?? 1) - dt / 32;
+    if (this.air <= 0) {
+      this.air = 0;
+      this.drownT = (this.drownT || 0) - dt;
+      if (this.drownT <= 0) {
+        this.drownT = 1;
+        this.hurt(9, 'TE AHOGASTE');
+        for (let i = 0; i < 8; i++) this.bubble(fx, ag, 1);
+      }
+    }
+    // burbujas que salen de la boca cada tanto (más seguidas con poco aire)
+    this.bubT = (this.bubT || 0) - dt;
+    if (this.bubT <= 0) {
+      this.bubT = (0.7 + Math.random() * 0.9) * (0.4 + this.air * 0.6);
+      const n = 2 + ((Math.random() * 4) | 0);
+      for (let i = 0; i < n; i++) this.bubble(fx, ag);
+      if (Math.random() < 0.5) world.audio.burbuja?.(500 + Math.random() * 400, 0.025);
+    }
+  }
+  // una burbuja desde la cabeza: sube bamboleando y revienta en la superficie
+  bubble(fx, ag, big = 0) {
+    const f = Math.sin(this.heading);
+    const g = Math.cos(this.heading);
+    const c = Math.cos(this.divePitch || 0);
+    const hx = this.x + f * 0.85 * c;
+    const hz = this.z + g * 0.85 * c;
+    const hy = this.y + Math.sin(this.divePitch || 0) * 0.85 + 0.1;
+    fx.alpha.add({ x: hx + (Math.random() - 0.5) * 0.1, y: hy, z: hz + (Math.random() - 0.5) * 0.1, vx: (Math.random() - 0.5) * 0.3, vy: 0.5 + Math.random() * 0.6, vz: (Math.random() - 0.5) * 0.3, grav: 2.2, drag: 0.8, life: 0, max: 6, s0: 0.035 + big * 0.03 + Math.random() * 0.03, s1: 0.06 + big * 0.04, c0: [0.85, 0.95, 1], a: 0.7, ceil: ag.level - 0.02 });
+  }
+
+  stopSwim(world) {
+    this.swimming = false;
+    this.diving = false;
+    this.wetT = 40;
+    this.y = Math.min(this.y, this.groundAt() + 0.29);
+    world.audio.chapoteo?.(0.5);
+  }
+  swim(dt, world) {
+    const { input } = world;
+    const ag = world.agua;
+    // C (o Control, o el botón Bucear): para abajo, como en GTA, si hay lugar abajo
+    if (!this.diving && input.hit('c', 'control') && ag.level - this.groundAt() > 1.7) this.startDive(world);
+    if (this.diving) return this.dive(dt, world);
+    // en la superficie se recupera el aire
+    this.air = Math.min(1, (this.air ?? 1) + dt * 0.5);
+    const ax = input.axis();
+    const fast = input.down('shift') || input.sprint;
+    this.aiming = false;
+    this.attack = null;
+    let tvx = 0;
+    let tvz = 0;
+    let wantH = null;
+    if (ax.x || ax.y) {
+      const fx = -Math.sin(this.camYaw);
+      const fz = -Math.cos(this.camYaw);
+      tvx = fx * -ax.y + -fz * ax.x;
+      tvz = fz * -ax.y + fx * ax.x;
+      const l = Math.hypot(tvx, tvz);
+      tvx /= l;
+      tvz /= l;
+      wantH = Math.atan2(tvx, tvz);
+      const sp = (fast ? SWIM_FAST : SWIM) * Math.min(1, Math.hypot(ax.x, ax.y));
+      // se nada para donde mira el cuerpo (no de costado): la velocidad va con el rumbo
+      tvx = Math.sin(this.heading) * sp;
+      tvz = Math.cos(this.heading) * sp;
+    }
+    // el agua tiene inercia: cuesta arrancar y se sigue deslizando un poco
+    this.mvx ??= 0;
+    this.mvz ??= 0;
+    const tgt = Math.hypot(tvx, tvz);
+    const cur = Math.hypot(this.mvx, this.mvz);
+    const acc = tgt > cur ? 2.4 : 1.6;
+    const dvx = tvx - this.mvx;
+    const dvz = tvz - this.mvz;
+    const dl = Math.hypot(dvx, dvz);
+    if (dl > 1e-4) {
+      const st = Math.min(dl, acc * dt);
+      this.mvx += (dvx / dl) * st;
+      this.mvz += (dvz / dl) * st;
+    }
+    if (wantH != null) {
+      let diff = wantH - this.heading;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      this.heading += diff * Math.min(1, dt * 3.2);
+    }
+    const x0 = this.x;
+    const z0 = this.z;
+    this.x += this.mvx * dt;
+    this.z += this.mvz * dt;
+    this.collide(world);
+    // a una pared o un andén de más de 45 cm sobre el agua no se trepa nadando
+    if (this.groundAt() > ag.level + 0.45) {
+      this.x = x0;
+      this.z = z0;
+      this.mvx *= 0.3;
+      this.mvz *= 0.3;
+    }
+    this.speed = Math.hypot(this.mvx, this.mvz);
+    const moving = this.speed > 0.35;
+    // brazadas: más seguidas a fondo; flotando, las piernas siguen batiendo despacio
+    const prev = this.swimT;
+    this.swimT += dt * (moving ? 0.24 + this.speed * 0.24 : 0.45);
+    this.swimY = ag.level;
+    animateHuman(this.h, dt, this.speed, moving ? 'swim' : 'tread', this.swimT);
+    const fx = Math.sin(this.heading);
+    const fz = Math.cos(this.heading);
+    // cada vez que entra una mano: salpica adelante y abre una onda
+    if (moving && Math.floor(prev * 2) !== Math.floor(this.swimT * 2)) {
+      const side = Math.floor(this.swimT * 2) % 2 ? 1 : -1;
+      const hx = this.x + fx * 1.0 + fz * side * 0.25;
+      const hz = this.z + fz * 1.0 - fx * side * 0.25;
+      splash(world.fx, hx, ag.level, hz, 4 + this.speed * 3, 0.7 + this.speed * 0.25);
+      ag.ripple(hx, hz, 0.35 + this.speed * 0.2);
+      world.audio.brazada?.(0.4 + this.speed * 0.2);
+    }
+    // la estela: ondas que quedan atrás y espuma de la patada
+    this.ripT = (this.ripT || 0) - dt;
+    if (this.ripT <= 0) {
+      this.ripT = moving ? 0.32 : 1.1;
+      ag.ripple(this.x - fx * (moving ? 0.6 : 0), this.z - fz * (moving ? 0.6 : 0), moving ? 0.25 + this.speed * 0.15 : 0.18);
+      if (moving) splash(world.fx, this.x - fx * 0.9, ag.level, this.z - fz * 0.9, 2, 0.4);
+    }
+  }
+  // caminando por el agua: salpica a cada paso y deja ondas
+  wading(dt, world, wd) {
+    const ag = world.agua;
+    this.wetT = Math.max(this.wetT || 0, Math.min(40, wd * 60));
+    this.wadeT = (this.wadeT || 0) - dt;
+    const sp = this.speed || 0;
+    if (this.wadeT > 0) return;
+    this.wadeT = sp > 0.3 ? Math.max(0.16, 0.42 - sp * 0.05) : 1.2;
+    const fx = Math.sin(this.heading);
+    const fz = Math.cos(this.heading);
+    ag.ripple(this.x + fx * 0.25, this.z + fz * 0.25, Math.min(1, 0.15 + sp * 0.12 + wd * 0.2));
+    if (sp > 0.3) {
+      splash(world.fx, this.x + fx * 0.35, ag.level, this.z + fz * 0.35, 2 + sp * 1.5, 0.35 + sp * 0.12 + wd * 0.3);
+      world.audio.chapoteo?.(Math.min(1, 0.25 + sp * 0.12));
+    }
+  }
+  // al salir del agua: gotea un rato (la ropa empapada)
+  drip(dt, world) {
+    if (!(this.wetT > 0) || this.swimming) return;
+    this.wetT -= dt;
+    this.dripT = (this.dripT || 0) - dt;
+    if (this.dripT > 0) return;
+    this.dripT = 0.05 + (1 - Math.min(1, this.wetT / 40)) * 0.25;
+    const a = Math.random() * Math.PI * 2;
+    const r = 0.12 + Math.random() * 0.12;
+    const y = this.y + 0.3 + Math.random() * 1.1;
+    world.fx.alpha.add({ x: this.x + Math.cos(a) * r, y, z: this.z + Math.sin(a) * r, vx: 0, vy: -0.5, vz: 0, grav: -9.8, drag: 0, life: 0, max: 0.5, s0: 0.02, s1: 0.015, c0: [0.75, 0.8, 0.85], a: 0.5 });
   }
 
   // Lo que hace que Gaspi se mueva como una persona y no como un muñeco: se inclina en las curvas,
@@ -894,8 +1191,30 @@ export class Player {
     let fz = v.fz;
     let vf = v.vx * fx + v.vz * fz;
     let vl = v.vx * fz - v.vz * fx;
-    if (throttle > 0) vf += (vf < -0.5 ? st.brake : st.acc * (1 - Math.max(0, vf) / (vmax * 1.15))) * dt * throttle;
-    else if (throttle < 0) vf -= (vf > 0.5 ? st.brake : st.rev) * dt * -throttle;
+    // inundación: el agua frena (más cuanto más hondo y más rápido), levanta olas y, si llega a la toma
+    // de aire, el motor se ahoga. Si el agua tapa el auto, Gaspi sale nadando.
+    const ag = world.agua;
+    const wd = ag ? ag.depth(v.x, v.z, this.heightAt(v.x, v.z)) : 0;
+    let throttleW = throttle;
+    if (wd > 0.03) {
+      const big = v.kind === 'bus' || v.model === 'camion' || v.model === 'firetruck';
+      const intake = moto ? 0.45 : big ? 1.0 : 0.7;
+      if (wd > intake && !v.ahogado) {
+        v.ahogado = true;
+        hud.flash('SE AHOGÓ EL MOTOR', moto ? 'La moto tragó agua. Bajate y seguí a pie (o nadando).' : 'El agua le entró al motor. Bajate y seguí a pie (o nadando).', 'bad', 3);
+        audio.chapoteo?.(1);
+      }
+      vf -= Math.sign(vf) * Math.min(Math.abs(vf), (0.9 * wd * Math.abs(vf) + 0.06 * wd * vf * vf + wd * 1.5) * dt);
+      if (Math.abs(vf) > 1.5) carWake(world, v, wd);
+      // flotando (src/flote.js): las ruedas no tocan el piso y lo lleva la corriente
+      if (v.floating && !v.avisoFlota) {
+        v.avisoFlota = true;
+        hud.flash('EL AUTO FLOTA', 'Lo lleva el agua. F para bajarte y nadar.', 'warn', 2.6);
+      }
+    } else if (v.ahogado && wd < 0.05) v.ahogado = false;
+    if (v.ahogado || v.floating) throttleW = 0;
+    if (throttleW > 0) vf += (vf < -0.5 ? st.brake : st.acc * (1 - Math.max(0, vf) / (vmax * 1.15))) * dt * throttleW;
+    else if (throttleW < 0) vf -= (vf > 0.5 ? st.brake : st.rev) * dt * -throttleW;
     else vf -= Math.sign(vf) * Math.min(Math.abs(vf), (1.8 + Math.abs(vf) * 0.03) * dt);
     if (hb) vf -= Math.sign(vf) * Math.min(Math.abs(vf), (moto ? 12 : 7) * dt);
     vf = Math.max(-st.rev * 1.5, Math.min(vmax, vf));
@@ -920,7 +1239,7 @@ export class Player {
     v.x += v.vx * dt;
     v.z += v.vz * dt;
     v.speed = vf;
-    v.throttle = throttle; // para el ruido del motor (src/audio.js)
+    v.throttle = throttleW; // para el ruido del motor (src/audio.js)
     v.vmax = vmax;
     v.brakeIn = hb || (throttle < 0 && vf > 0.5) || (throttle > 0 && vf < -0.5) || (throttle === 0 && Math.abs(vf) < 0.3);
     const slip = Math.abs(vl);
@@ -1151,8 +1470,14 @@ export class Player {
       return;
     }
     const dt = this.dt || 1 / 60;
-    const ground = this.vehicle ? this.vehicle.y || 0 : this.groundAt();
-    if (!this.vehicle && (this.vy !== 0 || this.y > ground + 0.3)) {
+    const ground = this.vehicle ? (this.vehicle.floating ? this.vehicle.floatY : this.vehicle.y || 0) : this.groundAt();
+    if (this.diving && !this.vehicle) this.vy = 0;
+    else if (this.swimming && !this.vehicle) {
+      // flota: sube y baja apenas con el agua
+      const bob = Math.sin((this.swimT || 0) * Math.PI * 2) * 0.025;
+      this.y += (this.swimY + bob - this.y) * Math.min(1, dt * 5);
+      this.vy = 0;
+    } else if (!this.vehicle && (this.vy !== 0 || this.y > ground + 0.3)) {
       // gravedad
       this.vy -= 13 * dt;
       this.y += this.vy * dt;
@@ -1191,7 +1516,16 @@ export class Player {
     const cz = this.z + Math.cos(this.camYaw) * Math.cos(pitch) * dist + sz;
     const cy = this.y + hgt + Math.sin(pitch) * dist;
     const anchor = { x: this.x, y: this.y + hgt, z: this.z };
-    const goal = safeCamera(anchor, { x: cx, y: cy, z: cz }, colliders, this.heightAt);
+    // la cámara no se mete abajo del agua (nadando queda más baja, a ras del agua)
+    const ag = this.agua;
+    const diving = this.diving && ag;
+    const floor = diving ? this.heightAt : ag && ag.level > -5.9 ? (x, z) => Math.max(this.heightAt(x, z), ag.level + 0.25) : this.heightAt;
+    if (this.swimming) anchor.y = this.y + (diving ? 0.35 : 1.05);
+    let gy = this.swimming ? cy - hgt + (diving ? 0.35 : 1.05) : cy;
+    // buceando, la cámara queda abajo del agua (no corta la superficie)
+    if (diving) gy = Math.min(gy, ag.level - 0.25);
+    const goal = safeCamera(anchor, { x: cx, y: gy, z: cz }, colliders, floor);
+    if (diving) goal.y = Math.min(goal.y, ag.level - 0.2);
     const { x: tx, y: ty, z: tz } = goal;
     if (!this.camPos) this.camPos = new THREE.Vector3(tx, ty, tz);
     this.camPos.lerp(tmpV.set(tx, ty, tz), Math.min(1, dt * (this.aiming ? 18 : 10)));
@@ -1209,12 +1543,13 @@ export class Player {
     const sh = fx ? Math.min(0.8, fx.shake) : 0;
     if (sh > 0.001) camera.position.add(tmpV.set((Math.random() - 0.5) * sh, (Math.random() - 0.5) * sh, (Math.random() - 0.5) * sh));
     // Suavizar entre dos puntos seguros también puede cortar la esquina de una casa.
-    safeCamera(anchor, camera.position, colliders, this.heightAt);
+    safeCamera(anchor, camera.position, colliders, floor);
+    if (diving) camera.position.y = Math.min(camera.position.y, ag.level - 0.2);
     this.camPos.copy(camera.position);
     // al apuntar se mira más lejos: la mira queda en el centro de la pantalla
     const lx = this.x + sx - Math.sin(this.camYaw) * this.aimK * 6;
     const lz = this.z + sz - Math.cos(this.camYaw) * this.aimK * 6;
-    const ly = this.y + (ufo ? 1.6 : inCar ? 1.4 : 1.55) + this.aimK * (0.2 - pitch * 2.5);
+    const ly = this.y + (ufo ? 1.6 : inCar ? 1.4 : this.diving ? 0.1 : this.swimming ? 0.35 : 1.55) + this.aimK * (0.2 - pitch * 2.5);
     camera.lookAt(lx, ly, lz);
     // campo visual: más abierto a alta velocidad, más cerrado al apuntar
     const fov = 62 + Math.min(12, sp * 0.35) - this.aimK * 14;
@@ -1223,4 +1558,20 @@ export class Player {
       camera.updateProjectionMatrix();
     }
   }
+}
+
+function smooth(a, b, x) {
+  const t = Math.max(0, Math.min(1, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+}
+
+// salpicadura: gotas que saltan y vuelven al agua, y un poco de espuma
+export function splash(fx, x, y, z, n = 6, s = 1) {
+  if (!fx) return;
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const v = (0.4 + Math.random() * 1.2) * s;
+    fx.alpha.add({ x: x + Math.cos(a) * 0.1, y: y + 0.03, z: z + Math.sin(a) * 0.1, vx: Math.cos(a) * v, vy: (1.2 + Math.random() * 2.2) * s, vz: Math.sin(a) * v, grav: -9.8, drag: 0.4, life: 0, max: 0.35 + Math.random() * 0.35, s0: 0.05 * s, s1: 0.025, c0: [0.82, 0.84, 0.82], a: 0.75, floor: y });
+  }
+  fx.alpha.add({ x, y: y + 0.05, z, vx: 0, vy: 0.15, vz: 0, grav: 0, drag: 3, life: 0, max: 0.5, s0: 0.25 * s, s1: 0.9 * s, c0: [0.85, 0.85, 0.8], a: 0.35, floor: y });
 }

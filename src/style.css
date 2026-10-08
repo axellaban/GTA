@@ -140,6 +140,24 @@ body {
 }
 
 /* ---- Estado arriba a la derecha ---- */
+/* aire buceando (src/player.js): barra celeste como en GTA */
+#air-meter {
+  justify-self: end;
+  width: 132px;
+  height: 11px;
+  border: 2px solid #0b0b0b;
+  background: rgba(10, 30, 50, 0.55);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.5);
+}
+#air-meter > div {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(#9ee6ff, #3aa6dc);
+  transition: width 0.15s linear;
+}
+#air-meter.low > div {
+  background: linear-gradient(#ffb0b0, #e5484d);
+}
 #status {
   position: absolute;
   top: calc(12px + env(safe-area-inset-top, 0px));
@@ -1255,8 +1273,20 @@ body {
   #touch.ufo .on-foot,
   #touch.ufo .on-car,
   #touch.ufo .on-moto,
-  #touch.heli #btn-beam {
+  #touch.heli #btn-beam,
+  #touch:not(.swim) .on-swim,
+  #touch.swim .on-foot {
     display: none;
+  }
+  /* nadando: bucear grande abajo y subir arriba (src/agua.js) */
+  #btn-dive {
+    right: calc(24px + env(safe-area-inset-right, 0px));
+    bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+    background: rgba(64, 128, 190, 0.6);
+  }
+  #btn-rise {
+    right: calc(24px + env(safe-area-inset-right, 0px));
+    bottom: calc(132px + env(safe-area-inset-bottom, 0px));
   }
   /* plato volador: rayo grande abajo, tractor al lado y subir/bajar en columna */
   #btn-laser {

@@ -1016,6 +1016,26 @@ Ideas para seguir: capó que se levanta con mucho daño; semáforos y carteles q
 
 ## 6b. Última sesión (para quien siga)
 
+- ✅ 2026-10-08, Claude: **inundaciones, nado y buceo** (README §0.39). Pedido del dueño: "que se inunden las
+  calles mucho, que Gaspi nade y bucee como en GTA, autos que floten, botes con gente, víboras; agua 10/10, sin
+  inventar de cero". Lo que se reusó (todo con licencia abierta, créditos en la pausa y el README):
+  simulación de océano de Blender para ondas, espuma y cáusticas (`tools/blender/agua.py`); WaterThreeJS
+  (MIT) para la vista bajo el agua, los rayos de luz, la ventana de Snell y la flotación; WebGL Water de Evan
+  Wallace (MIT) para el método de las cáusticas; botes de remo de Kenney (CC0); cobra de OpenGameArt (CC0)
+  hecha yarará en Blender (`tools/blender/vibora.py`, fuente en `tools/blender/fuentes/cobra.blend`); basura
+  flotante modelada en Blender (`tools/blender/flotantes.py`).
+  Piezas: `src/agua-nivel.js` (nivel según la lluvia, con pruebas en `tools/agua.test.mjs`), `src/agua.js`
+  (superficie: reflejo plano, Fresnel, agua turbia por profundidad, espuma, gotas, ondas; cara de abajo;
+  partículas bajo el agua), cáusticas y absorción en todos los materiales (`AGUA` en `src/atmosphere.js`),
+  pase bajo el agua en `src/post.js`, nado/buceo/vadeo en `src/player.js` (poses `swim`, `tread`, `dive` y
+  `remar` en `src/human.js`), autos (`src/flote.js` y frenado/motor ahogado en `drive` y `src/traffic.js`),
+  `src/botes.js`, `src/viboras.js`, `src/flotantes.js`, gente en el agua (`src/npcs.js`), sonidos de agua y
+  filtro bajo el agua (`src/audio.js`), barra de aire y botones Bucear/Subir (`src/hud.js`, `index.html`).
+  Truco DILUVIO y `?diluvio` en el link. Probado con capturas en Chromium sin GPU (calle inundada de día y de
+  noche, bajo nivel, nadando, flotando, buceando mirando adelante y arriba, autos flotando, botes y víboras).
+  Pendiente: probar fluidez y memoria en un iPhone de verdad (el reflejo dibuja la ciudad otra vez a media
+  resolución; si hace falta, bajarle la resolución o saltearlo cada dos cuadros).
+
 - ✅ 2026-10-04, Codex: revisión aprobada de la intro, nueve planos y tres segundos de
   cierre negro con música, logo y tributo (36,875 s). Voz de la señora cuarta, Falcon
   antes de la bazuca, música desde el segundo 9 de la canción y audio original en el

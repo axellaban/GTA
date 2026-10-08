@@ -84,6 +84,16 @@ class Particles {
       p.x += p.vx * dt;
       p.y += p.vy * dt;
       p.z += p.vz * dt;
+      // (las gotas de una salpicadura vuelven al agua y desaparecen)
+      // (las burbujas revientan al llegar a la superficie)
+      if (p.ceil != null && p.y > p.ceil) {
+        p.life = p.max;
+        continue;
+      }
+      if (p.floor != null && p.y < p.floor && p.vy < 0) {
+        p.life = p.max;
+        continue;
+      }
       if (p.y < 0.05 && p.grav) {
         p.y = 0.05;
         p.vy *= -0.3;

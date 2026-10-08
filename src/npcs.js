@@ -10,6 +10,7 @@ import { DATA as D } from './map.js';
 import { R } from './rng.js';
 import { walkwayHeight } from './physics.js';
 import { lowFilter } from './bajonivel.js';
+import { NADAR, VADEO } from './agua.js';
 
 const OFF = (e) => e.street.w / 2 + 1.5; // mitad de la vereda
 const EG = 40; // grilla de aristas
@@ -675,6 +676,7 @@ export class Npcs {
   update(dt, world) {
     const { player, time } = world;
     const night = time.night;
+    this.agua = world.agua;
     // quiénes están cerca (para esquivarse entre ellos y a Gaspi)
     const near = [];
     for (const n of this.list) if (!n.down && n.state !== 'sit' && Math.abs(n.x - player.x) < 40 && Math.abs(n.z - player.z) < 40) near.push(n);
@@ -936,6 +938,24 @@ export class Npcs {
           want = Math.min(want, 0.5);
         }
       }
+      // inundación (src/agua.js): con agua a la cintura caminan despacio; sin hacer pie, nadan
+      const ag = world.agua;
+      const wd = ag && ag.level > -5.9 && !n.fly ? ag.depth(n.x, n.z, this.heightAt(n.x, n.z)) : 0;
+      n.swim = wd > NADAR;
+      if (wd > VADEO) want *= n.swim ? 0.5 : 1 - 0.5 * Math.min(1, (wd - VADEO) / (NADAR - VADEO));
+      if (n.swim && !n.down) {
+        n.swimT = (n.swimT || 0) + dt * (n.speed > 0.3 ? 0.24 + n.speed * 0.24 : 0.45);
+        pose = n.speed > 0.3 ? 'swim' : 'tread';
+        t = n.swimT;
+        anim = n.speed;
+      }
+      if (wd > 0.08 && dp < 35 && n.speed > 0.4) {
+        n.ripT = (n.ripT || 0) - dt;
+        if (n.ripT <= 0) {
+          n.ripT = n.swim ? 0.4 : 0.55;
+          ag.ripple(n.x + Math.sin(n.heading) * 0.3, n.z + Math.cos(n.heading) * 0.3, Math.min(0.6, 0.12 + wd * 0.3));
+        }
+      }
       if (want > 0 && n.target) {
         if (dp < 40 && n.state !== 'fight' && n.state !== 'protest' && n.type !== 'cana') this.avoidance(n, near, dt);
         else n.avoid = 0;
@@ -1142,6 +1162,8 @@ export class Npcs {
 
   place(n) {
     let y = this.heightAt(n.x, n.z);
+    // nadando flota en la superficie
+    if (n.swim && this.agua) y = this.agua.level;
     const k = this.wb;
     if (n.x > k.x0 && n.x < k.x1 && n.z > k.z0 && n.z < k.z1) y = Math.max(y, walkwayHeight(this.walkways, n.x, n.z, n.y));
     n.y += (y - n.y) * 0.3;

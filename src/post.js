@@ -10,6 +10,85 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { AfterimagePass } from 'three/examples/jsm/postprocessing/AfterimagePass.js';
 import { N8AOPass } from 'n8ao';
 import { VC } from './vc.js';
+import { AGUA } from './atmosphere.js';
+
+// Bajo el agua: el color se apaga con la distancia (Beer-Lambert: el agua turbia se come primero el rojo) y
+// el sol baja en rayos que dibujan las mismas cáusticas de la superficie. Adaptado del pase "underwater
+// volumetrics" de WaterThreeJS (Mohamed Achref Elouafi, MIT): la posición de cada píxel sale del buffer de
+// profundidad y el rayo de la cámara se recorre en pasos sumando la luz que entra por arriba.
+const UnderwaterShader = {
+  uniforms: {
+    tDiffuse: { value: null },
+    tDepth: { value: null },
+    uInvProjView: { value: new THREE.Matrix4() },
+    uCam: { value: new THREE.Vector3() },
+    uSunDir: { value: new THREE.Vector3(0, 1, 0) },
+    uTime: { value: 0 },
+    uLevel: { value: 0 },
+    uSun: { value: 1 },
+    uDeep: { value: new THREE.Color(0.07, 0.095, 0.06) },
+    uShaft: { value: new THREE.Color(0.85, 0.95, 0.8) },
+    uExt: { value: new THREE.Vector3(0.2, 0.125, 0.22) },
+    causticTex: AGUA.causticTex,
+  },
+  vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+  fragmentShader: /* glsl */ `
+    uniform sampler2D tDiffuse;
+    uniform sampler2D tDepth;
+    uniform mat4 uInvProjView;
+    uniform vec3 uCam;
+    uniform vec3 uSunDir;
+    uniform float uTime;
+    uniform float uLevel;
+    uniform float uSun;
+    uniform vec3 uDeep;
+    uniform vec3 uShaft;
+    uniform vec3 uExt;
+    uniform sampler2D causticTex;
+    varying vec2 vUv;
+    float caus(vec2 p) {
+      float fr = mod(uTime * 9.0, 16.0);
+      float f0 = floor(fr);
+      vec2 c0 = vec2(mod(f0, 4.0), floor(f0 / 4.0));
+      return texture2D(causticTex, (c0 + fract(p) * 0.992 + 0.004) / 4.0).r;
+    }
+    float hg(float c, float g) {
+      float g2 = g * g;
+      return (1.0 - g2) / (12.5663706 * pow(1.0 + g2 - 2.0 * g * c, 1.5));
+    }
+    void main() {
+      // (una onda leve en la imagen, como mirar a través del agua)
+      vec2 uv = vUv + vec2(sin(vUv.y * 40.0 + uTime * 2.1), cos(vUv.x * 33.0 + uTime * 1.7)) * 0.0016;
+      vec3 col = texture2D(tDiffuse, uv).rgb;
+      float d = texture2D(tDepth, uv).x;
+      vec4 wp = uInvProjView * vec4(uv * 2.0 - 1.0, d * 2.0 - 1.0, 1.0);
+      wp /= wp.w;
+      vec3 to = wp.xyz - uCam;
+      float dist = length(to);
+      vec3 rd = to / max(dist, 1e-3);
+      // lo de afuera del agua se ve a través de la superficie: cuenta solo el tramo mojado
+      float wet = dist;
+      if (rd.y > 0.001) wet = min(dist, (uLevel - uCam.y) / rd.y);
+      vec3 T = exp(-uExt * wet);
+      float lightK = 0.35 + 0.65 * uSun;
+      col = col * T + uDeep * lightK * (1.0 - T);
+      // rayos de sol: se recorre el rayo y se suma la luz que baja por las cáusticas
+      float dither = fract(sin(dot(vUv, vec2(12.9898, 78.233)) + uTime) * 43758.5453);
+      float len = min(wet, 24.0);
+      float st = len / 16.0;
+      float acc = 0.0;
+      for (int i = 0; i < 16; i++) {
+        vec3 p = uCam + rd * ((float(i) + dither) * st);
+        float below = uLevel - p.y;
+        if (below <= 0.0) continue;
+        vec2 sp = (p.xz + uSunDir.xz / max(uSunDir.y, 0.25) * below) / 6.0;
+        acc += caus(sp * 0.35) * exp(-below * 0.25) * exp(-(float(i) + dither) * st * 0.12);
+      }
+      acc *= st;
+      vec3 rays = uShaft * acc * 0.09 * hg(dot(rd, uSunDir), 0.6) * 12.566 * uSun;
+      gl_FragColor = vec4(col + rays, 1.0);
+    }`,
+};
 
 const GradeShader = {
   uniforms: {
@@ -111,6 +190,10 @@ export class Post {
       this.ao = ao;
       this.composer.addPass(ao);
     } else this.composer.addPass(new RenderPass(scene, camera));
+    // buceando (src/agua.js): se prende solo con la cámara abajo del agua
+    this.under = new ShaderPass(UnderwaterShader);
+    this.under.enabled = false;
+    this.composer.addPass(this.under);
     this.bloom = new ScaledBloomPass(new THREE.Vector2(css.x * pr, css.y * pr), q.bloomScale, 0.35, 0.55, 0.9);
     this.composer.addPass(this.bloom);
     this.composer.addPass(new OutputPass());
@@ -191,6 +274,23 @@ export class Post {
     u.lift.value.z += 0.025;
     u.sharpen.value *= 0.5;
     u.vignette.value *= 0.7;
+  }
+  // cámara abajo del agua: k (0..1), nivel del agua, sol (0 de noche)
+  setUnderwater(on, level = 0, sun = 1, sunDir = null, t = 0) {
+    if (!this.enabled || !this.under) return;
+    const ok = on && !!this.ao?.beautyRenderTarget?.depthTexture;
+    this.under.enabled = ok;
+    if (!ok) return;
+    const u = this.under.uniforms;
+    u.tDepth.value = this.ao.beautyRenderTarget.depthTexture;
+    u.causticTex.value = AGUA.causticTex.value;
+    this.camera.updateMatrixWorld();
+    u.uInvProjView.value.multiplyMatrices(this.camera.matrixWorld, this.camera.projectionMatrixInverse);
+    u.uCam.value.setFromMatrixPosition(this.camera.matrixWorld);
+    u.uLevel.value = level;
+    u.uSun.value = sun;
+    u.uTime.value = t;
+    if (sunDir) u.uSunDir.value.copy(sunDir);
   }
   dispose() {
     if (!this.enabled) return;

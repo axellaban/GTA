@@ -1133,7 +1133,7 @@ function reset(h) {
 // Anima caminata y poses. `speed` en m/s. `t` (0..1) es el avance de un golpe.
 // `post(bones)`: retoques encima de la pose (mirar a alguien, inclinarse) antes de copiarla al modelo.
 // cuánto dura el paso de una pose a otra (s): los golpes y las reacciones casi sin mezcla para que peguen
-const BLEND = { jab: 0.06, cross: 0.07, hook: 0.08, uppercut: 0.08, kick: 0.1, hit: 0.04, punch: 0.06, swing: 0.07, dead: 0.3, knocked: 0.22, getup: 0.12, aim: 0.12, aimLong: 0.14 };
+const BLEND = { swim: 0.35, tread: 0.35, dive: 0.4, jab: 0.06, cross: 0.07, hook: 0.08, uppercut: 0.08, kick: 0.1, hit: 0.04, punch: 0.06, swing: 0.07, dead: 0.3, knocked: 0.22, getup: 0.12, aim: 0.12, aimLong: 0.14 };
 const qa = new THREE.Quaternion();
 const qb = new THREE.Quaternion();
 export function animateHuman(h, dt, speed, pose = 'walk', t = 0, post = null) {
@@ -1311,6 +1311,106 @@ function poseHuman(h, dt, speed, pose = 'walk', t = 0) {
     b.faR.rotation.x = -2.1;
     b.faL.rotation.x = -2.1;
     b.root.position.x = Math.sin(h.phase * 9) * 0.01;
+    return;
+  }
+  if (pose === 'remar') {
+    // remando sentado en el bote (mirando para atrás): se estira adelante con los brazos largos, mete los
+    // remos y tira echándose atrás con los codos doblados. t: el reloj de las remadas (ciclos)
+    const k = 0.5 - 0.5 * Math.cos((t % 1) * Math.PI * 2);
+    b.hips.position.y = 0.42;
+    b.thR.rotation.set(-1.25 + k * 0.25, 0, -0.12);
+    b.thL.rotation.set(-1.25 + k * 0.25, 0, 0.12);
+    b.shR.rotation.x = b.shL.rotation.x = 1.05 - k * 0.35;
+    b.spine.rotation.x = 0.42 - 0.62 * k;
+    b.chest.rotation.x = 0.08 - 0.1 * k;
+    b.uaR.rotation.set(-1.3 + 0.85 * k, 0, 0.32 + 0.25 * k);
+    b.uaL.rotation.set(-1.3 + 0.85 * k, 0, -0.32 - 0.25 * k);
+    b.faR.rotation.x = b.faL.rotation.x = -0.12 - 1.45 * k;
+    b.head.rotation.x = -0.25 + 0.3 * k;
+    return;
+  }
+  if (pose === 'dive') {
+    // buceando (pecho, como en GTA): el cuerpo acostado e inclinado hacia donde va (h.divePitch), los brazos
+    // se abren y tiran hacia atrás, vuelven juntos por adelante, y las piernas patean de rana. El origen de
+    // la persona queda en el medio del cuerpo. t: el reloj de las brazadas (ciclos)
+    const ph = t % 1;
+    const th = Math.PI / 2 - (h.divePitch || 0);
+    b.root.rotation.x = th;
+    b.root.position.set(0, -0.92 * Math.cos(th), -0.92 * Math.sin(th));
+    const pull = ph < 0.3 ? Math.sin((ph / 0.3) * Math.PI * 0.5) : ph < 0.55 ? 1 - (ph - 0.3) / 0.25 : 0;
+    const rec = ph >= 0.3 && ph < 0.55 ? Math.sin(((ph - 0.3) / 0.25) * Math.PI) : 0;
+    for (const [ua, fa, side] of [
+      [b.uaR, b.faR, -1],
+      [b.uaL, b.faL, 1],
+    ]) {
+      ua.rotation.set(-Math.PI + 0.25 + pull * 1.15 - rec * 0.6, 0, side * (0.12 + pull * 0.85 - rec * 0.4));
+      fa.rotation.x = -0.1 - rec * 1.6 - pull * 0.25;
+    }
+    const kick = ph >= 0.4 && ph < 0.75 ? Math.sin(((ph - 0.4) / 0.35) * Math.PI * 0.5) : ph >= 0.75 && ph < 0.9 ? 1 - (ph - 0.75) / 0.15 : 0;
+    b.thR.rotation.set(-0.85 * kick, 0, -0.38 * kick);
+    b.thL.rotation.set(-0.85 * kick, 0, 0.38 * kick);
+    b.shR.rotation.x = b.shL.rotation.x = 1.7 * kick + 0.05;
+    b.ftR.rotation.x = b.ftL.rotation.x = 0.8 - 0.9 * kick;
+    b.neck.rotation.x = -0.5;
+    b.head.rotation.x = -0.15;
+    b.spine.rotation.x = -0.05 + pull * 0.06;
+    return;
+  }
+  if (pose === 'swim' || pose === 'tread') {
+    // en el agua (src/agua.js): el origen de la persona queda en la superficie.
+    // t: el reloj de las brazadas (en ciclos; una brazada de cada brazo por ciclo)
+    const P = Math.PI * 2;
+    if (pose === 'swim') {
+      // crol: el cuerpo acostado boca abajo, la cabeza apenas afuera, las brazadas alternadas (el brazo
+      // entra adelante, tira por abajo del cuerpo hasta la cadera y vuelve por arriba del agua con el
+      // codo doblado), el cuerpo rola hacia el brazo que tira, patada corta y rápida, y cada dos
+      // brazadas gira la cabeza para respirar del lado del brazo que vuelve
+      const ph = t % 1;
+      const roll = Math.sin(ph * P);
+      b.root.rotation.x = 1.42;
+      b.root.position.set(0, -0.3 - roll * 0.015, -0.92);
+      for (const [ua, fa, side, off] of [
+        [b.uaR, b.faR, -1, 0],
+        [b.uaL, b.faL, 1, 0.5],
+      ]) {
+        const q = (ph + off) % 1;
+        // ángulo del brazo: -pi adelante (entrada), 0 junto a la cadera, +pi otra vez adelante por arriba
+        const a = -Math.PI + q * P;
+        const rec = q > 0.5 ? Math.sin((q - 0.5) * 2 * Math.PI) : 0; // recobro (afuera del agua)
+        ua.rotation.set(a, 0, side * (0.18 + rec * 0.35));
+        fa.rotation.x = -0.15 - rec * 1.35 - (q < 0.5 ? Math.sin(q * 2 * Math.PI) * 0.45 : 0);
+      }
+      b.spine.rotation.y = roll * 0.32;
+      b.chest.rotation.y = roll * 0.18;
+      b.hips.rotation.y = -roll * 0.12;
+      const breathe = Math.floor(t) % 2 === 1 ? Math.max(0, Math.sin(ph * P)) : 0;
+      b.neck.rotation.x = -0.42;
+      b.head.rotation.set(-0.12, breathe * 1.05, 0);
+      const k = Math.sin(t * P * 3);
+      b.thR.rotation.x = k * 0.3;
+      b.thL.rotation.x = -k * 0.3;
+      b.shR.rotation.x = 0.25 + Math.max(0, k) * 0.35;
+      b.shL.rotation.x = 0.25 + Math.max(0, -k) * 0.35;
+      b.ftR.rotation.x = b.ftL.rotation.x = 0.85;
+      return;
+    }
+    // flotando en el lugar: parado en el agua con los hombros en la superficie, piernas en "batidora"
+    // y las manos remando a los costados
+    const p = t * P;
+    const bob = Math.sin(p * 2) * 0.035;
+    b.root.position.set(0, -1.38 + bob, 0);
+    b.spine.rotation.x = 0.12;
+    b.thR.rotation.set(-0.55 + Math.sin(p) * 0.3, 0, -0.22);
+    b.thL.rotation.set(-0.55 - Math.sin(p) * 0.3, 0, 0.22);
+    b.shR.rotation.x = 1.0 + Math.sin(p + 1.2) * 0.35;
+    b.shL.rotation.x = 1.0 - Math.sin(p + 1.2) * 0.35;
+    b.ftR.rotation.x = b.ftL.rotation.x = 0.35;
+    const sc = Math.sin(p * 2);
+    b.uaR.rotation.set(-0.35, sc * 0.45, -1.05);
+    b.uaL.rotation.set(-0.35, -sc * 0.45, 1.05);
+    b.faR.rotation.x = b.faL.rotation.x = -0.55;
+    b.neck.rotation.x = -0.12;
+    b.head.rotation.x = -0.05;
     return;
   }
   if (pose === 'getup') {

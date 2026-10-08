@@ -124,7 +124,7 @@ export class Combat {
     this.syncHand(P);
   }
   syncHand(P) {
-    for (const [id, m] of Object.entries(P.handMeshes)) m.visible = id === P.weapon && !P.vehicle;
+    for (const [id, m] of Object.entries(P.handMeshes)) m.visible = id === P.weapon && !P.vehicle && !P.swimming;
   }
   strip(P) {
     P.inv = { punos: true, motosierra: true };
@@ -150,7 +150,8 @@ export class Combat {
     const P = world.player;
     this.fireCd -= dt;
     P.hitMarker = Math.max(0, (P.hitMarker || 0) - dt);
-    if (!P.vehicle && !P.dead && !P.jack && !P.ufo && !P.riding) this.playerCombat(dt, world);
+    // (nadando no se pelea ni se tira)
+    if (!P.vehicle && !P.dead && !P.jack && !P.ufo && !P.riding && !P.swimming) this.playerCombat(dt, world);
     else {
       P.aiming = false;
       world.input.aimToggled = false;

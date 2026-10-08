@@ -132,7 +132,8 @@ Para comparar la misma calle de día, al atardecer y con lluvia: `npm run dev` y
 | Q · 1 a 9 | Cambiar de arma: 1 piñas, 2 motosierra / bastón / palo, 3 revólver / pistola, 4 tumbera, 5 metra, 6 ametralladora, 7 molotov, 8 bazuca, 9 lanzallamas (apretando de nuevo el mismo número se pasa a la otra de ese grupo) |
 | R | Recargar · cambiar la radio arriba del auto |
 | Espacio | Saltar · freno de mano |
-| Shift | Correr · willy en la moto · quemar gomas |
+| Shift | Correr · nadar a fondo (crol) · willy en la moto · quemar gomas |
+| C | Nadando: bucear · buceando: bajar (Espacio sube) |
 | E | Acción: pagar, comprar, dar, robar un negocio, subirse al tren o al colectivo (y bajarse) |
 | F | Subir, robar o bajar de un vehículo |
 | H | Bocina |
@@ -277,6 +278,60 @@ Como en Vice City, la chapa se hunde donde pega el golpe (choques, tiros, explos
 
 **A los tiros, como en los GTA**: un tiro bajo, en una rueda, pincha esa goma (se baja, el auto se ladea para ese lado, anda en llanta, tira para ese costado y saca chispas); a la altura de los vidrios, el primer tiro los astilla y el segundo los hace volar; y si le das al que maneja un auto del tránsito (o el colectivo), se muere: el auto sigue sin control, con la bocina pegada, hasta que se va de la calle o se la da contra algo. Si después lo robás, sacás el cuerpo. La cana también te puede pinchar las gomas a tiros.
 
+## Inundaciones: Temperley bajo el agua (0.39)
+
+Cuando llueve fuerte **el agua se junta**: primero se llena el **bajo nivel** (5,4 m de hondo, queda como una
+pileta), después **sube por las calles**, pasa el cordón, tapa las veredas y entra a los pulmones de manzana.
+Con lluvia común el agua llega a la rodilla; con **tormenta** (casi la mitad de las veces que llueve) llega al
+pecho y **Gaspi nada**. Cuando para, el agua baja despacio y el bajo nivel es lo último que se vacía (tiene
+bombas). El zócalo de noticias va contando cómo está y el radar se tiñe de agua.
+
+**Hecho sobre trabajo de otros (con licencia abierta)**, no desde cero:
+
+- **Las ondas y las cáusticas salen de Blender**: el modificador Ocean (simulación de océano por FFT, el método
+  de Tessendorf que se usa en el cine) genera 16 cuadros de olas cortas de agua encerrada; de ahí se hornean
+  las **normales animadas con la espuma** de Blender y las **cáusticas** (la luz del sol refractada por esas
+  mismas ondas y juntada en el fondo, calculada como en *WebGL Water* de Evan Wallace, MIT). Script:
+  `tools/blender/agua.py` → `public/textures/agua_normal.webp` y `agua_causticas.webp`.
+- **La vista bajo el agua, los rayos de luz, la superficie vista desde abajo (ventana de Snell) y la
+  flotación** son de [WaterThreeJS](https://github.com/achrefelouafi/WaterThreeJS) de Mohamed Achref Elouafi
+  (MIT), adaptados al juego.
+- **Botes de remo** del [Watercraft Kit](https://kenney.nl/assets/watercraft-kit) de Kenney (CC0), con sus remos.
+- **Víbora**: la [cobra](https://opengameart.org/content/cobra-0) de Micket en OpenGameArt (CC0), estirada y
+  con cabeza de yarará en Blender (`tools/blender/vibora.py`).
+- **Lo que flota** (modelado en Blender, `tools/blender/flotantes.py`): botellas, bolsas del súper, bandejas
+  de telgopor, latas, ramas con hojas, ojotas, bidones, cajas empapadas, una pelota, gomas, pallets, una
+  conservadora y la silla de plástico del patio.
+
+Qué hay:
+
+- **El agua**: **reflejo de verdad** (la ciudad se dibuja otra vez desde abajo del agua, a media resolución)
+  con la mezcla de Fresnel del agua: mirando para abajo se ve el agua marrón de las inundaciones del conurbano,
+  al ras es un espejo. Donde hay dos dedos de agua se ve el asfalto; pasando los 40 cm, ya no. **Espuma** en los
+  cordones, contra las paredes y donde algo se mueve; **gotas de lluvia** que abren anillos, la corriente, el sol
+  que brilla en las ondas y la sombra de las casas sobre el agua. De noche, las **rayas de luz de los faroles y
+  los neones** sobre el agua.
+- **Nadar**: sin hacer pie (desde 1,12 m) Gaspi nada **crol** (brazadas alternadas, patada y la cabeza que gira
+  para respirar) y, quieto, **flota pataleando**. Shift: a fondo. Salpica, deja estela y al salir **gotea**.
+- **Bucear, como en GTA**: nadando, **C** (o el botón **Bucear** en el celu) y Gaspi se sumerge; abajo nada
+  **pecho** hacia donde mira la cámara, **Espacio** sube y **C** baja. Bajo el agua: el agua turbia se come el
+  color con la distancia, **rayos de sol** que bajan dibujando las cáusticas, **cáusticas** bailando en el
+  fondo, los autos y las paredes, la superficie vista desde abajo con el cielo en la **ventana de Snell**,
+  **burbujas** que salen de la boca, mugre en suspensión y el sonido apagado. Tiene **aire para unos 30
+  segundos** (barra celeste): después se ahoga.
+- **Autos que flotan**: con el agua alta los autos (estacionados, del tránsito, patrulleros y el de Gaspi) se
+  levantan, se mecen y **los lleva la corriente** hasta trabarse contra una pared. Antes, el agua los frena,
+  levantan **olas** y, si llega a la toma de aire, **se ahoga el motor**.
+- **Botes de remo con vecinos** que pasan por las calles inundadas, doblan en las esquinas y dejan estela.
+- **Víboras (yararás) nadando** en S. Si Gaspi está en el agua, alguna se le acerca y **lo pica**.
+- **La gente** camina lenta con el agua a la cintura y nada si no hace pie. Caminar en el agua es más lento,
+  con los brazos abiertos y chapoteando.
+- **Sonido**: el chapuzón, las brazadas, los pasos en el agua, las burbujas, la bocanada al salir y el agua
+  corriendo.
+- La plata, las armas y lo que se levanta **flotan** arriba del agua.
+- Truco **DILUVIO** (escribirlo jugando): tormenta ya mismo y el agua sube rápido. Con `?diluvio` al final del
+  link el juego arranca inundado.
+
 ## Mapa más grande: todo en su lugar real (0.38)
 
 El mapa creció hacia el norte por Almirante Brown hasta Cerrito y hacia el este por Av. Eva Perón hasta Emilio Castro, con las calles, los edificios y los negocios reales de OpenStreetMap y Overture. Sobre Almirante Brown, en la esquina de Juncal, está el **Sanatorio Juncal**: enorme, blanco, de ocho pisos, con el nombre arriba, la cruz roja, la H y la entrada de la guardia. En Cerrito las vías cruzan la calle en un **paso a nivel** con barreras y campana, como el de la estación. En la esquina de Cerrito y Almirante Brown hay un **puesto de flores** con la florista: con E le comprás un ramo. Y la casa de Clau ahora está en su esquina real.
@@ -410,6 +465,11 @@ Box de CrossFit en su dirección real, **Rivadavia 321**, en la vereda de enfren
 | `src/clau.js` | La casa de Clau: terraza, truco y los amigos |
 | `src/norte.js` | La franja norte: Sanatorio Juncal y el puesto de flores de Cerrito |
 | `src/aura.js` | Ronda de chicos farmeando aura en la plaza (turnos, puntaje, Gaspi baila) |
+| `src/agua.js`, `src/agua-nivel.js` | Inundación: nivel del agua según la lluvia, superficie con reflejo plano, espuma, gotas y ondas |
+| `src/flotantes.js` | Lo que flota en el agua (modelos de `tools/blender/flotantes.py`) |
+| `src/flote.js` | Autos que flotan (flotación de WaterThreeJS, MIT) |
+| `src/botes.js` | Botes de remo con vecinos (Kenney, CC0) |
+| `src/viboras.js` | Víboras nadando (cobra de OpenGameArt, CC0) |
 | `src/fx.js` | Partículas, trazas, marcas de frenada, casquillos, agujeros de bala, restos de choque, lluvia y salpicaduras |
 | `src/carfx.js` | Escape, petardeos y rocío de los autos andando |
 | `src/icons.js` | Íconos del mapa (dibujados por código) y la leyenda |

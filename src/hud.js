@@ -134,6 +134,17 @@ export class Hud {
 
   // ---------- Estado ----------
   update(dt, world) {
+    // aire buceando
+    {
+      const P = world.player;
+      const am = $('air-meter');
+      const show = !!P.diving || (P.air ?? 1) < 0.999;
+      if (am.hidden === show) am.hidden = !show;
+      if (show) {
+        $('air').style.width = `${Math.round(Math.max(0, P.air ?? 1) * 100)}%`;
+        am.classList.toggle('low', (P.air ?? 1) < 0.25);
+      }
+    }
     const { player, time } = world;
     // arriba del plato volador la barra muestra cómo está la nave (la baleó el helicóptero)
     const hp = player.ufo ? (player.ufo.hp ?? 100) : player.health;
@@ -190,7 +201,12 @@ export class Hud {
     // controles táctiles: a pie, en auto o en moto; el botón de ataque dice qué hace
     const v = player.vehicle;
     const heli = !!player.ufo?.isHeli;
-    const mode = player.ufo ? (heli ? 'ufo heli' : 'ufo') : v ? (v.kind === 'moto' ? 'car moto' : 'car') : canAim(player, w, !!this.dialog) ? 'foot armed' : 'foot';
+    const mode = player.ufo ? (heli ? 'ufo heli' : 'ufo') : v ? (v.kind === 'moto' ? 'car moto' : 'car') : player.swimming ? 'swim' : canAim(player, w, !!this.dialog) ? 'foot armed' : 'foot';
+    // nadando: "Bucear" (y abajo del agua, "Bajar")
+    if (player.swimming) {
+      const dl = player.diving ? 'Bajar' : 'Bucear';
+      if ($('btn-dive').textContent !== dl) $('btn-dive').textContent = dl;
+    }
     const touch = $('touch');
     if (touch.className !== mode) touch.className = mode;
     // el helicóptero tira con la ametralladora; el plato, con el rayo
@@ -607,6 +623,12 @@ export class Hud {
     g.scale(scale / k, scale / k);
     g.translate(-(player.x - X0) * k, -(player.z - Z0) * k);
     g.drawImage(this.baseMap, 0, 0);
+    // calles inundadas (src/agua.js): el radar se tiñe de agua
+    const flood = world.agua?.streetDepth ?? 0;
+    if (flood > 0.03) {
+      g.fillStyle = `rgba(64, 128, 190, ${Math.min(0.42, 0.12 + flood * 0.25).toFixed(3)})`;
+      g.fillRect(0, 0, this.baseMap.width, this.baseMap.height);
+    }
     const mark = (x, z, color, r, shape = 'dot') => {
       const px = (x - X0) * k;
       const pz = (z - Z0) * k;

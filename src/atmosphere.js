@@ -57,6 +57,8 @@ THREE.ShaderChunk.fog_pars_fragment = /* glsl */ `
   uniform vec4 fogParams;
   uniform sampler2D lampPool;
   uniform sampler2D lampSpot;
+  uniform vec4 aguaParams;
+  uniform sampler2D causticTex;
   uniform vec4 lampParams;
   uniform float lampWet;
   uniform sampler2D neonSpot;
@@ -116,7 +118,47 @@ export const NIGHT = {
   conos: 1, // conos de luz bajo los faroles (con bruma o lluvia)
 };
 
+// ---------- Bajo el agua (src/agua.js) ----------
+// Todo lo que queda abajo del nivel de la inundación recibe las cáusticas (la luz del sol que las ondas
+// juntan en el fondo, horneadas con la simulación de océano de Blender: tools/blender/agua.py) y pierde
+// luz con la profundidad (el agua turbia se come primero el rojo y el azul y deja un verde marrón).
+export const AGUA = {
+  // nivel del agua (-9 = seco), reloj, fuerza del sol (0 de noche), cuadro del ciclo de cáusticas
+  aguaParams: { value: new THREE.Vector4(-9, 0, 0, 0) },
+  causticTex: { value: null },
+};
 THREE.ShaderChunk.lights_fragment_end += /* glsl */ `
+#ifdef USE_FOG
+  {
+    vec3 aguaW = cameraPosition + vFogRay;
+    float aguaD = aguaParams.x - aguaW.y;
+    if (aguaD > 0.0 && aguaParams.x > -8.0) {
+      // la luz baja siguiendo al sol: el dibujo se corre según la profundidad
+      vec2 cp = (aguaW.xz + fogSunDir.xz / max(fogSunDir.y, 0.25) * aguaD) / 6.0;
+      // dos cuadros del ciclo mezclados (atlas de 4 x 4) y otra capa más chica que va para otro lado
+      float fr = aguaParams.w;
+      float f0 = floor(fr);
+      float fk = fr - f0;
+      vec2 q = fract(cp);
+      vec2 c0 = vec2(mod(f0, 4.0), floor(mod(f0, 16.0) / 4.0));
+      vec2 c1 = vec2(mod(f0 + 1.0, 4.0), floor(mod(f0 + 1.0, 16.0) / 4.0));
+      vec2 qa = q * 0.992 + 0.004;
+      float ca = mix(texture2D(causticTex, (c0 + qa) / 4.0).r, texture2D(causticTex, (c1 + qa) / 4.0).r, fk);
+      vec2 q2 = fract(cp * 1.37 + vec2(0.31, 0.77) - aguaParams.y * 0.011) * 0.992 + 0.004;
+      float cb = mix(texture2D(causticTex, (c1 + q2) / 4.0).r, texture2D(causticTex, (c0 + q2) / 4.0).r, fk);
+      float caus = min(ca, cb) * 2.2 + ca * 0.35;
+      vec3 aguaN = inverseTransformDirection(normal, viewMatrix);
+      float cauK = aguaParams.z * exp(-aguaD * 0.55) * smoothstep(0.0, 0.15, aguaD) * (0.25 + 0.75 * max(aguaN.y, 0.0));
+      reflectedLight.directDiffuse += diffuseColor.rgb * caus * cauK * 1.6;
+      // el agua turbia apaga la luz con la profundidad (rojo y azul primero)
+      vec3 aguaT = exp(-vec3(0.55, 0.32, 0.6) * aguaD);
+      reflectedLight.directDiffuse *= aguaT;
+      reflectedLight.indirectDiffuse *= mix(aguaT, vec3(1.0), 0.35);
+      reflectedLight.directSpecular *= aguaT;
+      reflectedLight.indirectSpecular *= aguaT;
+    }
+  }
+#endif
 #ifdef USE_FOG
   if (lampParams.w > 0.001) {
     vec3 lampW = cameraPosition + vFogRay;
@@ -218,4 +260,6 @@ THREE.Material.prototype.onBeforeCompile = function (shader) {
   shader.uniforms.lampWet = LAMPS.lampWet;
   shader.uniforms.neonSpot = LAMPS.neonSpot;
   shader.uniforms.neonOn = LAMPS.neonOn;
+  shader.uniforms.aguaParams = AGUA.aguaParams;
+  shader.uniforms.causticTex = AGUA.causticTex;
 };

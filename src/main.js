@@ -65,6 +65,11 @@ import { buildTobogan, Tobogan } from './tobogan.js';
 import { Cielo } from './cielo.js';
 import { markOver, BAJO } from './bajonivel.js';
 import { VC } from './vc.js';
+import { Agua } from './agua.js';
+import { Flotantes } from './flotantes.js';
+import { Flote } from './flote.js';
+import { Botes } from './botes.js';
+import { Viboras } from './viboras.js';
 
 setupInstall();
 
@@ -239,7 +244,18 @@ buildProps(scene, city);
 flushTextures();
 const lights = new TrafficLights(scene, { colliders: city.colliders, fx, audio });
 const blobs = new BlobShadows(scene);
-fx.ground = heightAt;
+// la inundación (src/agua.js): las gotas, las vainas y lo que cae se apoyan en el agua si la hay
+const agua = new Agua(scene, renderer, heightAt);
+// (en el reflejo no hacen falta el pasto ni la lluvia)
+agua.reflHide = () => [...grass.meshes, fx.rain?.lines];
+fx.ground = (x, z) => agua.floor(x, z);
+// la basura que arrastra el agua (modelada en Blender: tools/blender/flotantes.py)
+const flotantes = new Flotantes(scene, agua);
+// autos que flotan (src/flote.js)
+const flote = new Flote();
+// botes de remo con vecinos (Kenney Watercraft Kit, CC0) y víboras nadando (cobra CC0 de OpenGameArt)
+const botes = new Botes(scene);
+const viboras = new Viboras(scene);
 const pickups = new Pickups(scene, audio);
 pickups.placeWorld(city, heightAt);
 // la estación de servicio (Shell de Eva Perón y Almirante Brown): su luz entra en el mapa de faroles
@@ -266,6 +282,10 @@ const time = { hour: 17.5, night: false, label: '17:30' };
 const weather = { rain: 0, target: 0, wet: 0, slick: false, next: R.range(200, 320), t: 0, boltT: R.range(10, 25), flash: 0 };
 const world = { scene, camera, city, input, audio, hud, player, traffic, npcs, crime, events, trains, time, lights, colliders: city.colliders, fx, pickups, combat, police, nav, radio, weather, night: NIGHT, heightAt };
 world.smash = smash;
+world.agua = agua;
+world.flotantes = flotantes;
+world.botes = botes;
+world.viboras = viboras;
 world.nafta = nafta;
 world.comisaria = comisaria;
 // portazo: se oye si Gaspi está cerca
@@ -566,6 +586,13 @@ function checkCheats() {
     hud.toast('Algo se acerca desde el cielo...', 2.4);
     return;
   }
+  // DILUVIO: tormenta ya mismo y el agua sube rápido (para nadar sin esperar)
+  if (input.typed?.endsWith('diluvio')) {
+    input.typed = '';
+    diluvio();
+    hud.flash('DILUVIO', 'Se largó con todo. Temperley bajo el agua.', 'warn', 2.6);
+    return;
+  }
   if (!input.typed?.endsWith('fierros')) return;
   input.typed = '';
   for (const id of ARSENAL) {
@@ -593,6 +620,17 @@ function robShop(shop) {
 }
 
 // ---------- Clima ----------
+function diluvio() {
+  weather.target = weather.rain = 1;
+  weather.wet = 1;
+  weather.diluvio = true;
+  weather.next = weather.t + 420;
+  // el bajo nivel ya lleno y las calles con agua a la rodilla; sigue subiendo solo
+  agua.setDepth(Math.max(agua.streetDepth, 0.45));
+}
+world.diluvio = diluvio;
+// ?diluvio en el link: arranca inundado
+if (/[?&]diluvio\b/.test(location.search)) diluvio();
 const grey = new THREE.Color(0x6f7780);
 const wetColor = new THREE.Color(0.62, 0.62, 0.64);
 const dryColor = new THREE.Color(1, 1, 1);
@@ -601,8 +639,11 @@ function updateWeather(dt) {
   weather.t += dt;
   if (weather.t > weather.next) {
     // cada tanto se larga (o para) de llover
-    weather.target = weather.target > 0 ? 0 : R.chance(0.6) ? R.range(0.55, 1) : 0;
-    weather.next = weather.t + R.range(150, 330);
+    // (casi la mitad de las veces que llueve es tormenta: las calles se inundan y se puede nadar)
+    const storm = R.chance(0.45);
+    weather.target = weather.target > 0 ? 0 : R.chance(0.6) ? (storm ? R.range(0.85, 1) : R.range(0.5, 0.8)) : 0;
+    weather.next = weather.t + (weather.target > 0.84 ? R.range(260, 420) : R.range(150, 330));
+    weather.diluvio = false;
   }
   weather.rain += Math.sign(weather.target - weather.rain) * Math.min(Math.abs(weather.target - weather.rain), dt * 0.04);
   const wetting = weather.rain > 0.15;
@@ -613,7 +654,11 @@ function updateWeather(dt) {
     m.envMapIntensity = 0.5 + weather.wet * 1.1;
     m.color.copy(dryColor).lerp(wetColor, weather.wet);
   }
-  fx.setRain(world.inside ? 0 : weather.rain, camera, weather.t, dt);
+  agua.update(dt, world, camera);
+  flotantes.update(dt, world, camera);
+  // el ruido del agua corriendo: más fuerte cuanto más hondo está donde anda Gaspi
+  audio.correntada(world.inside ? 0 : Math.min(1, agua.depth(player.x, player.z) * 1.4) * (0.5 + weather.rain * 0.5));
+  fx.setRain(world.inside || agua.under ? 0 : weather.rain, camera, weather.t, dt);
   audio.lluvia(weather.rain);
   // relámpagos con tormenta fuerte
   weather.flash = Math.max(0, weather.flash - dt * 6);
@@ -673,6 +718,8 @@ function updateTime(dt) {
   scene.fog.color.copy(U.horizon.value).lerp(U.zenith.value, 0.15);
   // de día limpio se ve lejos (poca bruma); al atardecer y de noche vuelve la bruma
   const clear = day * (1 - dusk) * (1 - rain);
+  // sol que llega al agua (cáusticas y rayos bajo el agua: src/agua.js)
+  world.sunK = day * (1 - dusk * 0.5);
   scene.fog.far = (280 + day * 230 + clear * 110) * (1 - rain * 0.45);
   scene.fog.near = scene.fog.far * (0.55 + clear * 0.1);
   // bruma: más espesa con lluvia y de noche; del lado del sol se pone dorada
@@ -1236,6 +1283,7 @@ function frame(now) {
     lights.update(dt);
     fx.update(dt);
     sky.follow(camera);
+    agua.renderReflection(camera);
     post.render();
     requestAnimationFrame(frame);
     return;
@@ -1318,6 +1366,9 @@ function frame(now) {
   updateCop(dt);
   rescue.update(dt);
   missions.update(dt, step >= steps.length - 1 && !job.active && !fare.active && !cop.active && !rescue.active);
+  flote.update(dt, world);
+  botes.update(dt, world);
+  viboras.update(dt, world);
   resolveVehicleFrame(world, vehiclePoses);
   updateObjective();
   updateGps(dt);
@@ -1341,7 +1392,13 @@ function frame(now) {
   sky.follow(camera);
   // los retoques de pose de Gaspi (agacharse, inclinarse, apuntar) llegan a su modelo de artista
   player.h.rig?.apply();
-  renderGameView(world, () => post.render());
+  // buceando: la vista bajo el agua (src/post.js) y el sonido apagado
+  post?.setUnderwater(agua.under, agua.level, (world.sunK ?? 1) * (1 - weather.rain * 0.5), ATMO.fogSunDir.value, agua.t);
+  audio.bajoAgua(agua.under);
+  renderGameView(world, () => {
+    agua.renderReflection(camera);
+    post.render();
+  });
   input.endFrame();
   requestAnimationFrame(frame);
 }

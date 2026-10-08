@@ -56,7 +56,11 @@ export class Audio {
       this.comp.ratio.value = 4;
       this.comp.attack.value = 0.004;
       this.comp.release.value = 0.2;
-      this.master.connect(this.comp).connect(this.ctx.destination);
+      // abajo del agua todo suena apagado (filtro que se cierra al bucear: src/player.js)
+      this.uw = this.ctx.createBiquadFilter();
+      this.uw.type = 'lowpass';
+      this.uw.frequency.value = 20000;
+      this.master.connect(this.uw).connect(this.comp).connect(this.ctx.destination);
       this.noiseBuf = this.makeNoise();
       this.unlock();
       // el celu suspende el audio al bloquear la pantalla, con la intro o una llamada: se retoma en el
@@ -498,12 +502,92 @@ export class Audio {
     this.rain.g.gain.setTargetAtTime(v * 0.08, this.ctx.currentTime, 1);
   }
 
+  // ---------- Agua (src/agua.js) ----------
+  // buceando: el mundo de afuera suena lejos y apagado, y se oye un rumor grave
+  bajoAgua(on) {
+    if (!this.ctx || this.uwOn === on) return;
+    this.uwOn = on;
+    const t = this.ctx.currentTime;
+    this.uw.frequency.setTargetAtTime(on ? 420 : 20000, t, on ? 0.05 : 0.15);
+    if (on) {
+      this.burst(0.5, 300, 'lowpass', 0.25, 0, 0.8);
+      for (let i = 0; i < 5; i++) this.burbuja(300 + Math.random() * 500, 0.05, Math.random() * 0.4);
+    }
+  }
+  // al salir a respirar
+  bocanada(v = 1) {
+    if (!this.ctx) return;
+    const f = this.burst(0.35, 900, 'bandpass', 0.22 * v, 0, 0.7);
+    if (f) f.frequency.exponentialRampToValueAtTime(2400, this.ctx.currentTime + 0.3);
+  }
+
+  // burbuja: un tono que sube de golpe (así suena el aire que se va al fondo)
+  burbuja(f = 500, v = 0.1, t0 = 0) {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime + t0;
+    const o = this.ctx.createOscillator();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(f, t);
+    o.frequency.exponentialRampToValueAtTime(f * 1.9, t + 0.05);
+    const g = this.ctx.createGain();
+    this.env(g, t, 0.002, v, 0.06);
+    o.connect(g).connect(this.master);
+    o.start(t);
+    o.stop(t + 0.1);
+  }
+  // tirarse o caerse al agua
+  chapuzon(k = 1) {
+    if (!this.ctx) return;
+    const f = this.burst(0.5 + k * 0.3, 2200, 'bandpass', 0.42 * k, 0, 0.9);
+    if (f) f.frequency.exponentialRampToValueAtTime(420, this.ctx.currentTime + 0.5);
+    this.burst(0.9, 600, 'lowpass', 0.3 * k, 0.03);
+    this.thump(150, 55, 0.25, 0.25 * k);
+    for (let i = 0; i < 7; i++) this.burbuja(380 + Math.random() * 700, 0.05 * k, 0.08 + Math.random() * 0.5);
+  }
+  // cada brazada al nadar
+  brazada(v = 0.5) {
+    if (!this.ctx) return;
+    const f = this.burst(0.26, 1900, 'bandpass', 0.2 * v, 0, 1.1);
+    if (f) f.frequency.exponentialRampToValueAtTime(800, this.ctx.currentTime + 0.22);
+    this.burbuja(450 + Math.random() * 400, 0.04 * v, 0.05);
+    if (Math.random() < 0.5) this.burbuja(700 + Math.random() * 500, 0.03 * v, 0.12);
+  }
+  // pasos en el agua
+  chapoteo(v = 0.5) {
+    if (!this.ctx) return;
+    const f = this.burst(0.2, 1300 + Math.random() * 500, 'bandpass', 0.16 * v, 0, 1.3);
+    if (f) f.frequency.exponentialRampToValueAtTime(600, this.ctx.currentTime + 0.18);
+    if (Math.random() < 0.6) this.burbuja(500 + Math.random() * 500, 0.03 * v, 0.04);
+  }
+  // el agua corriendo por la calle y por las bocas de tormenta (de fondo, según cuánta agua hay cerca)
+  correntada(v) {
+    if (!this.ctx) return;
+    if (!this.flood) {
+      const n = this.ctx.createBufferSource();
+      n.buffer = this.noiseBuf;
+      n.loop = true;
+      n.playbackRate.value = 0.6;
+      const f = this.ctx.createBiquadFilter();
+      f.type = 'lowpass';
+      f.frequency.value = 520;
+      f.Q.value = 0.9;
+      const g = this.ctx.createGain();
+      g.gain.value = 0;
+      n.connect(f).connect(g).connect(this.master);
+      n.start();
+      this.flood = { g, f };
+    }
+    const t = this.ctx.currentTime;
+    this.flood.g.gain.setTargetAtTime(v * 0.1, t, 1.2);
+    this.flood.f.frequency.setTargetAtTime(420 + v * 380 + Math.sin(t * 0.7) * 60, t, 0.5);
+  }
+
   // Motores: el del auto o la moto que manejás (con caja de cambios) y los de los autos y motos que pasan
   // cerca (hasta 3, con paneo y Doppler). v: el vehículo del jugador · cam: la cámara (el oído)
   update(dt, v, cam, traffic, crime) {
     if (!this.ctx) return;
     dt = Math.min(dt, 0.1);
-    const name = v && !v.wreck ? motorOf(v) : null;
+    const name = v && !v.wreck && !v.ahogado ? motorOf(v) : null;
     if (name !== this.mine?.name || (this.mine && this.mine.v !== v)) {
       this.mine?.voice.stop();
       this.mine = name ? { name, v, voice: new MotorVoice(this.ctx, this.master, name), box: new Gearbox(name) } : null;

@@ -113,6 +113,13 @@ export class Vehicle {
       this.mesh.position.y += gy;
     }
     this.y = gy;
+    // flotando en la inundación (src/flote.js): a la altura del agua, meciéndose
+    if (this.floating && this.floatTilt) {
+      this.mesh.position.y = this.floatY;
+      this.mesh.rotation.order = 'YXZ';
+      this.mesh.rotation.x = this.floatTilt.tx;
+      this.mesh.rotation.z = this.floatTilt.tz;
+    }
     this.wheelSpin += this.speed * dt * 3;
     const u = this.mesh.userData;
     if (u.chassis) this.suspend(dt, u);
@@ -622,6 +629,12 @@ export class Traffic {
     for (const v of this.cars) {
       const a = v.ai;
       if (v.rollover || v.overturned || v.blast || v.wreck) continue;
+      // flotando: lo lleva el agua (src/flote.js)
+      if (v.floating) {
+        v.speed = 0;
+        v.sync(dt);
+        continue;
+      }
       // Destrabar sin atravesar: retrocede brevemente si no tiene a nadie detrás.
       if (a.backoff > 0 && !a.hold) {
         a.backoff -= dt;
@@ -670,6 +683,19 @@ export class Traffic {
       if (Math.abs(diff) > 0.6) target = Math.min(target, 4);
       const fx = v.fx;
       const fz = v.fz;
+      // inundación (src/agua.js): con agua van despacio; no se meten donde está hondo y, si el agua les tapa
+      // el motor, quedan ahogados ahí mismo
+      const ag = world.agua;
+      if (ag && ag.level > -5.9) {
+        const wd = ag.depth(v.x, v.z);
+        const ahead = ag.depth(v.x + fx * 9, v.z + fz * 9);
+        const deep = v.kind === 'bus' || v.model === 'camion' ? 0.9 : v.kind === 'moto' ? 0.4 : 0.55;
+        if (wd > deep + 0.15) v.ahogado = true;
+        else if (wd < 0.1) v.ahogado = false;
+        if (v.ahogado || (ahead > deep && wd < deep)) target = 0;
+        else if (wd > 0.04) target = Math.min(target, Math.max(2.2, 13 * (1 - wd * 1.3)));
+        if (wd > 0.06 && Math.abs(v.speed) > 1.5) carWake(world, v, wd);
+      }
       // el colectivo frena en las paradas (las del mapa real) a subir y bajar gente
       if (v.kind === 'bus' && this.busStops) {
         if (a.stopWait > 0) {
@@ -795,6 +821,31 @@ export class Traffic {
       v.z = Math.max(Z0 + 2, Math.min(Z1 - 2, v.z));
       v.sync(dt);
       if (Math.abs(v.x - player.x) < 32 && Math.abs(v.z - player.z) < 32) carEffects(v, dt, world);
+    }
+  }
+}
+
+// olas de un auto andando por el agua: rocío en las ruedas de adelante y ondas a los costados (solo cerca)
+export function carWake(world, v, wd) {
+  const P = world.player;
+  if (Math.abs(v.x - P.x) > 70 || Math.abs(v.z - P.z) > 70) return;
+  const ag = world.agua;
+  const sp = Math.abs(v.speed);
+  v.wakeT = (v.wakeT || 0) - (world.player.dt || 1 / 60);
+  if (v.wakeT > 0) return;
+  v.wakeT = Math.max(0.07, 0.28 - sp * 0.012);
+  const fx = v.fx;
+  const fz = v.fz;
+  const L = (v.L || 4) * 0.45;
+  const W = (v.W || 1.8) * 0.5;
+  const k = Math.min(1.4, sp * 0.06 + wd * 0.8);
+  ag.ripple(v.x + fx * L, v.z + fz * L, k);
+  for (const s of [-1, 1]) {
+    const x = v.x + fx * L * 0.8 + fz * s * W;
+    const z = v.z + fz * L * 0.8 - fx * s * W;
+    for (let i = 0; i < 3; i++) {
+      const out = 0.8 + Math.random() * 1.6;
+      world.fx.alpha.add({ x, y: ag.level + 0.05, z, vx: fz * s * out * (0.5 + sp * 0.08) + v.vx * 0.3, vy: 1 + Math.random() * (1 + sp * 0.12), vz: -fx * s * out * (0.5 + sp * 0.08) + v.vz * 0.3, grav: -9.8, drag: 0.6, life: 0, max: 0.4 + Math.random() * 0.4, s0: 0.12, s1: 0.04 + k * 0.2, c0: [0.8, 0.8, 0.76], a: 0.5, floor: ag.level });
     }
   }
 }

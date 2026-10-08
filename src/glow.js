@@ -236,7 +236,8 @@ export class Glows {
         // más larga cuanto más al ras se mira (y nunca más allá de la cámara)
         const l = Math.min(d * 0.9, len * (1 + Math.min(2, d / (cam.y * 8 + 1))));
         this.q.setFromAxisAngle(this.ss.set(0, 1, 0), ang);
-        this.m4.compose(this.v.set(x, 0.035, z), this.q, this.ss.set(w, 1, l));
+        // (con la calle inundada, sobre el agua)
+        this.m4.compose(this.v.set(x, Math.max(0.035, (world.agua?.level ?? -9) + 0.012), z), this.q, this.ss.set(w, 1, l));
         this.streaks.setMatrixAt(n, this.m4);
         this.sc.setRGB(r * wet * k, g * wet * k, b * wet * k);
         this.streaks.setColorAt(n, this.sc);
