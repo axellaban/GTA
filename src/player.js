@@ -11,6 +11,7 @@ import { lowFilter } from './bajonivel.js';
 import { turnRollover, recoverRollover, sideImpactRollover } from './vehicle-physics.js';
 import { NADAR, VADEO } from './agua.js';
 import { carWake } from './traffic.js';
+import { TOUCH } from './input.js';
 
 const WALK = 2.3;
 const RUN = 6.3;
@@ -897,9 +898,15 @@ export class Player {
   swim(dt, world) {
     const { input } = world;
     const ag = world.agua;
-    // C (o Control, o el botón Bucear): para abajo, como en GTA, si hay lugar abajo
-    if (!this.diving && input.hit('c', 'control')) {
-      if (ag.level - this.groundAt() > 1.35) this.startDive(world);
+    const deep = ag.level - this.groundAt() > 1.35;
+    // la primera vez que nada en lo hondo, cómo se bucea (en la compu no había forma de saberlo)
+    if (deep && !this.diving && !this.tipBuceo) {
+      this.tipBuceo = true;
+      world.hud.flash('A BUCEAR', TOUCH ? 'Tocá Bucear para meterte abajo del agua. Abajo: el joystick nada para donde mira la cámara; Subir te saca.' : 'C, Ctrl o clic para meterte abajo del agua. Abajo: W nada para donde mirás con el mouse, Espacio sube y C baja.', 'ok', 6);
+    }
+    // C, Control, clic (o el botón Bucear): para abajo, como en GTA, si hay lugar abajo
+    if (!this.diving && input.hit('c', 'control', 'mouse0')) {
+      if (deep) this.startDive(world);
       else world.hud.toast('Acá no hay hondura para bucear', 1.6);
     }
     if (this.diving) return this.dive(dt, world);

@@ -133,7 +133,7 @@ Para comparar la misma calle de día, al atardecer y con lluvia: `npm run dev` y
 | R | Recargar · cambiar la radio arriba del auto |
 | Espacio | Saltar · freno de mano |
 | Shift | Correr · nadar a fondo (crol) · willy en la moto · quemar gomas |
-| C | Nadando: bucear · buceando: bajar (Espacio sube) |
+| C · Ctrl · clic | Nadando en lo hondo: bucear (abajo del agua W nada para donde mirás con el mouse, Espacio sube y C baja) |
 | E | Acción: pagar, comprar, dar, robar un negocio, subirse al tren o al colectivo (y bajarse), mirar el show de drones, sacarte una foto con Messi |
 | F | Subir, robar o bajar de un vehículo |
 | H | Bocina |
@@ -339,7 +339,7 @@ Qué hay:
   los neones** sobre el agua.
 - **Nadar**: sin hacer pie (desde 1,12 m) Gaspi nada **crol** (brazadas alternadas, patada y la cabeza que gira
   para respirar) y, quieto, **flota pataleando**. Shift: a fondo. Salpica, deja estela y al salir **gotea**.
-- **Bucear, como en GTA**: nadando, **C** (o el botón **Bucear** en el celu) y Gaspi se sumerge; abajo nada
+- **Bucear, como en GTA**: nadando donde es hondo, **C**, **Ctrl** o **clic** (o el botón **Bucear** en el celu) y Gaspi se sumerge (en la compu lo dice abajo, al lado de la acción); abajo nada
   **pecho** hacia donde mira la cámara, **Espacio** sube y **C** baja. Bajo el agua: el agua turbia se come el
   color con la distancia, **rayos de sol** que bajan dibujando las cáusticas, **cáusticas** bailando en el
   fondo, los autos y las paredes, la superficie vista desde abajo con el cielo en la **ventana de Snell**,

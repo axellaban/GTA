@@ -415,7 +415,8 @@ export class Agua {
           vec3 I = normalize(vW - cameraPosition);
           vec3 r = refract(I, N, 1.333);
           float ci = abs(dot(N, I));
-          float fres = 0.02 + 0.98 * pow(1.0 - ci, 5.0);
+          // (ci puede pasar apenas de 1 y pow de un negativo da NaN)
+          float fres = 0.02 + 0.98 * pow(max(1.0 - ci, 0.0), 5.0);
           // el agua iluminada cerca de la superficie (nunca negra)
           vec3 glow = mix(uMurk, uSky * 0.55, 0.35) * (0.45 + 0.75 * uSun);
           vec3 col;
@@ -821,6 +822,9 @@ vec3 wBody = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + tot
 vec3 wGlint = reflectedLight.directSpecular * (1.0 - wFoam);
 float wOutA = 1.0 - (1.0 - wAlpha) * (1.0 - wFr);
 vec3 wOut = (wBody * wAlpha * (1.0 - wFr) + wRefl * wFr + wGlint) / max(wOutA, 1e-3);
+// (en la orilla wOutA es casi cero y el brillo del sol dividido por eso pasaba el tope del "half float":
+// infinito por un alfa cero da NaN al mezclar, y el bloom lo desparramaba: pantalla negra)
+wOut = clamp(wOut, 0.0, 512.0);
 wOutA = clamp(wOutA + dot(wGlint, vec3(0.3)), 0.0, 1.0);
 gl_FragColor = vec4(wOut, wOutA * smoothstep(0.0, 0.01, wDepth));
 `;

@@ -12,6 +12,16 @@ import { N8AOPass } from 'n8ao';
 import { VC } from './vc.js';
 import { AGUA } from './atmosphere.js';
 
+// Un NaN o un infinito en la imagen (una cuenta rota en algún shader, o un brillo que pasa el tope del
+// "half float", 65.504) el bloom lo desparrama por toda la pantalla y las estelas lo dejan pegado cuadro
+// tras cuadro: la pantalla queda negra. Cada píxel de la escena pasa por acá antes del bloom (y las
+// estelas también limpian lo viejo): lo roto va a negro y lo demás tiene un tope.
+const LIMPIO = /* glsl */ `
+vec3 limpio(vec3 c) {
+  if (any(isnan(c)) || any(isinf(c))) return vec3(0.0);
+  return clamp(c, 0.0, 512.0);
+}`;
+
 // Bajo el agua: el color se apaga con la distancia (Beer-Lambert: el agua turbia se come primero el rojo) y
 // el sol baja en rayos que dibujan las mismas cáusticas de la superficie. Adaptado del pase "underwater
 // volumetrics" de WaterThreeJS (Mohamed Achref Elouafi, MIT): la posición de cada píxel sale del buffer de
@@ -29,6 +39,7 @@ const UnderwaterShader = {
     uDeep: { value: new THREE.Color(0.075, 0.09, 0.07) },
     uShaft: { value: new THREE.Color(0.85, 0.95, 0.8) },
     uExt: { value: new THREE.Vector3(0.17, 0.13, 0.2) },
+    uOn: { value: 0 },
     causticTex: AGUA.causticTex,
   },
   vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
@@ -45,7 +56,9 @@ const UnderwaterShader = {
     uniform vec3 uShaft;
     uniform vec3 uExt;
     uniform sampler2D causticTex;
+    uniform float uOn;
     varying vec2 vUv;
+    ${LIMPIO}
     float caus(vec2 p) {
       float fr = mod(uTime * 9.0, 16.0);
       float f0 = floor(fr);
@@ -57,9 +70,14 @@ const UnderwaterShader = {
       return (1.0 - g2) / (12.5663706 * pow(1.0 + g2 - 2.0 * g * c, 1.5));
     }
     void main() {
+      // fuera del agua este pase solo limpia la imagen (ver LIMPIO)
+      if (uOn < 0.5) {
+        gl_FragColor = vec4(limpio(texture2D(tDiffuse, vUv).rgb), 1.0);
+        return;
+      }
       // (una onda leve en la imagen, como mirar a través del agua)
       vec2 uv = vUv + vec2(sin(vUv.y * 40.0 + uTime * 2.1), cos(vUv.x * 33.0 + uTime * 1.7)) * 0.0016;
-      vec3 col = texture2D(tDiffuse, uv).rgb;
+      vec3 col = limpio(texture2D(tDiffuse, uv).rgb);
       float d = texture2D(tDepth, uv).x;
       vec4 wp = uInvProjView * vec4(uv * 2.0 - 1.0, d * 2.0 - 1.0, 1.0);
       wp /= wp.w;
@@ -86,7 +104,7 @@ const UnderwaterShader = {
       }
       acc *= st;
       vec3 rays = uShaft * acc * 0.09 * hg(dot(rd, uSunDir), 0.6) * 12.566 * uSun;
-      gl_FragColor = vec4(col + rays, 1.0);
+      gl_FragColor = vec4(limpio(col + rays), 1.0);
     }`,
 };
 
@@ -190,9 +208,9 @@ export class Post {
       this.ao = ao;
       this.composer.addPass(ao);
     } else this.composer.addPass(new RenderPass(scene, camera));
-    // buceando (src/agua.js): se prende solo con la cámara abajo del agua
+    // buceando (src/agua.js): la vista bajo el agua se prende solo con la cámara abajo del agua; el pase
+    // está siempre, porque además limpia la imagen antes del bloom (ver LIMPIO)
     this.under = new ShaderPass(UnderwaterShader);
-    this.under.enabled = false;
     this.composer.addPass(this.under);
     this.bloom = new ScaledBloomPass(new THREE.Vector2(css.x * pr, css.y * pr), q.bloomScale, 0.35, 0.55, 0.9);
     this.composer.addPass(this.bloom);
@@ -206,9 +224,12 @@ export class Post {
       uniform sampler2D tOld;
       uniform sampler2D tNew;
       varying vec2 vUv;
+      ${LIMPIO}
       void main() {
         vec4 o = texture2D(tOld, vUv);
         vec4 n = texture2D(tNew, vUv);
+        o.rgb = limpio(o.rgb);
+        n.rgb = limpio(n.rgb);
         float l = dot(o.rgb, vec3(0.299, 0.587, 0.114));
         o.rgb *= damp * smoothstep(thr, thr + 0.25, l);
         gl_FragColor = vec4(max(n.rgb, o.rgb), n.a);
@@ -279,9 +300,9 @@ export class Post {
   setUnderwater(on, level = 0, sun = 1, sunDir = null, t = 0) {
     if (!this.enabled || !this.under) return;
     const ok = on && !!this.ao?.beautyRenderTarget?.depthTexture;
-    this.under.enabled = ok;
-    if (!ok) return;
     const u = this.under.uniforms;
+    u.uOn.value = ok ? 1 : 0;
+    if (!ok) return;
     u.tDepth.value = this.ao.beautyRenderTarget.depthTexture;
     u.causticTex.value = AGUA.causticTex.value;
     this.camera.updateMatrixWorld();

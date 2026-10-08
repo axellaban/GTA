@@ -190,6 +190,11 @@ THREE.ShaderChunk.lights_fragment_end += /* glsl */ `
 #endif
 `;
 
+// Tope de lo que sale de cada material: un brillo especular del sol casi rasante (agua, chapa, vidrio)
+// puede dar cientos de miles y en la imagen "half float" del postprocesado pasa a infinito (ver LIMPIO en
+// src/post.js). Con 512 el bloom igual lo hace explotar de luz.
+THREE.ShaderChunk.opaque_fragment = 'outgoingLight = clamp(outgoingLight, 0.0, 512.0);\n' + THREE.ShaderChunk.opaque_fragment;
+
 function lampCanvas(N, S, O, draw) {
   const c = document.createElement('canvas');
   c.width = c.height = N;

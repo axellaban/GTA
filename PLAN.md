@@ -1016,6 +1016,21 @@ Ideas para seguir: capó que se levanta con mucho daño; semáforos y carteles q
 
 ## 6b. Última sesión (para quien siga)
 
+- ✅ 2026-10-08 (cuarta tanda), Claude: **pantalla negra en la compu** (lo reportó el dueño; ya había un aviso
+  del 5/10 sin resolver). Reproducido: un solo objeto que pinta NaN (o infinito) deja **toda** la pantalla negra
+  con el HUD encima: el bloom lo desparrama por la imagen y las estelas (AfterimagePass) lo retienen cuadro a
+  cuadro. Arreglos: (1) `LIMPIO` en `src/post.js`: antes del bloom cada píxel pasa por el pase de abajo del agua
+  (ahora siempre prendido: fuera del agua solo limpia) y lo roto va a negro, lo demás con tope 512; las estelas
+  también limpian lo viejo. (2) Tope de 512 a lo que sale de cada material (`opaque_fragment` en
+  `src/atmosphere.js`): un brillo especular rasante pasaba el máximo del "half float" (65.504). (3) Fuentes de
+  NaN encontradas: en la orilla del agua el brillo del sol se dividía por un alfa casi cero (infinito × alfa 0
+  = NaN al mezclar; `WATER_OUT`) y el Fresnel del techo de agua visto desde abajo hacía `pow` de un negativo.
+  (4) Si el navegador pierde la placa de video (`webglcontextlost`) se guarda la partida y se recarga, sin la
+  presentación y con Gaspi donde estaba (antes quedaba negro para siempre: las texturas sueltan su imagen al
+  subirse). Prueba: `nantest.mjs` (en la sesión) mete una esfera que pinta NaN: antes, pantalla negra; ahora,
+  solo esa esfera. También: **bucear en la compu** con C, Ctrl o clic, con el aviso en pantalla (la acción de
+  abajo dice "C · Bucear" y buceando "Espacio · Subir"), más un cartel la primera vez que nada en lo hondo.
+
 - ✅ 2026-10-08 (tercera tanda), Claude: **Messi y la Selección en la plaza + show de drones** (pedido del dueño,
   por la despedida de Messi del 6/10: el show del Monumental abrió con SANCOR SEGUROS y se ligó silbidos).
   `src/seleccion.js`: de 19 a 5:30 h, Messi y los 26 campeones de Qatar 2022 en un claro de la punta norte de la

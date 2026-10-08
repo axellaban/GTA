@@ -77,6 +77,23 @@ setupInstall();
 
 const canvas = document.getElementById('game');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+// Si el navegador pierde la placa de video (se colgó o se reinició el driver, faltó memoria, la compu
+// cambió de placa), la imagen queda negra para siempre: las texturas sueltan su imagen al subirse
+// (src/textures.js) y no se pueden volver a subir. Se guarda la partida y se recarga, sin la presentación
+// y con Gaspi donde estaba.
+const VOLVER = 'gta-conurbano-volver';
+canvas.addEventListener('webglcontextlost', () => {
+  console.warn('Se perdió la placa de video (contexto de WebGL): se guarda la partida y se recarga');
+  try {
+    if (started) {
+      saveGame();
+      sessionStorage.setItem(VOLVER, JSON.stringify({ x: player.x, z: player.z, heading: player.heading, hour: time.hour }));
+    }
+  } catch {
+    /* sin almacenamiento */
+  }
+  setTimeout(() => location.reload(), 400);
+});
 // las texturas dibujadas se suben apenas están listas y sueltan su lienzo (tope de memoria del iPhone)
 GPU.renderer = renderer;
 renderer.setSize(innerWidth, innerHeight);
@@ -1045,6 +1062,10 @@ function interactions() {
     if (car.police) txt = 'Robar el patrullero';
     else if (car.ai || car.rider) txt = car.kind === 'moto' ? 'Bajar al de la moto' : 'Sacarle el auto';
     hud.prompt('F', txt);
+  } else if (player.swimming && !coarse && (player.diving || agua.level - player.groundAt() > 1.35)) {
+    // en la compu, nadando en lo hondo: qué tecla bucea (en el celu está el botón Bucear)
+    if (player.diving) hud.prompt('Espacio', 'Subir · C baja · W nada para donde mirás');
+    else hud.prompt('C', 'Bucear (o Ctrl, o clic)');
   } else hud.prompt(null);
   if (action && input.hit('e')) action.run();
 }
@@ -1468,7 +1489,20 @@ document.getElementById('play').addEventListener('click', async () => {
     document.documentElement.requestFullscreen({ navigationUI: 'hide' }).then(() => window.screen.orientation?.lock?.('landscape').catch(() => {})).catch(() => {});
   }
   audio.start();
-  await playIntro();
+  // (después de recargar porque se perdió la placa de video, directo al juego y donde estaba)
+  let volver = null;
+  try {
+    volver = JSON.parse(sessionStorage.getItem(VOLVER) || 'null');
+    sessionStorage.removeItem(VOLVER);
+  } catch {
+    /* sin almacenamiento */
+  }
+  if (volver && Number.isFinite(volver.x) && Number.isFinite(volver.z)) {
+    player.x = volver.x;
+    player.z = volver.z;
+    player.heading = volver.heading ?? player.heading;
+    if (Number.isFinite(volver.hour)) time.hour = volver.hour;
+  } else await playIntro();
   document.body.classList.add('playing');
   hud.show();
   input.wantLock = true;
@@ -1508,3 +1542,4 @@ world.signs = SIGNS;
 world.people = { PEOPLE, makePerson, makeLook, makeStar, makeGirl, animateHuman };
 window.__gta = world;
 window.__renderer = renderer;
+window.__post = () => post;
