@@ -479,6 +479,8 @@ export class Player {
       }
     }
 
+    // sin estar buceando (a pie, nadando arriba, en un auto o en un bote) se recupera el aire
+    if (!this.diving && this.air < 1) this.air = Math.min(1, this.air + dt * 0.5);
     if (this.jack) this.updateJack(dt, world);
     else if (this.exitAnim) this.updateExit(dt);
     else if (this.auto) this.updateAuto(dt);
@@ -555,8 +557,6 @@ export class Player {
       if (wd > 0.04) this.wading(dt, world, wd);
     }
     const ax = input.axis();
-    // afuera del agua se recupera el aire
-    if (this.air < 1) this.air = Math.min(1, this.air + dt * 0.5);
     this.reactT = (this.reactT || 0) - dt;
     this.shootT = (this.shootT || 0) - dt;
     this.recoil = Math.max(0, (this.recoil || 0) - dt * 5);
@@ -858,7 +858,7 @@ export class Player {
       if (this.drownT <= 0) {
         this.drownT = 1;
         this.hurt(9, 'TE AHOGASTE');
-        for (let i = 0; i < 8; i++) this.bubble(fx, ag, 1);
+        for (let i = 0; i < 8; i++) this.burbuja(fx, ag, 1);
       }
     }
     // burbujas que salen de la boca cada tanto (más seguidas con poco aire)
@@ -866,12 +866,13 @@ export class Player {
     if (this.bubT <= 0) {
       this.bubT = (0.7 + Math.random() * 0.9) * (0.4 + this.air * 0.6);
       const n = 2 + ((Math.random() * 4) | 0);
-      for (let i = 0; i < n; i++) this.bubble(fx, ag);
+      for (let i = 0; i < n; i++) this.burbuja(fx, ag);
       if (Math.random() < 0.5) world.audio.burbuja?.(500 + Math.random() * 400, 0.025);
     }
   }
   // una burbuja desde la cabeza: sube bamboleando y revienta en la superficie
-  bubble(fx, ag, big = 0) {
+  // (no se llama "bubble": así se llama el globo de diálogo de Gaspi en src/main.js)
+  burbuja(fx, ag, big = 0) {
     const f = Math.sin(this.heading);
     const g = Math.cos(this.heading);
     const c = Math.cos(this.divePitch || 0);
@@ -897,8 +898,6 @@ export class Player {
       else world.hud.toast('Acá no hay hondura para bucear', 1.6);
     }
     if (this.diving) return this.dive(dt, world);
-    // en la superficie se recupera el aire
-    this.air = Math.min(1, (this.air ?? 1) + dt * 0.5);
     const ax = input.axis();
     const fast = input.down('shift') || input.sprint;
     this.aiming = false;
@@ -1508,8 +1507,10 @@ export class Player {
       this.h.root.rotation.set(0, this.heading, 0);
       return;
     }
-    if (this.diving && !this.vehicle) this.vy = 0;
-    else if (this.swimming && !this.vehicle) {
+    if (this.diving && !this.vehicle) {
+      // buceando: dive() ya movió a Gaspi (this.vy es su velocidad para arriba o abajo; antes se borraba acá
+      // cada cuadro y subir o bajar iba diez veces más lento)
+    } else if (this.swimming && !this.vehicle) {
       // flota: sube y baja apenas con el agua
       const bob = Math.sin((this.swimT || 0) * Math.PI * 2) * 0.025;
       this.y += (this.swimY + bob - this.y) * Math.min(1, dt * 5);

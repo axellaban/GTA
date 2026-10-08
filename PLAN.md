@@ -1028,6 +1028,12 @@ Ideas para seguir: capó que se levanta con mucho daño; semáforos y carteles q
   (`src/tesoros.js`), marca del agua y barro en paredes y calles al bajar (solo en la ciudad fija:
   `marcarCiudad` en `src/atmosphere.js`), crol con la espalda a ras del agua. Prueba de celu emulado:
   `node movil.mjs` (en la sesión; mantiene "Subir" con un toque real por CDP).
+  Dos errores más encontrados en esta tanda: (1) el método de las burbujas de buceo se llamaba `bubble`, igual
+  que el globo de diálogo de Gaspi → se dibujaba un globo vacío arriba de él (el "rombo blanco" que vio el
+  dueño) y, después de que Gaspi hablara, bucear tiraba error; ahora es `burbuja`. (2) `place()` borraba cada
+  cuadro la velocidad vertical del buceo: subir y bajar iba diez veces más lento. Verificado en el celu
+  emulado: en el sitio viejo, mantener "Subir" metía a Gaspi en el auto flotante; con el arreglo sale a
+  respirar.
 
 - ✅ 2026-10-08, Claude: **inundaciones, nado y buceo** (README §0.39). Pedido del dueño: "que se inunden las
   calles mucho, que Gaspi nade y bucee como en GTA, autos que floten, botes con gente, víboras; agua 10/10, sin

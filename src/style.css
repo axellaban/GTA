@@ -1275,6 +1275,7 @@ body {
   #touch.ufo .on-moto,
   #touch.heli #btn-beam,
   #touch:not(.swim) .on-swim,
+  #touch.swim:not(.diving) #btn-rise,
   #touch.swim .on-foot,
   #touch.boat .on-foot {
     display: none;

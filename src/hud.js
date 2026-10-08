@@ -201,7 +201,7 @@ export class Hud {
     // controles táctiles: a pie, en auto o en moto; el botón de ataque dice qué hace
     const v = player.vehicle;
     const heli = !!player.ufo?.isHeli;
-    const mode = player.ufo ? (heli ? 'ufo heli' : 'ufo') : v ? (v.kind === 'moto' ? 'car moto' : 'car') : player.boat ? 'boat' : player.swimming ? 'swim' : canAim(player, w, !!this.dialog) ? 'foot armed' : 'foot';
+    const mode = player.ufo ? (heli ? 'ufo heli' : 'ufo') : v ? (v.kind === 'moto' ? 'car moto' : 'car') : player.boat ? 'boat' : player.swimming ? (player.diving ? 'swim diving' : 'swim') : canAim(player, w, !!this.dialog) ? 'foot armed' : 'foot';
     // nadando: "Bucear" (y abajo del agua, "Bajar")
     if (player.swimming) {
       const dl = player.diving ? 'Bajar' : 'Bucear';

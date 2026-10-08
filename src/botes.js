@@ -364,15 +364,18 @@ export class Botes {
     }
     this.varados = this.varados.filter((v) => !v.gone);
   }
-  spawnVarado(world) {
+  // (car: arriba de cuál; si no, uno que flote cerca de Gaspi pero no encima)
+  spawnVarado(world, car = null) {
     const P = world.player;
-    const cars = [...world.traffic.parked, ...world.traffic.cars].filter((c) => c.floating && c.kind !== 'moto' && c.kind !== 'bus' && !this.varados.some((v) => v.car === c));
-    const ok = cars.filter((c) => {
-      const d = Math.hypot(c.x - P.x, c.z - P.z);
-      return d > 18 && d < 90;
-    });
-    if (!ok.length) return;
-    const car = ok[(Math.random() * ok.length) | 0];
+    if (!car) {
+      const cars = [...world.traffic.parked, ...world.traffic.cars].filter((c) => c.floating && c.kind !== 'moto' && c.kind !== 'bus' && !this.varados.some((v) => v.car === c));
+      const ok = cars.filter((c) => {
+        const d = Math.hypot(c.x - P.x, c.z - P.z);
+        return d > 18 && d < 90;
+      });
+      if (!ok.length) return;
+      car = ok[(Math.random() * ok.length) | 0];
+    }
     const h = makeHuman({ ...randomCivilian(), scale: 0.95 + Math.random() * 0.08 });
     this.scene.add(h.root);
     this.varados.push({ h, car, t: Math.random() * 5, sayT: Math.random() * 2, bubble: null });
