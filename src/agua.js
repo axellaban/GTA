@@ -391,9 +391,13 @@ export class Agua {
     this.reflHide = () => [];
   }
   // se llama antes de dibujar el cuadro
-  renderReflection(camera) {
+  // load: 1 normal; menos cuando el juego no llega a los cuadros (resolución dinámica de src/main.js):
+  // el reflejo se achica y, muy cargado, se dibuja un cuadro sí y otro no
+  renderReflection(camera, load = 1) {
     const U = this.U;
     if (!this.mesh.visible) return;
+    this.reflN = (this.reflN || 0) + 1;
+    if (load < 0.6 && this.reflN % 2 && U.uReflOn.value) return;
     const L = this.level;
     // si el agua está solo en el bajo nivel y la cámara está lejos, no vale la pena
     if (L < CALLE && laneDist(camera.position.x, camera.position.z) > 260) {
@@ -406,8 +410,9 @@ export class Agua {
     }
     const r = this.renderer;
     const size = r.getDrawingBufferSize(tmpV2);
-    const w = Math.max(160, Math.round(size.x * 0.5));
-    const h = Math.max(90, Math.round(size.y * 0.5));
+    const k = load < 0.8 ? 0.36 : 0.5;
+    const w = Math.max(160, Math.round(size.x * k));
+    const h = Math.max(90, Math.round(size.y * k));
     if (this.rt.width !== w || this.rt.height !== h) this.rt.setSize(w, h);
     const vc = this.vcam;
     camera.updateMatrixWorld();

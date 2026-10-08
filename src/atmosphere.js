@@ -146,12 +146,12 @@ THREE.ShaderChunk.lights_fragment_end += /* glsl */ `
       float ca = mix(texture2D(causticTex, (c0 + qa) / 4.0).r, texture2D(causticTex, (c1 + qa) / 4.0).r, fk);
       vec2 q2 = fract(cp * 1.37 + vec2(0.31, 0.77) - aguaParams.y * 0.011) * 0.992 + 0.004;
       float cb = mix(texture2D(causticTex, (c1 + q2) / 4.0).r, texture2D(causticTex, (c0 + q2) / 4.0).r, fk);
-      float caus = min(ca, cb) * 2.2 + ca * 0.35;
+      float caus = min(ca, cb) * 3.0 + ca * 0.6;
       vec3 aguaN = inverseTransformDirection(normal, viewMatrix);
-      float cauK = aguaParams.z * exp(-aguaD * 0.55) * smoothstep(0.0, 0.15, aguaD) * (0.25 + 0.75 * max(aguaN.y, 0.0));
-      reflectedLight.directDiffuse += diffuseColor.rgb * caus * cauK * 1.6;
+      float cauK = aguaParams.z * exp(-aguaD * 0.3) * smoothstep(0.0, 0.15, aguaD) * (0.3 + 0.7 * max(aguaN.y, 0.0));
+      reflectedLight.directDiffuse += diffuseColor.rgb * caus * cauK * 3.2;
       // el agua turbia apaga la luz con la profundidad (rojo y azul primero)
-      vec3 aguaT = exp(-vec3(0.55, 0.32, 0.6) * aguaD);
+      vec3 aguaT = exp(-vec3(0.4, 0.22, 0.45) * aguaD);
       reflectedLight.directDiffuse *= aguaT;
       reflectedLight.indirectDiffuse *= mix(aguaT, vec3(1.0), 0.35);
       reflectedLight.directSpecular *= aguaT;

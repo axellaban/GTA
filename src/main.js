@@ -1283,7 +1283,7 @@ function frame(now) {
     lights.update(dt);
     fx.update(dt);
     sky.follow(camera);
-    agua.renderReflection(camera);
+    agua.renderReflection(camera, res.scale);
     post.render();
     requestAnimationFrame(frame);
     return;
@@ -1396,7 +1396,7 @@ function frame(now) {
   post?.setUnderwater(agua.under, agua.level, (world.sunK ?? 1) * (1 - weather.rain * 0.5), ATMO.fogSunDir.value, agua.t);
   audio.bajoAgua(agua.under);
   renderGameView(world, () => {
-    agua.renderReflection(camera);
+    agua.renderReflection(camera, res.scale);
     post.render();
   });
   input.endFrame();

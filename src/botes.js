@@ -52,8 +52,8 @@ export class Botes {
     return null;
   }
 
-  spawn(world) {
-    const at = this.pick(world);
+  // at: { r, s } para ponerlo en un lugar (si no, uno cerca de Gaspi fuera de la vista)
+  spawn(world, at = this.pick(world)) {
     if (!at || !this.models) return;
     const big = Math.random() < 0.45;
     const mesh = this.models[big ? 1 : 0].clone(true);
