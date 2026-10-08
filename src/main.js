@@ -1,6 +1,7 @@
 // GTA VI Conurba · Temperley. Arma el mundo, el ciclo de día y noche, el clima y el loop del juego.
 import * as THREE from 'three';
 import './style.css';
+import { inject } from '@vercel/analytics';
 import { ATMO, LAMPS, NIGHT, buildLampMap, marcarCiudad } from './atmosphere.js';
 import { buildCity } from './city.js';
 import { makeGround, ROADS, project, STATION, COMISARIA, cornerName, nearestStreetName, nearestRoad } from './map.js';
@@ -72,6 +73,9 @@ import { Flote } from './flote.js';
 import { Botes } from './botes.js';
 import { Viboras } from './viboras.js';
 import { Tesoros } from './tesoros.js';
+
+// Initialize Vercel Web Analytics
+inject();
 
 setupInstall();
 
