@@ -2,8 +2,10 @@
 
 // celular o tablet: los textos hablan de botones en vez de teclas
 export const TOUCH = typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches;
+const MAC = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform || navigator.userAgent) && !TOUCH;
 export class Input {
   constructor(canvas) {
+    this.rightT = -1e9;
     this.keys = new Set();
     this.pressed = new Set(); // teclas apretadas en este frame
     this.look = { dx: 0, dy: 0 };
@@ -28,12 +30,29 @@ export class Input {
 
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
     addEventListener('mouseup', (e) => {
-      this.keys.delete(`mouse${e.button}`);
+      let b = e.button;
+      if (b === 0 && this.ctrlClick) b = 2;
+      this.ctrlClick = false;
+      this.keys.delete(`mouse${b}`);
+      // un clic derecho corto (en el trackpad: tocar con dos dedos) deja la mira prendida hasta el próximo:
+      // con el trackpad no se puede mantener el derecho y a la vez hacer clic para tirar. Mantenido sigue
+      // apuntando solo mientras se aprieta, como en los GTA.
+      if (b === 2 && performance.now() - this.rightT < 300 && !this.rightShot) this.pressed.add('aim');
       this.dragging = this.down('mouse0', 'mouse2');
     });
     canvas.addEventListener('mousedown', (e) => {
-      this.pressed.add(`mouse${e.button}`);
-      this.keys.add(`mouse${e.button}`);
+      // en la Mac, Ctrl + clic es el clic derecho
+      const b = e.button === 0 && e.ctrlKey && MAC ? 2 : e.button;
+      this.ctrlClick = b !== e.button;
+      // (si el izquierdo se usó mientras el derecho estaba apretado, fue apuntar mantenido y tirar: al
+      // soltar no deja la mira prendida)
+      if (b === 2) {
+        this.rightT = performance.now();
+        this.rightShot = this.keys.has('mouse0');
+      }
+      if (b === 0 && this.keys.has('mouse2')) this.rightShot = true;
+      this.pressed.add(`mouse${b}`);
+      this.keys.add(`mouse${b}`);
       this.dragging = true;
       if (!this.locked && this.wantLock && canvas.requestPointerLock) {
         try {

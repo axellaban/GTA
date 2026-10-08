@@ -1016,6 +1016,13 @@ Ideas para seguir: capó que se levanta con mucho daño; semáforos y carteles q
 
 ## 6b. Última sesión (para quien siga)
 
+- ✅ 2026-10-08 (quinta tanda), Claude: **apuntar y tirar en la Mac** (lo reportó el dueño: con la mira no
+  disparaba). En la compu apuntar era solo mantener el clic derecho, y con el trackpad no se puede mantener el
+  derecho (dos dedos) y a la vez hacer clic. Ahora (`src/input.js`): un clic derecho corto (menos de 0,3 s, sin
+  usar el izquierdo en el medio) deja la mira prendida hasta otro, como el botón Apuntar del celu; mantenido
+  sigue como antes. En la Mac, Ctrl + clic cuenta como clic derecho. Cartel la primera vez con un arma de fuego
+  y el de agarrar armas dice lo de los dos dedos. Prueba nueva en `tools/apuntado.test.mjs`.
+
 - ✅ 2026-10-08 (cuarta tanda), Claude: **pantalla negra en la compu** (lo reportó el dueño; ya había un aviso
   del 5/10 sin resolver). Reproducido: un solo objeto que pinta NaN (o infinito) deja **toda** la pantalla negra
   con el HUD encima: el bloom lo desparrama por la imagen y las estelas (AfterimagePass) lo retienen cuadro a

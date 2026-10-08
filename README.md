@@ -128,7 +128,7 @@ Para comparar la misma calle de día, al atardecer y con lluvia: `npm run dev` y
 | WASD / flechas | Moverse o manejar |
 | Mouse | Mirar (clic para capturar el mouse) |
 | Clic izquierdo | Pegar (combo) o disparar, con o sin apuntado |
-| Clic derecho mantenido | Apuntar: mira, cámara sobre el hombro y mayor precisión |
+| Clic derecho | Apuntar: mira, cámara sobre el hombro y mayor precisión. Mantenido, apunta mientras lo apretás; un toque corto (dos dedos en el trackpad, o Ctrl + clic en la Mac) deja la mira prendida hasta otro toque, y con la mira prendida el clic tira |
 | Q · 1 a 9 | Cambiar de arma: 1 piñas, 2 motosierra / bastón / palo, 3 revólver / pistola, 4 tumbera, 5 metra, 6 ametralladora, 7 molotov, 8 bazuca, 9 lanzallamas (apretando de nuevo el mismo número se pasa a la otra de ese grupo) |
 | R | Recargar · cambiar la radio arriba del auto |
 | Espacio | Saltar · freno de mano |

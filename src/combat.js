@@ -184,6 +184,11 @@ export class Combat {
       }
     }
     const w = WEAPONS[P.weapon];
+    // la primera vez con un arma de fuego en la mano (en la compu), cómo se apunta
+    if (w.gun && !TOUCH && !this.tipMira && !hud.dialog) {
+      this.tipMira = true;
+      hud.toast('Clic derecho: mira (un toque la deja prendida, otro la apaga) · Clic: tirar', 4);
+    }
     updateAiming(P, input, w, !!hud.dialog);
     if (P.reloadT > 0) {
       P.reloadT -= dt;

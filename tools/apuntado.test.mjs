@@ -25,6 +25,14 @@ test('botón derecho mantenido activa mira; clic izquierdo se puede usar con o s
   f.send(f.win,'mouseup',{button:0});assert.equal(f.input.dragging,true);assert.ok(f.input.down('mouse2'));
   f.send(f.win,'mouseup',{button:2});updateAiming(f.p,f.input,gun);assert.equal(f.p.aiming,false);assert.equal(f.input.dragging,false);
 });
+test('clic derecho corto (dos dedos en el trackpad) deja la mira prendida y el clic tira; otro toque la apaga',()=>{
+  const f=fixture();f.send(f.canvas,'mousedown',{button:2});f.send(f.win,'mouseup',{button:2});
+  updateAiming(f.p,f.input,gun);f.input.endFrame();assert.equal(f.p.aiming,true);assert.ok(f.input.aimToggled);
+  f.send(f.canvas,'mousedown',{button:0});assert.ok(f.input.hit('mouse0'));updateAiming(f.p,f.input,gun);assert.equal(f.p.aiming,true);
+  f.send(f.win,'mouseup',{button:0});f.input.endFrame();
+  f.send(f.canvas,'mousedown',{button:2});f.send(f.win,'mouseup',{button:2});updateAiming(f.p,f.input,gun);
+  assert.equal(f.p.aiming,false);assert.equal(f.input.aimToggled,false);
+});
 test('celular: toque de apuntado queda activado y disparar permite mover cámara con el mismo dedo',()=>{
   const f=fixture();f.touch(f.aim,'touchstart',1);updateAiming(f.p,f.input,gun);f.input.endFrame();f.touch(f.aim,'touchend',1);
   assert.equal(f.p.aiming,true);assert.ok(f.input.aimToggled);

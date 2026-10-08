@@ -245,7 +245,7 @@ export class Pickups {
       } else if (p.kind === 'weapon') {
         combat.give(player, p.data.id);
         const w = WEAPONS[p.data.id];
-        hud.flash(w.name.toUpperCase(), TOUCH ? (w.gun ? 'Apunta solo. Tocá el arma arriba para cambiarla' : 'Tocá el arma arriba para cambiarla') : w.gun ? `Clic para tirar · clic derecho para apuntar · tecla ${SLOT_OF[w.id]} o Q cambia de arma` : `Clic para pegar · tecla ${SLOT_OF[w.id]} o Q cambia de arma`, 'ok', 2.6);
+        hud.flash(w.name.toUpperCase(), TOUCH ? (w.gun ? 'Apunta solo. Tocá el arma arriba para cambiarla' : 'Tocá el arma arriba para cambiarla') : w.gun ? `Clic para tirar · clic derecho (o dos dedos en el trackpad) prende la mira · tecla ${SLOT_OF[w.id]} o Q cambia de arma` : `Clic para pegar · tecla ${SLOT_OF[w.id]} o Q cambia de arma`, 'ok', 2.6);
         audio.recarga?.();
       } else if (p.kind === 'coima') {
         const { police } = world;
