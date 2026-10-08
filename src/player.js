@@ -708,8 +708,13 @@ export class Player {
       // en el medio de la ronda de los chicos (src/aura.js): farmeando aura
       pose = 'aura';
       t = this.danceClock ?? 0;
+    } else if (this.cieloT > 0 && this.speed < 0.3) {
+      // mirando el show de drones con la Selección (src/seleccion.js)
+      pose = 'cielo';
+      t = this.cieloClock ?? 0;
     }
     this.danceT = (this.danceT || 0) - dt;
+    this.cieloT = (this.cieloT || 0) - dt;
     // después de pelear queda en guardia un rato (src/moves.js)
     this.fightT = (this.fightT || 0) - dt;
     // apuntando: el torso sigue la mira arriba/abajo y camina de costado o para atrás sin dejar de apuntar

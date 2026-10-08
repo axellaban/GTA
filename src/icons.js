@@ -427,6 +427,37 @@ export const ICONS = {
       }
     },
   },
+  seleccion: {
+    bg: '#4fa9e0',
+    label: 'La Selección y el show de drones (plaza, de noche)',
+    draw(g) {
+      // la camiseta albiceleste con el 10 (en hueco)
+      g.save();
+      g.beginPath();
+      g.moveTo(22, 12);
+      g.quadraticCurveTo(32, 19, 42, 12);
+      g.lineTo(54, 20);
+      g.lineTo(49, 30);
+      g.lineTo(44, 27);
+      g.lineTo(44, 52);
+      g.lineTo(20, 52);
+      g.lineTo(20, 27);
+      g.lineTo(15, 30);
+      g.lineTo(10, 20);
+      g.closePath();
+      g.fillStyle = WHITE;
+      g.fill();
+      g.clip();
+      g.fillStyle = '#4fa9e0';
+      for (const x of [17, 29, 41]) g.fillRect(x, 10, 6, 44);
+      g.restore();
+      g.fillStyle = '#1b2440';
+      g.font = '900 15px Arial, sans-serif';
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.fillText('10', 32, 38);
+    },
+  },
   heli: {
     bg: '#c8102e',
     label: 'Helicóptero (terraza de las torres)',
@@ -528,6 +559,6 @@ export function drawIcon(g, kind, x, y, size, letter = null) {
 }
 
 // lo que se muestra en la leyenda del mapa de pausa, en orden
-export const LEGEND = ['mision', 'armeria', 'arbolitos', 'jubilados', 'pintura', 'gym', 'nafta', 'comisaria', 'hospital', 'tren', 'pancho', 'medias', 'kiosco', 'picada', 'corte', 'ambulancia', 'bombero', 'delivery', 'ovni', 'heli', 'tobogan', 'aura', 'matanza', 'arma', 'vida', 'chaleco', 'coima'];
+export const LEGEND = ['mision', 'armeria', 'arbolitos', 'jubilados', 'pintura', 'gym', 'nafta', 'comisaria', 'hospital', 'tren', 'pancho', 'medias', 'kiosco', 'picada', 'corte', 'ambulancia', 'bombero', 'delivery', 'ovni', 'heli', 'tobogan', 'aura', 'seleccion', 'matanza', 'arma', 'vida', 'chaleco', 'coima'];
 // de los objetos del piso (pickups) al ícono
 export const PICKUP_ICON = { weapon: 'arma', health: 'vida', armor: 'chaleco', coima: 'coima' };

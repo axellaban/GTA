@@ -1016,6 +1016,23 @@ Ideas para seguir: capó que se levanta con mucho daño; semáforos y carteles q
 
 ## 6b. Última sesión (para quien siga)
 
+- ✅ 2026-10-08 (tercera tanda), Claude: **Messi y la Selección en la plaza + show de drones** (pedido del dueño,
+  por la despedida de Messi del 6/10: el show del Monumental abrió con SANCOR SEGUROS y se ligó silbidos).
+  `src/seleccion.js`: de 19 a 5:30 h, Messi y los 26 campeones de Qatar 2022 en un claro de la punta norte de la
+  plaza Espora (medido con los colliders: sin árboles ni faroles); de noche el show cada ~2 min (93 s + 35 s de
+  pausa), reacciones por figura (silbatina, aplausos, globos), foto con Messi (E, +5 respeto) y cámara "mirar
+  el show" (E): su lugar está elegido con capturas para que los árboles no tapen ninguna figura. `src/drones.js`:
+  1.000 puntos (un solo `THREE.Points`), figuras de canvas muestreadas en grilla triangular, asignación al punto
+  libre más cercano, vuelo y colores en el shader, mezcla por máximo (con suma se quemaba en una mancha). El show
+  está arriba de las vías, detrás de la estación (`SHOW`): mirando al norte había un árbol justo en la línea.
+  Modelos nuevos (MakeHuman, sin fotos): `mh_messi`, `mh_sel_a/b/c`, `mh_sel_arquero` con dos opciones nuevas en
+  `tools/models/mh/build.py`: `shorts` (corta el pantalón arriba de la rodilla y vuelven a verse las piernas) y
+  `socks` (medias pintadas en la piel: `skin.socks`). Se cargan aparte (`loadSeleccion`) cuando se acerca la hora.
+  Nombre y número en la espalda: celda de un atlas de canvas en el shader de la ropa (`DORSAL_RECT`, la uv de la
+  espalda de male_casualsuit04, medida en el json de build.py). Pose nueva `cielo` en `src/human.js` (Gaspi
+  también la usa mirando). Sin el logo de la aseguradora: solo el nombre en letras propias. Falta probar en un
+  iPhone de verdad (son 26 personas más; el LOD de MakeHuman las baja a ~1.200 triángulos de lejos).
+
 - ✅ 2026-10-08, Claude: el bajo nivel pasa de 5,4 a **10 m** de hondo (pedido del dueño, para bucear con la
   inundación): `DEPTH` en `src/bajo-geo.js` (todo lo demás sale de ahí: calzada, paredes, luces, puentes,
   altura de los autos y el fondo del agua en `src/agua-nivel.js`). Las rampas siguen de 72 m (más empinadas).

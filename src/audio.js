@@ -228,6 +228,75 @@ export class Audio {
     if (!this.ctx || v < 0.02) return;
     this.tone([1480], 0.18, 'triangle', v * 0.5);
   }
+  // silbidos de tribuna (con los dedos): muchos a la vez, cada uno sube, se sostiene y cae
+  silbatina(v = 0.5, n = 14) {
+    if (!this.ctx || v < 0.02) return;
+    const t0 = this.ctx.currentTime;
+    const out = this.vol(v * 0.16);
+    for (let i = 0; i < n; i++) {
+      const t = t0 + Math.random() * 2.2;
+      const dur = 0.5 + Math.random() * 1.4;
+      const f0 = 2100 + Math.random() * 1300;
+      const o = this.ctx.createOscillator();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(f0 * 0.82, t);
+      o.frequency.exponentialRampToValueAtTime(f0, t + 0.08);
+      o.frequency.setValueAtTime(f0, t + dur * 0.7);
+      o.frequency.exponentialRampToValueAtTime(f0 * (Math.random() < 0.5 ? 0.7 : 1.08), t + dur);
+      // el temblor del silbido
+      const lfo = this.ctx.createOscillator();
+      lfo.frequency.value = 5 + Math.random() * 4;
+      const lg = this.ctx.createGain();
+      lg.gain.value = f0 * 0.012;
+      lfo.connect(lg).connect(o.frequency);
+      const g = this.ctx.createGain();
+      this.env(g, t, 0.05, 0.5 + Math.random() * 0.5, dur);
+      o.connect(g).connect(out);
+      o.start(t);
+      lfo.start(t);
+      o.stop(t + dur + 0.05);
+      lfo.stop(t + dur + 0.05);
+    }
+    // el murmullo de fondo
+    this.burst(2.6, 900, 'bandpass', v * 0.08, 0, 0.5);
+  }
+  // aplausos: muchas palmas cortas de ruido, cada una con su tono
+  aplausos(v = 0.5, dur = 3) {
+    if (!this.ctx || v < 0.02) return;
+    const n = Math.round(dur * 26);
+    for (let i = 0; i < n; i++) {
+      const t = Math.random() * dur;
+      const fade = 1 - Math.max(0, (t - dur * 0.6) / (dur * 0.4));
+      this.burst(0.035 + Math.random() * 0.03, 1100 + Math.random() * 1800, 'bandpass', v * 0.22 * fade, t, 1.2);
+    }
+  }
+  // el zumbido de mil drones arriba (lejano: grave y parejo, con un batido lento)
+  zumbido(v) {
+    if (!this.ctx) return;
+    if (!this.drones) {
+      const n = this.ctx.createBufferSource();
+      n.buffer = this.noiseBuf;
+      n.loop = true;
+      const f = this.ctx.createBiquadFilter();
+      f.type = 'bandpass';
+      f.frequency.value = 230;
+      f.Q.value = 1.4;
+      const am = this.ctx.createGain();
+      am.gain.value = 0.75;
+      const lfo = this.ctx.createOscillator();
+      lfo.frequency.value = 0.35;
+      const lg = this.ctx.createGain();
+      lg.gain.value = 0.25;
+      lfo.connect(lg).connect(am.gain);
+      const g = this.ctx.createGain();
+      g.gain.value = 0;
+      n.connect(f).connect(am).connect(g).connect(this.master);
+      n.start();
+      lfo.start();
+      this.drones = { g };
+    }
+    this.drones.g.gain.setTargetAtTime(Math.min(0.12, v * 0.12), this.ctx.currentTime, 0.6);
+  }
   golpe(v = 0.6) {
     if (!this.ctx) return;
     const t = this.ctx.currentTime;

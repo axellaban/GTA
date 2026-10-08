@@ -37,6 +37,7 @@ import { GPU, flushTextures } from './textures.js';
 import { Gangs } from './gangs.js';
 import { Barrio } from './barrio.js';
 import { Aura } from './aura.js';
+import { Seleccion } from './seleccion.js';
 import { Andenes } from './andenes.js';
 import { CasaClau } from './clau.js';
 import { Norte } from './norte.js';
@@ -528,6 +529,9 @@ world.barrio = barrio;
 // ronda de chicos farmeando aura en la plaza Tomás Espora
 const aura = new Aura(npcs);
 world.aura = aura;
+// Messi y la Selección en la plaza Espora, con el show de drones de la despedida (de noche)
+const seleccion = new Seleccion(scene, npcs);
+world.seleccion = seleccion;
 // gente en los andenes: espera, sube y baja del Roca
 const andenes = new Andenes(npcs, interiors, city, trains);
 world.andenes = andenes;
@@ -1029,6 +1033,7 @@ function interactions() {
   if (!action) action = tobogan.action(world);
   if (!action) action = clau.action(world);
   if (!action) action = norte.action(world);
+  if (!action) action = seleccion.action(world);
   // (buceando no hay autos a mano)
   const car = player.diving ? null : player.nearestVehicle(world);
   // botes en la inundación (src/botes.js)
@@ -1368,6 +1373,7 @@ function frame(now) {
   gangs.update(dt, world);
   barrio.update(dt, world);
   aura.update(dt, world);
+  seleccion.update(dt, world, camera, renderer);
   tanks.update(dt, world);
   destroy.update(dt, world);
   checkCheats();
@@ -1386,7 +1392,7 @@ function frame(now) {
   updateObjective();
   updateGps(dt);
   // adentro del taller la cámara queda afuera, mirando el portón
-  if (!garages.camera(camera) && !cielo.camera(camera)) player.updateCamera(camera, dt, city.colliders, fx);
+  if (!garages.camera(camera) && !cielo.camera(camera) && !seleccion.camera(camera, dt)) player.updateCamera(camera, dt, city.colliders, fx);
   fx.update(dt);
   smash.update(dt);
   SIGNS.update(dt, world);

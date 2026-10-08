@@ -19,6 +19,7 @@ from coverage import under_cloth
 from skin import cavity, scalp
 from skin import photo as photo_bake
 from skin import beard as beard_paint
+from skin import socks as socks_paint
 
 HERE = Path(__file__).resolve().parent
 C = HERE / 'cache'
@@ -476,6 +477,12 @@ def neutral(img, hair):
     return Image.fromarray((out * 255).astype(np.uint8), 'RGBA')
 
 
+def knee_height(V, ground):
+    """Alto de la rodilla (m desde el piso): la cabeza del hueso de la pierna izquierda."""
+    s = skeleton_src()[0]
+    return float(V[s['joints'][s['bones']['lowerleg01.L']['head']]].mean(0)[1] - ground) * 0.1
+
+
 def build(name, spec):
     print('==', name)
     V = morph(spec)
@@ -503,6 +510,17 @@ def build(name, spec):
             clo['FT'] = [f for f, k in zip(clo['FT'], keepf) if k]
             lower = W[:, [names.index(n) for n in ('LeftUpLeg', 'RightUpLeg', 'LeftLeg', 'RightLeg', 'LeftFoot', 'RightFoot', 'Hips')]].sum(1) > 0.5
             dl = dl[lower[dl]] if len(dl) else dl
+        hem = spec.get('shorts', {}).get(c)
+        if hem is not None:
+            # pantalón corto (la Selección): del pantalón largo quedan las caras que están enteras más arriba
+            # que la rodilla + hem (m), y las piernas de abajo vuelven a verse
+            y = (fit(clo, V)[:, 1] - ground) * 0.1
+            cut = knee_height(V, ground) + hem
+            isl, up = classify(clo, clo_weights(clo, W), names)
+            keepf = [bool(u) or min(y[v] for v in f) >= cut for f, u in zip(clo['F'], up[isl])]
+            clo['F'] = [f for f, k in zip(clo['F'], keepf) if k]
+            clo['FT'] = [f for f, k in zip(clo['FT'], keepf) if k]
+            dl = dl[(V[dl, 1] - ground) * 0.1 >= cut - 0.02] if len(dl) else dl
         if len(dl):
             deleted[dl] = True
         clothes.append(clo)
@@ -547,6 +565,9 @@ def build(name, spec):
     chin_y = joint(sk['bones']['jaw']['tail'])[1]
     if spec.get('beard'):
         lin = beard_paint(C, V, np.clip(lin, 0, 1) ** (1 / 2.2), spec['beard'], eye_y, chin_y, HEAD) ** 2.2
+    if spec.get('socks'):
+        # medias de fútbol: del tobillo hasta un poco abajo de la rodilla
+        lin = socks_paint(C, V, np.clip(lin, 0, 1) ** (1 / 2.2), spec['socks'], ground, 0.03, knee_height(V, ground) - 0.06) ** 2.2
     if spec.get('photo'):
         # una cara de verdad (Gaspi)
         ph = dict(spec['photo'], file=str(HERE.parents[2] / spec['photo']['file']))  # desde la raíz del repo

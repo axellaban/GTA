@@ -8,6 +8,7 @@
     "@gltf-transform/extensions": "^4",
     "@gltf-transform/functions": "^4",
     "draco3dgltf": "^1.5.7",
-    "meshoptimizer": "^0.22.0"
+    "meshoptimizer": "^0.22.0",
+    "sharp": "^0.35.5"
   }
 }

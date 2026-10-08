@@ -134,7 +134,7 @@ Para comparar la misma calle de día, al atardecer y con lluvia: `npm run dev` y
 | Espacio | Saltar · freno de mano |
 | Shift | Correr · nadar a fondo (crol) · willy en la moto · quemar gomas |
 | C | Nadando: bucear · buceando: bajar (Espacio sube) |
-| E | Acción: pagar, comprar, dar, robar un negocio, subirse al tren o al colectivo (y bajarse) |
+| E | Acción: pagar, comprar, dar, robar un negocio, subirse al tren o al colectivo (y bajarse), mirar el show de drones, sacarte una foto con Messi |
 | F | Subir, robar o bajar de un vehículo |
 | H | Bocina |
 | P | Pausa y mapa |
@@ -278,6 +278,32 @@ Como en Vice City, la chapa se hunde donde pega el golpe (choques, tiros, explos
 
 **A los tiros, como en los GTA**: un tiro bajo, en una rueda, pincha esa goma (se baja, el auto se ladea para ese lado, anda en llanta, tira para ese costado y saca chispas); a la altura de los vidrios, el primer tiro los astilla y el segundo los hace volar; y si le das al que maneja un auto del tránsito (o el colectivo), se muere: el auto sigue sin control, con la bocina pegada, hasta que se va de la calle o se la da contra algo. Si después lo robás, sacás el cuerpo. La cana también te puede pinchar las gomas a tiros.
 
+## Messi, la Selección y el show de drones (0.40)
+
+Por la despedida de Messi de la Selección (Monumental, 6 de octubre de 2026, 3-0 a Benín): **de noche, en la
+punta norte de la Plaza Comandante Tomás Espora**, están Messi y los 26 campeones del mundo de Qatar 2022 (en el
+mapa: la camiseta albiceleste con el 10). Desde las 19 h llegan y charlan; cuando oscurece, **mil drones**
+despegan arriba de las vías, del otro lado de la estación, y todos miran para arriba: primero **SANCOR SEGUROS**
+(la publicidad que se ligó la silbatina en el estadio: silbidos, "¡Chiqui, la con...!", "¿S de Súper Messi? No:
+de Sancor Seguros" y Messi esperando con cara de nada), después el **10 y MESSI**, la **camiseta**, un
+**jugador pateando con la derecha** (el otro meme de la noche: Leo es zurdo, y él mismo lo aclara), la **Copa**,
+el **Obelisco** y **¡GRACIAS LEO!** con las tres estrellas, con aplausos y el "olé, olé, olé, Leo, Leo". Al
+final bajan, y a los 35 segundos arranca otro. Se ve desde todo Temperley.
+
+- **E** cerca del grupo durante el show: **mirarlo con la Selección** (cámara atrás de ellos, como filmando con
+  el celu, con las espaldas y los números abajo y el cielo arriba). Moverse o E de nuevo para dejar de mirar.
+- **E** al lado de Messi: **sacarte una foto con él** (+5 de respeto la primera vez).
+- No se los puede lastimar: si hay lío salen corriendo y vuelven.
+
+Están hechos acá con MakeHuman (CC0), **sin fotos** (como el Comandante): camiseta a rayas, pantalón corto negro
+(el pantalón largo cortado arriba de la rodilla), medias blancas pintadas en la piel, los arqueros de verde, y
+Messi bajito, con barba castaña y la cinta de capitán. El nombre y el número de cada uno van en la espalda,
+dibujados en el shader de la camiseta desde un solo atlas (`src/people.js`). Las figuras de los drones se
+dibujan con canvas (letras y trazos propios: sin el logo de la aseguradora, solo el nombre) y los drones se
+reparten en una grilla pareja; entre figura y figura cada uno vuela al punto libre más cercano y el vuelo, el
+color y el brillo los calcula la placa (`src/drones.js`). La luz de los drones se mezcla por máximo y no por
+suma, así lo que se pisa no se quema en una mancha blanca.
+
 ## Inundaciones: Temperley bajo el agua (0.39)
 
 Cuando llueve fuerte **el agua se junta**: primero se llena el **bajo nivel** (10 m de hondo, queda como una
@@ -368,7 +394,7 @@ Cada auto suena a lo que es: el Falcon y el patrullero con un seis cilindros gru
 
 Los vecinos, vecinas y la policía están hechos con [MakeHuman](http://www.makehumancommunity.org) (malla, morfos, esqueleto, pieles, pelo y ropa: todo CC0): cuerpos con proporciones reales, cada uno con su cara (nariz, mentón, ojos y orejas distintos), piel con las cavidades de la cara horneadas, pelo y ropa de verdad. Hay 22: hinchas con la camiseta de Banfield, Temperley, Boca, River y Argentina (rayas y franjas pintadas sobre la prenda, sin escudos), laburante de overol, oficinista de traje, gordo pelado, flaco, musculoso, jubilados y abuela, chicas de remera, short, deportiva o vestido, y la Bonaerense de camisa celeste. En la calle cada uno sale con la ropa de otro color, otro tono de piel y pelo negro, castaño, rubio o canoso. Se arman con `tools/models/mh/` (Python + meshoptimizer): ≤ 5.000 triángulos y una sola textura de 1024 (512 en el celular) por persona.
 
-Se animan con las mismas poses de siempre (caminar, piñas, celular, sentarse, caerse) gracias a `src/rig.js`, que traduce nuestro esqueleto a cualquier esqueleto humanoide estándar. Las armas de la cana se cuelgan de su mano. Gaspi también es de MakeHuman: traje negro, camisa blanca, corbata roja a rayas y la cara de su foto horneada en la textura de la cabeza. Y todos los demás: Laban de traje blanco con sombrero y anteojos, Ciro gigante en cuero, el Comandante platinado con su cadenita, las chicas del Ferrucho y del gym, los trapitos con chaleco flúor y gorra, el linyera barbudo con su vasito, el panchero bigotudo, los chicos del colegio, la cana con gorra e insignia, las barras, las bandas, los zombis verdosos y el soldado del tanque con casco. Los gendarmes siguen con el modelo CC0 de elbolilloduro ([Mesh2Motion](https://github.com/scottpetrovic/mesh2motion-app)).
+Se animan con las mismas poses de siempre (caminar, piñas, celular, sentarse, caerse) gracias a `src/rig.js`, que traduce nuestro esqueleto a cualquier esqueleto humanoide estándar. Las armas de la cana se cuelgan de su mano. Gaspi también es de MakeHuman: traje negro, camisa blanca, corbata roja a rayas y la cara de su foto horneada en la textura de la cabeza. Y todos los demás: Laban de traje blanco con sombrero y anteojos, Ciro gigante en cuero, el Comandante platinado con su cadenita, las chicas del Ferrucho y del gym, los trapitos con chaleco flúor y gorra, el linyera barbudo con su vasito, el panchero bigotudo, los chicos del colegio, la cana con gorra e insignia, las barras, las bandas, los zombis verdosos y el soldado del tanque con casco. Messi, los jugadores de la Selección y los arqueros también (se cargan aparte, cuando se acerca la noche). Los gendarmes siguen con el modelo CC0 de elbolilloduro ([Mesh2Motion](https://github.com/scottpetrovic/mesh2motion-app)).
 
 Los perros también son un modelo CC0 de Mesh2Motion, con animaciones de verdad (quieto, caminar, correr, ladrar) y distintos tonos de pelo, y el caballo del carro del cartonero también.
 
@@ -473,6 +499,8 @@ Box de CrossFit en su dirección real, **Rivadavia 321**, en la vereda de enfren
 | `src/clau.js` | La casa de Clau: terraza, truco y los amigos |
 | `src/norte.js` | La franja norte: Sanatorio Juncal y el puesto de flores de Cerrito |
 | `src/aura.js` | Ronda de chicos farmeando aura en la plaza (turnos, puntaje, Gaspi baila) |
+| `src/seleccion.js` | Messi y la Selección en la plaza: lugares, reacciones, foto con Messi, cámara para mirar el show |
+| `src/drones.js` | Show de drones: figuras dibujadas con canvas, reparto de drones y vuelo en la placa |
 | `src/agua.js`, `src/agua-nivel.js` | Inundación: nivel del agua según la lluvia, superficie con reflejo plano, espuma, gotas y ondas |
 | `src/flotantes.js` | Lo que flota en el agua (modelos de `tools/blender/flotantes.py`) |
 | `src/flote.js` | Autos que flotan (flotación de WaterThreeJS, MIT) |

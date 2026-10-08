@@ -115,6 +115,8 @@ export class Barrio {
   brain(n, dt, world, dp) {
     // los de la ronda de aura (src/aura.js)
     if (n.aura) return world.aura?.brain(n, dt) ?? { want: 0, pose: 'listen' };
+    // Messi y los de la Selección (src/seleccion.js)
+    if (n.sel) return world.seleccion?.brain(n, dt, world) ?? { want: 0, pose: 'listen' };
     const P = world.player;
     if (n.type === 'borracho') {
       // se tambalea alrededor de la puerta, toma de a sorbos y le pide a Gaspi

@@ -91,6 +91,25 @@ def beard(C, V, skin, spec, eye_y, chin_y, head_uv):
     return np.clip(out, 0, 1) ** (1 / 2.2)
 
 
+def socks(C, V, skin, color, ground, y0, y1):
+    """Medias de fútbol pintadas en la piel de las piernas, entre y0 e y1 (m desde el piso): tela con un
+    tejido fino, un poco más oscura en el borde de arriba (el elástico) y sin cortes en las costuras."""
+    from paint import hexrgb, noise3, dilate
+    size = skin.shape[0]
+    pos, nrm, m = head_maps(C, V, size, (0, 0, 1, 1))
+    y = (pos[..., 1] - ground) * 0.1
+    a = np.clip((y - y0) / 0.01, 0, 1) * np.clip((y1 - y) / 0.008, 0, 1) * m
+    # por las costuras de la uv: el color se estira unos píxeles afuera de las caras
+    a, _ = dilate(a[..., None].astype(np.float32), m > 0, 4)
+    a = a[..., 0]
+    n = noise3(pos * [60, 160, 60], 21)
+    band = 1 - 0.18 * np.clip((y - (y1 - 0.035)) / 0.01, 0, 1)
+    col = hexrgb(color) ** 2.2 * (0.82 + 0.16 * n[..., None]) * band[..., None]
+    lin = skin ** 2.2
+    out = lin * (1 - a[..., None]) + col * a[..., None]
+    return np.clip(out, 0, 1) ** (1 / 2.2)
+
+
 def photo(C, V, skin, spec, eye_y, chin_y, head_uv):
     """Pega una foto de frente (la cara de Gaspi) en la textura de la piel: cada texel de la cabeza se
     proyecta de frente sobre la foto, alineando ojos y mentón; pesa más donde la cara mira para adelante

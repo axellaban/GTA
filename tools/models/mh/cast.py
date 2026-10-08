@@ -119,4 +119,28 @@ CAST = {
     'mh_f_gym': dict(F, age=0.48, muscle=0.65, weight=0.35, cup=0.66, seed=51, skin='young_lightskinned_female_diffuse3', hair='ponytail01',
                      clothes=['female_sportsuit01', 'shoes05'],
                      paint={'female_sportsuit01': {'top': LISO('#d8d8d8'), 'bottom': dict(LISO('#d8d8d8'), tint=True)}}),
+    # ---------------- la Selección en la plaza (src/seleccion.js): camiseta albiceleste, pantalón corto
+    # negro (el pantalón largo cortado arriba de la rodilla: 'shorts') y medias blancas pintadas en la piel
+    # ('socks'). Messi: bajito, barba castaña tupida. Hechos acá, sin fotos (como el Comandante).
+    'mh_messi': dict(M, extras={'hair': ['castano', 'oscuro']}, age=0.61, muscle=0.62, weight=0.42, height=0.3, seed=60, variety=0.3,
+                     skin='young_lightskinned_male', hair='short02', beard={'kind': 'full', 'color': '#3a281b'},
+                     clothes=['male_casualsuit04', 'shoes05'], shorts={'male_casualsuit04': 0.14}, socks='#f4f4f4',
+                     paint={'male_casualsuit04': {'top': ARGENTINA, 'bottom': LISO('#19191c')}}),
+    'mh_sel_a': dict(M, age=0.53, muscle=0.66, weight=0.4, height=0.55, seed=61, skin='young_lightskinned_male', hair='short01',
+                     clothes=['male_casualsuit04', 'shoes05'], shorts={'male_casualsuit04': 0.14}, socks='#f4f4f4',
+                     paint={'male_casualsuit04': {'top': ARGENTINA, 'bottom': LISO('#19191c')}}),
+    'mh_sel_b': dict(M, age=0.57, muscle=0.7, weight=0.45, height=0.6, seed=62, skin='young_lightskinned_male_diffuse2', hair='short03',
+                     beard={'kind': 'full', 'color': '#2b2018'},
+                     clothes=['male_casualsuit04', 'shoes05'], shorts={'male_casualsuit04': 0.14}, socks='#f4f4f4',
+                     paint={'male_casualsuit04': {'top': ARGENTINA, 'bottom': LISO('#19191c')}}),
+    'mh_sel_c': dict(M, extras=OSCURO, age=0.55, muscle=0.72, weight=0.42, height=0.65, seed=63, ethnic=MORENO, skin='young_darkskinned_male', hair='short04',
+                     beard={'kind': 'stubble', 'color': '#1d1611'},
+                     clothes=['male_casualsuit04', 'shoes05'], shorts={'male_casualsuit04': 0.14}, socks='#f4f4f4',
+                     paint={'male_casualsuit04': {'top': ARGENTINA, 'bottom': LISO('#19191c')}}),
+    # los arqueros: buzo verde liso
+    'mh_sel_arquero': dict(M, age=0.6, muscle=0.6, weight=0.5, height=0.8, seed=64, skin='middleage_lightskinned_male', hair='short02',
+                           beard={'kind': 'stubble', 'color': '#2b2018'},
+                           clothes=['male_casualsuit04', 'shoes05'], shorts={'male_casualsuit04': 0.14}, socks='#2fb35a',
+                           paint={'male_casualsuit04': {'top': {'pattern': 'solid', 'color': '#36c46a', 'trim': '#1b1b1b', 'fixed': True},
+                                                        'bottom': LISO('#19191c')}}),
 }

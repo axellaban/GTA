@@ -1639,6 +1639,42 @@ function poseHuman(h, dt, speed, pose = 'walk', t = 0) {
     b.chest.rotation.z = rock * 0.05;
     b.hips.position.x += rock * 0.02;
     b.head.rotation.set(0.38, rock * 0.15, 0);
+  } else if (pose === 'cielo') {
+    // mirando para arriba (el show de drones de src/drones.js): el cuello y la cabeza para atrás, el pecho
+    // apenas, siguiendo la figura. h.cieloV dice qué hacen las manos: 0 juntas adelante, 1 señalando,
+    // 2 filmando con el celu en alto, 3 en la cabeza (no lo pueden creer), 4 aplaudiendo, 5 colgando.
+    // h.cieloK: cuánto levanta la cabeza (según lo lejos que está la figura). t: reloj en segundos
+    const g = t;
+    const up = h.cieloK ?? 1;
+    b.spine.rotation.x = -0.05 * up;
+    b.chest.rotation.x = -0.07 * up;
+    b.neck.rotation.x = -0.3 * up;
+    b.head.rotation.set(-0.38 * up + Math.sin(g * 0.5 + h.phase) * 0.03, Math.sin(g * 0.21 + h.phase) * 0.12, 0);
+    const v = h.cieloV ?? 0;
+    if (v === 0) {
+      b.uaR.rotation.set(-0.15, 0.35, 0.25);
+      b.uaL.rotation.set(-0.15, -0.35, -0.25);
+      b.faR.rotation.x = b.faL.rotation.x = -0.95;
+    } else if (v === 1) {
+      // el brazo derecho estirado hacia la figura, el izquierdo colgando
+      b.uaR.rotation.set(-2.35 + Math.sin(g * 0.7) * 0.06, 0, -0.12);
+      b.faR.rotation.x = -0.12;
+      b.uaL.rotation.set(0.05, 0, 0.1);
+      b.faL.rotation.x = -0.2;
+    } else if (v === 2) {
+      b.uaR.rotation.set(-1.75, 0.1, 0.32);
+      b.uaL.rotation.set(-1.75, -0.1, -0.32);
+      b.faR.rotation.x = b.faL.rotation.x = -1.05;
+    } else if (v === 3) {
+      b.uaR.rotation.set(-2.5, 0, -0.55);
+      b.uaL.rotation.set(-2.5, 0, 0.55);
+      b.faR.rotation.x = b.faL.rotation.x = -1.95;
+    } else if (v === 4) {
+      const open = 0.5 + 0.5 * Math.cos(g * Math.PI * 2 * 1.8);
+      b.uaR.rotation.set(-1.15, -0.2, 0.32 - 0.5 * open);
+      b.uaL.rotation.set(-1.15, 0.2, -0.32 + 0.5 * open);
+      b.faR.rotation.x = b.faL.rotation.x = -1.0;
+    }
   } else if (pose === 'film') {
     // filmando con el celu: las dos manos adelante a la altura de la cara, siguiendo lo que pasa
     const g = t * 0.7;

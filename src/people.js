@@ -37,6 +37,16 @@ vec3 tintRgb(vec3 c) {
   vec3 p = abs(fract(c.xxx + vec3(1.0, 2.0 / 3.0, 1.0 / 3.0)) * 6.0 - 3.0);
   return c.z * mix(vec3(1.0), clamp(p - 1.0, 0.0, 1.0), c.y);
 }`;
+// la espalda de la camiseta de la Selección en la uv de la prenda (male_casualsuit04 en el atlas de
+// tools/models/mh: u = 0,089 - 0,354·x, v = 0,972 - 0,33·y con x a la izquierda e y para arriba, en m):
+// de un omóplato al otro y de los hombros a la cintura
+const DORSAL_RECT = new THREE.Vector4(0.0431, 0.5332, 0.1351, 0.6421);
+const DORSAL_GLSL = `
+#ifdef DORSAL
+uniform sampler2D uDorsalMap;
+uniform vec4 uDorsalCell;
+uniform vec4 uDorsalRect;
+#endif`;
 // MakeHuman (tools/models/mh): _part dice 1 piel, 2 torso, 5 mangas, 6 pantalón, 3 pelo, 7 cejas, 0 lo demás
 // (ojos, zapatos). En userData (extras del glb) viene qué ropa no cambia de color al azar (camisetas,
 // uniformes, jeans: fixed), la luminancia media de arriba y de abajo (lum: para pintarla de un color dado
@@ -102,6 +112,14 @@ function tintMH(material, ud, o) {
       uHat: { value: v4(o.hat) },
       uHatLum: { value: Math.max(0.05, lum.hat ?? 0.5) },
     });
+    if (o.dorsal) {
+      // nombre y número en la espalda (la Selección): una celda del atlas de dorsales (src/seleccion.js)
+      // sobre la zona de la espalda de la camiseta, medida en la uv de la prenda (es la misma en todos)
+      shader.defines = { ...shader.defines, DORSAL: '' };
+      shader.uniforms.uDorsalMap = { value: o.dorsal.map };
+      shader.uniforms.uDorsalCell = { value: o.dorsal.cell };
+      shader.uniforms.uDorsalRect = { value: DORSAL_RECT };
+    }
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nattribute float _part;\nvarying vec4 vPart;\nvarying vec2 vHairK;')
       .replace(
@@ -117,7 +135,7 @@ function tintMH(material, ud, o) {
         }`,
       );
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform vec3 uTint;\nuniform vec3 uSkin;\nuniform vec3 uHair;\nuniform vec4 uTop;\nuniform vec4 uVest;\nuniform vec4 uBottom;\nuniform vec2 uFix;\nuniform vec2 uLum;\nuniform float uScalp;\nuniform vec4 uHat;\nuniform float uHatLum;\nvarying vec4 vPart;\nvarying vec2 vHairK;\n' + TINT_GLSL)
+      .replace('#include <common>', '#include <common>\nuniform vec3 uTint;\nuniform vec3 uSkin;\nuniform vec3 uHair;\nuniform vec4 uTop;\nuniform vec4 uVest;\nuniform vec4 uBottom;\nuniform vec2 uFix;\nuniform vec2 uLum;\nuniform float uScalp;\nuniform vec4 uHat;\nuniform float uHatLum;\nvarying vec4 vPart;\nvarying vec2 vHairK;\n' + TINT_GLSL + DORSAL_GLSL)
       .replace(
         '#include <color_fragment>',
         `#include <color_fragment>
@@ -145,10 +163,19 @@ function tintMH(material, ud, o) {
           float gr = fract(sin(dot(floor(vMapUv * 1024.0), vec2(12.9898, 78.233))) * 43758.5453);
           diffuseColor.rgb = mix(diffuseColor.rgb, uHair * (0.62 + 0.4 * gr), sc);
           diffuseColor.a = mix(diffuseColor.a, 1.0, skin);
+          #ifdef DORSAL
+          {
+            vec2 q = (vMapUv - uDorsalRect.xy) / (uDorsalRect.zw - uDorsalRect.xy);
+            if (torso > 0.5 && q.x > 0.0 && q.x < 1.0 && q.y > 0.0 && q.y < 1.0) {
+              vec4 d = texture2D(uDorsalMap, mix(uDorsalCell.xy, uDorsalCell.zw, q));
+              diffuseColor.rgb = mix(diffuseColor.rgb, d.rgb * min(lum / uLum.x, 1.6), d.a);
+            }
+          }
+          #endif
         }`,
       );
   };
-  m.customProgramCacheKey = () => 'ropa-mh6';
+  m.customProgramCacheKey = () => (o.dorsal ? 'ropa-mh6-dorsal' : 'ropa-mh6');
   m.userData.own = true; // de este personaje solo (disposeHuman lo libera)
   return m;
 }
@@ -261,13 +288,39 @@ function dress(st, star) {
   h.star = star;
   h.tall = st.height + 0.5; // donde va el globito de lo que dice
   // todo viene en la textura: solo se fijan el pelo (gris neutro en el atlas), la piel y la ropa pedida
-  const o = { hair: hairColor(st.hair), skin: st.skin, top: st.top, vest: st.vest, bottom: st.bottom, bald: st.bald, hat: st.hat };
+  const o = { hair: hairColor(st.hair), skin: st.skin, top: st.top, vest: st.vest, bottom: st.bottom, bald: st.bald, hat: st.hat, dorsal: st.dorsal };
   h.rig.model.traverse((m) => {
     if (m.isMesh) dressMesh(m, s.scene.userData, o);
   });
   if (st.shades) wearShades(h);
   if (st.chain) wearChain(h);
   return h;
+}
+
+// ---------- La Selección (src/seleccion.js): Messi, los jugadores y los arqueros ----------
+// No salen en la calle: se cargan aparte la primera vez que hacen falta (a la tarde, cerca de la plaza).
+const SELECCION = ['mh_messi', 'mh_sel_a', 'mh_sel_b', 'mh_sel_c', 'mh_sel_arquero'];
+let selLoad = null;
+export function loadSeleccion() {
+  if (!selLoad) {
+    const loader = new GLTFLoader();
+    selLoad = Promise.all(
+      SELECCION.map((f) =>
+        loader
+          .loadAsync(`models/people/${f}.glb`)
+          .then((g) => {
+            if (TOUCH) g.scene.traverse((o) => o.isMesh && o.material.map && halve(o.material.map));
+            (PEOPLE.scenes.seleccion ??= []).push({ f, scene: g.scene });
+          })
+          .catch((e) => console.warn('No cargó', f, e)),
+      ),
+    ).then(() => (PEOPLE.scenes.seleccion?.length ?? 0) === SELECCION.length);
+  }
+  return selLoad;
+}
+// o: { height, hair, skin, dorsal: { map, cell } } (null si no cargó el modelo)
+export function makeJugador(file, o) {
+  return dress({ file, height: o.height, hair: o.hair, skin: o.skin, dorsal: o.dorsal }, 'jugador');
 }
 
 // ---------- Cualquier look de human.js con un modelo MakeHuman ----------
