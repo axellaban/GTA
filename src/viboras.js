@@ -115,7 +115,8 @@ export class Viboras {
     const P = world.player;
     const wet = ag && ag.level > 0.1 && !world.inside;
     if (wet && this.geo && this.list.length < N && Math.random() < dt * 0.25) this.spawn(world);
-    const inWater = !P.vehicle && (P.swimming || (P.waterDepth ?? 0) > 0.3);
+    // (arriba de un bote o de un auto no pican)
+    const inWater = !P.vehicle && !P.boat && (P.swimming || (P.waterDepth ?? 0) > 0.3);
     for (const v of this.list) {
       const dx = P.x - v.x;
       const dz = P.z - v.z;

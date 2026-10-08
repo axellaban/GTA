@@ -58,6 +58,7 @@ THREE.ShaderChunk.fog_pars_fragment = /* glsl */ `
   uniform sampler2D lampPool;
   uniform sampler2D lampSpot;
   uniform vec4 aguaParams;
+  uniform vec2 aguaMarca;
   uniform sampler2D causticTex;
   uniform vec4 lampParams;
   uniform float lampWet;
@@ -126,6 +127,8 @@ export const AGUA = {
   // nivel del agua (-9 = seco), reloj, fuerza del sol (0 de noche), cuadro del ciclo de cáusticas
   aguaParams: { value: new THREE.Vector4(-9, 0, 0, 0) },
   causticTex: { value: null },
+  // hasta dónde llegó el agua (m) y qué tan fresca está la marca (1 recién bajó, 0 ya se secó)
+  aguaMarca: { value: new THREE.Vector2(-9, 0) },
 };
 THREE.ShaderChunk.lights_fragment_end += /* glsl */ `
 #ifdef USE_FOG
@@ -156,6 +159,21 @@ THREE.ShaderChunk.lights_fragment_end += /* glsl */ `
       reflectedLight.indirectDiffuse *= mix(aguaT, vec3(1.0), 0.35);
       reflectedLight.directSpecular *= aguaT;
       reflectedLight.indirectSpecular *= aguaT;
+    }
+    // cuando el agua bajó: lo que estuvo abajo queda mojado y embarrado, con la línea de mugre arriba
+    float marcaD = aguaMarca.x - aguaW.y;
+    if (aguaMarca.y > 0.01 && marcaD > -0.03 && aguaW.y > aguaParams.x) {
+      vec3 marcaN = inverseTransformDirection(normal, viewMatrix);
+      float barro = texture2D(causticTex, aguaW.xz * 0.045 + aguaW.y * 0.1).r;
+      float k = aguaMarca.y * smoothstep(-0.03, 0.04, marcaD);
+      // la línea: una franja oscura de 4 cm justo donde estuvo el borde (en las paredes)
+      float linea = smoothstep(0.045, 0.0, abs(marcaD - 0.01)) * (1.0 - abs(marcaN.y)) * aguaMarca.y;
+      vec3 sucio = mix(vec3(0.62, 0.55, 0.44), vec3(0.45, 0.38, 0.28), barro);
+      float piso = smoothstep(0.6, 0.9, marcaN.y);
+      vec3 tinte = mix(vec3(1.0), sucio, k * (0.55 + 0.35 * piso));
+      tinte *= 1.0 - linea * 0.45;
+      reflectedLight.directDiffuse *= tinte;
+      reflectedLight.indirectDiffuse *= tinte;
     }
   }
 #endif
@@ -249,6 +267,15 @@ export function buildLampMap(lamps, shops = [], neon = null) {
   }
 }
 
+const MARCA_OFF = { value: new THREE.Vector2(-9, 0) };
+// Los materiales de lo que hay en la escena ahora (la ciudad recién armada) llevan la marca del agua.
+export function marcarCiudad(scene, soloFijos = false) {
+  scene.traverse((o) => {
+    if (!o.isMesh || (soloFijos && !o.userData.static)) return;
+    for (const m of [].concat(o.material)) if (m?.isMaterial) m.userData.marca = true;
+  });
+}
+
 // Todos los materiales reciben los uniforms compartidos al compilarse.
 THREE.Material.prototype.onBeforeCompile = function (shader) {
   shader.uniforms.fogSunDir = ATMO.fogSunDir;
@@ -261,5 +288,7 @@ THREE.Material.prototype.onBeforeCompile = function (shader) {
   shader.uniforms.neonSpot = LAMPS.neonSpot;
   shader.uniforms.neonOn = LAMPS.neonOn;
   shader.uniforms.aguaParams = AGUA.aguaParams;
+  // (la marca de barro va solo en la ciudad fija: marcarCiudad; la gente y los autos que pasan, no)
+  shader.uniforms.aguaMarca = this?.userData?.marca ? AGUA.aguaMarca : MARCA_OFF;
   shader.uniforms.causticTex = AGUA.causticTex;
 };

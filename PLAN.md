@@ -1016,6 +1016,19 @@ Ideas para seguir: capó que se levanta con mucho daño; semáforos y carteles q
 
 ## 6b. Última sesión (para quien siga)
 
+- ✅ 2026-10-08 (segunda tanda), Claude: auditoría de la inundación y mejoras. Arreglos: en el celu el botón
+  "Subir" buceando quedaba tapado por el de acción ("Subir al auto" de los autos que flotan) → nadando el botón
+  de acción se corre y buceando no se ofrecen autos; Subir sube derecho aunque el joystick apunte abajo.
+  Reaparecer (ahogado, muerto o preso en el agua o en bote) limpia nado/buceo/bote. La ventana fina del piso
+  del agua se arma en varios cuadros (antes, 30-60 ms de tirón al manejar rápido). El techo de agua visto
+  desde abajo sigue la hora (de noche no brilla). Las ondas de autos lejanos ya no borran las de Gaspi; al
+  shader van solo las ondas vivas. Los patrulleros respetan el agua. Las víboras no pican arriba del bote.
+  Nuevo: robar/subirse a un bote y remar (`src/botes.js`: near/board/leave/ride), vecinos varados en los
+  techos de los autos que flotan para rescatar, cosas en el fondo del bajo nivel para buscar buceando
+  (`src/tesoros.js`), marca del agua y barro en paredes y calles al bajar (solo en la ciudad fija:
+  `marcarCiudad` en `src/atmosphere.js`), crol con la espalda a ras del agua. Prueba de celu emulado:
+  `node movil.mjs` (en la sesión; mantiene "Subir" con un toque real por CDP).
+
 - ✅ 2026-10-08, Claude: **inundaciones, nado y buceo** (README §0.39). Pedido del dueño: "que se inunden las
   calles mucho, que Gaspi nade y bucee como en GTA, autos que floten, botes con gente, víboras; agua 10/10, sin
   inventar de cero". Lo que se reusó (todo con licencia abierta, créditos en la pausa y el README):

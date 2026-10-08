@@ -323,6 +323,14 @@ Qué hay:
   levantan, se mecen y **los lleva la corriente** hasta trabarse contra una pared. Antes, el agua los frena,
   levantan **olas** y, si llega a la toma de aire, **se ahoga el motor**.
 - **Botes de remo con vecinos** que pasan por las calles inundadas, doblan en las esquinas y dejan estela.
+  **Gaspi se puede subir a uno** (F; si tiene dueño, se lo saca y el vecino cae al agua puteando) y **remar**:
+  W/S adelante y atrás, A/D para girar, Shift más fuerte, F para bajarse. Encalla donde hay poca agua.
+- **Vecinos varados** arriba de los autos que flotan, haciendo señas y gritando "¡AYUDA!": pasá al lado en
+  bote y se suben (**$4.000 y respeto** por cada uno; hay lugar para dos).
+- **Lo que se llevó el agua**: con el bajo nivel lleno, en el fondo quedan billeteras, una mochila y un
+  celular que brillan apenas en el agua turbia; se agarran **buceando** (como los paquetes escondidos de GTA).
+- **La marca del agua**: cuando baja, las paredes quedan mojadas hasta donde llegó, con la línea de mugre
+  arriba, y las calles embarradas; se seca en unos minutos.
 - **Víboras (yararás) nadando** en S. Si Gaspi está en el agua, alguna se le acerca y **lo pica**.
 - **La gente** camina lenta con el agua a la cintura y nada si no hace pie. Caminar en el agua es más lento,
   con los brazos abiertos y chapoteando.

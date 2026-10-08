@@ -828,7 +828,7 @@ export class Traffic {
 // olas de un auto andando por el agua: rocío en las ruedas de adelante y ondas a los costados (solo cerca)
 export function carWake(world, v, wd) {
   const P = world.player;
-  if (Math.abs(v.x - P.x) > 70 || Math.abs(v.z - P.z) > 70) return;
+  if (Math.abs(v.x - P.x) > 45 || Math.abs(v.z - P.z) > 45) return;
   const ag = world.agua;
   const sp = Math.abs(v.speed);
   v.wakeT = (v.wakeT || 0) - (world.player.dt || 1 / 60);

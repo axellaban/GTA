@@ -131,8 +131,10 @@ export class Flotantes {
         it.vz += (dz / d) * push * dt * 3;
         it.spin += (Math.random() - 0.5) * dt * 4;
       }
-      if (P.vehicle && Math.abs(P.vehicle.speed) > 1) {
-        const v = P.vehicle;
+      // (el bote de Gaspi también los corre: src/botes.js)
+      const mover = P.vehicle || (P.boat && { x: P.boat.x, z: P.boat.z, speed: P.boat.speed || 0, vx: Math.sin(P.boat.heading) * (P.boat.speed || 0), vz: Math.cos(P.boat.heading) * (P.boat.speed || 0) });
+      if (mover && Math.abs(mover.speed) > 0.3) {
+        const v = mover;
         const ex = it.x - v.x;
         const ez = it.z - v.z;
         const e = Math.hypot(ex, ez);

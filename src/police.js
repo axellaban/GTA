@@ -2,7 +2,7 @@
 // canas a pie que te quieren esposar (o te tiran si la cosa se pone fea) y el helicóptero.
 import * as THREE from 'three';
 import { makeCar } from './vehicles.js';
-import { Vehicle } from './traffic.js';
+import { Vehicle, carWake } from './traffic.js';
 import { handWeapon, WEAPONS } from './weapons.js';
 import { R } from './rng.js';
 import { radialTexture } from './city.js';
@@ -213,6 +213,20 @@ export class Police {
   }
 
   drive(v, tx, tz, vmax, dt, world) {
+    // inundación (src/agua.js): flotando lo lleva el agua (src/flote.js); en el agua van despacio, no se
+    // meten donde está hondo y levantan olas
+    const ag = world.agua;
+    if (ag && ag.level > -5.9) {
+      if (v.floating) {
+        v.speed = 0;
+        return;
+      }
+      const wd = ag.depth(v.x, v.z);
+      const ahead = ag.depth(v.x + v.fx * 8, v.z + v.fz * 8);
+      if (wd > 0.04) vmax = Math.min(vmax, Math.max(2.5, 14 * (1 - wd * 1.3)));
+      if (ahead > 0.6 && wd < 0.6) vmax = Math.min(vmax, 0.5);
+      if (wd > 0.06 && Math.abs(v.speed) > 1.5) carWake(world, v, wd);
+    }
     let diff = Math.atan2(tx - v.x, tz - v.z) - v.heading;
     while (diff > Math.PI) diff -= Math.PI * 2;
     while (diff < -Math.PI) diff += Math.PI * 2;

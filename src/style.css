@@ -1275,18 +1275,25 @@ body {
   #touch.ufo .on-moto,
   #touch.heli #btn-beam,
   #touch:not(.swim) .on-swim,
-  #touch.swim .on-foot {
+  #touch.swim .on-foot,
+  #touch.boat .on-foot {
     display: none;
   }
-  /* nadando: bucear grande abajo y subir arriba (src/agua.js) */
+  /* nadando: bucear grande abajo y subir arriba (src/agua.js); el botón de acción (subir al auto o al
+     bote) se corre a la izquierda para no tapar "Subir" */
   #btn-dive {
     right: calc(24px + env(safe-area-inset-right, 0px));
     bottom: calc(24px + env(safe-area-inset-bottom, 0px));
     background: rgba(64, 128, 190, 0.6);
   }
   #btn-rise {
-    right: calc(24px + env(safe-area-inset-right, 0px));
+    right: calc(37px + env(safe-area-inset-right, 0px));
     bottom: calc(132px + env(safe-area-inset-bottom, 0px));
+    background: rgba(64, 128, 190, 0.45);
+  }
+  #touch.swim #btn-ctx {
+    right: calc(132px + env(safe-area-inset-right, 0px));
+    bottom: calc(44px + env(safe-area-inset-bottom, 0px));
   }
   /* plato volador: rayo grande abajo, tractor al lado y subir/bajar en columna */
   #btn-laser {

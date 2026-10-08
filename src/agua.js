@@ -33,6 +33,7 @@ export class Agua {
     this.flow = new THREE.Vector2(0.22, 0.1);
     // fuentes de ondas: x, z, edad, fuerza
     this.rips = Array.from({ length: 32 }, () => new THREE.Vector4(0, 0, 99, 0));
+    this.ripsLive = Array.from({ length: 32 }, () => new THREE.Vector4(0, 0, 99, 0));
     this.ripI = 0;
     this.buildGround();
     this.buildSurface();
@@ -96,6 +97,10 @@ export class Agua {
     this.t += dt;
     this.level = stepLevel(this.level, rain, dt, !!world.weather?.diluvio);
     for (const r of this.rips) r.z += dt;
+    // al shader van solo las ondas vivas (las primeras uRipN): el resto del tiempo el bucle no corre
+    let n = 0;
+    for (const r of this.rips) if (r.z < 4 && r.w > 0) this.ripsLive[n++].copy(r);
+    this.U.uRipN.value = n;
     this.news(world);
     const on = this.level > SECO + 0.1 && !world.inside;
     this.mesh.visible = on;
@@ -104,11 +109,24 @@ export class Agua {
     // cáusticas en todo lo que queda abajo (src/atmosphere.js): el sol de día, nada de noche
     const P = AGUA.aguaParams.value;
     P.set(on ? this.level : -9, this.t, (world.sunK ?? 1) * (1 - rain * 0.55), (this.t * 9) % 16);
+    // la marca del agua en las paredes y el barro: queda hasta donde llegó y se seca en unos 6 minutos
+    if (this.level >= (this.marca ?? -9) - 0.01) {
+      this.marca = this.level;
+      this.marcaK = 1;
+    } else this.marcaK = Math.max(0, (this.marcaK ?? 0) - dt / 360);
+    if (this.marcaK <= 0) this.marca = this.level;
+    // (solo desde la calle para arriba: el bajo nivel está siempre embarrado igual)
+    AGUA.aguaMarca.value.set(world.inside || this.marca < 0.06 ? -9 : this.marca, world.inside ? 0 : this.marcaK);
     if (!on) return;
     this.mesh.position.y = this.level;
     this.below.position.y = this.level;
     this.UU.uTime.value = this.t;
-    if (this.under) this.snow(world.fx, camera, dt);
+    if (this.under) {
+      // el techo de agua toma el cielo de afuera (de noche, oscuro) y el sol de la hora
+      this.UU.uSun.value = P.z;
+      if (this.scene.fog) this.UU.uSky.value.copy(this.scene.fog.color).multiplyScalar(0.6 + 0.6 * P.z);
+      this.snow(world.fx, camera, dt);
+    }
     const U = this.U;
     U.uTime.value = this.t;
     U.uRain.value = world.inside ? 0 : rain;
@@ -209,21 +227,63 @@ export class Agua {
     });
   }
 
-  // re-centra la ventana fina cuando la cámara se alejó 48 m
+  // re-centra la ventana fina cuando la cámara se alejó 48 m. El trabajo (262 mil alturas, las casas, el
+  // desenfoque y el empaquetado) se reparte en varios cuadros: de un saque eran 30-60 ms de tirón en el celu
+  // cada vez que se manejaba rápido. Mientras tanto el shader sigue usando la ventana anterior.
   followCamera(camera) {
     const W = this.win;
     const cx = Math.round(camera.position.x / 16) * 16;
     const cz = Math.round(camera.position.z / 16) * 16;
-    if (Math.abs(cx - W.x) < 48 && Math.abs(cz - W.z) < 48) return;
-    W.x = cx;
-    W.z = cz;
-    const { N, RES } = W;
-    const half = (N * RES) / 2;
-    const x0 = cx - half;
-    const z0 = cz - half;
-    for (let j = 0; j < N; j++) {
-      for (let i = 0; i < N; i++) this.winH[j * N + i] = this.heightAt(x0 + (i + 0.5) * RES, z0 + (j + 0.5) * RES);
+    const job = this.job;
+    if (!job) {
+      if (Math.abs(cx - W.x) < 48 && Math.abs(cz - W.z) < 48) return;
+      const half = (W.N * W.RES) / 2;
+      this.job = { cx, cz, x0: cx - half, z0: cz - half, row: 0, step: 0 };
+      // la primera vez (sin ventana todavía) se hace de una
+      if (!Number.isFinite(W.x)) while (this.job) this.windowStep();
+      return;
     }
+    this.windowStep();
+  }
+  windowStep() {
+    const job = this.job;
+    const W = this.win;
+    const { N, RES } = W;
+    const { x0, z0 } = job;
+    if (job.step === 0) {
+      // alturas: 64 filas por cuadro
+      const j1 = Math.min(N, job.row + 64);
+      for (let j = job.row; j < j1; j++) {
+        for (let i = 0; i < N; i++) this.winH[j * N + i] = this.heightAt(x0 + (i + 0.5) * RES, z0 + (j + 0.5) * RES);
+      }
+      job.row = j1;
+      if (j1 >= N) job.step = 1;
+      return;
+    }
+    if (job.step === 1) {
+      this.windowWalls(x0, z0);
+      job.step = 2;
+      return;
+    }
+    // empaquetar para la placa de video, en dos mitades
+    const h0 = job.step === 2 ? 0 : (N * N) / 2;
+    const h1 = h0 + (N * N) / 2;
+    for (let k = h0; k < h1; k++) {
+      this.winData[k * 2] = THREE.DataUtils.toHalfFloat(this.winH[k]);
+      this.winData[k * 2 + 1] = THREE.DataUtils.toHalfFloat(Math.min(1, this.winO[k] * 1.8));
+    }
+    if (job.step === 2) {
+      job.step = 3;
+      return;
+    }
+    this.winTex.needsUpdate = true;
+    this.U.uWin.value.set(x0, z0, N * RES, 0);
+    W.x = job.cx;
+    W.z = job.cz;
+    this.job = null;
+  }
+  windowWalls(x0, z0) {
+    const { N, RES } = this.win;
     // paredes: las casas dibujadas en blanco y desparramadas (la espuma se junta contra ellas)
     const g = this.winCanvas.getContext('2d', { willReadFrequently: true });
     g.setTransform(1, 0, 0, 1, 0, 0);
@@ -253,12 +313,6 @@ export class Agua {
     }
     blur(this.winO, this.winTmp, N, 3);
     blur(this.winO, this.winTmp, N, 3);
-    for (let k = 0; k < N * N; k++) {
-      this.winData[k * 2] = THREE.DataUtils.toHalfFloat(this.winH[k]);
-      this.winData[k * 2 + 1] = THREE.DataUtils.toHalfFloat(Math.min(1, this.winO[k] * 1.8));
-    }
-    this.winTex.needsUpdate = true;
-    this.U.uWin.value.set(x0, z0, N * RES, 0);
   }
 
   // ---------- la superficie ----------
@@ -279,7 +333,8 @@ export class Agua {
       uGround: { value: this.winTex },
       uGroundC: { value: this.coarseTex },
       uNoise: { value: noiseTexture() },
-      uRips: { value: this.rips },
+      uRips: { value: this.ripsLive },
+      uRipN: { value: 0 },
       uRefl: { value: null },
       uReflOn: { value: 0 },
       uTexM: { value: new THREE.Matrix4() },
@@ -303,7 +358,7 @@ export class Agua {
         .replace('#include <lights_fragment_end>', '#include <lights_fragment_end>\n' + WATER_LIGHTS)
         .replace('#include <opaque_fragment>', WATER_OUT);
     };
-    mat.customProgramCacheKey = () => 'agua-2';
+    mat.customProgramCacheKey = () => 'agua-3';
     const mesh = new THREE.Mesh(geo, mat);
     mesh.receiveShadow = true;
     mesh.castShadow = false;
@@ -580,6 +635,7 @@ uniform sampler2D uGround;
 uniform sampler2D uGroundC;
 uniform sampler2D uNoise;
 uniform vec4 uRips[32];
+uniform int uRipN;
 uniform sampler2D uRefl;
 uniform float uReflOn;
 uniform vec3 uMurk;
@@ -645,8 +701,8 @@ vec3 wRips(vec2 p) {
   vec2 g = vec2(0.0);
   float foam = 0.0;
   for (int i = 0; i < 32; i++) {
+    if (i >= uRipN) break;
     vec4 r = uRips[i];
-    if (r.z > 4.0 || r.w <= 0.0) continue;
     vec2 d = p - r.xy;
     float dist = length(d);
     float rad = r.z * 1.35 + 0.15;
@@ -668,11 +724,14 @@ vec2 wp = vWPos.xz;
 // la corriente: dos capas de ruido que se cruzan
 vec2 fl = uFlow * uTime;
 vec4 n1 = texture2D(uNoise, (wp - fl) * 0.045);
-vec4 n2 = texture2D(uNoise, (wp - fl * 0.6) * 0.13 + 0.37);
-vec4 n3 = texture2D(uNoise, (wp + fl.yx * 0.8) * 0.33 + 0.71);
-vec2 wGrad = (n1.rg - 0.5) * 0.18 + (n2.rg - 0.5) * 0.12 + (n3.rg - 0.5) * 0.06 * (0.4 + uRain);
+vec2 wGrad;
 float wBlendFoam = 0.0;
-if (uWavesOn > 0.5) {
+if (uWavesOn < 0.5) {
+  // (hasta que carguen las ondas de Blender: ruido)
+  vec4 n2 = texture2D(uNoise, (wp - fl * 0.6) * 0.13 + 0.37);
+  vec4 n3 = texture2D(uNoise, (wp + fl.yx * 0.8) * 0.33 + 0.71);
+  wGrad = (n1.rg - 0.5) * 0.18 + (n2.rg - 0.5) * 0.12 + (n3.rg - 0.5) * 0.06 * (0.4 + uRain);
+} else {
   // la simulación de océano de Blender: dos escalas que se cruzan (y la corriente las arrastra)
   float fr = mod(uTime * 9.0, 16.0);
   vec3 wa = wWaves((wp - fl * 0.8) / 6.0, fr);

@@ -1,7 +1,7 @@
 // GTA VI Conurba · Temperley. Arma el mundo, el ciclo de día y noche, el clima y el loop del juego.
 import * as THREE from 'three';
 import './style.css';
-import { ATMO, LAMPS, NIGHT, buildLampMap } from './atmosphere.js';
+import { ATMO, LAMPS, NIGHT, buildLampMap, marcarCiudad } from './atmosphere.js';
 import { buildCity } from './city.js';
 import { makeGround, ROADS, project, STATION, COMISARIA, cornerName, nearestStreetName, nearestRoad } from './map.js';
 import { Input } from './input.js';
@@ -70,6 +70,7 @@ import { Flotantes } from './flotantes.js';
 import { Flote } from './flote.js';
 import { Botes } from './botes.js';
 import { Viboras } from './viboras.js';
+import { Tesoros } from './tesoros.js';
 
 setupInstall();
 
@@ -184,6 +185,8 @@ function showFps(dt) {
 
 // ---------- Mundo ----------
 const city = buildCity(scene);
+// la marca del agua y el barro (src/agua.js) van en la ciudad fija, no en lo que se mueve
+marcarCiudad(scene);
 flushTextures();
 const heightAt = makeGround();
 // matas de pasto y yuyos alrededor de la cámara (src/pasto.js)
@@ -241,6 +244,7 @@ const events = new Events(scene, traffic, audio, npcs);
 const trains = new Trains(scene, audio);
 glows = new Glows(scene, city);
 buildProps(scene, city);
+marcarCiudad(scene, true);
 flushTextures();
 const lights = new TrafficLights(scene, { colliders: city.colliders, fx, audio });
 const blobs = new BlobShadows(scene);
@@ -256,6 +260,8 @@ const flote = new Flote();
 // botes de remo con vecinos (Kenney Watercraft Kit, CC0) y víboras nadando (cobra CC0 de OpenGameArt)
 const botes = new Botes(scene);
 const viboras = new Viboras(scene);
+// lo que se llevó el agua, en el fondo del bajo nivel (se agarra buceando)
+const tesoros = new Tesoros(scene);
 const pickups = new Pickups(scene, audio);
 pickups.placeWorld(city, heightAt);
 // la estación de servicio (Shell de Eva Perón y Almirante Brown): su luz entra en el mapa de faroles
@@ -286,6 +292,7 @@ world.agua = agua;
 world.flotantes = flotantes;
 world.botes = botes;
 world.viboras = viboras;
+world.tesoros = tesoros;
 world.nafta = nafta;
 world.comisaria = comisaria;
 // portazo: se oye si Gaspi está cerca
@@ -1022,8 +1029,12 @@ function interactions() {
   if (!action) action = tobogan.action(world);
   if (!action) action = clau.action(world);
   if (!action) action = norte.action(world);
-  const car = player.nearestVehicle(world);
+  // (buceando no hay autos a mano)
+  const car = player.diving ? null : player.nearestVehicle(world);
+  // botes en la inundación (src/botes.js)
+  const bote = !player.vehicle && !player.diving && (player.boat || botes.near(player));
   if (action) hud.prompt('E', action.text);
+  else if (bote) hud.prompt('F', player.boat ? 'Bajarse del bote' : bote.people.some((p) => p.rower) ? 'Sacarle el bote' : 'Subirse al bote');
   else if (car) {
     let txt = car.kind === 'moto' ? (car.fallen ? 'Levantar la moto' : 'Subirse a la moto') : car.kind === 'carro' ? 'Subirse al carro' : 'Subir al auto';
     if (car.police) txt = 'Robar el patrullero';
@@ -1111,6 +1122,7 @@ function speakers() {
   if (cielo.bubble) add(cielo.fortPos.x, 420 + 2.5, cielo.fortPos.z, cielo.bubble, false, { key: 41 });
   if (uver.bubble && uver.v) add(uver.v.x, 2.3, uver.v.z, uver.bubble, true, { key: 23 });
   if (laban.bubble && laban.v) add(laban.v.x, 2.3, laban.v.z, laban.bubble, false, { female: laban.bubble.female, key: laban.bubble.female ? 31 : 17 });
+  for (const v of botes.speakers()) add(v.x, v.y, v.z, v.b, false, { female: v.female, key: v.x });
   const ct = clau.talker();
   if (ct) add(ct.x, ct.y, ct.z, ct.b, false, { key: ct.key });
   // la gente del corte canta
@@ -1369,6 +1381,7 @@ function frame(now) {
   flote.update(dt, world);
   botes.update(dt, world);
   viboras.update(dt, world);
+  tesoros.update(dt, world);
   resolveVehicleFrame(world, vehiclePoses);
   updateObjective();
   updateGps(dt);

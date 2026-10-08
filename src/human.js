@@ -1368,7 +1368,8 @@ function poseHuman(h, dt, speed, pose = 'walk', t = 0) {
       const ph = t % 1;
       const roll = Math.sin(ph * P);
       b.root.rotation.x = 1.42;
-      b.root.position.set(0, -0.3 - roll * 0.015, -0.92);
+      // (la espalda y los hombros quedan a ras del agua)
+      b.root.position.set(0, -0.19 - roll * 0.015, -0.92);
       for (const [ua, fa, side, off] of [
         [b.uaR, b.faR, -1, 0],
         [b.uaL, b.faL, 1, 0.5],

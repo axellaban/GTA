@@ -2,6 +2,9 @@
 // cosas de la casa, de paseo) por las calles, doblan en las esquinas y dejan estela. Los botes son del
 // Watercraft Kit de Kenney (CC0, public/models/agua/bote-*.glb, con sus remos); la gente es la del juego
 // (src/human.js) con la pose de remar.
+// Gaspi se puede subir a uno (F; si tiene dueño, se lo saca y el vecino cae al agua) y remar: W/S para
+// adelante y atrás, A/D para girar, F para bajarse. Arriba de los autos que flotan hay vecinos varados
+// pidiendo ayuda: si Gaspi pasa en bote al lado, se suben (plata y respeto por cada rescate).
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { ROADS, ROAD_NODES, pointAt, project } from './map.js';
@@ -9,6 +12,8 @@ import { makeHuman, animateHuman, randomCivilian } from './human.js';
 import { disposeHuman } from './people.js';
 
 const MAX = 3;
+const VARADOS = 2;
+const GRITOS = ['¡AYUDA!', '¡Acá! ¡Acá!', '¡Sáquenme de acá!', '¡Por favor, un bote!', '¡No sé nadar!'];
 const SPEED = 1.25;
 const DRAFT = 0.14; // cuánto se hunde el casco
 
@@ -18,6 +23,7 @@ export class Botes {
     this.list = [];
     this.models = null;
     this.t = 0;
+    this.varados = [];
     const L = new GLTFLoader();
     Promise.all(['bote-chico', 'bote-grande'].map((n) => L.loadAsync(`models/agua/${n}.glb`)))
       .then((gs) => {
@@ -159,14 +165,22 @@ export class Botes {
     const P = world.player;
     for (const b of this.list) {
       const d = Math.hypot(b.x - P.x, b.z - P.z);
-      if (!wet || d > 190) b.gone = true;
+      if (!b.mine && (!wet || d > 190)) b.gone = true;
       if (b.gone) continue;
-      this.advance(b, world, dt);
-      this.place(b, world, dt);
+      // el de Gaspi lo mueve ride(); uno sin nadie que reme queda a la deriva
+      if (b.mine) {
+        /* nada */
+      } else if (b.people.some((p) => p.rower)) {
+        this.advance(b, world, dt);
+        this.place(b, world, dt);
+      } else {
+        b.x += ag.flow.x * 0.6 * dt;
+        b.z += ag.flow.y * 0.6 * dt;
+      }
       b.mesh.visible = d < 150;
       if (!b.mesh.visible) continue;
       // flota y se mece; con cada remada se adelanta un poco
-      b.rowT += dt * 0.55;
+      if (!b.mine && b.people.some((p) => p.rower)) b.rowT += dt * 0.55;
       const stroke = Math.sin(b.rowT * Math.PI * 2);
       const bob = Math.sin(this.t * 1.7 + b.ph) * 0.03 * (1 + ag.rain);
       b.mesh.position.set(b.x, ag.level - DRAFT + bob, b.z);
@@ -193,7 +207,7 @@ export class Botes {
         }
       }
       // Gaspi nadando choca con el bote (no lo atraviesa)
-      if (d < 1.9 && !P.vehicle) {
+      if (d < 1.9 && !P.vehicle && !b.mine) {
         const k = (1.9 - d) / Math.max(d, 0.01);
         P.x += (P.x - b.x) * k;
         P.z += (P.z - b.z) * k;
@@ -205,5 +219,166 @@ export class Botes {
       for (const p of b.people) disposeHuman(p.h);
     }
     this.list = this.list.filter((b) => !b.gone);
+    this.updateVarados(dt, world, wet);
+  }
+
+  // ---------- Gaspi en bote ----------
+  // el bote más cercano a Gaspi (a menos de 2,8 m)
+  near(P) {
+    let best = null;
+    for (const b of this.list) {
+      if (b.mine || b.gone) continue;
+      const d = Math.hypot(b.x - P.x, b.z - P.z);
+      if (d < 2.8 && (!best || d < best.d)) best = { b, d };
+    }
+    if (best) best.b.d = best.d;
+    return best?.b ?? null;
+  }
+  board(b, world) {
+    const P = world.player;
+    const rower = b.people.find((p) => p.rower);
+    if (rower) {
+      // se lo sacás: el que remaba cae al agua y sale nadando, puteando
+      b.mesh.remove(rower.h.root);
+      disposeHuman(rower.h);
+      b.people = b.people.filter((p) => p !== rower);
+      const sx = Math.cos(b.heading) * 1.6;
+      const sz = -Math.sin(b.heading) * 1.6;
+      const n = world.npcs.spawnWalker({ x: b.x + sx, z: b.z + sz, heading: b.heading + Math.PI / 2 }, P);
+      n?.say?.(['¡Eh! ¡Mi bote!', '¡Chorro! ¡Devolvé el bote!', '¡Encima con la inundación, guacho!'][(Math.random() * 3) | 0], 3.5);
+      world.agua.ripple(b.x + sx, b.z + sz, 1);
+      world.audio.chapuzon?.(0.7);
+    }
+    b.mine = true;
+    b.speed = 0;
+    P.boat = b;
+    P.swimming = P.diving = false;
+    P.aiming = false;
+    world.hud.flash(rower ? 'BOTE ROBADO' : 'EN BOTE', 'W/S remar · A/D girar · F bajarse. Rescatá a los vecinos varados.', 'ok', 3);
+  }
+  leave(world) {
+    const P = world.player;
+    const b = P.boat;
+    if (!b) return;
+    P.boat = null;
+    b.mine = false;
+    b.speed = 0;
+    // al costado del bote, en el agua
+    P.x = b.x + Math.cos(b.heading) * 1.7;
+    P.z = b.z - Math.sin(b.heading) * 1.7;
+    P.y = world.agua.level;
+    P.mvx = P.mvz = 0;
+    world.agua.ripple(P.x, P.z, 0.8);
+  }
+  ride(dt, world) {
+    const P = world.player;
+    const b = P.boat;
+    const { input } = world;
+    const ag = world.agua;
+    const ax = input.axis();
+    const fast = input.down('shift') || input.sprint;
+    const throttle = -ax.y;
+    b.speed = b.speed ?? 0;
+    b.speed += (throttle * (fast ? 2.9 : 1.9) - b.speed) * Math.min(1, dt * 0.7);
+    b.heading -= ax.x * dt * 0.95 * (0.35 + Math.min(1, Math.abs(b.speed)));
+    const nx = b.x + Math.sin(b.heading) * b.speed * dt;
+    const nz = b.z + Math.cos(b.heading) * b.speed * dt;
+    // encalla donde hay poca agua; contra las casas rebota
+    if (ag.depth(nx, nz) < 0.3) {
+      b.speed = 0;
+      if (!b.avisoEncalla) world.hud.toast('El bote tocó fondo: dale para atrás o bajate (F)', 2.5);
+      b.avisoEncalla = true;
+    } else {
+      b.avisoEncalla = false;
+      const p = { x: nx, z: nz };
+      if (world.colliders.resolveCircle(p, 1.15)) b.speed *= -0.25;
+      b.x = p.x;
+      b.z = p.z;
+    }
+    // remadas: el ritmo sigue al empuje
+    const prev = b.rowT;
+    if (Math.abs(throttle) > 0.05) b.rowT += dt * (0.3 + Math.abs(b.speed) * 0.2) * Math.sign(throttle || 1);
+    if (Math.floor(prev * 1) !== Math.floor(b.rowT * 1)) world.audio.brazada?.(0.35);
+    // Gaspi sentado en el banco del medio, mirando para atrás (como se rema)
+    P.x = b.x;
+    P.z = b.z;
+    P.heading = b.heading + Math.PI;
+    P.y = (b.mesh.position.y || ag.level) + 0.12;
+    P.speed = 0;
+    P.mvx = P.mvz = 0;
+    animateHuman(P.h, dt, 0, 'remar', b.rowT);
+    // si se vació la calle, se baja solo
+    if (ag.depth(b.x, b.z) < 0.15) this.leave(world);
+  }
+
+  // ---------- Vecinos varados ----------
+  updateVarados(dt, world, wet) {
+    const P = world.player;
+    const deep = wet && world.agua.streetDepth > 0.6;
+    if (deep && this.varados.length < VARADOS && Math.random() < dt * 0.15) this.spawnVarado(world);
+    for (const v of this.varados) {
+      const car = v.car;
+      if (!deep || !car.floating || Math.hypot(car.x - P.x, car.z - P.z) > 160) v.gone = true;
+      if (v.gone) continue;
+      v.t += dt;
+      // parado en el techo del auto que flota, haciendo señas
+      v.h.root.position.set(car.x, (car.floatY ?? 0) + (car.tall ?? 1.45), car.z);
+      v.h.root.rotation.y = Math.atan2(P.x - car.x, P.z - car.z);
+      animateHuman(v.h, dt, 0, 'wave', v.t);
+      v.sayT -= dt;
+      if (v.sayT <= 0) {
+        v.sayT = 3.5 + Math.random() * 3;
+        v.bubble = { text: GRITOS[(Math.random() * GRITOS.length) | 0], t: 2.5 };
+      }
+      if (v.bubble) {
+        v.bubble.t -= dt;
+        if (v.bubble.t <= 0) v.bubble = null;
+      }
+      // Gaspi pasa al lado en bote: se sube
+      const b = P.boat;
+      if (b && Math.hypot(b.x - car.x, b.z - car.z) < 3.4) {
+        const seats = [-0.8, 0.85].filter((z) => !b.people.some((p) => Math.abs(p.h.root.position.z - z) < 0.2));
+        if (!seats.length) {
+          if (!v.lleno) world.hud.toast('No hay más lugar en el bote', 2);
+          v.lleno = true;
+          continue;
+        }
+        this.scene.remove(v.h.root);
+        v.h.root.position.set(0, 0.12, seats[0]);
+        v.h.root.rotation.set(0, 0, 0);
+        b.mesh.add(v.h.root);
+        b.people.push({ h: v.h, rower: false, ph: Math.random() * 10 });
+        v.rescued = true;
+        v.gone = true;
+        P.addMoney(4000);
+        P.addRespeto?.(3);
+        world.hud.flash('¡RESCATE!', 'Subiste a un vecino al bote. +$4.000 y respeto.', 'ok', 2.6);
+        world.audio.plata?.();
+        world.events?.pushNews('Temperley: vecinos rescatados en bote en plena inundación');
+      }
+    }
+    for (const v of this.varados) {
+      if (!v.gone || v.rescued) continue;
+      this.scene.remove(v.h.root);
+      disposeHuman(v.h);
+    }
+    this.varados = this.varados.filter((v) => !v.gone);
+  }
+  spawnVarado(world) {
+    const P = world.player;
+    const cars = [...world.traffic.parked, ...world.traffic.cars].filter((c) => c.floating && c.kind !== 'moto' && c.kind !== 'bus' && !this.varados.some((v) => v.car === c));
+    const ok = cars.filter((c) => {
+      const d = Math.hypot(c.x - P.x, c.z - P.z);
+      return d > 18 && d < 90;
+    });
+    if (!ok.length) return;
+    const car = ok[(Math.random() * ok.length) | 0];
+    const h = makeHuman({ ...randomCivilian(), scale: 0.95 + Math.random() * 0.08 });
+    this.scene.add(h.root);
+    this.varados.push({ h, car, t: Math.random() * 5, sayT: Math.random() * 2, bubble: null });
+  }
+  // los globitos de los varados (los dibuja el HUD con los demás)
+  speakers() {
+    return this.varados.filter((v) => v.bubble).map((v) => ({ x: v.car.x, y: v.h.root.position.y + 2.2, z: v.car.z, b: v.bubble, female: v.h.female }));
   }
 }

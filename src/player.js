@@ -154,8 +154,15 @@ export class Player {
     this.armor = 0;
     this.downT = 0;
     this.getupT = 0;
+    // (si se ahogó buceando o lo agarraron en el agua o en un bote: vuelve seco y con aire)
+    this.swimming = this.diving = false;
+    if (this.boat) this.boat.mine = false;
+    this.boat = null;
+    this.air = 1;
+    this.vy = 0;
     this.x = at.x;
     this.z = at.z;
+    this.y = this.heightAt(at.x, at.z);
     this.heading = at.face ?? this.heading;
     this.camYaw = this.heading + Math.PI;
     this.hooks.respawn?.(cause);
@@ -283,6 +290,7 @@ export class Player {
     if (v.rider) traffic.ejectRider(v, world, -Math.cos(v.heading), Math.sin(v.heading));
     traffic.release(v);
     world.police.dropCar(v);
+    this.swimming = this.diving = false;
     this.vehicle = v;
     v.driver = this;
     // se sienta y cierra la puerta
@@ -443,6 +451,23 @@ export class Player {
       this.place();
       return;
     }
+    // botes (src/botes.js): F para subirse (o sacárselo al que rema) y para bajarse
+    const botes = world.botes;
+    if (botes && !this.vehicle && !this.jack && !this.diving && input.hit('f')) {
+      if (this.boat) {
+        botes.leave(world);
+        input.pressed.delete('f');
+      } else {
+        const b = botes.near(this);
+        const v = b && this.nearestVehicle(world);
+        if (b && (!v || Math.hypot(v.x - this.x, v.z - this.z) > b.d)) {
+          botes.board(b, world);
+          input.pressed.delete('f');
+        }
+      }
+    }
+    // buceando no se sube a ningún auto
+    if (this.diving) input.pressed.delete('f');
     if (input.hit('f') && !this.jack && !this.exitAnim && this.downT <= 0 && this.getupT <= 0) {
       if (this.vehicle) {
         if (Math.abs(this.vehicle.speed) < 3) this.exitVehicle(world);
@@ -457,6 +482,7 @@ export class Player {
     if (this.jack) this.updateJack(dt, world);
     else if (this.exitAnim) this.updateExit(dt);
     else if (this.auto) this.updateAuto(dt);
+    else if (this.boat) botes.ride(dt, world);
     else if (this.vehicle) this.drive(dt, world);
     else this.walk(dt, world);
 
@@ -781,8 +807,9 @@ export class Player {
       tz = hz * fwd;
       if (-ax.y > 0) ty = -Math.sin(pitch);
     }
-    if (input.down(' ', 'jump')) ty += 1;
-    if (input.down('c', 'control')) ty -= 1;
+    // Subir (Espacio o el botón) manda: sube derecho aunque el joystick apunte hacia abajo
+    if (input.down(' ', 'jump')) ty = Math.max(ty, 0) + 1.2;
+    else if (input.down('c', 'control')) ty -= 1;
     const tl = Math.hypot(tx, ty, tz);
     const sp = fast ? 2.4 : 1.45;
     if (tl > 1e-3) {
@@ -865,7 +892,10 @@ export class Player {
     const { input } = world;
     const ag = world.agua;
     // C (o Control, o el botón Bucear): para abajo, como en GTA, si hay lugar abajo
-    if (!this.diving && input.hit('c', 'control') && ag.level - this.groundAt() > 1.7) this.startDive(world);
+    if (!this.diving && input.hit('c', 'control')) {
+      if (ag.level - this.groundAt() > 1.35) this.startDive(world);
+      else world.hud.toast('Acá no hay hondura para bucear', 1.6);
+    }
     if (this.diving) return this.dive(dt, world);
     // en la superficie se recupera el aire
     this.air = Math.min(1, (this.air ?? 1) + dt * 0.5);
@@ -1471,6 +1501,13 @@ export class Player {
     }
     const dt = this.dt || 1 / 60;
     const ground = this.vehicle ? (this.vehicle.floating ? this.vehicle.floatY : this.vehicle.y || 0) : this.groundAt();
+    if (this.boat) {
+      // sentado en el bote: lo ubica src/botes.js
+      this.vy = 0;
+      this.h.root.position.set(this.x, this.y, this.z);
+      this.h.root.rotation.set(0, this.heading, 0);
+      return;
+    }
     if (this.diving && !this.vehicle) this.vy = 0;
     else if (this.swimming && !this.vehicle) {
       // flota: sube y baja apenas con el agua

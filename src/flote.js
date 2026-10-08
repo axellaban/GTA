@@ -23,6 +23,8 @@ export class Flote {
     this.t += dt;
     if (!ag) return;
     const wet = ag.level > -5.9;
+    const P = world.player;
+    const ai = new Set(world.traffic.cars);
     for (const v of allVehicles(world)) {
       if (v.kind === 'tank' || v.kind === 'carro' || v.wreck === 'gone') continue;
       const g = world.heightAt(v.x, v.z);
@@ -95,9 +97,10 @@ export class Flote {
       v.floatY = f.y;
       v.floatTilt = f;
       // las ondas que hace al moverse
-      if (floating && Math.random() < dt * 1.5) ag.ripple(v.x + (Math.random() - 0.5) * 2, v.z + (Math.random() - 0.5) * 2, 0.35);
+      // (solo cerca: las ondas son pocas y si no, los autos lejos se comían las de Gaspi)
+      if (floating && Math.random() < dt * 1.5 && Math.abs(v.x - P.x) < 40 && Math.abs(v.z - P.z) < 40) ag.ripple(v.x + (Math.random() - 0.5) * 2, v.z + (Math.random() - 0.5) * 2, 0.35);
       // estacionados y varados: nadie más los dibuja en su lugar nuevo
-      if (!v.driver && v !== world.player.vehicle && !world.traffic.cars.includes(v)) v.sync?.(dt);
+      if (!v.driver && v !== P.vehicle && !ai.has(v)) v.sync?.(dt);
       // volvió a tocar el piso y bajó el agua: queda donde quedó
       if (!floating && wd < eq * 0.5 && Math.abs(f.y - g) < 0.02) {
         v.fl = null;
