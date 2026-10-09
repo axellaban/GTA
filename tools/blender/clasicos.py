@@ -341,7 +341,7 @@ def fiat600_details(c):
     # atrás: la tapa del motor con las rejillas de ventilación y las luces chiquitas
     grille_bars(c, -0.3, 0.3, 0.62, 0.74, 5, 0x161616, D, w=0.012, h=0.006, front=False)
     for sx in (-1, 1):
-        c['end_patch'](T, sx * 0.44, sx * 0.56, 0.6, 0.72, False, RED, off=0.006, nx=2, nz=2)
+        c['end_patch'](T, sx * 0.38, sx * 0.52, 0.5, 0.6, False, RED, off=0.006, nx=2, nz=2)
     exhaust(c, 0.32, z=0.26, r=0.028)
 
 
@@ -529,8 +529,10 @@ def sedan90_details(c):
         c['end_patch'](L, sx * 0.38, sx * 0.72, 0.58, 0.7, True, LENS, off=0.008, nx=4, nz=2)
         c['end_patch'](D, sx * 0.42, sx * 0.62, 0.62, 0.66, True, 0xb8b8b0, off=0.01, nx=2, nz=1)
         c['end_quad'](L, [(sx * 0.72, 0.58), (sx * 0.8, 0.59), (sx * 0.79, 0.69), (sx * 0.72, 0.7)], True, AMBER, off=0.008, nx=1, nz=1)
-    bumper(c, True, 0.42, 0.17, 0.05, 0xffffff, a=58, kind='paint')
-    bumper(c, False, 0.45, 0.17, 0.05, 0xffffff, a=58, kind='paint')
+    # del color del auto (con pintura de fábrica, el de la carrocería: el juego multiplica por blanco)
+    bc = sp.get('bumperCol', 0xffffff)
+    bumper(c, True, 0.42, 0.17, 0.05, bc, a=58, kind='paint')
+    bumper(c, False, 0.45, 0.17, 0.05, bc, a=58, kind='paint')
     c['end_patch'](D, -0.5, 0.5, 0.33, 0.37, True, 0x1a1a1a, off=0.06, nx=4, nz=1)
     rub_strip(c, -1.4, 1.6, 0.56)
     f = sp['L'] / 2
@@ -591,7 +593,7 @@ def patrullero_extra(c):
     D.box((0, yf, 0.48), (0.8, 0.05, 0.05), 0x161616)
 
 
-PATRULLERO = sedan90('patrullero', 4.45, livery=patrullero_livery, sedanExtra=patrullero_extra, seat=0x2a2a2a, plate='mercosur')
+PATRULLERO = sedan90('patrullero', 4.45, livery=patrullero_livery, sedanExtra=patrullero_extra, seat=0x2a2a2a, plate='mercosur', bumperCol=0x1d3f8c)
 
 
 # el taxi porteño: negro con el techo amarillo y el cartelito de LIBRE (la lucecita roja)
@@ -610,7 +612,7 @@ def taxi_extra(c):
         L.box(loc + Vector((0.2, -0.105, 0.12)), (0.05, 0.012, 0.03), 0xff3020)
 
 
-TAXI = sedan90('taxi', 4.3, livery=taxi_livery, sedanExtra=taxi_extra, seat=0x2a2a2a)
+TAXI = sedan90('taxi', 4.3, livery=taxi_livery, sedanExtra=taxi_extra, seat=0x2a2a2a, bumperCol=0x151515)
 
 
 # el remís: un sedán negro común, con la oblea en el parabrisas

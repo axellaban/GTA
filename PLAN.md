@@ -1016,6 +1016,25 @@ Ideas para seguir: capó que se levanta con mucho daño; semáforos y carteles q
 
 ## 6b. Última sesión (para quien siga)
 
+- ✅ 2026-10-09, Claude: **los autos de la calle hechos en Blender** (pedido del dueño: "mejoremos los coches con
+  blender, más autos más piolas, más detalles"). `tools/blender/clasicos.py` (usa todo `autos.py`): Duna, Gol,
+  Falcon, 504, 600, pickup, Trafic y, sobre un sedán de los 90 (`sedan90`), patrullero, taxi y remís; mismos
+  ids y medidas que los de código (`MODELS` de `src/cars.js`), así el tránsito, los choques y la cana no
+  cambian. Sale `public/models/vehicles/clasicos.glb`. Cosas nuevas en `autos.py` (las empezó un agente que se
+  cortó y las terminó la sesión): `door_parts` (puerta del conductor suelta, con el tapizado, el canto, su
+  vidrio y el hueco; origen en la bisagra, en `extras.door`), `hood_parts` (capó con bisagra atrás y el vano
+  del motor; en el 600, la rueda de auxilio), `kit_parts` (franjas y alerón), `bumper` (paragolpes que dobla la
+  esquina, en su malla), `livery` (pintura de fábrica por cara: el patrullero azul con puertas y techo
+  blancos, el taxi negro con techo amarillo), `rule` (la Trafic sin ventanillas atrás), `bed` (la caja abierta
+  de la pickup), tazas, llantas de chapa, bandas blancas y patentes negras o del 95. En el juego,
+  `makeClasico`: la puerta gira con `doorSign = -1` (no va espejada), el capó usa el `{ pivot, bay, k }` de
+  siempre, `dropBumper` esconde el paragolpes entero y `repairCar` lo vuelve a poner, `tuneClasico` usa las
+  franjas y el alerón de Blender, `beaconY` sube la baliza de la cana. `traffic.upgradeClasicos` cambia los
+  que ya andaban (lejos de la cámara). Ojo: el asiento de atrás (`rearSeats`) puede asomar por la luneta si
+  `seatY` queda muy atrás (pasó en el 504, el 600 y el sedán); y `end_patch` no dibuja nada si un punto de la
+  grilla se sale de la chapa (por eso las luces de atrás del Falcon no salían). Fotos de control: `--vista`
+  con `AUTOS_SOLO`, `AUTOS_VISTAS=0,1` y `AUTOS_MUESTRAS=16` para que no tarde.
+
 - ✅ 2026-10-09, Claude: **tiros a lo GTA, las 8 mejoras** (pedido del dueño). `src/mira.js` (nuevo):
   `fijar` (blanco fijado mientras se apunta: el más cerca del centro dentro de un cono de 3° en la compu y 7°
   en el celu, a la vista y a tiro; se suelta recién más afuera) y `hostil` (rojo: cana, el que pelea o
