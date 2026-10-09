@@ -1016,6 +1016,26 @@ Ideas para seguir: capó que se levanta con mucho daño; semáforos y carteles q
 
 ## 6b. Última sesión (para quien siga)
 
+- ✅ 2026-10-09, Claude: **el conductor sube por la izquierda, y subir, bajar y volcar más reales** (pedido del
+  dueño; también "Gaspi en la Ferrari no se ve"). (1) Lado: en el marco del auto +x es su izquierda; la puerta,
+  el volante (`src/cars.js`) y el asiento pasan a ese lado en todos los autos (la puerta en un grupo con
+  `scale.x = -1`), también en los de Blender (`tools/blender/autos.py` exporta `seat` en los extras;
+  `lujo.glb` regenerado), y el que sacás de un auto (`traffic.js`, `tank.js`, `laban.js`) cae a la izquierda.
+  (2) `src/subir.js` (nuevo): Gaspi va colgado del chasis (o de la moto) mientras sube, maneja y baja, así
+  sigue al auto. Subir: manija y puerta, paso y giro, se agacha y entra con una pierna, se sienta y cierra.
+  Bajar: empuja la puerta, saca las piernas, se para, sale y cierra (moverse la corta al final). Moto: pierna
+  por arriba del asiento, manos al manubrio; al bajar, la pata. Pose `manejar` en `src/human.js` (manos en el
+  volante con la dirección). Ojo: `animateHuman` mezcla las poses cuando cambian; `posar()` cambia sin mezclar
+  y las capas (`pararse`, `apoyado`) se aplican siempre, si no la cabeza atravesaba el techo al sentarse.
+  (3) Vuelco con física (`stepTumble` en `src/vehicle-physics.js`): cuerpo rígido en la sección del auto
+  (polígono con ruedas, hombros y techo más angosto), impulsos contra el piso con rebote y rozamiento de
+  Coulomb en pasos de 5 ms, arrastre de la chapa (μ 0,55) o de las ruedas (0,05). Termina cuando queda quieto
+  apoyado de lleno sobre un lado estable (`restAngles`: el centro de masa cae adentro de ese lado), o, si cae
+  parado sobre las ruedas, se sigue manejando. `vehicleBody` usa la sección de verdad volcado o girando (la caja
+  se metía en el piso). Prueba de `tools/vehiculos.test.mjs` adaptada: espera a que se asiente (antes era un
+  medio giro fijo de 1,5 s). Capturas: `subir-test.mjs` (en la sesión) con auto, Ferrari, moto y vuelcos a 12,
+  22 y 32 m/s.
+
 - ✅ 2026-10-08 (quinta tanda), Claude: **apuntar y tirar en la Mac** (lo reportó el dueño: con la mira no
   disparaba). En la compu apuntar era solo mantener el clic derecho, y con el trackpad no se puede mantener el
   derecho (dos dedos) y a la vez hacer clic. Ahora (`src/input.js`): un clic derecho corto (menos de 0,3 s, sin

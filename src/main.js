@@ -5,7 +5,7 @@ import { ATMO, LAMPS, NIGHT, buildLampMap, marcarCiudad } from './atmosphere.js'
 import { buildCity } from './city.js';
 import { makeGround, ROADS, project, STATION, COMISARIA, cornerName, nearestStreetName, nearestRoad } from './map.js';
 import { Input } from './input.js';
-import { beginVehicleFrame, resolveVehicleFrame } from './vehicle-physics.js';
+import { beginVehicleFrame, resolveVehicleFrame, startRollover } from './vehicle-physics.js';
 import { Audio } from './audio.js';
 import { Player } from './player.js';
 import { renderGameView } from './camera-occlusion.js';
@@ -18,7 +18,7 @@ import { Events } from './events.js';
 import { Trains } from './trains.js';
 import { Hud } from './hud.js';
 import { lightMat, tailMat, brakeMat, paintMat, repairCar, makeFerrucho, setUnderglow, loadQCars, loadLujo } from './cars.js';
-import { CAR_COLORS, makeCar } from './vehicles.js';
+import { CAR_COLORS, makeCar, makeMoto } from './vehicles.js';
 import { loadGaspiPhoto, updateHumanLod, animateHuman } from './human.js';
 import { Sky } from './sky.js';
 import { Post, QUALITY } from './post.js';
@@ -1543,3 +1543,6 @@ world.people = { PEOPLE, makePerson, makeLook, makeStar, makeGirl, animateHuman 
 window.__gta = world;
 window.__renderer = renderer;
 window.__post = () => post;
+world.makeCar = makeCar; // (para pruebas)
+world.makeMoto = makeMoto;
+world.startRollover = startRollover;

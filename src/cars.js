@@ -311,13 +311,17 @@ function buildModel(name) {
     // faros escamoteables (las tapas cerradas sobre la trompa)
     for (const s of [-1, 1]) D.box(0.34, 0.035, 0.26, 0x222222, s * (W / 2 - 0.36), m.nose + 0.04, L / 2 - 0.38);
   }
+  // dónde se sienta el que maneja (Gaspi se ve manejando): arriba del almohadón de la butaca izquierda
+  let seatAt = null;
   if (!m.open) {
     // adentro (se ve por los vidrios): tablero, volante, dos butacas y el asiento de atrás
     const zf = cab[3][0];
+    seatAt = { x: W * 0.22, y: belt - 0.16, z: zf - 0.85 };
     const zr = cab[0][0];
     const seat = name === 'trafic' ? 0x2a2a2a : [0x5b3a29, 0x2b2b2b, 0x6b5a48, 0x3a3f5a][Math.round(L * 10) % 4];
     D.box(W * 0.82, 0.16, 0.3, 0x141414, 0, belt + 0.02, zf - 0.22);
-    D.add(new THREE.TorusGeometry(0.17, 0.025, 6, 18).rotateX(-0.35), 0x111111, -W * 0.22, belt + 0.12, zf - 0.48);
+    // (el volante, a la izquierda: +x, como en la Argentina)
+    D.add(new THREE.TorusGeometry(0.17, 0.025, 6, 18).rotateX(-0.35), 0x111111, W * 0.22, belt + 0.12, zf - 0.48);
     for (const s of [-1, 1]) {
       D.box(0.46, 0.12, 0.46, seat, s * W * 0.22, belt - 0.22, zf - 0.85);
       // respaldo y apoyacabezas, siempre por debajo del techo (los autos bajos tienen poca cabina)
@@ -338,6 +342,7 @@ function buildModel(name) {
       D.box(0.5, 0.14, 0.5, 0x7a2a1c, s * 0.42, 0.6, -0.25);
       D.box(0.5, 0.55, 0.12, 0x7a2a1c, s * 0.42, 0.85, -0.52);
     }
+    seatAt = { x: 0.42, y: 0.67, z: -0.25 };
   }
   // luces de retroceso: el vidrio blanco al lado de las traseras
   for (const s of [-1, 1]) D.box(0.08, 0.1, 0.035, 0xd8d8d2, s * (W / 2 - 0.5), m.tail - 0.14, -L / 2 - 0.004);
@@ -404,8 +409,8 @@ function buildModel(name) {
   // del lado de adentro, un disco oscuro (se ve por la llanta)
   Wb.add(new THREE.CylinderGeometry(wr * 0.6, wr * 0.6, 0.02, 14).rotateZ(-Math.PI / 2).translate(-0.06, 0, 0), 0x202020);
   const wheelGeo = Wb.mesh().geometry;
-  // puerta del conductor (del lado por donde sube Gaspi, x negativa): pieza aparte con la bisagra
-  // adelante. Cerrada no se ve (la carrocería ya la tiene dibujada); al abrirse aparece con el hueco
+  // puerta del conductor (del lado por donde sube Gaspi): pieza aparte con la bisagra adelante. Se arma
+  // del lado -x y en el auto va espejada al lado +x, el izquierdo (ver buildCar). Cerrada no se ve (la carrocería ya la tiene dibujada); al abrirse aparece con el hueco
   // oscuro de la cabina detrás.
   let door = null;
   if (name !== 'trafic') {
@@ -428,7 +433,7 @@ function buildModel(name) {
     Hb.box(0.012, 0.14, len * 0.55, 0x3b2f28, 0.004, belt - 0.32, -len * 0.62);
     door = { zf, len, paint: doorPaint, glass: doorGlass, handle: doorHandle, hole: Hb.mesh().geometry };
   }
-  const out = { m, paintGeo, shinyGeo, glassGeo, detailGeo, lightGeo, tailGeo, wheelGeo, door };
+  const out = { m, paintGeo, shinyGeo, glassGeo, detailGeo, lightGeo, tailGeo, wheelGeo, door, seat: seatAt };
   geoCache.set(name, out);
   return out;
 }
@@ -676,9 +681,13 @@ export function makeCar(model = 'duna', color = 0xd8d4c8, { parked = false, tune
     doorway = new THREE.Mesh(M.door.hole, detailMat);
     doorway.position.set(-W / 2 - 0.004, 0, M.door.zf);
     doorway.visible = false;
-    chassis.add(door, doorway);
+    // espejada: la puerta del conductor queda a la izquierda (+x), como en la Argentina
+    const lado = new THREE.Group();
+    lado.scale.x = -1;
+    lado.add(door, doorway);
+    chassis.add(lado);
   }
-  g.userData = { L, W, wheels, kind: 'car', model, parkedBuild: parked, tall: M.m.roof + 0.1, body, shiny, glass, chassis, tail, door, doorway, hood, wheelsFar, lodParts: [shiny, detail] };
+  g.userData = { L, W, wheels, kind: 'car', model, parkedBuild: parked, tall: M.m.roof + 0.1, body, shiny, glass, chassis, tail, door, doorway, hood, wheelsFar, lodParts: [shiny, detail], seat: M.seat };
   if (tune > 0 && TUNABLE.has(model) && Math.random() < tune) tuneCar(g, M, g.userData, Math.random);
   return g;
 }
@@ -787,9 +796,9 @@ export function loadLujo() {
         const parts = {};
         // (Blender numera los nombres repetidos: paint.001 llega como paint001)
         for (const c of node.children) if (c.isMesh) parts[c.name.replace(/[._]?\d+$/, '')] = c.geometry;
-        const { wheels, wheelR, size } = node.userData;
+        const { wheels, wheelR, size, seat } = node.userData;
         if (!parts.paint || !parts.wheel || !wheels) continue;
-        LUJO[node.name] = { parts, wheelPos: wheels, wheelGeo: parts.wheel, m: { W: size[0], roof: size[1], L: size[2], wheelR } };
+        LUJO[node.name] = { parts, wheelPos: wheels, wheelGeo: parts.wheel, m: { W: size[0], roof: size[1], L: size[2], wheelR }, seat: seat && { x: seat[0], y: seat[1], z: seat[2] } };
         LUJO_MODELS.push(node.name);
       }
     })
@@ -827,7 +836,7 @@ function makeLujoCar(model, color) {
   const wheelsFar = new THREE.Mesh(farWheels(Q), wheelMat);
   wheelsFar.visible = false;
   g.add(wheelsFar);
-  g.userData = { L, W, wheels, kind: 'car', model, tall: roof + 0.05, body, shiny, glass, chassis, tail, door: null, doorway: null, hood: null, wheelsFar, lodParts: [shiny, detail], lujo: true };
+  g.userData = { L, W, wheels, kind: 'car', model, tall: roof + 0.05, body, shiny, glass, chassis, tail, door: null, doorway: null, hood: null, wheelsFar, lodParts: [shiny, detail], lujo: true, seat: Q.seat };
   return g;
 }
 

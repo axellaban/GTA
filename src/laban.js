@@ -61,8 +61,9 @@ export class Laban {
 
   // Gaspi les roba el Ferrucho: se bajan todos. Laban se calienta, las chicas salen corriendo.
   eject(v, world) {
-    const lx = -Math.cos(v.heading);
-    const lz = Math.sin(v.heading);
+    // (del lado del conductor: la izquierda)
+    const lx = Math.cos(v.heading);
+    const lz = -Math.sin(v.heading);
     this.riders.forEach((r, i) => {
       v.mesh.remove(r.h.root);
       const side = i % 2 ? -1 : 1;

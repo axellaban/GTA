@@ -12,6 +12,11 @@ import { turnRollover, recoverRollover, sideImpactRollover } from './vehicle-phy
 import { NADAR, VADEO } from './agua.js';
 import { carWake } from './traffic.js';
 import { TOUCH } from './input.js';
+import { subirAuto, pasoSubirAuto, bajarAuto, pasoBajarAuto, subirMoto, pasoSubirMoto, bajarMoto, pasoBajarMoto, asiento, carroceria, posMundo } from './subir.js';
+
+// la izquierda de un vehículo (la del conductor en la Argentina): con el rumbo h, adelante es (sen h, cos h)
+// y la izquierda (cos h, -sen h). (Antes la puerta, el volante y la bajada estaban a la derecha, a la inglesa.)
+export const izquierda = (v) => ({ x: Math.cos(v.heading), z: -Math.sin(v.heading) });
 
 const WALK = 2.3;
 const RUN = 6.3;
@@ -143,11 +148,12 @@ export class Player {
     this.jack = null;
     this.attack = null;
     if (this.vehicle) this.exitVehicle(null, true);
+    this.cancelarSubida();
     this.hooks.die?.(msg);
   }
   respawn(at = this.spawn, cause = 'hospital') {
     this.mvx = this.mvz = 0;
-    this.exitAnim = null;
+    this.cancelarSubida();
     this.jack = null;
     this.yOff = 0;
     this.dead = false;
@@ -171,11 +177,11 @@ export class Player {
 
   // ---------- Subirse, robar y bajarse ----------
   doorPoint(v) {
-    // del lado del conductor (izquierda); en la moto, al costado
-    const side = v.kind === 'moto' ? 0.9 : v.W / 2 + 0.55;
-    const lx = -Math.cos(v.heading);
-    const lz = Math.sin(v.heading);
-    const f = v.kind === 'moto' ? 0 : v.L * 0.08;
+    // del lado del conductor (en la Argentina, la izquierda), al lado de la manija; en la moto, al costado
+    // izquierdo (el de la pata). Es donde arranca la animación de subir (src/subir.js)
+    const side = v.kind === 'moto' ? 0.55 : v.W / 2 + 0.5;
+    const { x: lx, z: lz } = izquierda(v);
+    const f = v.kind === 'moto' ? -0.1 : v.kind === 'car' ? asiento(v).z - 0.25 : v.L * 0.08;
     return { x: v.x + lx * side + v.fx * f, z: v.z + lz * side + v.fz * f };
   }
   startJack(v) {
@@ -210,14 +216,14 @@ export class Player {
       }
       return;
     }
-    if (j.phase !== 'go') v.openDoor?.(0.7);
+    if (j.phase === 'pull') v.openDoor?.(0.7);
     if (j.phase === 'pull') {
       // abre la puerta y saca al que maneja
       animateHuman(this.h, dt, 0, j.t < 0.35 ? 'swing' : 'cross', Math.min(1, j.t / 0.6));
       if (!j.pulled && j.t > 0.3) {
         j.pulled = true;
         world.audio.golpe(0.6);
-        if (v.kind === 'moto') world.traffic.ejectRider(v, world, -Math.cos(v.heading), Math.sin(v.heading));
+        if (v.kind === 'moto') world.traffic.ejectRider(v, world, izquierda(v).x, izquierda(v).z);
         else world.traffic.ejectDriver(v, world);
         world.police.crime('robo_auto', v.x, v.z);
         world.social?.('robo_auto', v.x, v.z);
@@ -230,29 +236,12 @@ export class Player {
       return;
     }
     if (j.phase === 'enter') {
-      if (v.kind === 'moto') {
-        animateHuman(this.h, dt, 0, 'walk');
-        if (j.t > 0.25) {
-          this.jack = null;
-          this.enterVehicle(v, world);
-        }
-        return;
-      }
-      // se da vuelta de espaldas al asiento, se agacha y se mete
-      j.from ??= { x: this.x, z: this.z, h: this.heading };
-      const dur = 0.6;
-      const k = Math.min(1, j.t / dur);
-      const seat = this.seatPoint(v);
-      const e = k * k * (3 - 2 * k);
-      this.x = j.from.x + (seat.x - j.from.x) * e;
-      this.z = j.from.z + (seat.z - j.from.z) * e;
-      let dh = v.heading - j.from.h;
-      while (dh > Math.PI) dh -= Math.PI * 2;
-      while (dh < -Math.PI) dh += Math.PI * 2;
-      this.heading = j.from.h + dh * Math.min(1, k * 2);
-      animateHuman(this.h, dt, k < 0.4 ? 1 : 0, 'walk');
-      this.duck(Math.max(0, (k - 0.25) / 0.75));
-      if (j.t > dur) {
+      // se sube como en los GTA (src/subir.js): abre la puerta, se sienta y la cierra; a la moto le pasa la pierna
+      if (!this.subida) this.subida = v.kind === 'moto' ? subirMoto(this, v) : subirAuto(this, v);
+      const fin = v.kind === 'moto' ? pasoSubirMoto(this, this.subida, dt) : pasoSubirAuto(this, this.subida, dt);
+      this.seguirSubida();
+      if (fin) {
+        this.subida = null;
         this.jack = null;
         this.yOff = 0;
         this.enterVehicle(v, world);
@@ -260,10 +249,33 @@ export class Player {
     }
   }
 
+  // Gaspi colgado del vehículo (subiendo o bajando): la cámara y el juego lo siguen donde está
+  seguirSubida() {
+    const p = posMundo(this);
+    this.x = p.x;
+    this.z = p.z;
+    this.y = p.y;
+    const v = this.subida?.v;
+    if (v) this.heading = v.heading + this.h.root.rotation.y;
+    this.speed = 0;
+    this.mvx = this.mvz = 0;
+  }
+  // corta una subida o bajada a medias (muerte, cana, reaparecer): Gaspi vuelve a la escena, parado
+  cancelarSubida() {
+    if (this.h.root.parent && this.h.root.parent !== this.scene && !(this.vehicle && this.h.root.parent === this.vehicle.mesh)) {
+      const p = posMundo(this);
+      this.scene.add(this.h.root);
+      this.h.root.rotation.set(0, this.heading, 0);
+      this.h.root.position.copy(p);
+    }
+    this.subida = null;
+    this.exitAnim = null;
+    this.h.root.visible = true;
+  }
+
   // asiento del conductor (del lado de la puerta)
   seatPoint(v) {
-    const lx = -Math.cos(v.heading);
-    const lz = Math.sin(v.heading);
+    const { x: lx, z: lz } = izquierda(v);
     const f = v.L * 0.08 - 0.15;
     return { x: v.x + lx * (v.W / 2 - 0.45) + v.fx * f, z: v.z + lz * (v.W / 2 - 0.45) + v.fz * f };
   }
@@ -288,15 +300,14 @@ export class Player {
   }
   enterVehicle(v, world) {
     const { traffic, hud } = world;
-    if (v.rider) traffic.ejectRider(v, world, -Math.cos(v.heading), Math.sin(v.heading));
+    if (v.rider) traffic.ejectRider(v, world, izquierda(v).x, izquierda(v).z);
     traffic.release(v);
     world.police.dropCar(v);
     this.swimming = this.diving = false;
     this.vehicle = v;
     v.driver = this;
-    // se sienta y cierra la puerta
+    // (la puerta la abrió y la cerró la animación de subir: src/subir.js)
     v.doorStay = false;
-    v.openDoor?.(0.35);
     v.vx = v.fx * v.speed;
     v.vz = v.fz * v.speed;
     if (v.fallen) {
@@ -314,6 +325,14 @@ export class Player {
       this.h.root.rotation.set(0, 0, 0);
       this.h.root.visible = true;
       animateHuman(this.h, 0, 0, 'ride');
+    } else if (v.kind === 'car') {
+      // sentado al volante, a la vista (en los autos de vidrio negro, adentro sin verse)
+      const s = asiento(v);
+      carroceria(v).add(this.h.root);
+      this.h.root.position.set(s.x, s.y, s.z);
+      this.h.root.rotation.set(0, 0, 0);
+      this.h.root.visible = s.visible;
+      animateHuman(this.h, 0, 0, 'manejar', 0);
     } else this.h.root.visible = false;
     world.combat.syncHand(this);
     if (v.revenge) {
@@ -336,8 +355,7 @@ export class Player {
     const vz = v.vz ?? v.fz * v.speed;
     this.exitVehicle(world, true, true);
     // la puerta del conductor da a la izquierda del auto
-    const lx = -Math.cos(v.heading);
-    const lz = Math.sin(v.heading);
+    const { x: lx, z: lz } = izquierda(v);
     const mx = vx * 0.55 + lx * 2.6;
     const mz = vz * 0.55 + lz * 2.6;
     const m = Math.hypot(mx, mz) || 1;
@@ -354,25 +372,26 @@ export class Player {
     const v = this.vehicle;
     if (!v) return;
     this.mvx = this.mvz = 0;
-    const lx = -Math.cos(v.heading);
-    const lz = Math.sin(v.heading);
+    const { x: lx, z: lz } = izquierda(v);
     const side = v.kind === 'moto' ? 0.8 : v.W / 2 + 0.7;
     if (v.kind === 'moto') {
-      this.scene.add(this.h.root);
-      this.h.root.rotation.set(0, v.heading, 0);
-      v.lean = forced ? 0 : 0.12; // queda con la pata
+      v.lean = forced ? 0 : v.lean; // (bajando tranquilo la apoya en la pata en la animación)
       v.wheelie = 0;
     }
     this.x = v.x + lx * side;
     this.z = v.z + lz * side;
     this.heading = v.heading;
-    // bajando tranquilo: arranca sentado y sale por la puerta
-    if (!forced && v.kind === 'car' && !v.rollover && !v.overturned) {
-      const seat = this.seatPoint(v);
-      this.exitAnim = { t: 0, dur: 0.55, from: seat, to: { x: this.x, z: this.z }, h: v.heading };
-      this.x = seat.x;
-      this.z = seat.z;
-    } else this.exitAnim = null;
+    // bajando tranquilo, como en los GTA (src/subir.js): abre la puerta, se baja y la cierra; de la moto pasa
+    // la pierna y la deja en la pata. Si no (se tiró, explotó, lo agarró la cana), sale de una.
+    this.subida = null;
+    this.exitAnim = null;
+    if (!forced && v.kind === 'car' && !v.rollover && !v.overturned) this.exitAnim = this.subida = bajarAuto(this, v);
+    else if (!forced && v.kind === 'moto' && !v.fallen) this.exitAnim = this.subida = bajarMoto(this, v);
+    else if (this.h.root.parent !== this.scene) {
+      this.scene.add(this.h.root);
+      this.h.root.rotation.set(0, v.heading, 0);
+    }
+    if (this.subida) this.seguirSubida();
     this.vehicle = null;
     v.driver = null;
     v.parked = true;
@@ -482,8 +501,9 @@ export class Player {
 
     // sin estar buceando (a pie, nadando arriba, en un auto o en un bote) se recupera el aire
     if (!this.diving && this.air < 1) this.air = Math.min(1, this.air + dt * 0.5);
+    if (this.subida && this.subida.tipo.startsWith('subir') && !this.jack) this.cancelarSubida();
     if (this.jack) this.updateJack(dt, world);
-    else if (this.exitAnim) this.updateExit(dt);
+    else if (this.exitAnim) this.updateExit(dt, world);
     else if (this.auto) this.updateAuto(dt);
     else if (this.boat) botes.ride(dt, world);
     else if (this.vehicle) this.drive(dt, world);
@@ -526,22 +546,31 @@ export class Player {
     }
   }
 
-  updateExit(dt) {
-    const a = this.exitAnim;
-    a.t += dt;
-    const k = Math.min(1, a.t / a.dur);
-    const e = k * k * (3 - 2 * k);
-    this.x = a.from.x + (a.to.x - a.from.x) * e;
-    this.z = a.from.z + (a.to.z - a.from.z) * e;
-    // gira hacia afuera mientras sale y después vuelve a mirar para adelante
-    this.heading = a.h - Math.sin(k * Math.PI) * 1.1;
-    this.speed = 0;
-    animateHuman(this.h, dt, k > 0.5 ? 1 : 0, 'walk');
-    this.duck(1 - k);
-    if (k >= 1) {
+  updateExit(dt, world) {
+    const a = this.subida;
+    if (!a) {
       this.exitAnim = null;
-      this.yOff = 0;
+      return;
     }
+    const fin = a.tipo === 'bajarMoto' ? pasoBajarMoto(this, a, dt) : pasoBajarAuto(this, a, dt);
+    this.seguirSubida();
+    // ya afuera: si el jugador quiere irse caminando, corta lo que falta (la puerta se cierra sola)
+    const ax = world.input.axis();
+    if (fin || (a.corta && (ax.x || ax.y))) this.terminarBajada();
+  }
+  terminarBajada() {
+    const a = this.subida;
+    const p = posMundo(this).clone();
+    const h = (a?.v?.heading ?? this.heading) + this.h.root.rotation.y;
+    this.scene.add(this.h.root);
+    this.x = p.x;
+    this.z = p.z;
+    this.heading = h;
+    this.h.root.position.set(p.x, this.groundAt(), p.z);
+    this.h.root.rotation.set(0, h, 0);
+    this.subida = null;
+    this.exitAnim = null;
+    this.yOff = 0;
   }
   walk(dt, world) {
     const { input } = world;
@@ -1207,6 +1236,8 @@ export class Player {
     const throttle = -ax.y;
     const steerIn = -ax.x;
     const hb = input.down(' ');
+    // al volante: las manos siguen lo que dobla
+    if (v.kind === 'car' && this.h.root.parent !== this.scene) animateHuman(this.h, dt, 0, 'manejar', v.steer || 0);
     if (v.wreck) {
       this.exitVehicle(world, true);
       return;
@@ -1508,6 +1539,12 @@ export class Player {
     }
     if (this.vehicle?.kind === 'moto') {
       this.y = 0;
+      return;
+    }
+    // sentado manejando o subiendo o bajando: va colgado del vehículo (src/subir.js)
+    if (this.subida) return;
+    if (this.vehicle && this.h.root.parent !== this.scene) {
+      this.y = this.vehicle.floating ? this.vehicle.floatY : this.vehicle.y || 0;
       return;
     }
     const dt = this.dt || 1 / 60;

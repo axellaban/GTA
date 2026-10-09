@@ -1425,6 +1425,27 @@ function poseHuman(h, dt, speed, pose = 'walk', t = 0) {
     b.uaL.rotation.x = -0.8 * Math.sin(k * Math.PI);
     return;
   }
+  if (pose === 'manejar') {
+    // sentado al volante (el origen va arriba del almohadón): la cadera apenas arriba del asiento, el respaldo
+    // un poco reclinado, las piernas hacia los pedales y las dos manos en el volante. t: cuánto dobla (-1 a 1)
+    const st = Math.max(-1, Math.min(1, t || 0));
+    b.hips.position.y = 0.1;
+    b.spine.rotation.x = -0.16;
+    b.chest.rotation.x = 0.06;
+    b.thR.rotation.set(-1.32, 0, -0.05);
+    b.thL.rotation.set(-1.38, 0, 0.08);
+    b.shR.rotation.x = 1.05;
+    b.shL.rotation.x = 1.25;
+    b.ftR.rotation.x = -0.25;
+    b.ftL.rotation.x = -0.15;
+    // las manos giran con el volante: una sube y la otra baja
+    b.uaR.rotation.set(-1.05 - st * 0.18, 0.25, 0.22 + st * 0.12);
+    b.uaL.rotation.set(-1.05 + st * 0.18, -0.25, -0.22 + st * 0.12);
+    b.faR.rotation.x = -0.75 + st * 0.15;
+    b.faL.rotation.x = -0.75 - st * 0.15;
+    b.head.rotation.set(0.04, st * 0.18, 0);
+    return;
+  }
   if (pose === 'ride') {
     b.hips.position.y = 0.55;
     b.thR.rotation.set(-1.35, 0, -0.2);

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { allVehicles, vehicleContact, vehicleBody, beginVehicleFrame, resolveVehicleFrame, turnRollover, sideImpactRollover, recoverRollover } from '../src/vehicle-physics.js';
+import { allVehicles, vehicleContact, vehicleBody, beginVehicleFrame, resolveVehicleFrame, turnRollover, sideImpactRollover, recoverRollover, startRollover } from '../src/vehicle-physics.js';
 function car(x=0,z=0,more={}) {
   return { x,z,y:0,heading:0,W:1.8,L:4.4,tall:1.5,kind:'car',speed:0,steer:0, vx:0,vz:0,
     get fx(){return Math.sin(this.heading)}, get fz(){return Math.cos(this.heading)},
@@ -62,7 +62,15 @@ test('curva normal no vuelca; giro cerrado sostenido a velocidad sí; derrape no
   const v=car(0,0,{driver:true,vz:30,speed:30,steer:1}),w=world([v]);w.player.vehicle=v;
   for(let i=0;i<90&&!v.rollover;i++)turnRollover(v,1/60,1.3);
   assert.ok(v.rollover);
-  for(let i=0;i<90;i++){beginVehicleFrame(w,1/60);assert.ok(vehicleBody(v).low>=-1e-8);resolveVehicleFrame(w)}
+  // (da vueltas de verdad hasta quedar quieto o caer parado: nunca se mete en el piso)
+  for(let i=0;i<720&&v.rollover;i++){beginVehicleFrame(w,1/60);assert.ok(vehicleBody(v).low>=-1e-5);resolveVehicleFrame(w)}
+  assert.equal(v.rollover,null);
+  // si cae sobre las ruedas sigue andando; si no, queda quieto donde cayó
+  if(v.overturned)assert.equal(v.speed,0);else assert.ok(v.speed>0&&v.tilt===null);
+  // volcado despacio: queda sobre el techo y se endereza con el giro
+  Object.assign(v,{x:0,z:0,heading:0,vx:0,vz:8,speed:8,tilt:{x:0,y:0,z:0},overturned:false});
+  assert.ok(startRollover(v,1));
+  for(let i=0;i<720&&v.rollover;i++){beginVehicleFrame(w,1/60);assert.ok(vehicleBody(v).low>=-1e-5);resolveVehicleFrame(w)}
   assert.ok(v.overturned);assert.equal(v.speed,0);assert.equal(v.rollover,null);
   for(let i=0;i<60;i++)recoverRollover(v,1/60,1);assert.equal(v.rollover,null);
   recoverRollover(v,1/60,0);

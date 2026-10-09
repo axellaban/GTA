@@ -495,8 +495,9 @@ export class Traffic {
     if (v.laban) return v.laban.eject(v, world);
     // el que trae su propio ocupante (el tanquista)
     if (v.eject) return v.eject(v, world);
-    const lx = -Math.cos(v.heading);
-    const lz = Math.sin(v.heading);
+    // (del lado del conductor: la izquierda)
+    const lx = Math.cos(v.heading);
+    const lz = -Math.sin(v.heading);
     // el chofer que mató un tiro: se lo saca y queda tirado al lado del auto
     if (v.deadDriver) {
       v.deadDriver = null;

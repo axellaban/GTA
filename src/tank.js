@@ -135,8 +135,9 @@ export class Tanks {
   ejectCrew(v, world) {
     v.tankAI = null;
     v.eject = null;
-    const lx = -Math.cos(v.heading);
-    const lz = Math.sin(v.heading);
+    // (del lado del conductor: la izquierda)
+    const lx = Math.cos(v.heading);
+    const lz = -Math.sin(v.heading);
     const look = { skin: R.pick([0xd9a882, 0xc68b62]), hair: 0x1a1a1a, hairStyle: 'buzz', top: 'long', shirt: 0x4b5320, pants: 0x4b5320, shoes: 0x111111, helmet: 0x3a4620 };
     const h = makeLook(look) || makeHuman(look);
     const d = world.npcs.spawnWalker({ x: v.x + lx * (v.W / 2 + 1.3), z: v.z + lz * (v.W / 2 + 1.3), heading: v.heading + Math.PI / 2 }, null, 0, 0, null, h);

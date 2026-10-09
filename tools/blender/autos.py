@@ -649,6 +649,8 @@ def common_details(c):
     zf = sp.get('seatZ', st[k['ws0']]['zb'] + 0.1)
     roof = st[k['ws1']]['zt'] if not sp.get('open') else st[k['ws0']]['zs'] + 0.45
     hb = max(0.45, roof - zf - 0.12)
+    # dónde se sienta el que maneja (el juego sienta ahí a Gaspi): arriba del almohadón del lado izquierdo
+    sp['_seat'] = (W2 * 0.42, yS, zf + 0.16)
     for sx in (-1, 1):
         x = sx * W2 * 0.42
         D.box((x, yS, zf + 0.1), (0.5, 0.52, 0.12), seat)
@@ -1135,6 +1137,8 @@ for spec in CARS:
     # dónde van las ruedas, en el sistema del juego (y arriba, frente a +z): x, y, -y de Blender
     root['wheels'] = [[x, z, -y] for (x, y, z) in spec['wheels']]
     root['wheelR'] = spec['wheelR']
+    sx, sy, sz = spec['_seat']
+    root['seat'] = [sx, sz, -sy]
     zmax = max(v.co.z for v in parts['paint'].data.vertices)
     root['size'] = [spec['W'], zmax, spec['L']]
     roots.append((root, parts))
