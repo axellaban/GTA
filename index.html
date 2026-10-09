@@ -58,6 +58,7 @@
       <div id="feed" aria-live="polite"></div>
       <div id="crosshair" hidden></div>
       <div id="hitmark" hidden></div>
+      <div id="dmgdir"></div>
       <div id="radio" hidden><b id="radio-name"></b><span id="radio-sub"></span></div>
 
       <div id="objective"><span class="obj-tag">Objetivo</span><span id="obj-text"></span><span id="obj-dist"></span></div>
@@ -88,6 +89,9 @@
         <button type="button" data-btn="attack" class="tbtn big on-foot" id="btn-attack">Pegar</button>
         <button type="button" data-btn="aim" class="tbtn on-foot" id="btn-aim" aria-label="Activar o desactivar apuntado" aria-pressed="false" hidden>Apuntar</button>
         <button type="button" data-btn="jump" class="tbtn on-foot" id="btn-jump">Saltar</button>
+        <button type="button" data-btn="crouch" class="tbtn on-foot" id="btn-crouch" aria-pressed="false">Agachar</button>
+        <button type="button" data-btn="attack" class="tbtn on-drive" id="btn-dbfire">Disparar</button>
+        <button type="button" data-btn="aim" class="tbtn on-drive" id="btn-dbaim" aria-pressed="false">Apuntar</button>
         <button type="button" data-btn=" " class="tbtn big on-car" id="btn-brake">Freno</button>
         <button type="button" data-btn="h" class="tbtn on-car" id="btn-h">Bocina</button>
         <button type="button" data-btn="shift" class="tbtn on-moto" id="btn-willy">Willy</button>
@@ -128,14 +132,16 @@
         <p id="stats"></p>
         <details class="pm-section">
           <summary>Controles</summary>
-          <p class="pm-touch-help">Movete con el joystick. Arrastrá a la derecha para mirar. Con un arma, tocá Apuntar para activar la mira y Disparar para tirar.</p>
+          <p class="pm-touch-help">Movete con el joystick. Arrastrá a la derecha para mirar. Con un arma, tocá Apuntar para activar la mira y Disparar para tirar; Agachar te achica y te cubre detrás de algo. Mantené apretado el arma (arriba a la derecha) para la rueda de armas. En el auto o la moto con un arma, Apuntar y Disparar tiran por la ventanilla.</p>
           <dl class="keys">
             <div><dt>WASD</dt><dd>Moverse · manejar</dd></div>
             <div><dt>Mouse</dt><dd>Mirar</dd></div>
             <div><dt>Clic izq.</dt><dd>Pegar · disparar (con o sin mira)</dd></div>
-            <div><dt>Clic der.</dt><dd>Mantener para apuntar</dd></div>
+            <div><dt>Clic der.</dt><dd>Apuntar (fija el blanco: rojo si es peligroso) · también desde el auto</dd></div>
             <div><dt>Celular</dt><dd>Apuntar activa la mira · Disparar permite arrastrar para dirigir el tiro</dd></div>
             <div><dt>Q · 1–9</dt><dd>Arma (8 bazuca)</dd></div>
+            <div><dt>Tab</dt><dd>Mantener: rueda de armas</dd></div>
+            <div><dt>C</dt><dd>Agacharse · a cubierto</dd></div>
             <div><dt>R</dt><dd>Recargar · radio</dd></div>
             <div><dt>Espacio</dt><dd>Saltar · freno de mano</dd></div>
             <div><dt>Shift</dt><dd>Correr · willy</dd></div>

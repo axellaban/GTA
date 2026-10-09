@@ -5,7 +5,8 @@ import gaspiUrl from './gaspi.webp';
 import { WEAPONS, SLOT_OF } from './weapons.js';
 import { VC } from './vc.js';
 import { TOUCH } from './input.js';
-import { updateAimHud, canAim } from './aim.js';
+import { updateAimHud, canAim, canDriveBy } from './aim.js';
+import { screenAngle } from './mira.js';
 import { drawIcon, iconCanvas, ICONS, LEGEND, PICKUP_ICON } from './icons.js';
 import { MapView, bindMapControls } from './map-view.js';
 
@@ -204,7 +205,13 @@ export class Hud {
     // controles táctiles: a pie, en auto o en moto; el botón de ataque dice qué hace
     const v = player.vehicle;
     const heli = !!player.ufo?.isHeli;
-    const mode = player.ufo ? (heli ? 'ufo heli' : 'ufo') : v ? (v.kind === 'moto' ? 'car moto' : 'car') : player.boat ? 'boat' : player.swimming ? (player.diving ? 'swim diving' : 'swim') : canAim(player, w, !!this.dialog) ? 'foot armed' : 'foot';
+    const drive = v && canDriveBy(player, w) ? ' armed' : '';
+    const mode = player.ufo ? (heli ? 'ufo heli' : 'ufo') : v ? (v.kind === 'moto' ? `car moto${drive}` : `car${drive}`) : player.boat ? 'boat' : player.swimming ? (player.diving ? 'swim diving' : 'swim') : canAim(player, w, !!this.dialog) ? 'foot armed' : 'foot';
+    // agachado y apuntando desde el auto: los botones quedan prendidos
+    const cb = $('btn-crouch');
+    if (cb && cb.classList.contains('active') !== !!player.crouch) cb.classList.toggle('active', !!player.crouch);
+    const db = $('btn-dbaim');
+    if (db && db.classList.contains('active') !== !!(v && player.aiming)) db.classList.toggle('active', !!(v && player.aiming));
     // nadando: "Bucear" (y abajo del agua, "Bajar")
     if (player.swimming) {
       const dl = player.diving ? 'Bajar' : 'Bucear';
@@ -220,7 +227,28 @@ export class Hud {
     const atk = $('btn-attack');
     if (atk.textContent !== verb) atk.textContent = verb;
     updateAimHud(player, w, { crosshair: $('crosshair'), button: $('btn-aim'), hitmark: $('hitmark') }, !!this.dialog);
-    $('hitmark').hidden = !(player.hitMarker > 0);
+    const hm = $('hitmark');
+    hm.hidden = !(player.hitMarker > 0 || player.hitKill > 0);
+    const hc = player.hitKill > 0 ? 'kill' : player.hitHead ? 'head' : '';
+    if (hm.className !== hc) hm.className = hc;
+    // de dónde vino el último golpe o tiro: cuñas rojas en el borde (src/mira.js)
+    const dd = $('dmgdir');
+    const list = player.dmgFrom || [];
+    for (let i = list.length - 1; i >= 0; i--) {
+      list[i].t -= dt;
+      if (list[i].t <= 0) list.splice(i, 1);
+    }
+    while (dd.children.length < list.length) dd.appendChild(document.createElement('i'));
+    for (let i = 0; i < dd.children.length; i++) {
+      const el = dd.children[i];
+      const d = list[i];
+      if (!d) {
+        if (el.style.opacity !== '0') el.style.opacity = '0';
+        continue;
+      }
+      el.style.transform = `rotate(${screenAngle(player, d.x, d.z).toFixed(3)}rad)`;
+      el.style.opacity = Math.min(1, d.t / 0.6).toFixed(2);
+    }
     if (this.radioT > 0) {
       this.radioT -= dt;
       if (this.radioT <= 0) $('radio').hidden = true;

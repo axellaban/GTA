@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Input } from '../src/input.js';
 import * as THREE from 'three';
-import { canAim, updateAiming, updateAimHud, shotSpread, FLY_AIM, flyAimDir } from '../src/aim.js';
+import { canAim, canDriveBy, updateAiming, updateAimHud, shotSpread, FLY_AIM, flyAimDir } from '../src/aim.js';
+import { screenAngle, RECOIL } from '../src/mira.js';
 class El extends EventTarget {
   constructor(btn){super();this.dataset={btn};this.style={};this.classList={add(){},remove(){},toggle(){}};this.tagName='BUTTON'}
   closest(){return this}
@@ -85,4 +86,23 @@ test('el tiro en vuelo sale por el punto de la mira, no por el centro',()=>{
 test('apuntar reduce dispersión; caminar rápido sigue empeorando la precisión',()=>{
   const p={speed:0,aiming:false};const hip=shotSpread(p,gun);p.aiming=true;assert.equal(shotSpread(p,gun),hip/2);
   p.speed=5;assert.ok(shotSpread(p,gun)>hip/2);
+});
+
+test('desde el auto o la moto se tira con las armas de mano (no con la bazuca, el lanzallamas ni subiendo)',()=>{
+  const car={kind:'car'},moto={kind:'moto'};
+  assert.equal(canDriveBy({vehicle:car},gun),true);assert.equal(canDriveBy({vehicle:moto},gun),true);
+  for(const w of [melee,{gun:true,heavy:true},{gun:true,rocket:true},{gun:true,flame:true}])assert.equal(canDriveBy({vehicle:car},w),false);
+  for(const st of [{subida:{}},{exitAnim:{}},{dead:true},{vehicle:{kind:'bus'}},{vehicle:{kind:'car',overturned:true}},{vehicle:null}])assert.equal(canDriveBy({vehicle:car,...st},gun),false);
+});
+test('la mira se abre con la ráfaga (bloom) y se cierra agachado',()=>{
+  const p={speed:0,aiming:true};const base=shotSpread(p,gun);
+  assert.ok(shotSpread({...p,bloom:1.5},gun)>base*1.8);assert.ok(Math.abs(shotSpread({...p,crouch:true},gun)-base*0.6)<1e-9);
+  for(const r of Object.values(RECOIL))assert.ok(r.p>0&&r.bloom>0&&r.rec>0);
+  assert.ok(RECOIL.revolver.p>RECOIL.pistola.p&&RECOIL.escopeta.p>RECOIL.metra.p,'cada arma patea distinto');
+});
+test('el indicador de daño apunta para donde vino el tiro (arriba es adelante de la cámara)',()=>{
+  const P={x:0,z:0,camYaw:Math.PI};// la cámara mira a +z
+  assert.ok(Math.abs(screenAngle(P,0,10))<1e-9);
+  assert.ok(Math.abs(screenAngle(P,-10,0)-Math.PI/2)<1e-9,'a la derecha de la pantalla');
+  assert.ok(Math.abs(Math.abs(screenAngle(P,0,-10))-Math.PI)<1e-9,'atrás');
 });

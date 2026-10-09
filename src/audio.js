@@ -456,6 +456,16 @@ export class Audio {
   click() {
     this.burst(0.03, 4000, 'highpass', 0.3);
   }
+  // lo bajaste: un "tic" seco y agudo que confirma (src/combat.js)
+  confirma(v = 0.5) {
+    this.tone([1480], 0.07, 'triangle', v * 0.22);
+    this.tone([1980], 0.09, 'triangle', v * 0.18, 0.06);
+  }
+  // con poca vida: el corazón que late (dos golpes graves)
+  latido(v = 0.6) {
+    this.thump(70, 42, 0.12, 0.55 * v);
+    this.thump(62, 38, 0.1, 0.4 * v, 0.17);
+  }
   recarga() {
     this.burst(0.04, 3000, 'bandpass', 0.35, 0, 3);
     this.burst(0.05, 2200, 'bandpass', 0.4, 0.18, 3);

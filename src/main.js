@@ -40,6 +40,7 @@ import { Aura } from './aura.js';
 import { Seleccion } from './seleccion.js';
 import { CANASTOS } from './canastos.js';
 import { Techos } from './techos.js';
+import { Rueda } from './rueda.js';
 import { Andenes } from './andenes.js';
 import { CasaClau } from './clau.js';
 import { Norte } from './norte.js';
@@ -1082,8 +1083,20 @@ player.hooks.hurt = (n, msg) => {
   if (msg && n >= 15) hud.toast(msg, 2);
   hurtFx = Math.min(1, hurtFx + 0.25 + n / 40);
 };
+const rueda = new Rueda();
+let heartT = 0;
 function updateHurt(dt) {
   hurtFx = Math.max(0, hurtFx - dt * 1.4);
+  // con poca vida (como en los GTA): el corazón late y la imagen pierde el color
+  const lowK = player.dead ? 0 : Math.max(0, Math.min(1, (30 - player.health) / 30));
+  if (lowK > 0) {
+    heartT -= dt;
+    if (heartT <= 0) {
+      audio.latido?.(0.5 + lowK * 0.5);
+      heartT = 1.05 - lowK * 0.4;
+    }
+  }
+  if (post && !player.dead) post.wasted = Math.max(world.wasted || 0, lowK * 0.45);
   const low = player.dead ? 0 : Math.max(0, (35 - player.health) / 35) * (0.55 + Math.sin(performance.now() / 260) * 0.15);
   const k = Math.max(hurtFx, low);
   if (Math.abs(k - (updateHurt.k ?? -1)) > 0.01) {
@@ -1300,6 +1313,8 @@ function frame(now) {
   }
   let dt = Math.max(0, Math.min(0.05, (now - last) / 1000));
   last = now;
+  // la rueda de armas abierta (Tab o mantener el arma): el tiempo va en cámara lenta
+  if (started && rueda.update(world)) dt *= 0.25;
   // golpe que "pega": el tiempo casi se frena un instante
   if (world.hitStop > 0) {
     world.hitStop -= dt;

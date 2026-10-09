@@ -614,6 +614,114 @@ body {
   background: #fff;
   border-radius: 50%;
 }
+/* a pie (src/mira.js): punto y cuatro palitos que se abren con el movimiento y los tiros; con un blanco
+   fijado, un aro: rojo si es de cuidado, blanco si es un vecino, con su vida abajo */
+#crosshair.free,
+#crosshair.lock {
+  border-color: transparent;
+  box-shadow: none;
+  --c: #fff;
+}
+#crosshair.lock.hostil {
+  --c: #ff4040;
+  border-color: rgba(255, 64, 64, 0.9);
+}
+#crosshair.lock.civil {
+  border-color: rgba(255, 255, 255, 0.75);
+}
+#crosshair.free::after,
+#crosshair.lock::after {
+  background: var(--c);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45);
+}
+#crosshair i {
+  display: none;
+  position: absolute;
+  background: var(--c, #fff);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45);
+  transition: transform 0.06s linear;
+}
+#crosshair.free i,
+#crosshair.lock i {
+  display: block;
+}
+#crosshair .ch-t,
+#crosshair .ch-b {
+  left: 8px;
+  width: 2px;
+  height: 7px;
+}
+#crosshair .ch-l,
+#crosshair .ch-r {
+  top: 8px;
+  width: 7px;
+  height: 2px;
+}
+#crosshair .ch-t {
+  top: -1px;
+  transform: translateY(calc(-1 * var(--gap, 4px)));
+}
+#crosshair .ch-b {
+  top: 12px;
+  transform: translateY(var(--gap, 4px));
+}
+#crosshair .ch-l {
+  left: -1px;
+  transform: translateX(calc(-1 * var(--gap, 4px)));
+}
+#crosshair .ch-r {
+  left: 12px;
+  transform: translateX(var(--gap, 4px));
+}
+#crosshair .ch-hp {
+  display: none;
+  position: absolute;
+  left: -11px;
+  top: 30px;
+  width: 40px;
+  height: 4px;
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 2px;
+  overflow: hidden;
+}
+#crosshair.lock .ch-hp {
+  display: block;
+}
+#crosshair .ch-hp s {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: var(--c);
+}
+#hitmark.kill {
+  background:
+    linear-gradient(45deg, transparent 42%, #ff3030 42%, #ff3030 58%, transparent 58%),
+    linear-gradient(-45deg, transparent 42%, #ff3030 42%, #ff3030 58%, transparent 58%);
+  transform: scale(1.35);
+}
+#hitmark.head {
+  transform: scale(1.2);
+}
+/* de dónde vino el golpe: una cuña roja en el borde de un aro alrededor del centro */
+#dmgdir {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+#dmgdir i {
+  position: absolute;
+  left: -80px;
+  top: -34vmin;
+  width: 160px;
+  height: 34px;
+  transform-origin: 80px 34vmin;
+  background: linear-gradient(to top, rgba(255, 24, 24, 0.95), rgba(255, 24, 24, 0.35));
+  clip-path: polygon(0 100%, 50% 0, 100% 100%, 50% 70%);
+  filter: drop-shadow(0 0 6px rgba(255, 0, 0, 0.8));
+}
 #hitmark {
   position: absolute;
   left: 50%;
@@ -1265,6 +1373,9 @@ body {
     right: calc(112px + env(safe-area-inset-right, 0px));
     bottom: calc(140px + env(safe-area-inset-bottom, 0px));
   }
+  #touch:not(.armed) #btn-crouch,
+  #touch:not(.car) .on-drive,
+  #touch.car:not(.armed) .on-drive,
   #touch.foot .on-car,
   #touch.foot .on-moto,
   #touch.car .on-foot,
@@ -1322,6 +1433,20 @@ body {
   }
   #btn-brake {
     background: rgba(21, 23, 26, 0.6);
+  }
+  /* agacharse (con un arma en la mano) y, en el auto o la moto con un arma, apuntar y tirar (drive-by) */
+  #btn-crouch {
+    right: calc(222px + env(safe-area-inset-right, 0px));
+    bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+  }
+  #btn-dbfire {
+    right: calc(24px + env(safe-area-inset-right, 0px));
+    bottom: calc(128px + env(safe-area-inset-bottom, 0px));
+    background: rgba(229, 72, 77, 0.6);
+  }
+  #btn-dbaim {
+    right: calc(108px + env(safe-area-inset-right, 0px));
+    bottom: calc(118px + env(safe-area-inset-bottom, 0px));
   }
   #btn-jump,
   #btn-h {
@@ -1748,4 +1873,91 @@ html.vc .pm-map-toolbar #map-player { border-color: #70bfae; color: #a1e0c9; }
   .pm-map-toolbar { margin: 0; flex-direction: column; justify-content: center; align-items: stretch; gap: 4px; }
   .pm-map-toolbar button { min-height: 32px; padding: 3px 5px; }
   .pm-map-toolbar #map-player { margin-left: 0; }
+}
+
+/* ---- Rueda de armas (src/rueda.js): Tab en la compu, mantener el arma en el celu ---- */
+#rueda {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle, rgba(10, 12, 16, 0.25), rgba(10, 12, 16, 0.6));
+  pointer-events: none;
+  z-index: 30;
+}
+#rueda[hidden] {
+  display: none;
+}
+#rueda .r-ring {
+  position: relative;
+  width: min(78vmin, 440px);
+  height: min(78vmin, 440px);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(21, 23, 26, 0.35) 30%, rgba(21, 23, 26, 0.72) 31%, rgba(21, 23, 26, 0.72) 64%, rgba(21, 23, 26, 0) 65%);
+}
+#rueda .r-it {
+  position: absolute;
+  width: 92px;
+  margin: -32px 0 0 -46px;
+  padding: 8px 4px 6px;
+  border-radius: 12px;
+  text-align: center;
+  color: var(--cal);
+  font-family: var(--font-ui);
+  border: 2px solid transparent;
+  transition: transform 0.08s, background-color 0.08s;
+}
+#rueda .r-it b {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  line-height: 1.05;
+}
+#rueda .r-it span {
+  display: block;
+  font-size: 0.75rem;
+  opacity: 0.8;
+  min-height: 0.9em;
+}
+#rueda .r-it em {
+  position: absolute;
+  top: -8px;
+  left: -4px;
+  font-style: normal;
+  font-size: 0.7rem;
+  font-weight: 800;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 8px;
+  padding: 1px 6px;
+}
+#rueda .r-it.off {
+  opacity: 0.35;
+}
+#rueda .r-it.cur {
+  border-color: rgba(244, 239, 228, 0.5);
+}
+#rueda .r-it.sel {
+  background: rgba(255, 178, 62, 0.85);
+  color: #15171a;
+  transform: scale(1.12);
+}
+#rueda .r-c {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  color: #fff;
+  font-family: var(--font-ui);
+}
+#rueda .r-c b {
+  display: block;
+  font-size: 1.15rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+#rueda .r-c span {
+  font-size: 0.75rem;
+  opacity: 0.75;
 }
