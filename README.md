@@ -435,7 +435,7 @@ La pasarela que cruza las vías frente a la estación Temperley (y las otras de 
 
 ## Tanque y casas que se derrumban (0.26)
 
-- **Tanque del Ejército** (un TAM): con **6 estrellas** sale uno a buscarte. Pasa por arriba de los autos, voltea postes y árboles, atropella a la gente y tira cañonazos (que pueden voltear la casa que haya en el medio). Como en GTA, **se lo podés robar**: acercate y apretá F para sacar al tanquista. Lo manejás con las orugas (gira sobre sí mismo), la torreta sigue a la cámara y con **clic** disparás el cañón. Aguanta tiros; con cohetes o cañonazos se rompe.
+- **Tanque del Ejército** (un TAM): con **6 estrellas** sale uno a buscarte. Pasa por arriba de los autos, voltea postes y árboles, atropella a la gente y tira cañonazos (que pueden voltear la casa que haya en el medio). Como en GTA, **se lo podés robar**: acercate y apretá F para sacar al tanquista. Lo manejás con las orugas (gira sobre sí mismo), la torreta sigue a la cámara y con **clic** disparás el cañón. Aguanta tiros; con cohetes o cañonazos se rompe. Se ve en el mapita con su ícono verde oliva (pegado al borde si está lejos, para saber de dónde viene) y en el mapa de la pausa.
 - **Casas que se vienen abajo**: los cañonazos del tanque y el láser del plato volador (y, de a poco, la bazuca) le sacan vida a la casa donde pegan; cuando no aguanta más, se derrumba con una nube de polvo y quedan los escombros humeando (y se puede pasar por arriba). La estación y los locales donde se entra no se caen.
 
 ## Bandas (0.25)

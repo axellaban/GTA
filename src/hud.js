@@ -116,6 +116,8 @@ export class Hud {
     for (const m of world.races?.markers() || []) add('picada', m);
     for (const m of world.matanzas?.markers(P) || []) add('matanza', m);
     if (world.heli && world.heli.state === 'parked') add('heli', world.heli);
+    // los tanques del Ejército (src/tank.js): siempre a la vista, pegados al borde si están lejos
+    for (const v of world.tanks?.list || []) if (!v.wreck && P.vehicle !== v) add('tanque', v, { edge: true });
     if (world.tobogan?.t) add('tobogan', world.tobogan.t.door);
     if (world.aura) add('aura', world.aura.spot);
     if (world.seleccion) add('seleccion', world.seleccion.spot);
@@ -682,7 +684,7 @@ export class Hud {
     }
     for (const m of this.pois(world)) {
       const [x, y] = toScreen(m.x, m.z);
-      const size = m.kind === 'mision' || m.kind === 'ovni' ? 22 : 18;
+      const size = m.kind === 'mision' || m.kind === 'ovni' || m.kind === 'tanque' ? 22 : 18;
       const d = Math.hypot(x - R0, y - R0);
       const lim = R0 - size / 2 - 2;
       if (d <= lim) drawIcon(g, m.kind, x, y, size, m.letter);
