@@ -1133,7 +1133,7 @@ function reset(h) {
 // Anima caminata y poses. `speed` en m/s. `t` (0..1) es el avance de un golpe.
 // `post(bones)`: retoques encima de la pose (mirar a alguien, inclinarse) antes de copiarla al modelo.
 // cuánto dura el paso de una pose a otra (s): los golpes y las reacciones casi sin mezcla para que peguen
-const BLEND = { swim: 0.35, tread: 0.35, dive: 0.4, jab: 0.06, cross: 0.07, hook: 0.08, uppercut: 0.08, kick: 0.1, hit: 0.04, punch: 0.06, swing: 0.07, dead: 0.3, knocked: 0.22, getup: 0.12, aim: 0.12, aimLong: 0.14 };
+const BLEND = { swim: 0.35, tread: 0.35, dive: 0.4, jab: 0.06, cross: 0.07, hook: 0.08, uppercut: 0.08, kick: 0.1, hit: 0.04, block: 0.05, punch: 0.06, swing: 0.07, dead: 0.3, knocked: 0.22, getup: 0.12, aim: 0.12, aimLong: 0.14 };
 const qa = new THREE.Quaternion();
 const qb = new THREE.Quaternion();
 export function animateHuman(h, dt, speed, pose = 'walk', t = 0, post = null) {

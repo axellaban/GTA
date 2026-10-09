@@ -1016,6 +1016,16 @@ Ideas para seguir: capó que se levanta con mucho daño; semáforos y carteles q
 
 ## 6b. Última sesión (para quien siga)
 
+- ✅ 2026-10-09, Claude: **golpes más reales** (pedido del dueño). La pose `hit` de `src/moves.js` ahora
+  depende de `h.hitKind` (jab, cross, hook, swing, uppercut, kick) y de `h.hitSide`: el impacto es instantáneo
+  con un rebote del cuello y la vuelta lenta. `combat.meleeHit` pasa `blow` y `lat` (para qué costado empuja
+  la mano que pega) a `npcs.hurt`; `meleeEffects` junta sacudón, golpe, congelado, sangre (a la cabeza o la
+  panza) y saliva con el gancho, el cruzado y el uppercut. Los empujones ya no teletransportan: `n.stag`
+  (velocidad que frena, con choque contra paredes) en `npcs.stagger`, también para el que cae nocaut. Guardia:
+  el que pelea de frente ataja directos y cruzados (`n.guardP`, 30 %; pose `block`), salvo que venga
+  recibiendo (`n.stunT`). Arreglado de paso: `updateFight` tomaba la reacción a un golpe como si fuera su
+  piña (`act.punch`). Prueba: `pinas-test.mjs` (en la sesión), combo completo con capturas.
+
 - ✅ 2026-10-09, Claude: **techos caminables, tirarse de la torre y la mira del helicóptero** (pedidos del
   dueño). `src/techos.js` (nuevo): para cada edificio de `city.buildingList`, su contorno, la losa y la forma
   del techo como la dibujan `city.js`/`techos-kit.js` (plano, a dos aguas con `pitched`, bóveda de galpón), en

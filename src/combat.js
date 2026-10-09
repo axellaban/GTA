@@ -295,19 +295,38 @@ export class Combat {
     const fx = Math.sin(P.heading);
     const fz = Math.cos(P.heading);
     const heavy = a.pose === 'kick' || a.pose === 'swing' || a.pose === 'hook' || a.pose === 'uppercut';
-    this.fx.shake += a.saw ? 0.1 : heavy ? 0.24 : 0.12;
-    if (!a.saw) this.audio.golpe(a.pose === 'swing' ? 0.9 : 0.6);
-    P.hitMarker = 0.15;
-    // el golpe "pega": el tiempo se congela un instante (con la motosierra, apenas)
-    world.hitStop = a.saw ? 0.03 : heavy ? 0.1 : 0.07;
-    if (t.kind === 'npc') {
+    // para qué costado empuja la mano que pega: el gancho de izquierda y el directo, hacia la derecha de
+    // Gaspi; el cruzado, el uppercut y el palazo (de derecha), hacia su izquierda
+    const lx = Math.cos(P.heading);
+    const lz = -Math.sin(P.heading);
+    const lat = a.pose === 'hook' || a.pose === 'jab' ? { x: -lx, z: -lz } : a.pose === 'kick' ? null : { x: lx, z: lz };
+    if (t.kind === 'npc' && !a.saw) {
       const n = t.obj;
       const down = n.down;
       const lying = n.state === 'ko';
-      // sangre de la boca o la nariz (y más con el palo)
-      const bh = lying ? 0.25 : 1.55;
-      if (a.pose === 'swing' || R.chance(0.65)) this.fx.blood(t.x - fx * 0.15, bh, t.z - fz * 0.15, fx, fz, a.saw ? 24 : a.pose === 'swing' ? 12 : 6, a.saw ? 4 : a.pose === 'swing' ? 3 : 2);
-      else this.fx.hit(t.x - fx * 0.3, 1.3, t.z - fz * 0.3);
+      const res0 = world.npcs.hurt(n, down ? a.dmg * 0.7 : a.dmg, fx, fz, { byPlayer: true, knock: a.knock, world, blow: a.pose, lat });
+      if (res0 === 'block') {
+        // lo atajó con la guardia: golpe seco en los antebrazos, el brazo de Gaspi rebota
+        this.audio.golpe(0.3);
+        this.fx.shake += 0.06;
+        world.hitStop = 0.05;
+        a.dur = Math.min(a.dur, a.t + 0.12);
+        if (!n.bubble) n.say(R.pick(['¡Ja! ¿Eso es todo?', '¡Uh, casi!', 'Más rápido, gil']), 1.4);
+        return;
+      }
+      this.meleeEffects(P, world, a, t, heavy, fx, fz, lying);
+      world.police.crime(n.type === 'cana' ? 'cana' : res0 === 'muerte' ? 'muerte' : res0 === 'ko' ? 'ko' : 'pina', n.x, n.z);
+      if (res0 === 'ko' && !down) {
+        world.hud.toast(R.pick(['¡Nocaut!', '¡A dormir!', '¡Fuera!']), 1.2);
+        world.social?.('ko', n.x, n.z);
+      }
+      if (res0 === 'muerte') world.social?.('muerte', n.x, n.z);
+      return;
+    }
+    this.meleeEffects(P, world, a, t, heavy, fx, fz, t.obj?.state === 'ko');
+    if (t.kind === 'npc') {
+      const n = t.obj;
+      const down = n.down;
       const px = n.x;
       const pz = n.z;
       const res = world.npcs.hurt(n, down ? a.dmg * 0.7 : a.dmg, fx, fz, { byPlayer: true, knock: a.knock, world });
@@ -327,6 +346,26 @@ export class Combat {
     } else if (t.kind === 'rider') {
       world.traffic.ejectRider(t.obj, world, fx, fz);
       world.police.crime('pina', t.x, t.z);
+    }
+  }
+
+  // lo que se ve y se oye cuando el golpe entra: sacudón, golpe seco, el tiempo que se congela un instante,
+  // sangre de la boca o la nariz (y más con el palo o la motosierra) y la saliva que salta con el gancho
+  meleeEffects(P, world, a, t, heavy, fx, fz, lying = false) {
+    this.fx.shake += a.saw ? 0.1 : heavy ? 0.24 : 0.12;
+    if (!a.saw) this.audio.golpe(a.pose === 'swing' ? 0.9 : a.pose === 'kick' ? 0.75 : heavy ? 0.68 : 0.55);
+    P.hitMarker = 0.15;
+    world.hitStop = a.saw ? 0.03 : heavy ? 0.1 : 0.07;
+    if (t.kind !== 'npc') return;
+    // a la cabeza (las piñas) o a la panza (la patada)
+    const bh = lying ? 0.25 : a.pose === 'kick' ? 1.05 : 1.55;
+    if (a.saw || a.pose === 'swing' || (a.pose !== 'kick' && R.chance(heavy ? 0.75 : 0.45))) this.fx.blood(t.x - fx * 0.15, bh, t.z - fz * 0.15, fx, fz, a.saw ? 24 : a.pose === 'swing' ? 12 : 6, a.saw ? 4 : a.pose === 'swing' ? 3 : 2);
+    else this.fx.hit(t.x - fx * 0.3, bh - 0.2, t.z - fz * 0.3);
+    if (!lying && (a.pose === 'hook' || a.pose === 'uppercut' || a.pose === 'cross')) {
+      // saliva y sudor que saltan para el lado del golpe
+      for (let i = 0; i < 7; i++) {
+        this.fx.alpha.add({ x: t.x - fx * 0.1, y: 1.6, z: t.z - fz * 0.1, vx: fx * R.range(1.5, 3.5) + R.range(-0.8, 0.8), vy: (a.pose === 'uppercut' ? 3 : 1.2) + R.range(0, 1.2), vz: fz * R.range(1.5, 3.5) + R.range(-0.8, 0.8), grav: -9.8, drag: 0.6, life: 0, max: R.range(0.35, 0.6), s0: 0.025, s1: 0.012, c0: [0.92, 0.94, 0.96], a: 0.75 });
+      }
     }
   }
 

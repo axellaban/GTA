@@ -21,7 +21,7 @@ function strike(t, a, p, r) {
   return { w, e };
 }
 
-export const COMBAT_POSES = new Set(['fight', 'guard', 'jab', 'cross', 'punch', 'hook', 'uppercut', 'kick', 'hit', 'aim', 'aimLong', 'holdGun']);
+export const COMBAT_POSES = new Set(['fight', 'guard', 'jab', 'cross', 'punch', 'hook', 'uppercut', 'kick', 'hit', 'block', 'aim', 'aimLong', 'holdGun']);
 
 // guardia de boxeo (ortodoxa: izquierda adelante). legs: 0 deja las piernas de la caminata, 1 las planta
 function stance(h, b, legs) {
@@ -157,22 +157,87 @@ export function combatPose(h, b, pose, t, speed) {
     return;
   }
   if (pose === 'hit') {
-    // le pegaron: la cabeza se va para atrás y al costado de un golpe y vuelve de a poco, medio paso atrás
+    // le pegaron: según el golpe (h.hitKind) y de qué lado vino (h.hitSide), el cuerpo reacciona distinto.
+    // El impacto es instantáneo (la cabeza se va de golpe) y la vuelta es lenta, con medio paso atrás
     const side = h.hitSide ?? (h.hitSide = Math.random() < 0.5 ? -1 : 1);
-    const k = t < 0.15 ? outCubic(t / 0.15) : 1 - smooth((t - 0.15) / 0.85);
-    b.spine.rotation.x = -0.22 * k;
-    b.chest.rotation.set(-0.1 * k, 0.32 * k * side, 0.12 * k * side);
-    b.head.rotation.set(-0.45 * k, 0.42 * k * side, 0.25 * k * side);
-    b.hips.position.z -= 0.06 * k;
-    b.thR.rotation.x += 0.26 * k;
-    b.shR.rotation.x += 0.25 * k;
-    b.thL.rotation.x -= 0.08 * k;
-    // los brazos se abren un poco para no caerse
-    b.uaR.rotation.set(-0.35 * k, 0, -0.38 * k);
-    b.uaL.rotation.set(-0.35 * k, 0, 0.38 * k);
-    b.faR.rotation.x = -0.2 - 0.55 * k;
-    b.faL.rotation.x = -0.2 - 0.55 * k;
-    if (t > 0.97) h.hitSide = null;
+    const kind = h.hitKind;
+    const k = t < 0.12 ? outCubic(t / 0.12) : 1 - smooth((t - 0.12) / 0.88);
+    // rebote: la cabeza pasa un poco de largo y vuelve (el cuello no es rígido)
+    const wob = Math.sin(clamp01(t / 0.45) * Math.PI * 2) * (1 - clamp01(t / 0.45)) * 0.12;
+    if (kind === 'hook' || kind === 'swing') {
+      // gancho o palazo: la cabeza y el torso se van de costado de un latigazo, las rodillas se aflojan
+      b.spine.rotation.set(-0.08 * k, 0.25 * k * side, 0.2 * k * side);
+      b.chest.rotation.set(-0.06 * k, 0.5 * k * side, 0.18 * k * side);
+      b.head.rotation.set(-0.15 * k, (0.85 * k + wob) * side, (0.4 * k + wob) * side);
+      b.hips.position.y -= 0.06 * k;
+      b.hips.position.x -= 0.06 * k * side;
+      b.thR.rotation.x += 0.2 * k;
+      b.shR.rotation.x += 0.45 * k;
+      b.thL.rotation.x -= 0.15 * k;
+      b.shL.rotation.x += 0.35 * k;
+      b.uaR.rotation.set(-0.25 * k, 0, -0.75 * k);
+      b.uaL.rotation.set(-0.25 * k, 0, 0.75 * k);
+      b.faR.rotation.x = -0.2 - 0.3 * k;
+      b.faL.rotation.x = -0.2 - 0.3 * k;
+    } else if (kind === 'uppercut') {
+      // uppercut: la cabeza sale para arriba, se para en puntas de pie y los brazos se caen
+      b.spine.rotation.x = -0.32 * k;
+      b.chest.rotation.set(-0.22 * k, 0.12 * k * side, 0);
+      b.head.rotation.set(-0.95 * k - wob, 0.1 * k * side, 0.08 * k * side);
+      b.hips.position.y += 0.04 * k;
+      b.hips.position.z -= 0.08 * k;
+      b.ftL.rotation.x += 0.45 * k;
+      b.ftR.rotation.x += 0.45 * k;
+      b.uaR.rotation.set(0.15 * k, 0, -0.5 * k);
+      b.uaL.rotation.set(0.15 * k, 0, 0.5 * k);
+      b.faR.rotation.x = -0.15;
+      b.faL.rotation.x = -0.15;
+    } else if (kind === 'kick') {
+      // patada a la panza: se dobla en dos, las manos a la panza, la cadera para atrás
+      b.spine.rotation.set(0.6 * k, 0, 0.05 * k * side);
+      b.chest.rotation.set(0.32 * k, 0, 0);
+      b.head.rotation.set(0.15 * k - wob, 0, 0);
+      b.hips.position.z -= 0.14 * k;
+      b.hips.position.y -= 0.07 * k;
+      b.thR.rotation.x -= 0.3 * k;
+      b.thL.rotation.x -= 0.35 * k;
+      b.shR.rotation.x += 0.55 * k;
+      b.shL.rotation.x += 0.6 * k;
+      b.uaR.rotation.set(-0.55 * k, 0.4 * k, 0.25 * k);
+      b.uaL.rotation.set(-0.55 * k, -0.4 * k, -0.25 * k);
+      b.faR.rotation.x = -0.4 - 1.3 * k;
+      b.faL.rotation.x = -0.4 - 1.3 * k;
+    } else {
+      // directo o cruzado: la cabeza va para atrás (y para el lado de la mano que pegó), medio paso atrás
+      const cross = kind === 'cross' ? 1 : 0.45;
+      b.spine.rotation.x = -0.22 * k;
+      b.chest.rotation.set(-0.12 * k, 0.32 * k * side * cross, 0.12 * k * side * cross);
+      b.head.rotation.set(-0.5 * k - wob, (0.48 * k * side + wob * side) * cross, 0.25 * k * side * cross);
+      b.hips.position.z -= 0.07 * k;
+      b.thR.rotation.x += 0.28 * k;
+      b.shR.rotation.x += 0.28 * k;
+      b.thL.rotation.x -= 0.08 * k;
+      // los brazos se abren un poco para no caerse
+      b.uaR.rotation.set(-0.35 * k, 0, -0.38 * k);
+      b.uaL.rotation.set(-0.35 * k, 0, 0.38 * k);
+      b.faR.rotation.x = -0.2 - 0.55 * k;
+      b.faL.rotation.x = -0.2 - 0.55 * k;
+    }
+    if (t > 0.97) h.hitSide = h.hitKind = null;
+    return;
+  }
+  if (pose === 'block') {
+    // ataja el golpe con los antebrazos delante de la cara: el golpe lo empuja un poco y vuelve a la guardia
+    stance(h, b, 1);
+    const k = t < 0.15 ? outCubic(t / 0.15) : 1 - smooth((t - 0.15) / 0.85) * 0.6;
+    b.uaL.rotation.set(-1.35, -0.35, -0.05);
+    b.faL.rotation.set(-2.35, 0, 0);
+    b.uaR.rotation.set(-1.3, 0.35, 0.05);
+    b.faR.rotation.set(-2.35, 0, 0);
+    b.head.rotation.x += 0.28;
+    b.spine.rotation.x += 0.08 - 0.12 * k;
+    b.hips.position.z -= 0.05 * k;
+    b.hips.position.y -= 0.03;
     return;
   }
   // ---- armas: apuntado con pitch de la cámara (h.aimPitch, + arriba), retroceso (t) y respiración

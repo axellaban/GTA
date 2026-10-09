@@ -380,7 +380,7 @@ El Roca viene lleno: se ve la gente parada y sentada detrás de las ventanillas.
 
 ## Piñas y apuntado (0.35)
 
-Las piñas se pegan con todo el cuerpo: Gaspi se pone en guardia de boxeo, carga, el golpe sale rápido, gira la cadera, pivotea el pie de atrás y vuelve a la guardia. El combo es directo, cruzado, gancho, uppercut y patada frontal, y da medio paso hacia el rival. Al que le pegan se le va la cabeza para el lado del golpe. Al apuntar, el torso sigue la mira arriba y abajo, el arma patea al tirar y se puede caminar de costado o para atrás sin dejar de apuntar. Todo pasa de una pose a otra sin saltos.
+Las piñas se pegan con todo el cuerpo: Gaspi se pone en guardia de boxeo, carga, el golpe sale rápido, gira la cadera, pivotea el pie de atrás y vuelve a la guardia. El combo es directo, cruzado, gancho, uppercut y patada frontal, y da medio paso hacia el rival. El que recibe reacciona según el golpe: con el directo la cabeza se va para atrás, el cruzado se la da vuelta, el gancho lo tuerce de costado con las rodillas flojas (y le salta la saliva), el uppercut le levanta la cabeza y lo para en puntas de pie, y la patada lo dobla o lo tira; siempre trastabilla para atrás, sin teletransportarse. Peleando de frente, a veces ataja el directo o el cruzado con la guardia (el brazo de Gaspi rebota), pero el que viene recibiendo una seguidilla queda abierto. Al apuntar, el torso sigue la mira arriba y abajo, el arma patea al tirar y se puede caminar de costado o para atrás sin dejar de apuntar. Todo pasa de una pose a otra sin saltos.
 
 ## Chicos farmeando aura (0.34)
 
