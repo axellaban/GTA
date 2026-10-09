@@ -122,6 +122,7 @@ export class Player {
     if (this.health <= 0) this.die(msg || 'Te bajaron');
   }
   hitReact(x, z) {
+    this.hitFrom(x, z);
     if (this.vehicle || this.downT > 0) return;
     this.reactT = 0.45;
     this.fightT = 3.5; // le pegaron: se pone en guardia
@@ -633,7 +634,13 @@ export class Player {
     }
     const w = WEAPONS[this.weapon || 'punos'];
     const buff = this.buffs.medias ? 1.12 : 1;
+    // agacharse (C o el botón): más chico para las balas, tira más preciso, camina despacio; correr lo para
+    if (input.hit('c', 'crouch') && this.wade < 0.6) {
+      this.crouch = !this.crouch;
+      if (this.crouch) this.fightT = 0;
+    }
     const run = (input.down('shift') || input.sprint) && !this.aiming;
+    if (run && this.crouch && (input.move.x || input.move.y || input.down('w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'))) this.crouch = false;
     // velocidad que pide el jugador
     let tvx = 0;
     let tvz = 0;
@@ -654,6 +661,7 @@ export class Player {
       // el agua frena: a la cintura se camina a la mitad y correr casi no sirve
       if (this.wade > 0) sp *= 1 - this.wade * (run ? 0.72 : 0.55);
       if (this.aiming) sp = Math.min(sp, 2.2);
+      if (this.crouch) sp = Math.min(sp, 1.6);
       if (this.attack) sp *= 0.25;
       tvx *= sp;
       tvz *= sp;
@@ -769,6 +777,7 @@ export class Player {
     animateHuman(this.h, dt, Math.max(this.speed, stepIn), pose, t);
     this.naturalize(dt, ground, pose === 'walk');
     this.cayendo(dt, ground);
+    this.agachado(dt, world);
     if (this.wade > 0 && pose === 'walk') {
       // con el agua a la cintura: los brazos se abren para hacer equilibrio y el cuerpo empuja adelante
       const b = this.h.bones;
@@ -782,6 +791,76 @@ export class Player {
       b.thL.rotation.x -= 0.2 * w * Math.min(1, this.speed);
     }
     this.drip(dt, world);
+  }
+
+  // agachado: rodillas dobladas, la cadera baja y el torso adelante (también apuntando). Al lado de algo
+  // que tapa (una pared, una reja, un auto), queda "a cubierto": las balas pegan en eso
+  agachado(dt, world) {
+    if (this.vehicle || this.swimming || this.dead) this.crouch = false;
+    this.crouchK = (this.crouchK || 0) + ((this.crouch ? 1 : 0) - (this.crouchK || 0)) * Math.min(1, dt * 10);
+    const k = this.crouchK;
+    this.cover = false;
+    if (k < 0.01) return;
+    const b = this.h.bones;
+    b.hips.position.y -= 0.36 * k;
+    b.thR.rotation.x -= 0.95 * k;
+    b.thL.rotation.x -= 0.75 * k;
+    b.shR.rotation.x += 1.55 * k;
+    b.shL.rotation.x += 1.35 * k;
+    b.ftR.rotation.x -= 0.45 * k;
+    b.ftL.rotation.x -= 0.4 * k;
+    b.spine.rotation.x += 0.28 * k;
+    b.head.rotation.x -= 0.2 * k;
+    // a cubierto: algo alto como para taparlo a menos de un metro
+    if (this.crouch && world) {
+      for (const c of world.colliders.query(this.x, this.z, 1)) {
+        if (c.gone || (c.y0 ?? 0) > this.y + 0.5 || c.h < this.y + 0.9) continue;
+        let d;
+        if (c.c) d = Math.hypot(c.x - this.x, c.z - this.z) - c.r;
+        else {
+          const dx = c.bx - c.ax;
+          const dz = c.bz - c.az;
+          const l2 = dx * dx + dz * dz || 1;
+          const t = Math.max(0, Math.min(1, ((this.x - c.ax) * dx + (this.z - c.az) * dz) / l2));
+          d = Math.hypot(c.ax + dx * t - this.x, c.az + dz * t - this.z);
+        }
+        if (d < 0.9) {
+          this.cover = true;
+          break;
+        }
+      }
+      if (!this.cover) for (const v of this.nearCars || []) if (Math.hypot(v.x - this.x, v.z - this.z) < v.L / 2 + 1) this.cover = true;
+    }
+  }
+
+  // de dónde vino un golpe o un tiro (el indicador rojo en el borde de la pantalla, src/hud.js)
+  hitFrom(x, z) {
+    this.dmgFrom ??= [];
+    const old = this.dmgFrom.find((d) => Math.hypot(d.x - x, d.z - z) < 3);
+    if (old) old.t = 1.4;
+    else {
+      if (this.dmgFrom.length >= 4) this.dmgFrom.shift();
+      this.dmgFrom.push({ x, z, t: 1.4 });
+    }
+  }
+
+  // tirando desde el auto o la moto (src/combat.js driveBy): el brazo del arma, estirado hacia la mira
+  brazoDriveBy(v) {
+    if (!(this.aiming || this.shootT > 0) || !WEAPONS[this.weapon]?.gun) return;
+    const b = this.h.bones;
+    const c = this.camYaw;
+    const firing = this.shootT > 0.2 && this.aimYaw != null;
+    let a = (firing ? this.aimYaw : Math.atan2(-Math.sin(c), -Math.cos(c))) - v.heading;
+    while (a > Math.PI) a -= Math.PI * 2;
+    while (a < -Math.PI) a += Math.PI * 2;
+    // para atrás no llega: hasta el costado
+    a = Math.max(-2.2, Math.min(2.2, a));
+    const p = Math.max(-0.6, Math.min(0.6, firing ? this.aimPitch ?? 0 : -(this.camPitch - 0.2) * 0.6));
+    const tw = a * 0.3;
+    b.chest.rotation.y += tw;
+    b.head.rotation.y += a * 0.4;
+    b.uaR.rotation.set(-Math.PI / 2 - p, 0, a - tw);
+    b.faR.rotation.set(0, 0, 0);
   }
 
   // trepando un pretil, o cayendo de lo alto: brazos y piernas (como en los GTA al tirarse de un edificio)
@@ -1388,6 +1467,7 @@ export class Player {
       animateHuman(this.h, dt, 0, 'ride');
       this.h.bones.spine.rotation.x = 0.3 + sp * 0.006;
     }
+    this.brazoDriveBy(v);
 
     // choques con casas
     let bump = 0;
@@ -1661,7 +1741,7 @@ export class Player {
   updateCamera(camera, dt, colliders, fx) {
     const inCar = !!this.vehicle;
     this.aimK += ((this.aiming ? 1 : 0) - this.aimK) * Math.min(1, dt * 10);
-    if (inCar && this.lastLook > 1.2) {
+    if (inCar && this.lastLook > 1.2 && !this.aiming) {
       let target = this.heading + Math.PI;
       if (this.vehicle.speed < -1) target = this.heading;
       let diff = target - this.camYaw;
@@ -1673,12 +1753,14 @@ export class Player {
     const ufo = !!this.ufo;
     const base = ufo ? 17 : inCar ? (vk === 'bus' ? 14 : vk === 'moto' ? 5.5 : this.vehicle.model === 'camion' ? 12 : 8.5) : 5;
     const sp = inCar ? Math.abs(this.vehicle.speed) : 0;
-    const dist = (base + sp * 0.06) * (this.zoom ?? 1) * (1 - this.aimK * 0.55);
-    const hgt = ufo ? 3.2 : inCar ? (vk === 'moto' ? 1.8 : 2.2) : 1.7;
+    // apuntando a pie, la cámara se acerca sobre el hombro; desde el auto (drive-by) apenas, para ver la calle
+    const dist = (base + sp * 0.06) * (this.zoom ?? 1) * (1 - this.aimK * (inCar ? 0.2 : 0.55));
+    const hgt = ufo ? 3.2 : inCar ? (vk === 'moto' ? 1.8 : 2.2) : 1.7 - 0.45 * (this.crouchK || 0);
     const pitch = this.camPitch * (1 - this.aimK * 0.5);
     // hombro derecho
-    const sx = Math.cos(this.camYaw) * 0.85 * this.aimK;
-    const sz = -Math.sin(this.camYaw) * 0.85 * this.aimK;
+    const hombro = inCar ? 0 : 0.85 * this.aimK;
+    const sx = Math.cos(this.camYaw) * hombro;
+    const sz = -Math.sin(this.camYaw) * hombro;
     const cx = this.x + Math.sin(this.camYaw) * Math.cos(pitch) * dist + sx;
     const cz = this.z + Math.cos(this.camYaw) * Math.cos(pitch) * dist + sz;
     const cy = this.y + hgt + Math.sin(pitch) * dist;
@@ -1720,7 +1802,7 @@ export class Player {
     // al apuntar se mira más lejos: la mira queda en el centro de la pantalla
     const lx = this.x + sx - Math.sin(this.camYaw) * this.aimK * 6;
     const lz = this.z + sz - Math.cos(this.camYaw) * this.aimK * 6;
-    const ly = this.y + (ufo ? 1.6 : inCar ? 1.4 : this.diving ? 0.1 : this.swimming ? 0.35 : 1.55) + this.aimK * (0.2 - pitch * 2.5);
+    const ly = this.y + (ufo ? 1.6 : inCar ? 1.4 : this.diving ? 0.1 : this.swimming ? 0.35 : 1.55 - 0.45 * (this.crouchK || 0)) + this.aimK * (0.2 - pitch * 2.5);
     camera.lookAt(lx, ly, lz);
     // campo visual: más abierto a alta velocidad, más cerrado al apuntar
     const fov = 62 + Math.min(12, sp * 0.35) - this.aimK * 14;

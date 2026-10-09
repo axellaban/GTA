@@ -214,14 +214,48 @@ export class Input {
       b.addEventListener('touchcancel', up);
       b.addEventListener('mousedown', (e) => { if (e.button === 0) this.pressed.add(b.dataset.btn); });
     }
-    // tocar el arma la cambia; tocar las balas recarga; el menú pausa (como en GTA mobile)
+    // tocar el arma la cambia; mantenerla abre la rueda de armas (src/rueda.js) y se elige arrastrando
+    const wn = document.getElementById('w-name');
+    if (wn) {
+      let timer = null;
+      let fid = null;
+      wn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const t = e.changedTouches[0];
+        fid = t.identifier;
+        this.wheelPos = null;
+        timer = setTimeout(() => {
+          timer = null;
+          this.wheelHold = true;
+        }, 300);
+      });
+      wn.addEventListener('touchmove', (e) => {
+        const t = [...e.changedTouches].find((o) => o.identifier === fid);
+        if (!t || !this.wheelHold) return;
+        e.preventDefault();
+        this.wheelPos = { x: t.clientX, y: t.clientY };
+      }, { passive: false });
+      const end = (e) => {
+        if (![...e.changedTouches].some((o) => o.identifier === fid)) return;
+        if (timer) {
+          clearTimeout(timer);
+          timer = null;
+          this.pressed.add('weapon');
+        }
+        this.wheelHold = false;
+        fid = null;
+      };
+      wn.addEventListener('touchend', end);
+      wn.addEventListener('touchcancel', end);
+    }
+    // tocar las balas recarga; el menú pausa (como en GTA mobile)
     const tap = (id, key) =>
       document.getElementById(id)?.addEventListener('touchstart', (e) => {
         e.preventDefault();
         e.stopPropagation();
         this.pressed.add(key);
       });
-    tap('w-name', 'weapon');
     tap('w-ammo', 'r');
     tap('btn-menu', 'p');
     document.getElementById('btn-menu')?.addEventListener('click', () => this.pressed.add('p'));
@@ -232,6 +266,7 @@ export class Input {
     this.pressed.clear();
     this.touchButtons.clear();
     this.aimToggled = false;
+    this.wheelHold = false;
     this.dragging = false;
     this.look.dx = this.look.dy = this.wheel = 0;
     this.move.x = this.move.y = 0;

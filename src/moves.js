@@ -192,6 +192,30 @@ export function combatPose(h, b, pose, t, speed) {
       b.uaL.rotation.set(0.15 * k, 0, 0.5 * k);
       b.faR.rotation.x = -0.15;
       b.faL.rotation.x = -0.15;
+    } else if (kind === 'head') {
+      // un tiro en la cabeza (y sobrevivió): la cabeza se va de golpe para atrás, el cuerpo atrás de ella
+      b.spine.rotation.set(-0.35 * k, 0.08 * k * side, 0);
+      b.chest.rotation.set(-0.2 * k, 0, 0);
+      b.head.rotation.set(-0.9 * k - wob, 0.2 * k * side, 0.15 * k * side);
+      b.hips.position.z -= 0.1 * k;
+      b.thR.rotation.x += 0.3 * k;
+      b.shR.rotation.x += 0.35 * k;
+      b.uaR.rotation.set(-0.5 * k, 0, -0.45 * k);
+      b.uaL.rotation.set(-0.5 * k, 0, 0.45 * k);
+      b.faR.rotation.x = -0.2 - 0.4 * k;
+      b.faL.rotation.x = -0.2 - 0.4 * k;
+    } else if (kind === 'leg') {
+      // en la pierna: se le dobla la rodilla, baja de golpe y se agarra el muslo
+      b.hips.position.y -= 0.16 * k;
+      b.thR.rotation.x -= 0.25 * k;
+      b.shR.rotation.x += 1.1 * k;
+      b.thL.rotation.x -= 0.5 * k;
+      b.shL.rotation.x += 0.7 * k;
+      b.spine.rotation.set(0.35 * k, 0, -0.12 * k);
+      b.head.rotation.x += 0.15 * k;
+      b.uaR.rotation.set(-0.45 * k, 0.3 * k, 0.15 * k);
+      b.faR.rotation.x = -0.3 - 0.5 * k;
+      b.uaL.rotation.set(-0.2 * k, 0, 0.35 * k);
     } else if (kind === 'kick') {
       // patada a la panza: se dobla en dos, las manos a la panza, la cadera para atrás
       b.spine.rotation.set(0.6 * k, 0, 0.05 * k * side);

@@ -1016,6 +1016,23 @@ Ideas para seguir: capó que se levanta con mucho daño; semáforos y carteles q
 
 ## 6b. Última sesión (para quien siga)
 
+- ✅ 2026-10-09, Claude: **tiros a lo GTA, las 8 mejoras** (pedido del dueño). `src/mira.js` (nuevo):
+  `fijar` (blanco fijado mientras se apunta: el más cerca del centro dentro de un cono de 3° en la compu y 7°
+  en el celu, a la vista y a tiro; se suelta recién más afuera) y `hostil` (rojo: cana, el que pelea o
+  persigue, bandas, zombis); `updateMira` dibuja punto y cuatro palitos (`--gap` según `shotSpread`), aro y
+  barrita de vida; `RECOIL` por arma; `screenAngle` para las cuñas de daño. `aim.js`: `canDriveBy` y
+  `shotSpread` con `bloom` y agachado. `combat.js`: apuntado asistido (si la mira no le da al fijado, va al
+  pecho), `kick` (sube y corre la mira, la vuelve de a poco en `update`), zonas en `trace` (`best.zone`:
+  cabeza ×2,6, piernas ×0,6 y renguea o cae), "tic" y marca roja al bajar a alguien (`audio.confirma`),
+  `driveBy` (tiros por la ventanilla del que maneja o desde la moto; brazo en `player.brazoDriveBy`),
+  `enemyShoot` erra más si Gaspi está agachado o a cubierto. `player.js`: C/botón Agachar (`crouch`,
+  `crouchK`, pose `agachado`, `cover` si hay pared, reja o auto a menos de 1 m), `hitFrom` (las cuñas rojas
+  de `#dmgdir`, que dibuja `hud.js`). `main.js`: latido y la imagen sin color con poca vida (`post.wasted`
+  hasta 0,45) y `src/rueda.js` (rueda de armas: Tab mantenido o el nombre del arma mantenido en el celu, en
+  cámara lenta ×0,25). Botones nuevos en el celu: Agachar; en el auto o la moto con arma, Apuntar y Disparar.
+  Pruebas: `tools/apuntado.test.mjs` (drive-by, bloom y agachado, ángulo de las cuñas); `tiros-test.mjs`
+  (en la sesión) con capturas de todo.
+
 - ✅ 2026-10-09, Claude: **golpes más reales** (pedido del dueño). La pose `hit` de `src/moves.js` ahora
   depende de `h.hitKind` (jab, cross, hook, swing, uppercut, kick) y de `h.hitSide`: el impacto es instantáneo
   con un rebote del cuello y la vuelta lenta. `combat.meleeHit` pasa `blow` y `lat` (para qué costado empuja

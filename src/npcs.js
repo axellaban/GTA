@@ -550,8 +550,11 @@ export class Npcs {
       n.hp -= dmg * 0.15;
       return 'block';
     }
+    n.hpMax ??= Math.max(1, n.hp);
     n.hp -= dmg;
     n.cool = 0;
+    // un tiro en las piernas: rengo un buen rato (y a veces se cae)
+    if (o.zone === 'piernas') n.limpT = 14;
     // una seguidilla de golpes lo deja medio groggy un rato
     if (o.blow) n.stunT = 1.1;
     if (n.hp <= 0) {
@@ -580,7 +583,7 @@ export class Npcs {
       }
       return 'ko';
     }
-    if (o.knock || dmg >= 34) {
+    if (o.knock || dmg >= 34 || (o.zone === 'piernas' && Math.random() < 0.45)) {
       if (!n.down) n.fallT = 0.3;
       n.state = 'down';
       n.knockT = o.knockT ?? 2.4;
@@ -590,15 +593,15 @@ export class Npcs {
     } else {
       // la reacción depende del golpe (src/moves.js): un gancho lo da vuelta de costado, un uppercut le
       // levanta la cabeza, una patada lo dobla; dura más cuanto más fuerte
-      const blow = o.blow ?? null;
-      n.act = { pose: 'hit', t: 0, dur: { jab: 0.42, cross: 0.52, hook: 0.65, swing: 0.65, uppercut: 0.7, kick: 0.85 }[blow] ?? 0.5 };
+      const blow = o.blow ?? (o.zone === 'cabeza' ? 'head' : o.zone === 'piernas' ? 'leg' : o.gun ? 'bullet' : null);
+      n.act = { pose: 'hit', t: 0, dur: { jab: 0.42, cross: 0.52, hook: 0.65, swing: 0.65, uppercut: 0.7, kick: 0.85, head: 0.7, leg: 0.8 }[blow] ?? 0.5 };
       n.h.hitKind = blow;
       // la cabeza se va para donde la empuja el golpe (o.lat: el costado al que empuja la mano que pegó)
       const lx = o.lat?.x ?? fx;
       const lz = o.lat?.z ?? fz;
       n.h.hitSide = lx * Math.cos(n.heading) - lz * Math.sin(n.heading) > 0 ? 1 : -1;
       // y trastabilla para atrás (medio paso; más con la patada y el gancho, que lo corre de costado)
-      const back = { jab: 0.9, cross: 1.3, hook: 1.1, swing: 1.4, uppercut: 1, kick: 2.6 }[blow] ?? 1;
+      const back = { jab: 0.9, cross: 1.3, hook: 1.1, swing: 1.4, uppercut: 1, kick: 2.6, head: 1.2, leg: 0.3, bullet: 0.8 }[blow] ?? 1;
       const lat = blow === 'hook' || blow === 'swing' ? 1 : 0;
       n.stag = { vx: fx * back + (o.lat?.x ?? 0) * lat, vz: fz * back + (o.lat?.z ?? 0) * lat, t: 0.32 };
     }
@@ -976,6 +979,11 @@ export class Npcs {
           n.ripT = n.swim ? 0.4 : 0.55;
           ag.ripple(n.x + Math.sin(n.heading) * 0.3, n.z + Math.cos(n.heading) * 0.3, Math.min(0.6, 0.12 + wd * 0.3));
         }
+      }
+      // rengo por un tiro en la pierna: va más despacio
+      if (n.limpT > 0) {
+        n.limpT -= dt;
+        want *= 0.5;
       }
       if (want > 0 && n.target) {
         if (dp < 40 && n.state !== 'fight' && n.state !== 'protest' && n.type !== 'cana') this.avoidance(n, near, dt);

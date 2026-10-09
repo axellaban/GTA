@@ -6,7 +6,8 @@ import { dentCar, dropBumper, looseBumper, crackedGlass } from './cars.js';
 import { R } from './rng.js';
 import { TOUCH } from './input.js';
 import { CANASTOS } from './canastos.js';
-import { updateAiming, shotSpread } from './aim.js';
+import { updateAiming, shotSpread, canDriveBy } from './aim.js';
+import { RECOIL, fijar } from './mira.js';
 import { allVehicles, sameVehicleLevel } from './vehicle-physics.js';
 import { npcBody } from './npc-body.js';
 
@@ -151,12 +152,23 @@ export class Combat {
     const P = world.player;
     this.fireCd -= dt;
     P.hitMarker = Math.max(0, (P.hitMarker || 0) - dt);
-    // (nadando no se pelea ni se tira)
+    P.hitKill = Math.max(0, (P.hitKill || 0) - dt);
+    // el retroceso: la mira vuelve sola a donde estaba (de a poco, según el arma) y se cierra
+    const rc = RECOIL[P.weapon];
+    if (P.recoilP > 0) {
+      const k = Math.min(P.recoilP, P.recoilP * Math.min(1, dt * (rc?.rec ?? 6)) + dt * 0.004);
+      P.camPitch += k;
+      P.recoilP -= k;
+    }
+    P.bloom = (P.bloom || 0) * Math.exp(-dt * 3.2);
+    // (nadando no se pelea ni se tira; desde el auto o la moto, con un arma de fuego, sí: drive-by)
     if (!P.vehicle && !P.dead && !P.jack && !P.ufo && !P.riding && !P.swimming && !P.boat) this.playerCombat(dt, world);
+    else if (P.vehicle && !P.dead && !P.ufo) this.driveBy(dt, world);
     else {
       P.aiming = false;
       world.input.aimToggled = false;
       P.attack = null;
+      P.lock = null;
     }
     this.updateVehicles(dt, world);
     this.updateMolotovs(dt, world);
@@ -188,9 +200,12 @@ export class Combat {
     // la primera vez con un arma de fuego en la mano (en la compu), cómo se apunta
     if (w.gun && !TOUCH && !this.tipMira && !hud.dialog) {
       this.tipMira = true;
-      hud.toast('Clic derecho: mira (un toque la deja prendida, otro la apaga) · Clic: tirar', 4);
+      hud.toast('Clic derecho: mira (un toque la deja prendida, otro la apaga) · Clic: tirar · C: agacharse · Tab: armas', 5);
     }
     updateAiming(P, input, w, !!hud.dialog);
+    // apuntando: el blanco que queda fijado (src/mira.js)
+    if (P.aiming && w.gun && !w.flame) fijar(world, P, w);
+    else P.lock = null;
     if (P.reloadT > 0) {
       P.reloadT -= dt;
       if (P.reloadT <= 0) {
@@ -641,10 +656,18 @@ export class Combat {
       const h = v.kind === 'bus' ? 3.2 : v.kind === 'moto' ? 1.7 : v.tall ?? 1.5;
       for (const c of v.circles()) test(c.x, c.z, c.r, 0, h, 'veh', v);
     }
-    if (shooter !== P && !P.dead && !P.vehicle) test(P.x, P.z, 0.38, P.y, P.y + 1.8, 'player', P);
+    // agachado, Gaspi es más bajo (y detrás de algo, la bala pega en eso)
+    if (shooter !== P && !P.dead && !P.vehicle) test(P.x, P.z, 0.38, P.y, P.y + (P.crouch ? 1.2 : 1.8), 'player', P);
     best.x = o.x + d.x * best.t;
     best.y = o.y + d.y * best.t;
     best.z = o.z + d.z * best.t;
+    // dónde le dio a una persona: la cabeza, el cuerpo o las piernas
+    if (best.type === 'npc') {
+      const n = best.obj;
+      const h = npcBody(n).height;
+      const k = (best.y - (n.y + (n.fly?.y ?? 0))) / h;
+      best.zone = n.down || n.state === 'ko' ? 'cuerpo' : k > 0.83 ? 'cabeza' : k < 0.47 ? 'piernas' : 'cuerpo';
+    }
     return best;
   }
 
@@ -702,6 +725,10 @@ export class Combat {
       camera.getWorldDirection(camDir);
       const hit = this.trace(world, camera.position, camDir, w.range + 10, P);
       aim = { x: hit.x, y: hit.y, z: hit.z };
+      // con un blanco fijado, si la mira no le da justo, el tiro va al pecho (como el apuntado asistido de
+      // los GTA); si le da, va donde marca (para tirar a la cabeza)
+      const L = P.lock;
+      if (L && !(hit.obj === L.obj || hit.obj === L.obj?.v)) aim = { x: L.x, y: L.y, z: L.z };
     } else {
       const fx = -Math.sin(P.camYaw);
       const fz = -Math.cos(P.camYaw);
@@ -738,12 +765,98 @@ export class Combat {
     // la pistola, la metra y la ametralladora escupen el casquillo (el revólver lo guarda; la tumbera, al recargar)
     if (w.id === 'pistola' || w.id === 'metra' || w.id === 'ametralladora') this.fx.casing(o.x - hx * 0.25, o.y + 0.05, o.z - hz * 0.25, hx, hz, w.id === 'ametralladora');
     this.audio.disparo(w.sound, 1);
-    const kick = { escopeta: [0.3, 1, 0.05], revolver: [0.16, 0.5, 0.032], metra: [0.08, 0.5, 0.008], ametralladora: [0.13, 0.7, 0.012], bazuca: [0.55, 1, 0.07] }[w.id] ?? [0.08, 0.5, 0.014];
+    const kick = { escopeta: [0.3, 1], revolver: [0.16, 0.5], metra: [0.08, 0.5], ametralladora: [0.13, 0.7], bazuca: [0.55, 1] }[w.id] ?? [0.08, 0.5];
     this.fx.shake += kick[0];
     P.recoil = kick[1];
-    // la mira sube con el golpe del tiro (y la ametralladora tiembla para los costados)
-    P.camPitch = Math.max(-0.35, P.camPitch - kick[2]);
-    if (w.id === 'ametralladora') P.camYaw += R.range(-0.006, 0.006);
+    this.kick(P, w);
+    world.npcs.panic(o.x, o.z, 45, P);
+    world.police.crime('tiros', o.x, o.z);
+    if (a.mag === 0 && a.res > 0) setTimeout(() => this.reload(P), 250);
+  }
+
+  // el retroceso de cada arma (src/mira.js): la mira sube y se corre un poco (después vuelve sola) y se abre
+  kick(P, w) {
+    const r = RECOIL[w.id] ?? RECOIL.pistola;
+    const p = r.p * (P.crouch ? 0.7 : 1);
+    P.camPitch = Math.max(-0.35, P.camPitch - p);
+    P.recoilP = Math.min(0.25, (P.recoilP || 0) + p);
+    // las automáticas tiran para un costado a medida que la ráfaga sigue
+    P.camYaw += R.range(-r.y, r.y) + (w.auto ? r.y * 0.35 * Math.min(1, P.bloom || 0) : 0);
+    P.bloom = Math.min(2.6, (P.bloom || 0) + r.bloom);
+  }
+
+  // ---------- Tiros desde el auto o la moto (drive-by) ----------
+  driveBy(dt, world) {
+    const { player: P, input, hud, camera } = world;
+    P.attack = null;
+    const w = WEAPONS[P.weapon];
+    if (input.hit('q', 'weapon')) this.cycle(P, 1);
+    updateAiming(P, input, w, !!hud.dialog);
+    const can = canDriveBy(P, w);
+    if (!can) {
+      P.aiming = false;
+      P.lock = null;
+      this.syncHand(P);
+      return;
+    }
+    if (P.aiming) fijar(world, P, w);
+    else P.lock = null;
+    // el arma en la mano solo mientras apunta o tira
+    const show = P.aiming || P.shootT > 0;
+    const m = P.handMeshes[P.weapon];
+    if (m && m.visible !== show) m.visible = show;
+    P.shootT = Math.max(0, (P.shootT || 0) - dt);
+    if (P.reloadT > 0) {
+      P.reloadT -= dt;
+      if (P.reloadT <= 0) {
+        const a = P.ammo[P.weapon];
+        const n = Math.min(w.mag - a.mag, a.res);
+        a.mag += n;
+        a.res -= n;
+      }
+    }
+    if (input.hit('r')) this.reload(P);
+    const fire = P.aiming && (input.hit('mouse0', 'attack') || (w.auto && input.down('mouse0', 'attack')));
+    if (!fire || P.reloadT > 0 || this.fireCd > 0) return;
+    const a = P.ammo[P.weapon];
+    if (!a || a.mag <= 0) {
+      if (a && a.res > 0) this.reload(P);
+      else this.audio.click();
+      this.fireCd = 0.3;
+      return;
+    }
+    a.mag--;
+    this.fireCd = w.rate * 1.15;
+    P.shootT = 0.4;
+    const v = P.vehicle;
+    // adónde marca la mira (el centro de la pantalla) o el blanco fijado
+    camera.getWorldDirection(camDir);
+    const hit = this.trace(world, camera.position, camDir, w.range + 10, P);
+    let aim = { x: hit.x, y: hit.y, z: hit.z };
+    const L = P.lock;
+    if (L && !(hit.obj === L.obj || hit.obj === L.obj?.v)) aim = { x: L.x, y: L.y, z: L.z };
+    // la bala sale por la ventanilla del que maneja (la izquierda) o de la mano en la moto
+    const lx = Math.cos(v.heading);
+    const lz = -Math.sin(v.heading);
+    const side = v.kind === 'moto' ? 0.35 : v.W / 2 + 0.12;
+    const o = { x: v.x + lx * side + Math.sin(v.heading) * 0.2, y: (v.y || 0) + (v.kind === 'moto' ? 1.35 : 1.15), z: v.z + lz * side + Math.cos(v.heading) * 0.2 };
+    const base = new THREE.Vector3(aim.x - o.x, aim.y - o.y, aim.z - o.z).normalize();
+    P.aimYaw = Math.atan2(base.x, base.z);
+    P.aimPitch = Math.asin(Math.max(-1, Math.min(1, base.y)));
+    const spread = shotSpread(P, w);
+    for (let i = 0; i < w.pellets; i++) {
+      const d = base.clone();
+      d.x += R.range(-1, 1) * spread;
+      d.y += R.range(-1, 1) * spread * 0.6;
+      d.z += R.range(-1, 1) * spread;
+      d.normalize();
+      this.shot(world, o, d, w, P, w.dmg);
+    }
+    this.fx.muzzle(o.x + base.x * 0.3, o.y + base.y * 0.3, o.z + base.z * 0.3, base.x, base.z, w.id === 'escopeta' || w.id === 'metra');
+    if (w.id === 'pistola' || w.id === 'metra') this.fx.casing(o.x, o.y + 0.05, o.z, lx, lz, false);
+    this.audio.disparo(w.sound, 1);
+    this.fx.shake += w.id === 'escopeta' ? 0.25 : w.id === 'revolver' ? 0.12 : 0.05;
+    this.kick(P, w);
     world.npcs.panic(o.x, o.z, 45, P);
     world.police.crime('tiros', o.x, o.z);
     if (a.mag === 0 && a.res > 0) setTimeout(() => this.reload(P), 250);
@@ -758,11 +871,19 @@ export class Combat {
     const fz = d.z / hl;
     if (hit.type === 'npc') {
       const n = hit.obj;
-      const res = world.npcs.hurt(n, dmg, fx, fz, { byPlayer, gun: true, knock: w.knock || dmg >= 45, knockT: 3, world });
-      // la bala sale por atrás con sangre
-      this.fx.blood(hit.x, hit.y, hit.z, fx, fz, w.id === 'escopeta' ? 7 : 10, 4);
+      // a la cabeza mata casi siempre; a las piernas lastima menos pero lo hace caer o renguear
+      const mul = hit.zone === 'cabeza' ? 2.6 : hit.zone === 'piernas' ? 0.6 : 1;
+      const res = world.npcs.hurt(n, dmg * mul, fx, fz, { byPlayer, gun: true, knock: w.knock || dmg * mul >= 45, knockT: 3, world, zone: hit.zone });
+      // la bala sale por atrás con sangre (de la cabeza, más)
+      this.fx.blood(hit.x, hit.y, hit.z, fx, fz, w.id === 'escopeta' ? 7 : hit.zone === 'cabeza' ? 16 : 10, hit.zone === 'cabeza' ? 5 : 4);
       if (byPlayer) {
         world.player.hitMarker = 0.2;
+        world.player.hitHead = hit.zone === 'cabeza';
+        // lo bajaste: la marca roja y un "tic" (como en los GTA de ahora)
+        if (res === 'muerte' || res === 'ko') {
+          world.player.hitKill = 0.4;
+          this.audio.confirma?.(hit.zone === 'cabeza' ? 0.8 : 0.55);
+        }
         world.police.crime(n.type === 'cana' ? 'cana' : res === 'muerte' || res === 'ko' ? 'muerte' : 'herido', n.x, n.z);
         if (res === 'muerte') world.social?.('muerte', n.x, n.z);
       }
@@ -777,6 +898,7 @@ export class Combat {
       if (hit.obj.state !== 'down') world.crime.knockDown(hit.obj, world);
     } else if (hit.type === 'veh') {
       const v = hit.obj;
+      if (v === world.player.vehicle && shooter !== world.player) world.player.hitFrom?.(o.x, o.z);
       if (v.kind === 'moto' && v.rider) world.traffic.ejectRider(v, world, fx, fz);
       // como en los GTA: según dónde pega, pincha la goma, rompe el vidrio o le da al que maneja
       const zone = v.kind === 'moto' || v.kind === 'carro' || v.kind === 'tank' ? {} : carZone(v, hit);
@@ -790,6 +912,7 @@ export class Combat {
       this.damageVehicle(world, v, dmg * 0.45, byPlayer, hit.x, hit.z, true);
       if (v === world.player.vehicle && !byPlayer) world.player.hurt(dmg * 0.12, 'Te balearon el auto');
     } else if (hit.type === 'player') {
+      world.player.hitFrom?.(o.x, o.z);
       world.player.hurt(dmg, 'Te dieron un tiro');
       world.player.hitReact?.(o.x, o.z);
       this.fx.blood(hit.x, hit.y, hit.z, fx, fz, 8, 3);
@@ -892,7 +1015,8 @@ export class Combat {
     const tz = P.vehicle ? P.vehicle.z : P.z;
     const ty = P.vehicle ? 0.9 : P.y + 1.2;
     const dist = Math.hypot(tx - o.x, tz - o.z);
-    const miss = (1 - accuracy) * (0.4 + dist * 0.05) * (1 + Math.min(2, Math.abs(P.speed) * 0.25));
+    // agachado le cuesta más darle; a cubierto (y sin asomarse a apuntar), mucho más
+    const miss = (1 - accuracy) * (0.4 + dist * 0.05) * (1 + Math.min(2, Math.abs(P.speed) * 0.25)) * (P.crouch ? 1.5 : 1) * (P.cover && !P.aiming ? 2.2 : 1);
     const d = new THREE.Vector3(tx + R.range(-miss, miss) - o.x, ty + R.range(-miss, miss) * 0.4 - o.y, tz + R.range(-miss, miss) - o.z).normalize();
     const heavy = W.id === 'ametralladora';
     this.shot(world, o, d, W, shooter, heavy ? 6 : W.id === 'metra' ? 4 : 6);
