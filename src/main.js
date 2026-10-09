@@ -39,6 +39,7 @@ import { Barrio } from './barrio.js';
 import { Aura } from './aura.js';
 import { Seleccion } from './seleccion.js';
 import { CANASTOS } from './canastos.js';
+import { Techos } from './techos.js';
 import { Andenes } from './andenes.js';
 import { CasaClau } from './clau.js';
 import { Norte } from './norte.js';
@@ -1099,6 +1100,7 @@ player.hooks.die = (msg) => {
   radio.setOn(false);
   if (msg === 'TE PASÓ POR ENCIMA EL ROCA') screen('dead', 'TE PASÓ EL ROCA', 'Nunca cruces con la barrera baja');
   else if (msg === 'VOLASTE POR EL AIRE') screen('dead', 'VOLASTE', 'El auto explotó con vos adentro');
+  else if (msg === 'Te tiraste de muy alto') screen('dead', 'TE ESTROLASTE', 'De tan alto no se salva nadie');
   else screen('dead', 'TE BAJARON', msg);
 };
 player.hooks.respawn = (cause) => {
@@ -1120,6 +1122,13 @@ player.hooks.enter = (v) => {
   }
 };
 player.hooks.exit = () => radio.setOn(false);
+// cayó de muy alto (src/player.js caida): el golpe contra el piso
+player.hooks.caida = (v) => {
+  const k = Math.min(1, (v - 11) / 18);
+  audio.golpe?.(0.5 + k * 0.5);
+  fx.dust(player.x, player.y + 0.1, player.z, 6 + Math.round(k * 10), [0.55, 0.52, 0.47], 1 + k);
+  fx.shake += 0.25 + k * 0.6;
+};
 police.hooks = {
   busted: () => {
     missions.busted();
@@ -1542,6 +1551,10 @@ addEventListener('resize', () => {
 // Para pruebas desde la consola
 world.signs = SIGNS;
 world.people = { PEOPLE, makePerson, makeLook, makeStar, makeGirl, animateHuman };
+// los techos de todas las casas y edificios se caminan (menos los que ya tienen su terraza: la torre del
+// helipuerto, la del tobogán, la casa de Clau...)
+world.techos = new Techos(city, (city.walkways || []).filter((w) => w.ring).map((w) => w.ring));
+player.techos = world.techos;
 window.__gta = world;
 window.__renderer = renderer;
 window.__post = () => post;

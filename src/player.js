@@ -59,6 +59,8 @@ export class Player {
     this.heightAt = heightAt;
     // pisos en altura (el puente peatonal de la estación y sus escaleras)
     this.walkways = city.walkways || [];
+    // los techos de las casas y edificios (src/techos.js; lo pone main.js cuando está todo armado)
+    this.techos = null;
     this.spawn = { x: 0, z: 0, face: 0 };
     this.x = 0;
     this.z = 0;
@@ -685,9 +687,13 @@ export class Player {
     // salto
     const ground = this.groundAt();
     if (input.hit(' ', 'jump') && this.y <= ground + 0.05 && !this.attack && this.wade < 0.6) {
-      this.vy = 4.6;
+      // contra un pretil o el parapeto de una terraza: se trepa (salta lo justo para pasar por arriba)
+      const top = this.pretilCerca(world);
+      this.vy = top !== null ? Math.max(4.6, Math.sqrt(2 * 13 * (top - this.y + 0.35))) : 4.6;
+      if (top !== null) this.trepaT = 0.5;
       world.audio.whoosh(0.15);
     }
+    this.trepaT = Math.max(0, (this.trepaT || 0) - dt);
     this.grabbed = Math.max(0, this.grabbed - dt);
     const x0 = this.x;
     const z0 = this.z;
@@ -762,6 +768,7 @@ export class Player {
     const stepIn = this.speed < 0.6 ? Math.min(1.1, Math.abs(this.turnW || 0) * 0.3) : 0;
     animateHuman(this.h, dt, Math.max(this.speed, stepIn), pose, t);
     this.naturalize(dt, ground, pose === 'walk');
+    this.cayendo(dt, ground);
     if (this.wade > 0 && pose === 'walk') {
       // con el agua a la cintura: los brazos se abren para hacer equilibrio y el cuerpo empuja adelante
       const b = this.h.bones;
@@ -775,6 +782,40 @@ export class Player {
       b.thL.rotation.x -= 0.2 * w * Math.min(1, this.speed);
     }
     this.drip(dt, world);
+  }
+
+  // trepando un pretil, o cayendo de lo alto: brazos y piernas (como en los GTA al tirarse de un edificio)
+  cayendo(dt, ground) {
+    const b = this.h.bones;
+    const free = !this.vehicle && !this.swimming && !(this.downT > 0) && this.vy < -4 && this.y > ground + 1.2;
+    const k0 = free ? Math.min(1, (-this.vy - 4) / 6) : 0;
+    this.caerK = (this.caerK || 0) + (k0 - (this.caerK || 0)) * Math.min(1, dt * 5);
+    this.caerClock = (this.caerClock || 0) + dt;
+    const k = this.caerK;
+    if (k > 0.01) {
+      // los brazos arriba y abiertos, agitándose; las piernas sueltas, una adelante y otra atrás
+      const f = this.caerClock * 7;
+      b.uaR.rotation.x = b.uaR.rotation.x * (1 - k) + (-2.3 + Math.sin(f) * 0.5) * k;
+      b.uaL.rotation.x = b.uaL.rotation.x * (1 - k) + (-2.3 + Math.sin(f + 2) * 0.5) * k;
+      b.uaR.rotation.z = b.uaR.rotation.z * (1 - k) - 0.6 * k;
+      b.uaL.rotation.z = b.uaL.rotation.z * (1 - k) + 0.6 * k;
+      b.faR.rotation.x = b.faR.rotation.x * (1 - k) + (-0.5 + Math.sin(f * 1.3) * 0.3) * k;
+      b.faL.rotation.x = b.faL.rotation.x * (1 - k) + (-0.5 + Math.cos(f * 1.3) * 0.3) * k;
+      b.thR.rotation.x = b.thR.rotation.x * (1 - k) + (-0.5 + Math.sin(f * 0.8) * 0.45) * k;
+      b.thL.rotation.x = b.thL.rotation.x * (1 - k) + (0.2 + Math.sin(f * 0.8 + 2.5) * 0.45) * k;
+      b.shR.rotation.x = b.shR.rotation.x * (1 - k) + 0.7 * k;
+      b.shL.rotation.x = b.shL.rotation.x * (1 - k) + 0.9 * k;
+      b.spine.rotation.x += 0.25 * k;
+      b.head.rotation.x -= 0.35 * k;
+    }
+    if (this.trepaT > 0 && this.vy > -1) {
+      // trepando: las manos adelante, apoyadas en el borde, y una rodilla arriba
+      const t = Math.min(1, this.trepaT / 0.25);
+      b.uaR.rotation.x -= 1.5 * t;
+      b.uaL.rotation.x -= 1.5 * t;
+      b.thR.rotation.x -= 1.1 * t;
+      b.shR.rotation.x += 1.3 * t;
+    }
   }
 
   // ---------- En el agua ----------
@@ -1187,7 +1228,8 @@ export class Player {
     const y = this.y;
     // al andén no se sube caminando desde la calle o las vías (se entra por la estación y los molinetes, se baja
     // del puente o se trepa de un salto); arriba del andén su borde no frena. Abajo en el bajo nivel no chocan los de arriba
-    colliders.resolveCircle(p, this.r, (b) => (b.kind !== 'platform' || y < 0.6) && !(b.over && y < -1) && (b.y0 ? y > b.y0 - 0.6 && y < b.h : y < 1 || y < b.h - 0.3) && (!airborne || b.h > 1.3));
+    // (el pretil de los techos y el parapeto de la terraza frenan al que camina; saltando se pasan por arriba)
+    colliders.resolveCircle(p, this.r, (b) => (b.kind !== 'platform' || y < 0.6) && !(b.over && y < -1) && (b.kind === 'pretil' ? y > b.y0 - 0.6 && y < b.h - 0.3 : (b.y0 ? y > b.y0 - 0.6 && y < b.h : y < 1 || y < b.h - 0.3) && (!airborne || b.h > 1.3)));
     const cars = traffic.all().concat(police.cars, world.tanks?.list ?? []);
     for (const v of cars) {
       if (Math.abs(v.x - p.x) > 8 || Math.abs(v.z - p.z) > 8) continue;
@@ -1533,7 +1575,41 @@ export class Player {
   groundAt() {
     const g = this.heightAt(this.x, this.z);
     const w = walkwayHeight(this.walkways, this.x, this.z, this.y);
-    return Math.max(g, w);
+    const t = this.techos ? this.techos.floor(this.x, this.z, this.y) : -Infinity;
+    return Math.max(g, w, t);
+  }
+  // un pretil (o el parapeto de la terraza) al alcance, adelante: la altura de arriba, si se puede trepar
+  pretilCerca(world) {
+    const mv = Math.hypot(this.mvx || 0, this.mvz || 0);
+    const fx = mv > 0.3 ? this.mvx / mv : Math.sin(this.heading);
+    const fz = mv > 0.3 ? this.mvz / mv : Math.cos(this.heading);
+    let best = null;
+    for (const b of world.colliders.query(this.x + fx * 0.5, this.z + fz * 0.5, 1)) {
+      if (b.kind !== 'pretil' || b.y0 < this.y - 0.6 || b.y0 > this.y + 0.3) continue;
+      const top = b.h - this.y;
+      if (top < 0.2 || top > 1.3) continue;
+      // cerca y por delante
+      const dx = b.bx - b.ax;
+      const dz = b.bz - b.az;
+      const l2 = dx * dx + dz * dz || 1;
+      const t = Math.max(0, Math.min(1, ((this.x - b.ax) * dx + (this.z - b.az) * dz) / l2));
+      const px = b.ax + dx * t - this.x;
+      const pz = b.az + dz * t - this.z;
+      const d = Math.hypot(px, pz);
+      if (d > this.r + 0.6 || (d > 0.05 && (px * fx + pz * fz) / d < 0.3)) continue;
+      if (best === null || b.h > best) best = b.h;
+    }
+    return best;
+  }
+  // cae al piso a v m/s: de más de unos 5 m se lastima y queda tirado; de una terraza alta no se salva
+  caida(v) {
+    if (v < 11 || this.dead || this.swimming) return;
+    const ag = this.agua;
+    if (ag?.wet && ag.level > this.y + 0.3) return;
+    const k = Math.min(1, (v - 11) / 18);
+    this.hooks.caida?.(v);
+    this.knockDown(1.2 + k * 1.6, 0, 0);
+    this.hurt((v - 11) * 6, v > 26 ? 'Te tiraste de muy alto' : 'Caíste de muy alto');
   }
   place() {
     if (this.ufo) {
@@ -1573,6 +1649,7 @@ export class Player {
       this.y += this.vy * dt;
       if (this.y <= ground) {
         this.y = ground;
+        this.caida(-this.vy);
         this.vy = 0;
       }
     } else this.y += (ground - this.y) * 0.35;
@@ -1609,7 +1686,11 @@ export class Player {
     // la cámara no se mete abajo del agua (nadando queda más baja, a ras del agua)
     const ag = this.agua;
     const diving = this.diving && ag;
-    const floor = diving ? this.heightAt : ag && ag.wet ? (x, z) => Math.max(this.heightAt(x, z), ag.level + 0.25) : this.heightAt;
+    const ground = diving ? this.heightAt : ag && ag.wet ? (x, z) => Math.max(this.heightAt(x, z), ag.level + 0.25) : this.heightAt;
+    // (y los techos que quedan por debajo: parado en un techo, la cámara no se mete adentro de la casa)
+    const T = this.techos;
+    const headY = anchor.y;
+    const floor = T && !diving ? (x, z) => Math.max(ground(x, z), T.floor(x, z, headY, 0)) : ground;
     if (this.swimming) anchor.y = this.y + (diving ? 0.35 : 1.05);
     let gy = this.swimming ? cy - hgt + (diving ? 0.35 : 1.05) : cy;
     // buceando, la cámara queda abajo del agua (no corta la superficie)

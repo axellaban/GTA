@@ -1016,6 +1016,21 @@ Ideas para seguir: capó que se levanta con mucho daño; semáforos y carteles q
 
 ## 6b. Última sesión (para quien siga)
 
+- ✅ 2026-10-09, Claude: **techos caminables, tirarse de la torre y la mira del helicóptero** (pedidos del
+  dueño). `src/techos.js` (nuevo): para cada edificio de `city.buildingList`, su contorno, la losa y la forma
+  del techo como la dibujan `city.js`/`techos-kit.js` (plano, a dos aguas con `pitched`, bóveda de galpón), en
+  una grilla de 16 m; `at`, `floor` (piso caminable, como `walkwayHeight`) y `ray` (para los tiros). Se saltean
+  la iglesia y los que ya tienen terraza propia (torre, tobogán, Clau). Gaspi lo usa en `groundAt`, la cámara
+  no baja del techo que tiene abajo y el helicóptero se apoya (`floorAt`). Pretil: segmentos `add3d(..., h,
+  0.55, 'pretil')` en los techos planos (van en `segs`, así se caen con la casa); Gaspi choca con ellos solo
+  si sus pies quedan 0,3 m abajo del borde, y Espacio contra uno (o contra el parapeto de la torre, que ahora
+  también es `pretil`) salta lo justo para treparlo (`pretilCerca`). Caída: más de 11 m/s al tocar el piso
+  lastima y tira (`caida`), "TE ESTROLASTE" si muere; pose de caída libre (`cayendo`). Tiros: `shotHit` en
+  `physics.js` toma la primera pared que la bala cruza por debajo de su altura (antes solo miraba la primera)
+  y `trace` frena en los techos (`type: 'roof'`). El helicóptero gira la trompa hacia donde mira la cámara.
+  Pruebas: `tools/techos.test.mjs`; `techos-test.mjs` (en la sesión): caer en un techo, pretil, la torre y el
+  helicóptero (los tiros caen a menos de 2 m de la mira a 78 m).
+
 - ✅ 2026-10-09, Claude: **canastos de basura rompibles** (pedido del dueño: "no fijos"). `src/canastos.js`:
   siguen siendo instancias (`src/props.js`, marcadas `movable` para que `chunks.js` siga el índice); al
   romper uno se esconde su instancia y salen piezas sueltas con gravedad, rebote y rozamiento. El caño tiene

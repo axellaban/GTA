@@ -158,7 +158,8 @@ export function buildTower(scene, city) {
     if (k === wall.k) continue;
     const [ax, az] = ring[k];
     const [bx, bz] = ring[(k + 1) % ring.length];
-    C3.add3d(ax, az, bx, bz, H, 1.0);
+    // (pretil: se trepa de un salto para tirarse, src/player.js)
+    C3.add3d(ax, az, bx, bz, H, 1.0, 'pretil');
   }
   // helipuerto: el punto de la terraza más lejos de los bordes
   let pad = null;
@@ -275,9 +276,14 @@ export class Heli {
   // piso debajo: la calle o la terraza del edificio que haya
   floorAt(x, z, world) {
     let y = world.heightAt(x, z);
-    const b = world.destroy?.buildingAt(x, z);
-    if (b && pointInRing(x, z, b.ring)) y = Math.max(y, b.h);
-    return y;
+    // los techos (planos, a dos aguas o bóvedas: src/techos.js) y las terrazas
+    const t = world.techos?.at(x, z);
+    if (t) y = Math.max(y, t.y);
+    else {
+      const b = world.destroy?.buildingAt(x, z);
+      if (b && !b.down && pointInRing(x, z, b.ring)) y = Math.max(y, b.h);
+    }
+    return Math.max(y, walkwayHeight(world.player.walkways, x, z, this.y));
   }
 
   // a mano para subirse (a pie, al lado y a la misma altura)
@@ -326,20 +332,20 @@ export class Heli {
     this.y = Math.min(160, this.y);
     // paredes más altas que los patines
     const p = { x: this.x, z: this.z };
-    if (colliders.resolveCircle(p, 2.2, (b) => b.h > this.y - SKID + 0.2 && !(b.y0 > this.y + 1))) {
+    // (los pretiles de los techos quedan abajo de los patines)
+    if (colliders.resolveCircle(p, 2.2, (b) => b.kind !== 'pretil' && b.h > this.y - SKID + 0.2 && !(b.y0 > this.y + 1))) {
       this.x = p.x;
       this.z = p.z;
       this.vx *= 0.4;
       this.vz *= 0.4;
     }
-    // la trompa gira hacia donde va
+    // la trompa gira hacia donde mira la cámara (adonde apunta la mira), como en los GTA: la ametralladora
+    // tira para adelante y se puede volar de costado o para atrás sin dejar de apuntar
     const sp = Math.hypot(this.vx, this.vz);
-    if (sp > 1.5) {
-      let d = Math.atan2(this.vx, this.vz) - this.yaw;
-      while (d > Math.PI) d -= Math.PI * 2;
-      while (d < -Math.PI) d += Math.PI * 2;
-      this.yaw += d * Math.min(1, dt * 1.8);
-    }
+    let d = Math.atan2(fx, fz) - this.yaw;
+    while (d > Math.PI) d -= Math.PI * 2;
+    while (d < -Math.PI) d += Math.PI * 2;
+    this.yaw += Math.sign(d) * Math.min(Math.abs(d), Math.max(0.6, Math.abs(d) * 2.2) * dt);
     this.sync();
     P.x = this.x;
     P.z = this.z;

@@ -191,6 +191,30 @@ export class Colliders {
     }
     return best;
   }
+  // un tiro de o (x, y, z) hacia d (normalizada) hasta range: la primera pared que la bala cruza por debajo de
+  // su altura (de arriba, por ejemplo desde el helicóptero, pasa por encima de las bajas y pega en las altas
+  // de atrás). Como blockedHit: {t (fracción de range), nx, nz, kind, h} o null
+  shotHit(o, d, range, minH = 2.5) {
+    let best = null;
+    const bx = o.x + d.x * range;
+    const bz = o.z + d.z * range;
+    const r = Math.hypot(bx - o.x, bz - o.z) / 2 + 1;
+    for (const s of this.query((o.x + bx) / 2, (o.z + bz) / 2, r)) {
+      if (!s.s || s.h < minH || s.y0 > 1) continue;
+      const t = segT(o.x, o.z, bx, bz, s.ax, s.az, s.bx, s.bz);
+      if (t === null || (best && t >= best.t)) continue;
+      if (o.y + d.y * t * range > s.h + 0.1) continue;
+      const l = Math.hypot(s.bx - s.ax, s.bz - s.az) || 1;
+      let nx = -(s.bz - s.az) / l;
+      let nz = (s.bx - s.ax) / l;
+      if (nx * d.x + nz * d.z > 0) {
+        nx = -nx;
+        nz = -nz;
+      }
+      best = { t, nx, nz, kind: s.kind, h: s.h };
+    }
+    return best;
+  }
   // Cámara: altura real a lo largo del recorrido, incluida una baranda elevada.
   // Deja margen para que el plano cercano tampoco atraviese la pared.
   cameraFraction(a, b, margin = 0.4) {

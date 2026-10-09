@@ -538,7 +538,15 @@ function addBuildings(scene, atlas, colliders, rng, city) {
     const shade = 0.85 + ((v % 13) / 13) * 0.2;
     const pitched = (kind === 'casa' && ring.length === 4 && v % 10 < 3) || kind === 'estacion';
     const segs = colliders.addRing(ring, h, 'building');
-    city.buildingList.push({ ring, h, kind, b, segs });
+    // el pretil de los techos planos frena al que camina por el techo (se salta o se trepa: src/player.js)
+    if (!pitched) {
+      for (let k = 0; k < ring.length; k++) {
+        const [ax, az] = ring[k];
+        const [bx, bz] = ring[(k + 1) % ring.length];
+        segs.push(colliders.add3d(ax, az, bx, bz, h, 0.55, 'pretil'));
+      }
+    }
+    city.buildingList.push({ ring, h, kind, b, segs, pitched });
     const front = (floor) => {
       if (b.extra === 'sanatorio') return ATLAS.sanatorio[0];
       if (kind === 'local') return floor === 0 ? ATLAS.local[v % ATLAS.local.length] : ATLAS.alto[(v + floor) % ATLAS.alto.length];

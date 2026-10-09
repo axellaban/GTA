@@ -552,7 +552,7 @@ export class Combat {
       return;
     }
     // cañonazos y cohetes le pegan a la casa donde explotan (src/destroy.js)
-    if (hit.type === 'wall' || hit.type === 'ground' || !hit.type) world.destroy?.hit(world, hit.x, hit.z, r.bdmg ?? 20);
+    if (hit.type === 'wall' || hit.type === 'ground' || hit.type === 'roof' || !hit.type) world.destroy?.hit(world, hit.x, hit.z, r.bdmg ?? 20);
     if (hit.type === 'moto' && hit.obj.state !== 'down') world.crime.knockDown(hit.obj, world);
     if (hit.type === 'wall') {
       this.fx.chips(hit.x, hit.y, hit.z, hit.nx, hit.nz, [0.62, 0.58, 0.52], 14);
@@ -569,12 +569,15 @@ export class Combat {
   trace(world, o, d, range, shooter) {
     let best = { t: range, type: null };
     const P = world.player;
-    const wall = world.colliders.blockedHit(o.x, o.z, o.x + d.x * range, o.z + d.z * range, 1.2);
     // la pared frena el tiro solo si pasa por debajo de su altura (desde arriba se tira por encima)
-    if (wall && o.y + d.y * wall.t * range <= wall.h + 0.1) best = { t: wall.t * range, type: 'wall', nx: wall.nx, nz: wall.nz, kind: wall.kind, h: wall.h };
+    const wall = world.colliders.shotHit(o, d, range, 1.2);
+    if (wall) best = { t: wall.t * range, type: 'wall', nx: wall.nx, nz: wall.nz, kind: wall.kind, h: wall.h };
     if (d.y < -1e-4) {
       const t = -o.y / d.y;
       if (t < best.t) best = { t, type: 'ground' };
+      // y los techos de las casas (src/techos.js): de arriba, la bala queda en el techo
+      const tr = world.techos?.ray(o, d, best.t) ?? Infinity;
+      if (tr < best.t) best = { t: tr, type: 'roof' };
     }
     const near = (x, z) => Math.abs(x - o.x) < range + 3 && Math.abs(z - o.z) < range + 3;
     const test = (x, z, r, y0, y1, type, obj) => {
@@ -760,6 +763,11 @@ export class Combat {
         this.fx.chips(hit.x, hit.y, hit.z, hit.nx, hit.nz, [0.62, 0.58, 0.52], 4);
         if (hit.y > 0.1 && hit.y < hit.h) this.fx.bulletHole(hit.x + hit.nx * 0.012, hit.y, hit.z + hit.nz * 0.012, hit.nx, 0, hit.nz);
       }
+    } else if (hit.type === 'roof') {
+      // el techo: polvo de la membrana o la losa y el agujero
+      this.fx.dust(hit.x, hit.y + 0.05, hit.z, 3, [0.55, 0.52, 0.48], 0.5);
+      this.fx.chips(hit.x, hit.y + 0.03, hit.z, 0, 0, [0.45, 0.43, 0.4], 3);
+      this.fx.bulletHole(hit.x, hit.y + 0.02, hit.z, 0, 1, 0);
     } else if (hit.type === 'ground') {
       this.fx.dust(hit.x, 0.1, hit.z, 3, [0.5, 0.48, 0.44], 0.5);
       this.fx.chips(hit.x, this.fx.ground(hit.x, hit.z) + 0.03, hit.z, 0, 0, [0.35, 0.34, 0.33], 3);
