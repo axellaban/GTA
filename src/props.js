@@ -9,6 +9,7 @@ import { outward, pointInRing, fixed } from './city.js';
 import { FastBoxes } from './builder.js';
 import { Rng } from './rng.js';
 import { useStreetKit, useBasketKit } from './mobiliario-kit.js';
+import { CANASTOS } from './canastos.js';
 const ni = (g) => (g.index ? g.toNonIndexed() : g);
 
 const UP = new THREE.Vector3(0, 1, 0);
@@ -447,17 +448,23 @@ function baskets(scene, city, rng) {
   const full = list.filter((l) => l[2]);
   const bag = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.2, 0), new THREE.MeshLambertMaterial({ color: 0x151618, flatShading: true }), full.length);
   let j = 0;
+  const reg = [];
   list.forEach(([x, z, f], i) => {
-    city.colliders.addCircle(x, z, 0.1, 1.5, 'post');
+    // se rompen (src/canastos.js): el caño es un colisionador propio, con su número
+    city.colliders.addCircle(x, z, 0.1, 1.5, 'canasto').canasto = i;
     const rot = rng.range(0, 0.3);
     place(post, i, x, 0.15 + 1.2, z, rot);
     place(basket, i, x, 0.15 + 1.2, z, rot);
+    reg.push([x, z, f, rot, i, f ? j : -1]);
     if (f) place(bag, j++, x, 0.15 + 1.25, z, 0, 1.2, 0.9, 1);
   });
   post.castShadow = basket.castShadow = true;
   basket.name = 'canastos';
+  // (se mueven: chunks.js las sigue mandando a su pedazo)
+  post.userData.movable = basket.userData.movable = bag.userData.movable = true;
   scene.add(...fixed(120, post, basket, bag));
   useBasketKit(basket, post);
+  CANASTOS.init(scene, post, basket, bag, reg);
 }
 
 // ---------- Contenedores verdes en las esquinas de las avenidas ----------

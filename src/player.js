@@ -12,6 +12,7 @@ import { turnRollover, recoverRollover, sideImpactRollover } from './vehicle-phy
 import { NADAR, VADEO } from './agua.js';
 import { carWake } from './traffic.js';
 import { TOUCH } from './input.js';
+import { CANASTOS } from './canastos.js';
 import { subirAuto, pasoSubirAuto, bajarAuto, pasoBajarAuto, subirMoto, pasoSubirMoto, bajarMoto, pasoBajarMoto, asiento, carroceria, posMundo } from './subir.js';
 
 // la izquierda de un vehículo (la del conductor en la Argentina): con el rumbo h, adelante es (sen h, cos h)
@@ -1358,6 +1359,8 @@ export class Player {
         // un poste de luz a velocidad: lo voltea y sigue (frenado)
         const vel = Math.hypot(v.vx, v.vz);
         // (y un semáforo también)
+        // (un canasto de basura lo lleva puesto cualquiera, hasta una moto despacio: src/canastos.js)
+        if (hit.box.kind === 'canasto' && vel > 1.5 && CANASTOS.knock(hit.box, v.vx, v.vz, world)) continue;
         const knocked =
           vel > 5 &&
           !moto &&

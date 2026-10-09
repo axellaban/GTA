@@ -5,6 +5,7 @@ import { WEAPONS, ORDER, SLOTS, handWeapon, rocketMesh } from './weapons.js';
 import { dentCar, dropBumper, looseBumper, crackedGlass } from './cars.js';
 import { R } from './rng.js';
 import { TOUCH } from './input.js';
+import { CANASTOS } from './canastos.js';
 import { updateAiming, shotSpread } from './aim.js';
 import { allVehicles, sameVehicleLevel } from './vehicle-physics.js';
 import { npcBody } from './npc-body.js';
@@ -287,6 +288,8 @@ export class Combat {
   meleeHit(P, world, a) {
     // una patada o un palazo al pasacalles del corte lo tira abajo
     world.events?.knock(P.x + Math.sin(P.heading) * 0.8, P.z + Math.cos(P.heading) * 0.8, a.reach * 0.6, Math.sin(P.heading), Math.cos(P.heading));
+    // y al canasto de basura lo voltea (src/canastos.js)
+    CANASTOS.hit(P.x + Math.sin(P.heading) * 0.8, P.z + Math.cos(P.heading) * 0.8, a.reach * 0.55, Math.sin(P.heading), Math.cos(P.heading), world, a.pose === 'kick' || a.pose === 'swing' ? 6 : 3);
     const t = this.meleeTarget(P, world, a.reach + 0.35);
     if (!t || t.cos < 0.35) return;
     const fx = Math.sin(P.heading);
@@ -590,6 +593,7 @@ export class Combat {
     }
     for (const m of world.crime.motos) if (near(m.v.x, m.v.z)) test(m.v.x, m.v.z, 0.75, 0, 1.9, 'moto', m);
     for (const p of world.nafta?.pumps || []) if (!p.dead && near(p.x, p.z)) test(p.x, p.z, 0.45, 0, 2.1, 'pump', p);
+    for (const c of CANASTOS.list) if (!c.loose && near(c.x, c.z)) test(c.x, c.z, 0.3, 1.15, 1.58, 'canasto', c);
     for (const v of this.vehicles(world)) {
       if (v === shooter?.vehicle || !near(v.x, v.z)) continue;
       const h = v.kind === 'bus' ? 3.2 : v.kind === 'moto' ? 1.7 : v.tall ?? 1.5;
@@ -723,6 +727,9 @@ export class Combat {
     } else if (hit.type === 'pump') {
       this.audio.metal(0.6);
       world.nafta.hit(world, hit.obj, w.rocket ? 999 : dmg, byPlayer);
+    } else if (hit.type === 'canasto') {
+      this.fx.sparks(hit.x, hit.y, hit.z, 3, 3);
+      CANASTOS.hit(hit.obj.x, hit.obj.z, 0.1, fx, fz, world, dmg >= 40 ? 6 : 3);
     } else if (hit.type === 'moto') {
       this.fx.sparks(hit.x, hit.y, hit.z, 5, 4);
       if (hit.obj.state !== 'down') world.crime.knockDown(hit.obj, world);
@@ -1173,6 +1180,7 @@ export class Combat {
   explode(world, x, z, power = 1, byPlayer = false, y = 0) {
     const P = world.player;
     this.fx.explosion(x, z, power, y);
+    CANASTOS.blast(x, z, 6 * power, world);
     const d = Math.hypot(P.x - x, P.z - z);
     this.audio.explosion(Math.max(0.15, 1 - d / 160));
     this.fx.shake += Math.max(0, 1.2 - d / 35);

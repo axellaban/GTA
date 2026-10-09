@@ -38,6 +38,7 @@ import { Gangs } from './gangs.js';
 import { Barrio } from './barrio.js';
 import { Aura } from './aura.js';
 import { Seleccion } from './seleccion.js';
+import { CANASTOS } from './canastos.js';
 import { Andenes } from './andenes.js';
 import { CasaClau } from './clau.js';
 import { Norte } from './norte.js';
@@ -1417,6 +1418,7 @@ function frame(now) {
   fx.update(dt);
   smash.update(dt);
   SIGNS.update(dt, world);
+  CANASTOS.update(dt, world);
   nafta.update(dt, world);
   radio.update();
   audio.update(dt, player.vehicle, camera, traffic, crime);
@@ -1546,3 +1548,4 @@ window.__post = () => post;
 world.makeCar = makeCar; // (para pruebas)
 world.makeMoto = makeMoto;
 world.startRollover = startRollover;
+world.canastos = CANASTOS;

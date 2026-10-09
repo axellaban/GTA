@@ -1016,6 +1016,15 @@ Ideas para seguir: capó que se levanta con mucho daño; semáforos y carteles q
 
 ## 6b. Última sesión (para quien siga)
 
+- ✅ 2026-10-09, Claude: **canastos de basura rompibles** (pedido del dueño: "no fijos"). `src/canastos.js`:
+  siguen siendo instancias (`src/props.js`, marcadas `movable` para que `chunks.js` siga el índice); al
+  romper uno se esconde su instancia y salen piezas sueltas con gravedad, rebote y rozamiento. El caño tiene
+  colisionador propio (`kind: 'canasto'`): un vehículo a más de 1,5 m/s lo dobla hasta el piso y el canasto
+  vuela (`player.js`); golpes (`combat.js meleeHit`), tiros (`trace`/`shot`) y explosiones también. El marco y
+  el caño de Blender vienen en una sola malla: `parts()` los separa por piezas conectadas (lo que baja del
+  fondo del canasto, caño, placa y ménsula, queda plantado). La basura son partículas que quedan un rato en el
+  piso. Prueba: `canasto-test.mjs` (en la sesión): auto, dos golpes, tiro y explosión.
+
 - ✅ 2026-10-09, Claude: **el conductor sube por la izquierda, y subir, bajar y volcar más reales** (pedido del
   dueño; también "Gaspi en la Ferrari no se ve"). (1) Lado: en el marco del auto +x es su izquierda; la puerta,
   el volante (`src/cars.js`) y el asiento pasan a ese lado en todos los autos (la puerta en un grupo con
