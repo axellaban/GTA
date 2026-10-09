@@ -107,7 +107,8 @@ export class Police {
     red.position.x = 0.24;
     blue.position.x = -0.24;
     bar.add(red, blue);
-    bar.position.set(0, 1.52, -0.2);
+    // (los de Blender dicen a qué altura va su techo)
+    bar.position.set(0, mesh.userData.beaconY ?? 1.52, mesh.userData.clasico ? -0.1 : -0.2);
     (mesh.userData.chassis || mesh).add(bar);
     v.beacons = { red, blue };
     this.scene.add(mesh);

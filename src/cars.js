@@ -623,6 +623,7 @@ function tuneCar(g, M, u, rnd) {
 // tune: probabilidad de que salga tuneado (el tránsito y las picadas lo piden; la cana y las misiones no)
 export function makeCar(model = 'duna', color = 0xd8d4c8, { parked = false, tune = 0 } = {}) {
   if (LUJO[model]) return makeLujoCar(model, color);
+  if (CLASICOS[model]) return makeClasico(model, color, tune);
   if (model.startsWith('q_')) {
     if (QCARS[model]) return makeQCar(model, color);
     model = 'duna';
@@ -840,6 +841,144 @@ function makeLujoCar(model, color) {
   return g;
 }
 
+// ---------- Los autos de la calle hechos en Blender (tools/blender/clasicos.py, public/models/vehicles/clasicos.glb) ----------
+// Duna, Falcon, Gol, 504, 600, pickup, Trafic, patrullero, taxi y remís (parodias sin marcas): la misma carrocería
+// de cortes suavizados que los de alta gama, con el interior atrás de los vidrios, la puerta del conductor y el
+// capó sueltos (se abren: src/traffic.js y src/combat.js), los paragolpes aparte (se caen con los golpes) y el kit
+// de tuning (franjas y alerón). Mientras no cargan andan los hechos por código; cuando cargan, el tránsito pasa
+// al modelo nuevo (traffic.upgradeClasicos).
+const CLASICOS = {};
+export const CLASICO_MODELS = [];
+let clasicosLoad = null;
+export function loadClasicos() {
+  clasicosLoad ??= new GLTFLoader()
+    .loadAsync('models/vehicles/clasicos.glb')
+    .then((gltf) => {
+      for (const node of gltf.scene.children) {
+        const parts = {};
+        const kinds = {};
+        for (const c of node.children) {
+          if (!c.isMesh) continue;
+          const k = c.name.replace(/[._]?\d+$/, '');
+          parts[k] = c.geometry;
+          kinds[k] = c.userData.kind;
+        }
+        const { wheels, wheelR, size, seat, door, hood } = node.userData;
+        if (!parts.paint || !parts.wheel || !wheels) continue;
+        CLASICOS[node.name] = { parts, kinds, wheelPos: wheels, wheelGeo: parts.wheel, m: { W: size[0], roof: size[1], L: size[2], wheelR }, seat: seat && { x: seat[0], y: seat[1], z: seat[2] }, door, hood };
+        CLASICO_MODELS.push(node.name);
+      }
+    })
+    .catch((e) => console.warn('autos de la calle de Blender:', e.message));
+  return clasicosLoad;
+}
+function makeClasico(model, color, tune) {
+  const Q = CLASICOS[model];
+  const P = Q.parts;
+  const { L, W, roof } = Q.m;
+  const g = new THREE.Group();
+  // el patrullero y el taxi traen la pintura de fábrica en los vértices (el color multiplica blanco); el remís es negro
+  const paintColor = model === 'patrullero' || model === 'taxi' ? 0xffffff : model === 'remis' ? 0x151515 : color;
+  const body = new THREE.Mesh(P.paint, paintMatV(paintColor));
+  body.userData.paint = true;
+  const glass = new THREE.Mesh(P.glass ?? EMPTY, glassMat);
+  const detail = new THREE.Mesh(P.detail ?? EMPTY, detailMat);
+  const shiny = new THREE.Mesh(P.shiny ?? EMPTY, shinyMat);
+  const lights = new THREE.Mesh(P.lights ?? EMPTY, lightMat);
+  const tail = new THREE.Mesh(P.tail ?? EMPTY, tailMat);
+  for (const o of [body, glass, detail, shiny]) {
+    o.castShadow = true;
+    o.receiveShadow = true;
+  }
+  const chassis = new THREE.Group();
+  chassis.add(body, glass, detail, shiny, lights, tail);
+  g.add(chassis);
+  // paragolpes (cromados, negros o del color del auto): sueltos, así se caen enteros (dropBumper)
+  const bumpers = {};
+  for (const [k, side] of [['bumperF', 'F'], ['bumperR', 'R']]) {
+    if (!P[k]) continue;
+    const kind = Q.kinds[k];
+    const b = new THREE.Mesh(P[k], kind === 'paint' ? body.material : kind === 'detail' ? detailMat : shinyMat);
+    b.castShadow = true;
+    if (kind === 'paint') b.userData.paint = true;
+    chassis.add(b);
+    bumpers[side] = b;
+  }
+  const wheels = [];
+  for (const [x, y, z] of Q.wheelPos) {
+    const w = new THREE.Mesh(Q.wheelGeo, wheelMat);
+    w.position.set(x, y, z);
+    if (x < 0) w.scale.x = -1;
+    w.castShadow = true;
+    g.add(w);
+    wheels.push(w);
+  }
+  const wheelsFar = new THREE.Mesh(farWheels(Q), wheelMat);
+  wheelsFar.visible = false;
+  g.add(wheelsFar);
+  // el capó: gira en la bisagra de atrás (contra el parabrisas) y deja ver el motor; cerrado, no se dibuja
+  let hood = null;
+  if (P.hood && Q.hood) {
+    const pivot = new THREE.Group();
+    pivot.position.fromArray(Q.hood);
+    const hm = new THREE.Mesh(P.hood, body.material);
+    hm.userData.paint = true;
+    hm.castShadow = true;
+    pivot.add(hm);
+    const bay = new THREE.Mesh(P.bay ?? EMPTY, detailMat);
+    pivot.visible = bay.visible = false;
+    chassis.add(pivot, bay);
+    hood = { pivot, bay, k: 0 };
+  }
+  // la puerta del conductor (la izquierda, +x): gira en la bisagra de adelante, para afuera (doorSign)
+  let door = null;
+  let doorway = null;
+  if (P.door && Q.door) {
+    door = new THREE.Group();
+    door.position.fromArray(Q.door);
+    const dp = new THREE.Mesh(P.door, body.material);
+    dp.userData.paint = true;
+    dp.castShadow = true;
+    door.add(dp, new THREE.Mesh(P.doorglass ?? EMPTY, glassMat));
+    doorway = new THREE.Mesh(P.doorway ?? EMPTY, detailMat);
+    door.visible = doorway.visible = false;
+    chassis.add(door, doorway);
+  }
+  g.userData = { L, W, wheels, kind: 'car', model, tall: roof + 0.05, body, shiny, glass, chassis, tail, door, doorway, doorSign: -1, hood, wheelsFar, lodParts: [shiny, detail], clasico: true, bumpers, seat: Q.seat, beaconY: roof + 0.1 };
+  if (tune > 0 && TUNABLE.has(model) && Math.random() < tune) tuneClasico(g, Q, g.userData, Math.random);
+  return g;
+}
+// el kit de tuning en los de Blender: las franjas y el alerón vienen hechos; llantas, bajado y neón, como los otros
+function tuneClasico(g, Q, u, rnd) {
+  const kit = { stripes: rnd() < 0.55, spoiler: rnd() < 0.5, rims: rnd() < 0.7 ? (rnd() < 0.5 ? 0 : 1) : -1, low: rnd() < 0.6, neon: rnd() < 0.55 };
+  if (kit.stripes && Q.parts.stripes) {
+    const s = new THREE.Mesh(Q.parts.stripes, stripeMats[Math.floor(rnd() * stripeMats.length)]);
+    u.chassis.add(s);
+    u.lodParts.push(s);
+  }
+  if (kit.spoiler && Q.parts.spoiler) {
+    const m = new THREE.Mesh(Q.parts.spoiler, u.body.material);
+    m.userData.paint = true;
+    m.castShadow = true;
+    u.chassis.add(m);
+  }
+  if (kit.rims >= 0) {
+    for (const w of u.wheels) w.material = rimMats[kit.rims];
+    u.wheelsFar.material = rimMats[kit.rims];
+  }
+  if (kit.low) {
+    u.ride = -0.055;
+    u.chassis.position.y = u.ride;
+  }
+  if (kit.neon) {
+    const n = new THREE.Mesh(new THREE.PlaneGeometry(Q.m.W * 1.3, Q.m.L * 1.08).rotateX(-Math.PI / 2), underglowMat(NEON_UNDER[Math.floor(rnd() * NEON_UNDER.length)]));
+    n.position.y = 0.04;
+    n.renderOrder = 2;
+    g.add(n);
+  }
+  u.tuned = kit;
+}
+
 // ---------- Abolladuras (como en Vice City): la chapa se hunde donde pegó ----------
 // La primera vez que un auto se golpea pasa a tener su propia copia de la chapa (las geometrías
 // son compartidas por modelo). Los triángulos aplastados quedan facetados, como metal arrugado.
@@ -853,6 +992,8 @@ function ownGeometry(u) {
 }
 function crumple(geo, lx, lz, r, depth, nx, nz) {
   const pos = geo.attributes.position;
+  // (los de Blender sin cromados traen esa malla vacía)
+  if (!pos) return;
   const nor = geo.attributes.normal;
   const hit = new Set();
   for (let i = 0; i < pos.count; i++) {
@@ -922,6 +1063,15 @@ const BUMPER = new THREE.Color(0xd8d8d8);
 export function dropBumper(v, front) {
   const u = v.mesh.userData;
   if (u.kind !== 'car' || !u.shiny || u[front ? 'lostF' : 'lostR']) return null;
+  // los de Blender traen el paragolpes aparte: se esconde entero
+  const bm = u.bumpers?.[front ? 'F' : 'R'];
+  if (bm) {
+    if (!bm.geometry.boundingBox) bm.geometry.computeBoundingBox();
+    const b = bm.geometry.boundingBox;
+    bm.visible = false;
+    u[front ? 'lostF' : 'lostR'] = true;
+    return { x: (b.min.x + b.max.x) / 2, y: (b.min.y + b.max.y) / 2, z: (b.min.z + b.max.z) / 2, w: b.max.x - b.min.x };
+  }
   ownGeometry(u);
   const g = u.shiny.geometry;
   const pos = g.attributes.position;
@@ -993,6 +1143,7 @@ export function repairCar(v) {
   u.shiny.geometry = u.geo0.shiny;
   u.glass.material = u.glassMat ?? glassMat;
   u.dented = false;
+  if (u.bumpers) for (const b of Object.values(u.bumpers)) b.visible = true;
   u.lostF = u.lostR = false;
   u.hitF = u.hitR = 0;
 }

@@ -2,7 +2,7 @@
 import { ROADS, X0, Z0, X1, Z1 } from './map.js';
 import { makeCar, makeBus, makeMoto, makeTruck, makeCarro, CAR_COLORS, DELIVERY, deliveryPack } from './vehicles.js';
 import { ANIMALS, makeAnimal, animalPlay, makeLook } from './people.js';
-import { repairCar, tailMat, brakeMat, carLod, QMODELS, LUJO_MODELS, LUXURY, LUXURY_COLORS } from './cars.js';
+import { repairCar, tailMat, brakeMat, carLod, QMODELS, LUJO_MODELS, CLASICO_MODELS, LUXURY, LUXURY_COLORS } from './cars.js';
 import * as THREE from 'three';
 import { makeHuman, animateHuman, randomCivilian } from './human.js';
 import { R } from './rng.js';
@@ -225,7 +225,8 @@ export class Vehicle {
       this.doorV = 0;
     }
     this.doorA = Math.min(1.08, a);
-    u.door.rotation.y = this.doorA * 1.1;
+    // (la de los autos de Blender no va espejada: gira para el otro lado)
+    u.door.rotation.y = this.doorA * 1.1 * (u.doorSign ?? 1);
     u.door.visible = u.doorway.visible = this.doorA > 0.005;
   }
   // estacionado: la carrocería queda quieta y las luces de freno se apagan
@@ -351,6 +352,19 @@ export class Traffic {
       if (v.keep || v.wreck || v.damage || v === player.vehicle || !COMMON.has(v.model) || v.mesh.userData.tuned || !R.chance(LUX_SHARE)) continue;
       if (v.mesh.visible && Math.hypot(v.x - player.x, v.z - player.z) < 70) continue;
       v.reshape(this.luxuryCar());
+      n++;
+    }
+    return n;
+  }
+  // cargaron los autos de la calle de Blender (src/cars.js): los hechos por código pasan al modelo nuevo, con su
+  // color y su tuning (lejos de la cámara, para que no cambien a la vista)
+  upgradeClasicos(player) {
+    let n = 0;
+    for (const v of [...this.cars, ...this.parked]) {
+      if (!CLASICO_MODELS.includes(v.model) || v.mesh.userData.clasico || v.mesh.userData.lujo || v === player.vehicle || v.wreck || v.damage || v.keep) continue;
+      if (v.mesh.visible && Math.hypot(v.x - player.x, v.z - player.z) < 60) continue;
+      const u = v.mesh.userData;
+      v.reshape(makeCar(v.model, u.body?.material?.color?.getHex() ?? 0xd8d4c8, { tune: u.tuned ? 1 : 0 }));
       n++;
     }
     return n;

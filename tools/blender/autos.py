@@ -3,6 +3,7 @@
 #   python3 tools/blender/autos.py            sale public/models/vehicles/lujo.glb (con npx a mano, la achica
 #                                             con glTF-Transform: normales y colores en enteros)
 #   python3 tools/blender/autos.py --vista    además, una foto de cada auto (para revisar las formas)
+#   (los autos comunes de la calle salen de tools/blender/clasicos.py, que usa todo lo de acá)
 # Parodias sin marcas, como los autos de los GTA. Cada carrocería sale de cortes transversales a lo largo
 # del auto (alto del zócalo, de la línea de cintura y del techo, anchos), unidos y suavizados: así tiene los
 # costados redondeados, el parabrisas inclinado y el techo con comba, no cajas. Los pasarruedas se cortan con
@@ -21,7 +22,7 @@ from mathutils import Matrix, Vector
 from mathutils.bvhtree import BVHTree
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-GLB = os.path.join(ROOT, 'public', 'models', 'vehicles', 'lujo.glb')
+GLB = os.environ.get('AUTOS_GLB') or os.path.join(ROOT, 'public', 'models', 'vehicles', 'lujo.glb')
 VISTA = '--vista' in sys.argv
 OUT_VISTA = os.environ.get('AUTOS_VISTA', os.path.join(ROOT, 'autos-vista'))
 
@@ -125,8 +126,11 @@ def stations(keys, dy=0.11):
 
 
 class Part:
-    def __init__(self, name, palette):
+    # mode: 'main' (se hornea con la chapa), 'over' (pieza que cuando está quieta tapa la chapa, como la puerta o
+    # el capó sueltos: se hornea después, sin tapar a nadie), 'plain' (sin sombra) o 'glass' (vidrio, sin color)
+    def __init__(self, name, palette, mode='main'):
         self.name = name
+        self.mode = mode
         self.bm = bmesh.new()
         self.ci = self.bm.faces.layers.int.new('ci')
         self.pal = list(palette)
@@ -188,6 +192,49 @@ class Part:
             new.append(f)
         bmesh.ops.recalc_face_normals(self.bm, faces=new)
 
+    def ribbon(self, pts, nrm, w, h, col, up=Vector((0, 0, 1))):
+        # cinta plana apenas despegada de la superficie (cortes de puertas, franjas): la mitad de caras que strip
+        idx = self.color(col)
+        rows = []
+        for p, n in zip(pts, nrm):
+            u = (up - n * up.dot(n)).normalized() * (w / 2)
+            rows.append([self.bm.verts.new(p - u + n * h), self.bm.verts.new(p + u + n * h)])
+        new = []
+        for a, b in zip(rows, rows[1:]):
+            f = self.bm.faces.new((a[0], a[1], b[1], b[0]))
+            f[self.ci] = idx
+            new.append(f)
+        # (que mire para afuera, como la superficie)
+        for f, n in zip(new, nrm):
+            f.normal_update()
+            if f.normal.dot(n) < 0:
+                f.normal_flip()
+
+    def tube(self, pts, r, col, n=8):
+        # caño de sección redonda que sigue la polilínea pts (defensas, barras, manijas cromadas)
+        idx = self.color(col)
+        pts = [Vector(p) for p in pts]
+        rings = []
+        prev = None
+        for i, p in enumerate(pts):
+            t = (pts[min(i + 1, len(pts) - 1)] - pts[max(i - 1, 0)]).normalized()
+            a = prev if prev is not None else (Vector((0, 0, 1)) if abs(t.z) < 0.9 else Vector((1, 0, 0)))
+            u = (a - t * a.dot(t)).normalized()
+            prev = u
+            v = t.cross(u)
+            rings.append([self.bm.verts.new(p + (u * math.cos(2 * math.pi * k / n) + v * math.sin(2 * math.pi * k / n)) * r) for k in range(n)])
+        new = []
+        for A, B in zip(rings, rings[1:]):
+            for k in range(n):
+                f = self.bm.faces.new((A[k], A[(k + 1) % n], B[(k + 1) % n], B[k]))
+                f[self.ci] = idx
+                new.append(f)
+        for ring in (rings[0], rings[-1][::-1]):
+            f = self.bm.faces.new(ring[::-1])
+            f[self.ci] = idx
+            new.append(f)
+        bmesh.ops.recalc_face_normals(self.bm, faces=new)
+
     def patch(self, grid, col):
         # grilla de puntos (filas x columnas) -> caras
         idx = self.color(col)
@@ -205,6 +252,11 @@ class Part:
         ob = bpy.data.objects.new(self.name, me)
         scene.collection.objects.link(ob)
         ob['palette'] = [v for c in self.pal for v in hexc(c)]
+        ob['mode'] = self.mode
+        if getattr(self, 'kind', None):
+            ob['kind'] = self.kind
+        if getattr(self, 'pivot', None):
+            ob['pivot'] = list(self.pivot)
         return ob
 
 
@@ -344,7 +396,8 @@ def wheel(spec):
     P = Part('wheel', [0x151515])
     bm = P.bm
 
-    def lathe(prof, col, segs=22):
+    def lathe(prof, col, segs=None):
+        segs = segs or spec.get('wheelSegs', 22)
         # perfil (x a lo ancho, r radio) que gira alrededor del eje x
         idx = P.color(col)
         rings = []
@@ -359,7 +412,7 @@ def wheel(spec):
 
     h = tw / 2
     # cubierta: flanco, banda y el otro flanco
-    lathe([(h - 0.01, rr + 0.005), (h + 0.004, R - 0.05), (h - 0.03, R - 0.004), (-h + 0.03, R - 0.004), (-h - 0.004, R - 0.05), (-h + 0.01, rr + 0.005)], 0x161616)
+    lathe([(h - 0.01, rr + 0.005), (h + 0.004, R - 0.05), (h - 0.03, R - 0.004), (-h + 0.03, R - 0.004), (-h - 0.004, R - 0.05), (-h + 0.01, rr + 0.005)], spec.get('tireCol', 0x161616))
     # llanta: pestaña, el aro por dentro y el fondo oscuro
     lip = spec.get('rimCol', 0xc8c8c8)
     lathe([(-h + 0.01, rr + 0.005), (-h + 0.02, rr - 0.01), (h - 0.02, rr - 0.01), (h - 0.008, rr + 0.004), (h - 0.003, rr - 0.012), (h - 0.03, rr - 0.03)], lip)
@@ -367,6 +420,25 @@ def wheel(spec):
     # rayos (estrella de 5, 10 o malla), con la maza y la tuerca central
     style = spec.get('spokes', 5)
     face = h - 0.03
+    segs = spec.get('wheelSegs', 22)
+    if spec.get('whitewall'):
+        # banda blanca en el flanco (bien de los clásicos)
+        lathe([(h + 0.0045, rr + 0.03), (h + 0.0045, rr + 0.03 + spec['whitewall'])], 0xf1efe6, segs)
+    if style in ('taza', 'acero'):
+        if style == 'taza':
+            # taza cromada: un plato abombado que tapa casi toda la llanta, con un anillo y el centro
+            lathe([(face + 0.034, 0.02), (face + 0.03, rr * 0.3), (face + 0.018, rr * 0.62), (face + 0.004, rr * 0.86), (face - 0.004, rr - 0.012)], lip, segs)
+            lathe([(face + 0.021, rr * 0.5), (face + 0.026, rr * 0.53), (face + 0.024, rr * 0.58), (face + 0.019, rr * 0.6)], spec.get('tazaRing', 0x9a9a9a), segs)
+            P.cyl((face + 0.034, 0, 0), 0.022, 0.006, spec.get('nutCol', 0xd8d8d8), axis='X', n=10)
+        else:
+            # llanta de chapa pintada con los agujeros de ventilación y la tapita cromada del centro
+            disc = spec.get('steelCol', 0x2a2a2a)
+            lathe([(face - 0.012, 0.07), (face - 0.004, rr * 0.45), (face - 0.016, rr * 0.75), (face - 0.01, rr - 0.012)], disc, segs)
+            for kk in range(spec.get('holes', 6)):
+                a = 2 * math.pi * (kk + 0.5) / spec.get('holes', 6)
+                P.cyl((face - 0.006, math.cos(a) * rr * 0.62, math.sin(a) * rr * 0.62), rr * 0.13, 0.012, 0x0c0c0c, axis='X', n=8)
+            lathe([(face + 0.012, 0.015), (face + 0.008, 0.055), (face - 0.004, 0.085)], spec.get('nutCol', 0xd8d8d8), segs)
+        return P
     if style == 'malla':
         for k in range(10):
             a = 2 * math.pi * k / 10
@@ -407,6 +479,14 @@ def build_car(spec):
     def rule(s, h, f):
         top = h >= ROOF
         side = BELT <= h < ROOF
+        # caja de la camioneta: de la cintura para arriba, abierta (las paredes de adentro y el piso van aparte)
+        bed = spec.get('bed')
+        if bed and h >= BELT and bed[0] < (body.st[s]['y'] + body.st[s + 1]['y']) / 2 < bed[1]:
+            return 'open'
+        if spec.get('rule'):
+            r = spec['rule'](s, h, f, k, body)
+            if r:
+                return r
         if spec.get('open') and (top or side) and k['ws1'] <= s < k['rr']:
             return 'open' if top or h > BELT else 'trim'
         if top and k['ws0'] <= s < k['ws1']:
@@ -549,11 +629,82 @@ def build_car(spec):
             grid.append(row if sx > 0 else row[::-1])
         part.patch(grid, col)
 
+    def end_quad(part, quad, front, col, off=0.004, nx=4, nz=2):
+        # cuadrilátero cualquiera (x, z) pegado a la trompa o la cola: faros trapezoidales, luces en ángulo
+        L2 = spec['L'] / 2 + 1
+        # (de abajo y de x menor, dando la vuelta; si viene al revés, se da vuelta)
+        if sum(quad[i][0] * quad[(i + 1) % 4][1] - quad[(i + 1) % 4][0] * quad[i][1] for i in range(4)) < 0:
+            quad = [quad[1], quad[0], quad[3], quad[2]]
+        (ax, az), (bx, bz), (cx, cz), (dx, dz) = quad
+        grid = []
+        for a in range(nz + 1):
+            row = []
+            t = a / nz
+            for b in range(nx + 1):
+                u = b / nx
+                x = lerp(lerp(ax, bx, u), lerp(dx, cx, u), t)
+                z = lerp(lerp(az, bz, u), lerp(dz, cz, u), t)
+                loc, nr = hit(bvh, (x, -L2 if front else L2, z), (0, 1 if front else -1, 0))
+                if loc is None:
+                    return
+                row.append(loc + nr * off)
+            grid.append(row if front else row[::-1])
+        part.patch(grid, col)
+
+    def ring_pts(yc, z, a0, a1, front, n=12, off=0.0):
+        # puntos alrededor de la punta (o la cola) a la altura z: rayos desde adentro (0, yc, z) en abanico, de a0 a
+        # a1 grados (0: derecho para la punta; ±90: a los costados). Para paragolpes y molduras que doblan la esquina
+        pts, nrm = [], []
+        for j in range(n):
+            a = math.radians(lerp(a0, a1, j / (n - 1)))
+            d = Vector((math.sin(a), -math.cos(a) if front else math.cos(a), 0))
+            loc, nr = hit(bvh, (0, yc, z), d)
+            if loc is not None:
+                if nr.dot(d) < 0:
+                    nr = -nr
+                pts.append(loc + nr * off)
+                nrm.append(nr)
+        return pts, nrm
+
+    def vline(part, y, z0, z1, sx, col, w=0.008, h=0.0015, step=0.1):
+        # línea vertical sobre el costado (el corte de las puertas)
+        pts, nrm = [], []
+        n = max(2, int(abs(z1 - z0) / step) + 1)
+        for j in range(n):
+            loc, nr = hit(bvh, (sx * (W_ + 1), y, lerp(z0, z1, j / (n - 1))), (-sx, 0, 0))
+            if loc is not None:
+                pts.append(loc)
+                nrm.append(nr)
+        if len(pts) > 1:
+            part.ribbon(pts, nrm, w, h, col, up=Vector((0, 1, 0)))
+
+    def hline(part, y0, y1, z, sx, col, w=0.008, h=0.0015):
+        pts, nrm = side_pts(y0, y1, z, sx, step=0.15)
+        if len(pts) > 1:
+            part.ribbon(pts, nrm, w, h, col)
+
+    extras = {}
+
+    def part(name, palette=(0xffffff,), mode='main'):
+        # pieza aparte (sale como malla propia en el glTF): paragolpes, balizas, cartel del taxi...
+        if name not in extras:
+            extras[name] = Part(name, palette, mode)
+        return extras[name]
+
     ctx = dict(spec=spec, body=body, bvh=bvh, D=D, S=S, L=Lh, T=T, X=X, side_pts=side_pts, end_pts=end_pts, top_pts=top_pts,
-               end_patch=end_patch, top_patch=top_patch, side_patch=side_patch, W2=W_)
+               end_patch=end_patch, top_patch=top_patch, side_patch=side_patch, W2=W_, cls=cls, part=part, end_quad=end_quad,
+               ring_pts=ring_pts, vline=vline, hline=hline, inner=inner)
     # lo de todos: espejos, manijas, burletes, patentes, limpiaparabrisas, butacas, tablero y volante
     common_details(ctx)
     spec['details'](ctx)
+    # puerta del conductor y capó sueltos (se abren en el juego), y el kit de tuning
+    spec.setdefault('_extras', {})
+    if spec.get('door'):
+        door_parts(ctx)
+    if spec.get('hood'):
+        hood_parts(ctx)
+    if spec.get('kit'):
+        kit_parts(ctx)
     # la chapa extra y el interior van en la misma malla que la carrocería
     extra = X.obj()
     inn = inner.obj()
@@ -562,14 +713,27 @@ def build_car(spec):
         ob = P.obj()
         ob.name = name
         parts[name] = ob
+    for name, P in extras.items():
+        ob = P.obj()
+        ob.name = name
+        parts[name] = ob
     # paleta de la chapa: blanco (lleva el color del auto), negro brillante, gomas de los arcos e interior
-    paint['palette'] = [v for c in (0xffffff, 0x0e0e0e, 0x0e0e0e, 0x0a0a0a) for v in hexc(c)]
+    pal = [0xffffff, 0x0e0e0e, 0x0e0e0e, 0x0a0a0a]
     me = paint.data
     names = [m.name for m in me.materials]
     ci = me.attributes.new('ci', 'INT', 'FACE')
+    livery = spec.get('livery')
     for p in me.polygons:
         nm = names[p.material_index] if p.material_index < len(names) else 'paint'
         ci.data[p.index].value = {'paint': 0, 'trim': 1, 'liner': 2}.get(nm, 0)
+        # la pintura de fábrica (patrullero, taxi): colores fijos según dónde está la cara
+        if livery and nm == 'paint':
+            c = livery(p.center, p.normal)
+            if c is not None:
+                if c not in pal:
+                    pal.append(c)
+                ci.data[p.index].value = pal.index(c)
+    paint['palette'] = [v for c in pal for v in hexc(c)]
     me.materials.clear()
     join_into(paint, extra, {0: 0}, X.pal)
     join_into(paint, inn, None, inner.pal)
@@ -611,6 +775,147 @@ def join_into(dst, src, remap, pal):
     return n0
 
 
+# ---------------------------------------------------------------- piezas que se abren (puerta, capó) y el kit
+
+
+def skin_copy(P, faces, off, color_of, flip=False):
+    # copia de caras de la chapa, corrida off por la normal de cada vértice; color_of(cara) -> color o None (no va)
+    vmap, out = {}, []
+    for f in faces:
+        c = color_of(f)
+        if c is None:
+            continue
+        vs = []
+        for v in f.verts:
+            if v not in vmap:
+                vmap[v] = P.bm.verts.new(v.co + v.normal * off)
+            vs.append(vmap[v])
+        nf = P.bm.faces.new(vs[::-1] if flip else vs)
+        nf[P.ci] = P.color(c)
+        out.append(f)
+    return vmap, out
+
+
+def skin_rim(P, faces, vout, vin, col):
+    # el canto entre la cara de afuera y la de adentro (el espesor de la puerta o del capó), en el borde de la selección
+    sel = set(faces)
+    idx = P.color(col)
+    for f in faces:
+        for lp in f.loops:
+            if sum(1 for g in lp.edge.link_faces if g in sel) == 1:
+                a, b = lp.vert, lp.link_loop_next.vert
+                nf = P.bm.faces.new((vout[b], vout[a], vin[a], vin[b]))
+                nf[P.ci] = idx
+
+
+def paint_color(c, f, black=0x0e0e0e):
+    # el color de una cara de la chapa en las piezas copiadas: negro lo que es negro, la pintura de fábrica si hay
+    k = c['cls'][f]
+    if k == 'trim':
+        return black
+    lv = c['spec'].get('livery')
+    if lv:
+        cc = lv(f.calc_center_median(), f.normal)
+        if cc is not None:
+            return cc
+    return 0xffffff
+
+
+def nearest_station(st, y):
+    return min(range(len(st)), key=lambda s: abs(st[s]['y'] - y))
+
+
+def door_parts(c):
+    """La puerta del conductor (lado +x, el izquierdo) suelta: piel de afuera, tapizado y canto; su vidrio; y el
+    hueco oscuro que se ve con la puerta abierta. Se exporta con el origen en la bisagra (adelante)."""
+    sp, body, cls = c['spec'], c['body'], c['cls']
+    st = body.st
+    s0, s1 = nearest_station(st, sp['door'][0]), nearest_station(st, sp['door'][1])
+    sel = [(f, i) for (s, i), f in body.faces.items() if s0 <= s < s1 and 3 <= i < ROOF and cls[f] != 'open']
+    faces = [f for f, i in sel]
+    P = c['part']('door', (0xffffff,), 'over')
+    vout, out = skin_copy(P, faces, 0.006, lambda f: None if cls[f] == 'glass' else paint_color(c, f))
+    vin, _ = skin_copy(P, out, -0.045, lambda f: sp.get('doorCard', sp.get('cabin', 0x2a2a2a)), flip=True)
+    skin_rim(P, out, vout, vin, 0x1c1c1c)
+    G = c['part']('doorglass', (0xffffff,), 'glass')
+    skin_copy(G, [f for f in faces if cls[f] == 'glass'], -0.008, lambda f: 0xffffff)
+    H = c['part']('doorway', (0x121212,), 'plain')
+    skin_copy(H, [f for f, i in sel if i < BELT], 0.003, lambda f: 0x101010)
+    y0 = st[s0]['y']
+    hx = max(v.co.x for v in vout.values() if abs(v.co.y - (y0 + 0.006 * 0)) < 0.03) if vout else c['W2']
+    P.pivot = G.pivot = (hx, y0, 0.0)
+    sp['_extras']['door'] = [hx, 0.0, -y0]
+
+
+def hood_parts(c):
+    """El capó suelto (bisagra atrás, contra el parabrisas) y el vano del motor que aparece cuando se levanta."""
+    sp, body, cls = c['spec'], c['body'], c['cls']
+    st = body.st
+    s0, s1 = nearest_station(st, sp['hood'][0]), nearest_station(st, sp['hood'][1])
+    faces = [f for (s, i), f in body.faces.items() if s0 <= s < s1 and body.hseg(i) >= ROOF and cls[f] != 'open']
+    P = c['part']('hood', (0xffffff,), 'over')
+    vout, out = skin_copy(P, faces, 0.008, lambda f: paint_color(c, f))
+    vin, _ = skin_copy(P, out, -0.014, lambda f: 0x2a2a2a, flip=True)
+    skin_rim(P, out, vout, vin, 0x1c1c1c)
+    hinge = body.rows[s1][NH].co
+    P.pivot = (0.0, hinge.y, hinge.z + 0.008)
+    sp['_extras']['hood'] = [0.0, hinge.z + 0.008, -hinge.y]
+    B = c['part']('bay', (0x151517,), 'plain')
+    skin_copy(B, faces, 0.004, lambda f: 0x17171a)
+    ym = (st[s0]['y'] + st[s1]['y']) / 2
+    zt = body.rows[nearest_station(st, ym)][NH].co.z
+    ln = abs(st[s1]['y'] - st[s0]['y'])
+    if sp.get('rearEngine'):
+        # el 600 tiene el motor atrás: adelante, la rueda de auxilio y el tanque
+        B.cyl((0, ym, zt + 0.02), sp['wheelR'] * 0.95, 0.16, 0x161616, n=16)
+        B.cyl((0, ym, zt + 0.1), sp['wheelR'] * 0.6, 0.02, 0x9a9a9a, n=12)
+        return
+    B.box((0, ym + ln * 0.08, zt + 0.0), (c['W2'] * 0.7, ln * 0.5, 0.16), 0x55585c)
+    B.box((0, ym + ln * 0.08, zt + 0.09), (c['W2'] * 0.45, ln * 0.42, 0.04), 0x3a3d40)
+    B.cyl((0, ym - ln * 0.05, zt + 0.12), 0.16, 0.06, 0x1a1a1a, n=14)
+    B.box((c['W2'] * 0.62, ym + ln * 0.25, zt + 0.02), (0.18, 0.24, 0.17), 0x111111)
+    B.box((0, st[s0]['y'] + 0.12, zt - 0.02), (c['W2'] * 1.3, 0.05, 0.2), 0x222426)
+
+
+def kit_parts(c):
+    """El kit de tuning (lo prende el juego en algunos): franjas sobre capó, techo y baúl, y el alerón."""
+    sp, body = c['spec'], c['body']
+    st, k = body.st, body.k
+    P = c['part']('stripes', (0xffffff,), 'plain')
+    segs = [(st[k['f1']]['y'] + 0.08, st[k['ws0']]['y'] - 0.05), (st[k['ws1']]['y'] + 0.07, st[k['rr']]['y'] - 0.07)]
+    if sp['kit'].get('trunk'):
+        segs.append((st[k['rw1']]['y'] + 0.05, st[k['r1']]['y'] - 0.03))
+    for x in (-0.12, 0.12):
+        for a, b in segs:
+            pts, nrm = c['top_pts'](x, a, b, step=0.1)
+            if len(pts) > 1:
+                P.ribbon(pts, nrm, 0.11, 0.005, 0xffffff, up=Vector((1, 0, 0)))
+    if sp['kit'].get('spoiler'):
+        Q = c['part']('spoiler', (0xffffff,), 'over')
+        ys = sp['L'] / 2 - sp['kit']['spoiler']
+        loc, nr = hit(c['bvh'], (0, ys, 3), (0, 0, -1))
+        z = loc.z if loc is not None else 1.0
+        W = sp['W']
+        Q.box((0, ys + 0.02, z + 0.17), (W * 0.84, 0.26, 0.035), 0xffffff, Matrix.Rotation(0.12, 3, 'X'))
+        for sx in (-1, 1):
+            Q.box((sx * W * 0.3, ys, z + 0.08), (0.05, 0.12, 0.17), 0x111111)
+            Q.box((sx * W * 0.42, ys + 0.02, z + 0.19), (0.025, 0.3, 0.12), 0xffffff)
+
+
+def bumper(c, front, z, hgt, thick, col, a=60, yc=None, kind='shiny', n=14, off=0.0, name=None):
+    # paragolpes que dobla las esquinas siguiendo la trompa (o la cola), en su propia pieza: el juego lo hace caer
+    sp = c['spec']
+    L2 = sp['L'] / 2
+    yc = yc if yc is not None else (-L2 + 0.75 if front else L2 - 0.75)
+    pts, nrm = c['ring_pts'](yc, z, -a, a, front, n=n, off=off)
+    P = c['part'](name or ('bumperF' if front else 'bumperR'), (col,), 'main')
+    P.kind = kind
+    if len(pts) > 1:
+        # (los rayos van de un lado al otro: el orden ya sigue la curva)
+        P.strip(pts, [Vector((nn.x, nn.y, 0)).normalized() for nn in nrm], hgt, thick, col)
+    return P, pts, nrm
+
+
 def common_details(c):
     sp, D, S, X = c['spec'], c['D'], c['S'], c['X']
     k = c['body'].k
@@ -620,14 +925,21 @@ def common_details(c):
     belt = st[k['ws0']]['zs']
     W2 = c['W2']
     # espejos: brazo y carcasa (de chapa) con el espejo negro
+    # (los clásicos: espejo redondo cromado o negro; 'mirrorY' y 'mirrorZ' corren el lugar)
+    mstyle = sp.get('mirror', 'paint')
+    MP = {'paint': (X, 0xffffff), 'chrome': (S, 0xdddddd), 'black': (D, 0x161616)}[mstyle]
     for sx in (-1, 1):
-        loc, nr = hit(c['bvh'], (sx * (W2 + 1), y_ws0 + 0.18, belt + 0.06), (-sx, 0, 0))
+        loc, nr = hit(c['bvh'], (sx * (W2 + 1), y_ws0 + sp.get('mirrorY', 0.18), belt + sp.get('mirrorZ', 0.06)), (-sx, 0, 0))
         if loc is None:
             continue
         base = loc + Vector((sx * 0.01, 0, 0))
-        X.box(base + Vector((sx * 0.06, 0.01, 0.025)), (0.1, 0.035, 0.025), 0xffffff, Matrix.Rotation(sx * -0.35, 3, 'Y'))
-        X.sph(base + Vector((sx * 0.14, 0.02, 0.06)), 0.06, 0xffffff, sc=(1.25, 0.75, 0.85))
-        D.box(base + Vector((sx * 0.14, 0.066, 0.06)), (0.12, 0.004, 0.08), 0x202830)
+        MP[0].box(base + Vector((sx * 0.06, 0.01, 0.025)), (0.1, 0.035, 0.025), MP[1], Matrix.Rotation(sx * -0.35, 3, 'Y'))
+        if sp.get('roundMirror'):
+            MP[0].cyl(base + Vector((sx * 0.13, 0.03, 0.07)), 0.065, 0.04, MP[1], axis='Y', n=12)
+            D.cyl(base + Vector((sx * 0.13, 0.052, 0.07)), 0.055, 0.004, 0x202830, axis='Y', n=12)
+        else:
+            MP[0].sph(base + Vector((sx * 0.14, 0.02, 0.06)), 0.06, MP[1], sc=(1.25, 0.75, 0.85))
+            D.box(base + Vector((sx * 0.14, 0.066, 0.06)), (0.12, 0.004, 0.08), 0x202830)
     # manijas: una en cada puerta (negras o cromadas)
     for hy in sp.get('handles', [lerp(y_ws0, st[k['rr']]['y'], 0.62)]):
         for sx in (-1, 1):
@@ -637,15 +949,35 @@ def common_details(c):
         pts, nrm = c['top_pts'](x, y_ws0 + 0.05, y_ws0 + 0.08)
         if pts:
             D.box(pts[0] + Vector((0.22, 0.02, 0.012)), (0.48, 0.02, 0.012), 0x111111, Matrix.Rotation(-0.12, 3, 'Z'))
-    # patentes del Mercosur: blanca con la banda azul arriba
+    # patentes del Mercosur: blanca con la banda azul arriba. Los clásicos siguen con la de antes: la negra de letras
+    # blancas (hasta el 95) o la blanca de letras negras (del 95 al 2016). Las letras, unas rayitas (de lejos se leen)
     pz = sp.get('plateZ', (0.42, 0.4))
+    plate = sp.get('plate', 'mercosur')
+    po = sp.get('plateOff', (0.0, 0.0))
     for front in (True, False):
         z = pz[0] if front else pz[1]
-        c['end_patch'](D, -0.2, 0.2, z - 0.065, z + 0.065, front, 0xf2f2f2, off=0.01, nx=2, nz=1)
-        c['end_patch'](D, -0.2, 0.2, z + 0.045, z + 0.065, front, 0x1f4fa8, off=0.012, nx=2, nz=1)
+        o = po[0] if front else po[1]
+
+        def ep(P, x0, x1, z0, z1, fr, col, off=0.004, nx=6, nz=3):
+            c['end_patch'](P, x0, x1, z0, z1, fr, col, off=off + o, nx=nx, nz=nz)
+        if plate == 'mercosur':
+            ep(D, -0.2, 0.2, z - 0.065, z + 0.065, front, 0xf2f2f2, off=0.01, nx=2, nz=1)
+            ep(D, -0.2, 0.2, z + 0.045, z + 0.065, front, 0x1f4fa8, off=0.012, nx=2, nz=1)
+            ink, xs, zc = 0x1a1a1a, [-0.15, -0.105, -0.06, 0.03, 0.075, 0.12], z - 0.01
+        elif plate == 'negra':
+            ep(D, -0.2, 0.2, z - 0.06, z + 0.06, front, 0xd8d8d8, off=0.01, nx=2, nz=1)
+            ep(D, -0.19, 0.19, z - 0.05, z + 0.05, front, 0x111111, off=0.012, nx=2, nz=1)
+            ink, xs, zc = 0xe8e8e8, [-0.15, -0.11, -0.07, -0.03, 0.03, 0.07, 0.11, 0.15], z
+        else:
+            ep(D, -0.2, 0.2, z - 0.06, z + 0.06, front, 0x111111, off=0.01, nx=2, nz=1)
+            ep(D, -0.19, 0.19, z - 0.05, z + 0.05, front, 0xf0f0f0, off=0.012, nx=2, nz=1)
+            ink, xs, zc = 0x111111, [-0.14, -0.095, -0.05, 0.04, 0.085, 0.13], z
+        for x in xs:
+            ep(D, x - 0.013, x + 0.013, zc - 0.027, zc + 0.027, front, ink, off=0.014, nx=1, nz=1)
     # butacas, tablero y volante (a la izquierda: en la Argentina se maneja del lado izquierdo)
     seat = sp.get('seat', 0x2b2b2b)
     yS = lerp(y_ws1, st[k['rr']]['y'], 0.45) if not sp.get('open') else lerp(y_ws1, st[k['rr']]['y'], 0.5)
+    yS = sp.get('seatY', yS)
     zf = sp.get('seatZ', st[k['ws0']]['zb'] + 0.1)
     roof = st[k['ws1']]['zt'] if not sp.get('open') else st[k['ws0']]['zs'] + 0.45
     hb = max(0.45, roof - zf - 0.12)
@@ -660,7 +992,7 @@ def common_details(c):
         y2 = yS + 0.85
         D.box((0, y2, zf + 0.13), (W2 * 1.5, 0.5, 0.14), seat)
         D.box((0, y2 + 0.25, zf + 0.12 + hb * 0.34), (W2 * 1.5, 0.14, hb * 0.56), seat, Matrix.Rotation(-0.2, 3, 'X'))
-    zd = belt - 0.02
+    zd = min(belt - 0.02, st[k['ws0']]['zt'] - 0.11)
     D.box((0, y_ws0 + 0.12, zd), (W2 * 1.85, 0.36, 0.14), sp.get('dash', 0x1e1e1e))
     D.box((0, y_ws0 + 0.35, zd - 0.2), (0.24, 0.5, 0.18), sp.get('dash', 0x1e1e1e))
     xw = W2 * 0.42
@@ -1013,8 +1345,6 @@ FERRUCHO_OPEN = {**FERRUCHO, 'name': 'ferrucho_open', 'open': True, 'rearGlass':
                           for i, k in enumerate(FERRUCHO['keys'])]}
 
 CARS = [FERRUCHO, FERRUCHO_OPEN, FURIA, GT, SEDAN, SUV]
-if os.environ.get('AUTOS_SOLO'):
-    CARS = [c for c in CARS if c['name'] in os.environ['AUTOS_SOLO'].split(',')]
 
 
 # ---------------------------------------------------------------- sombra horneada, foto y exportación
@@ -1085,70 +1415,111 @@ def tris(ob):
     return sum(len(p.vertices) - 2 for p in ob.data.polygons)
 
 
-scene.render.engine = 'CYCLES'
-scene.cycles.device = 'CPU'
-scene.cycles.samples = 48
-scene.world = bpy.data.worlds.new('w')
-scene.world.light_settings.distance = 0.6
-os.makedirs(os.path.dirname(GLB), exist_ok=True)
-bpy.ops.mesh.primitive_plane_add(size=30)
-floor = bpy.context.active_object
-floor.name = 'piso'
-roots = []
-for spec in CARS:
-    parts = build_car(spec)
-    for ob in parts.values():
-        smooth(ob, 35 if ob.name in ('paint', 'glass') else 30)
-    # la sombra: la chapa y los detalles con las cuatro ruedas puestas y el piso; sin los vidrios
-    temp = []
-    for (x, y, z) in spec['wheels']:
-        t = parts['wheel'].copy()
-        t.data = parts['wheel'].data
-        t.location = (x, y, z)
-        if x < 0:
-            t.scale.x = -1
-        scene.collection.objects.link(t)
-        temp.append(t)
-    others = [o for o in scene.objects if o not in parts.values() and o not in temp and o is not floor]
-    for o in others:
-        o.hide_render = True
-    parts['glass'].hide_render = True
-    parts['wheel'].hide_render = True
-    for name in ('paint', 'detail', 'shiny'):
-        bake(parts[name])
-    parts['glass'].hide_render = False
-    for o in temp:
-        bpy.data.objects.remove(o)
-    parts['wheel'].hide_render = False
-    for o in others:
-        o.hide_render = False
-    # la rueda, sola (gira: la sombra del arco no le corresponde)
+def hide_all_but(keep):
     for o in scene.objects:
-        o.hide_render = o is not parts['wheel']
-    bake(parts['wheel'])
+        o.hide_render = o not in keep
+
+
+def main(cars, glb):
+    """Arma los autos, hornea la sombra, saca las fotos (--vista) y exporta el glb."""
+    if os.environ.get('AUTOS_SOLO'):
+        cars = [c for c in cars if c['name'] in os.environ['AUTOS_SOLO'].split(',')]
+    scene.render.engine = 'CYCLES'
+    scene.cycles.device = 'CPU'
+    scene.cycles.samples = 48
+    scene.world = bpy.data.worlds.new('w')
+    scene.world.light_settings.distance = 0.6
+    os.makedirs(os.path.dirname(glb), exist_ok=True)
+    bpy.ops.mesh.primitive_plane_add(size=30)
+    floor = bpy.context.active_object
+    floor.name = 'piso'
+    roots = []
+    for spec in cars:
+        parts = build_car(spec)
+        for name, ob in parts.items():
+            smooth(ob, 35 if name in ('paint', 'glass', 'door', 'doorglass', 'hood', 'spoiler') else 30)
+        mode = {n: ('glass' if n == 'glass' else 'plain' if n in ('lights', 'tail') else 'wheel' if n == 'wheel' else ob.get('mode', 'main')) for n, ob in parts.items()}
+        # la sombra: la chapa y los detalles con las cuatro ruedas puestas y el piso; sin los vidrios ni las piezas
+        # que, quietas, tapan la chapa (la puerta, el capó y el alerón sueltos)
+        temp = []
+        for (x, y, z) in spec['wheels']:
+            t = parts['wheel'].copy()
+            t.data = parts['wheel'].data
+            t.location = (x, y, z)
+            if x < 0:
+                t.scale.x = -1
+            scene.collection.objects.link(t)
+            temp.append(t)
+        main_parts = [ob for n, ob in parts.items() if mode[n] == 'main']
+        # (las luces, las balizas y el cartel también hacen sombra; el hueco de la puerta, el motor y las franjas no)
+        occ = main_parts + temp + [floor] + [ob for n, ob in parts.items() if mode[n] == 'plain' and n not in ('doorway', 'bay', 'stripes')]
+        hide_all_but(occ)
+        for ob in main_parts:
+            bake(ob)
+        # las sueltas, cada una sola con la chapa (así les llega la sombra de lo que tienen al lado)
+        for n, ob in parts.items():
+            if mode[n] == 'over':
+                hide_all_but(occ + [ob])
+                bake(ob)
+        for o in temp:
+            bpy.data.objects.remove(o)
+        # la rueda, sola (gira: la sombra del arco no le corresponde)
+        hide_all_but([parts['wheel']])
+        bake(parts['wheel'])
+        for o in scene.objects:
+            o.hide_render = False
+        for n, ob in parts.items():
+            if mode[n] == 'plain':
+                plain_colors(ob)
+            if mode[n] == 'glass' and 'ci' in ob.data.attributes:
+                ob.data.attributes.remove(ob.data.attributes['ci'])
+            # las que giran (puerta, capó): el origen en la bisagra
+            if 'pivot' in ob:
+                ob.data.transform(Matrix.Translation(-Vector(ob['pivot'])))
+                del ob['pivot']
+            for key in ('palette', 'mode'):
+                if key in ob:
+                    del ob[key]
+        root = bpy.data.objects.new(spec['name'], None)
+        scene.collection.objects.link(root)
+        for ob in parts.values():
+            ob.parent = root
+        # dónde van las ruedas, en el sistema del juego (y arriba, frente a +z): x, y, -y de Blender
+        root['wheels'] = [[x, z, -y] for (x, y, z) in spec['wheels']]
+        root['wheelR'] = spec['wheelR']
+        sx, sy, sz = spec['_seat']
+        root['seat'] = [sx, sz, -sy]
+        zmax = max(v.co.z for v in parts['paint'].data.vertices)
+        root['size'] = [spec['W'], zmax, spec['L']]
+        for key, val in spec.get('_extras', {}).items():
+            root[key] = val
+        roots.append((root, parts))
+        tt = {n: tris(o) for n, o in parts.items()}
+        # (presupuesto del iPhone: el auto entero, con las cuatro ruedas, hasta 15.000 triángulos)
+        print(spec['name'], tt, 'total', sum(tt.values()) + 3 * tt['wheel'], flush=True)
+
+    bpy.data.objects.remove(floor)
+    if VISTA:
+        vista(roots, cars)
     for o in scene.objects:
-        o.hide_render = False
-    for name in ('lights', 'tail'):
-        plain_colors(parts[name])
-    root = bpy.data.objects.new(spec['name'], None)
-    scene.collection.objects.link(root)
-    for ob in parts.values():
-        ob.parent = root
-    # dónde van las ruedas, en el sistema del juego (y arriba, frente a +z): x, y, -y de Blender
-    root['wheels'] = [[x, z, -y] for (x, y, z) in spec['wheels']]
-    root['wheelR'] = spec['wheelR']
-    sx, sy, sz = spec['_seat']
-    root['seat'] = [sx, sz, -sy]
-    zmax = max(v.co.z for v in parts['paint'].data.vertices)
-    root['size'] = [spec['W'], zmax, spec['L']]
-    roots.append((root, parts))
-    print(spec['name'], {n: tris(o) for n, o in parts.items()}, flush=True)
+        o.select_set(True)
+    bpy.ops.export_scene.gltf(filepath=glb, export_format='GLB', use_selection=True, export_yup=True, export_apply=True, export_extras=True,
+                              export_vertex_color='ACTIVE', export_normals=True, export_texcoords=False, export_materials='NONE')
+    # normales y colores en enteros (KHR_mesh_quantization, three.js lo lee sin decodificador): pesa la mitad.
+    # Las posiciones quedan en float (las abolladuras de src/cars.js trabajan en metros)
+    import subprocess
 
-bpy.data.objects.remove(floor)
+    try:
+        subprocess.run(['npx', '-y', '@gltf-transform/cli@4', 'quantize', glb, glb, '--pattern', '{NORMAL,COLOR_0}', '--quantize-normal', '8'], check=True, capture_output=True, timeout=300)
+    except Exception as e:
+        print('(sin cuantizar:', e, ')')
+    print('listo:', glb, os.path.getsize(glb) // 1024, 'KB')
 
-if VISTA:
+
+def vista(roots, cars):
+    # una foto de cada auto (AUTOS_VISTAS=0,1 elige cuáles: 0 trompa, 1 cola, 2 costado, 3 de atrás bajo)
     os.makedirs(OUT_VISTA, exist_ok=True)
-    scene.cycles.samples = 64
+    scene.cycles.samples = int(os.environ.get('AUTOS_MUESTRAS', 64))
     scene.render.resolution_x, scene.render.resolution_y = 960, 540
     scene.view_settings.view_transform = 'Standard'
     scene.world.node_tree.nodes['Background'].inputs[0].default_value = (0.55, 0.62, 0.72, 1)
@@ -1160,8 +1531,12 @@ if VISTA:
     bpy.ops.mesh.primitive_plane_add(size=40)
     gnd = bpy.context.active_object
     gnd.data.materials.append(mat('suelo', hexc(0x8a8680), 0.9))
+    body_col = hexc(int(os.environ.get('AUTOS_COLOR', 'c8102e'), 16))
     looks = {
-        'paint': lambda: mat('v_paint', hexc(0xc8102e), 0.25, 0.0),
+        'paint': lambda: mat('v_paint', body_col, 0.25, 0.0),
+        'door': lambda: mat('v_paint', body_col, 0.25, 0.0),
+        'hood': lambda: mat('v_paint', body_col, 0.25, 0.0),
+        'spoiler': lambda: mat('v_paint', body_col, 0.25, 0.0),
         'glass': lambda: mat('v_glass', hexc(0x0b1015), 0.05, 0.0, 0.6),
         'detail': lambda: mat('v_vc', (1, 1, 1), 0.5),
         'shiny': lambda: mat('v_shiny', (1, 1, 1), 0.15, 1.0),
@@ -1169,24 +1544,29 @@ if VISTA:
         'tail': lambda: mat('v_vc3', (1, 1, 1), 0.3),
         'wheel': lambda: mat('v_vc4', (1, 1, 1), 0.4, 0.3),
     }
-    # (los colores de los vértices entran al color base; la chapa, multiplicada por un rojo)
+    which = [int(v) for v in os.environ.get('AUTOS_VISTAS', '0,1,2,3').split(',')]
+    # (los colores de los vértices entran al color base; la chapa, multiplicada por el color del auto)
     for root, parts in roots:
         for o in scene.objects:
             o.hide_render = o.parent is not None and o.parent is not root
         temp = []
         for name, ob in parts.items():
-            m = looks[name]()
-            if name != 'glass' and not m.get('vc'):
+            kind = ob.get('kind')
+            look = 'glass' if name in ('glass', 'doorglass') else 'shiny' if kind == 'shiny' else 'paint' if kind == 'paint' else 'detail' if name not in looks else name
+            if name in ('stripes', 'spoiler', 'door', 'doorglass', 'doorway', 'hood', 'bay'):
+                ob.hide_render = True
+            m = looks[look]()
+            if look != 'glass' and not m.get('vc'):
                 nt = m.node_tree
                 attr = nt.nodes.new('ShaderNodeVertexColor')
                 attr.layer_name = 'col'
                 b = nt.nodes['Principled BSDF']
-                if name == 'paint':
+                if look in ('paint', 'door', 'hood', 'spoiler'):
                     mix = nt.nodes.new('ShaderNodeMix')
                     mix.data_type = 'RGBA'
                     mix.blend_type = 'MULTIPLY'
                     mix.inputs['Factor'].default_value = 1
-                    mix.inputs[6].default_value = (*hexc(0xc8102e), 1)
+                    mix.inputs[6].default_value = (*body_col, 1)
                     nt.links.new(attr.outputs['Color'], mix.inputs[7])
                     nt.links.new(mix.outputs[2], b.inputs['Base Color'])
                 else:
@@ -1194,7 +1574,12 @@ if VISTA:
                 m['vc'] = 1
             ob.data.materials.clear()
             ob.data.materials.append(m)
-        spec = next(s for s in CARS if s['name'] == root.name)
+        spec = next(s for s in cars if s['name'] == root.name)
+        # (el color de la foto: el de AUTOS_COLOR, o el que el juego le pone siempre a ese auto)
+        cc = (*hexc(spec['vistaColor']), 1) if spec.get('vistaColor') is not None else (*body_col, 1)
+        for nd in MATS['v_paint'].node_tree.nodes:
+            if nd.bl_idname == 'ShaderNodeMix':
+                nd.inputs[6].default_value = cc
         for (x, y, z) in spec['wheels']:
             t = parts['wheel'].copy()
             t.data = parts['wheel'].data
@@ -1208,7 +1593,25 @@ if VISTA:
         if os.environ.get('AUTOS_SIN_RUEDAS'):
             for t in temp:
                 t.hide_render = True
-        for i, (az, el, dist) in enumerate(((-35, 14, 6.4), (145, 18, 6.6), (-90, 6, 6.8), (180, 8, 4.2))):
+        views = ((-35, 14, 6.4), (145, 18, 6.6), (-90, 6, 6.8), (180, 8, 4.2), (-20, 32, 7.5), (48, 16, 6.6), (215, 14, 6.6))
+        ex = spec.get('_extras', {})
+        for i in which:
+            az, el, dist = views[i]
+            # 5: del lado del conductor, con la puerta y el capó abiertos y el kit de tuning puesto
+            opened = i == 5
+            for name in ('door', 'doorglass', 'doorway', 'hood', 'bay', 'stripes', 'spoiler'):
+                if name in parts:
+                    parts[name].hide_render = not opened
+            if opened and 'door' in ex:
+                hx, _, hz = ex['door']
+                for name in ('door', 'doorglass'):
+                    if name in parts:
+                        parts[name].location = (hx, -hz, 0)
+                        parts[name].rotation_euler = (0, 0, -1.0)
+            if opened and 'hood' in ex:
+                _, hy, hz = ex['hood']
+                parts['hood'].location = (0, -hz, hy)
+                parts['hood'].rotation_euler = (-0.5, 0, 0)
             cam = bpy.data.objects.new('cam', bpy.data.cameras.new('cam'))
             scene.collection.objects.link(cam)
             a, e = math.radians(az), math.radians(el)
@@ -1228,16 +1631,6 @@ if VISTA:
     bpy.data.objects.remove(gnd)
     bpy.data.objects.remove(sun)
 
-for o in scene.objects:
-    o.select_set(True)
-bpy.ops.export_scene.gltf(filepath=GLB, export_format='GLB', use_selection=True, export_yup=True, export_apply=True, export_extras=True,
-                          export_vertex_color='ACTIVE', export_normals=True, export_texcoords=False, export_materials='NONE')
-# normales y colores en enteros (KHR_mesh_quantization, three.js lo lee sin decodificador): pesa la mitad.
-# Las posiciones quedan en float (las abolladuras de src/cars.js trabajan en metros)
-import subprocess  # noqa: E402
 
-try:
-    subprocess.run(['npx', '-y', '@gltf-transform/cli@4', 'quantize', GLB, GLB, '--pattern', '{NORMAL,COLOR_0}', '--quantize-normal', '8'], check=True, capture_output=True, timeout=300)
-except Exception as e:
-    print('(sin cuantizar:', e, ')')
-print('listo:', GLB, os.path.getsize(GLB) // 1024, 'KB')
+if __name__ == '__main__':
+    main(CARS, GLB)
